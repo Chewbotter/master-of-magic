@@ -90,6 +90,18 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                 break
             }
             event = &GameEventSurveyor{}
+        case "surveyornear":
+            // the surveyor pointed next to the player's first city, where it shows a helper message
+            player := game.Model.GetHumanPlayer()
+            if player == nil {
+                return false
+            }
+            for _, city := range player.Cities {
+                point := image.Pt(game.Model.CurrentMap().WrapX(city.X + 1), city.Y)
+                CaptureSurveyorTile = &point
+                break
+            }
+            event = &GameEventSurveyor{}
         case "chancellor":
             game.DoChancellor()
             return true

@@ -70,6 +70,25 @@ func (options FontOptions) relativeSize() float64 {
     return RelativeTextSize(scale, options.textSize())
 }
 
+// the left edge, in art pixels, that centers a wrapped block of text on centerX while its lines stay
+// left aligned with each other. the edge lands on a whole screen pixel so the letters stay sharp
+func (font *Font) CenteredBlockX(wrapped WrappedText, centerX float64, options FontOptions) float64 {
+    scale := options.Scale
+    if scale == 0 {
+        scale = 1
+    }
+
+    relative := options.relativeSize()
+    widest := 0.0
+    for _, line := range wrapped.Lines {
+        // MeasureTextWidth counts a letter gap after the last letter too, which is empty space
+        width := font.MeasureTextWidth(line, relative) - float64(font.internalFont.HorizontalSpacing) * relative
+        widest = max(widest, width)
+    }
+
+    return math.Round((centerX - widest / 2) * scale) / scale
+}
+
 // the height of a line at the current size (see UseTextSize), in art pixels
 func (font *Font) HeightAt(scale float64) float64 {
     return float64(font.Height()) * RelativeTextSize(scale, defaultTextSize)

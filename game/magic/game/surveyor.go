@@ -244,7 +244,14 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
                         y = float64(170) - fonts.WhiteFont.HeightAt(scale.ScaleAmount) * 3 - cityInfoText.TotalHeight
                     }
 
-                    fonts.YellowFont.RenderWrapped(screen, float64(245), y, cityInfoText, font.FontOptions{Scale: scale.ScaleAmount})
+                    infoOptions := font.FontOptions{Scale: scale.ScaleAmount}
+                    infoX := float64(245)
+                    if !resources.Enabled {
+                        // a helper message is centered in the panel, its lines still left aligned. the
+                        // City Resources heading stays at the left edge with the table under it
+                        infoX = fonts.YellowFont.CenteredBlockX(cityInfoText, SurveyorPanelCenterX, infoOptions)
+                    }
+                    fonts.YellowFont.RenderWrapped(screen, infoX, y, cityInfoText, infoOptions)
                     y += cityInfoText.TotalHeight
 
                     if resources.Enabled {
@@ -407,7 +414,8 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
                     resources.GoldBonus = game.CityGoldBonus(newX, newY, game.Model.Plane)
                 }
 
-                cityInfoText = fonts.YellowFont.CreateWrappedText(float64(cancelBackground.Bounds().Dx() - 9), font.RelativeTextSize(scale.ScaleAmount, font.TextSizeCompact), text)
+                // narrower than the panel, so a helper message has room to sit centered, see panel.go
+                cityInfoText = fonts.YellowFont.CreateWrappedText(SurveyorHelperTextWidth, font.RelativeTextSize(scale.ScaleAmount, font.TextSizeCompact), text)
             }
         } else {
             cityInfoText.Clear()
