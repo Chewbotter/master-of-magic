@@ -126,6 +126,11 @@ func scannedOutlineKey(bannerKey string, step int) string {
 
 // draws the outline of a cell: under the cursor, or under the selected unit
 func (combat *CombatScreen) drawCellOutline(screen *ebiten.Image, x int, y int, active bool) {
+    // not on the ground around the field
+    if !combat.Model.IsInsideMap(x, y) {
+        return
+    }
+
     index := cellOutlineScannedIndex
     if active {
         index = cellOutlineActiveIndex

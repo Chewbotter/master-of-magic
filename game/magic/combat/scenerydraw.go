@@ -30,11 +30,17 @@ func sortFieldDrawables(drawables []fieldDrawable) {
 
 // draws a picture with its top left corner at a position of the original's screen
 func (combat *CombatScreen) drawOnField(screen *ebiten.Image, picture *ebiten.Image, x int, y int) {
+    combat.drawOnFieldDimmed(screen, picture, x, y, 1)
+}
+
+// the same, darker: for what stands on the ground around the field, see fieldedge.go
+func (combat *CombatScreen) drawOnFieldDimmed(screen *ebiten.Image, picture *ebiten.Image, x int, y int, brightness float32) {
     matrix := originalScreenMatrix(combat.GetCameraMatrix())
 
     var options ebiten.DrawImageOptions
     options.GeoM.Translate(float64(x), float64(y))
     options.GeoM.Concat(matrix)
+    options.ColorScale.Scale(brightness, brightness, brightness, 1)
     scale.DrawScaled(screen, picture, &options)
 }
 
@@ -51,6 +57,11 @@ func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawab
             case SceneryRock: layer = layerRock
         }
 
+        brightness := fieldBrightness(piece.ScreenX, piece.ScreenY)
+        if brightness <= 0 {
+            continue
+        }
+
         out = append(out, fieldDrawable{
             Order: DrawOrder(piece.ScreenX, piece.ScreenY),
             Layer: layer,
@@ -61,7 +72,7 @@ func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawab
                 }
                 picture := pictures[0]
                 anchorX, anchorY := piece.anchor(picture.Bounds().Dx(), picture.Bounds().Dy())
-                combat.drawOnField(screen, picture, piece.ScreenX - anchorX, piece.ScreenY - anchorY)
+                combat.drawOnFieldDimmed(screen, picture, piece.ScreenX - anchorX, piece.ScreenY - anchorY, brightness)
             },
         })
     }

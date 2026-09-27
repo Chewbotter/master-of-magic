@@ -41,9 +41,6 @@ const BattleZoomTicks = 8
 // the middle of the battlefield view, in art pixels. zooming keeps this point in place
 const BattleViewCenterX = 160
 const BattleViewCenterY = 82
-// how far the battlefield can be moved from its original position, in art pixels at the original size
-const BattlePanLimitX = 260
-const BattlePanLimitY = 130
 
 type BattleCamera struct {
     // screen pixels per art pixel. 0 until the first update, then a whole number
@@ -138,10 +135,10 @@ func (battle *BattleCamera) reset() {
 }
 
 func (battle *BattleCamera) moveBy(deltaX float64, deltaY float64) {
-    limitX := BattlePanLimitX * scale.ScaleAmount
-    limitY := BattlePanLimitY * scale.ScaleAmount
-    battle.targetX = max(-limitX, min(limitX, battle.targetX + deltaX))
-    battle.targetY = max(-limitY, min(limitY, battle.targetY + deltaY))
+    battle.targetX += deltaX
+    battle.targetY += deltaY
+    // the view stops at the edge of the ground around the field, see fieldedge.go
+    battle.clampToField()
 }
 
 // one tick of input. inBattlefield says whether the cursor is over the battlefield, where a drag can start
@@ -183,6 +180,8 @@ func (battle *BattleCamera) Update(keys []ebiten.Key, inBattlefield bool) {
     }
 
     battle.updateDrag(inBattlefield)
+    // a change of zoom level or of the window can put the view over the edge
+    battle.clampToField()
 }
 
 func (battle *BattleCamera) updateDrag(inBattlefield bool) {
@@ -282,5 +281,6 @@ func (battle *BattleCamera) SetView(level int, panX float64, panY float64) {
     battle.zoomTick = 0
     battle.clampLevel()
     battle.targetX, battle.targetY = panX, panY
-    battle.viewX, battle.viewY = panX, panY
+    battle.clampToField()
+    battle.viewX, battle.viewY = battle.targetX, battle.targetY
 }

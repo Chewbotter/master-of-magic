@@ -48,6 +48,8 @@ func (combat *CombatScreen) setCursor(picture *ebiten.Image, hot image.Point) {
     globalMouse.Mouse.SetImageFunc(func(screen *ebiten.Image, options *ebiten.DrawImageOptions) {
         var use ebiten.DrawImageOptions
         use.GeoM.Translate(float64(-hot.X), float64(-hot.Y))
+        // as large as the tiles are drawn, so a picture never covers more of the field zoomed out
+        use.GeoM.Scale(combat.CameraScale, combat.CameraScale)
         use.GeoM.Concat(options.GeoM)
         use.ColorScale = options.ColorScale
         scale.DrawScaled(screen, picture, &use)

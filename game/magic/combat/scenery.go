@@ -84,9 +84,15 @@ const townCellMinY = 10
 const townCellMaxY = 13
 
 // our grid is larger than the original's and the camera can show more than the original's screen.
-// beyond that screen scenery continues as dense as on it, this many times the count for the field
-// of 30 by 30 tiles (its area outside of the screen is about three times the screen)
-const sceneryBeyondScreen = 3
+// beyond that screen scenery continues as dense as on it, over the field and the ground around it
+// (fieldedge.go). this is how many times the screen fits in that area, less the screen itself
+func sceneryBeyondScreen(width int, height int) int {
+    tiles := (width + BattlefieldBorder * 2) * (height + BattlefieldBorder * 2)
+    // a tile is a diamond, half of its 32 by 16 box
+    area := tiles * CellStepX * CellStepY * 2
+    screen := sceneryScreenWidth * sceneryScreenHeight
+    return max(0, area / screen - 1)
+}
 
 // 1 to n, the original's random numbers
 func roll(n int) int {
@@ -219,8 +225,8 @@ func originalArea() sceneryArea {
 
 // the rest of our field
 func beyondArea(width int, height int) sceneryArea {
-    cornerX1, cornerY1 := TileToCell(0, 0)
-    cornerX2, cornerY2 := TileToCell(width - 1, height - 1)
+    cornerX1, cornerY1 := TileToCell(-BattlefieldBorder, -BattlefieldBorder)
+    cornerX2, cornerY2 := TileToCell(width - 1 + BattlefieldBorder, height - 1 + BattlefieldBorder)
 
     return sceneryArea{
         MinX: min(cornerX1, cornerX2), MaxX: max(cornerX1, cornerX2),
@@ -414,11 +420,11 @@ func makeScenery(width int, height int, landscape CombatLandscape, plane data.Pl
 
     trees := treeCount(landscape)
     out = append(out, scatterTrees(trees, lbx, zone, originalArea())...)
-    out = append(out, scatterTrees(trees * sceneryBeyondScreen, lbx, zone, beyondArea(width, height))...)
+    out = append(out, scatterTrees(trees * sceneryBeyondScreen(width, height), lbx, zone, beyondArea(width, height))...)
 
     rocks := rockCount(landscape)
     out = append(out, scatterRocks(rocks, lbx, zone, originalArea())...)
-    out = append(out, scatterRocks(rocks * sceneryBeyondScreen, lbx, zone, beyondArea(width, height))...)
+    out = append(out, scatterRocks(rocks * sceneryBeyondScreen(width, height), lbx, zone, beyondArea(width, height))...)
 
     return out
 }

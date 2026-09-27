@@ -44,6 +44,10 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 7 | Widescreen: the field spans the width of the window, the combat bar and windows stay in the middle | `combat/widefield.go`, `display/backdrop.go` |
 | 7 | Damage numbers: the original's font 2 in its reds with a black border, whole screen pixels. Not in the original | `combat/damagenumbers.go` |
 | 7 | Projectiles and damage numbers are drawn under the combat bar, were over it | `combat/combat-screen.go` |
+| 8 | Ground around the field: 16 rows of tiles nobody can enter, each darker, black at the last. Trees and rocks continue on it. The camera stops where its view would leave it | `combat/fieldedge.go` |
+| 8 | Projectiles keep positions of the field, so they stay on their way while the camera moves or zooms | `combat/projectilespace.go` |
+| 8 | Cursor pictures of the field are drawn as large as the tiles, so they shrink when zoomed out | `combat/cursor.go` |
+| 8 | Damage numbers in the original's smallest font, over the middle of the unit, stacked where they would touch | `combat/damagenumbers.go` |
 
 ## Judgment calls of batch 5
 - Beyond the original's screen (our field is larger and the camera zooms out) scenery continues at
@@ -81,11 +85,9 @@ Found while reading the reference. Not started unless noted.
   the original picks the cell 4 right and 4 below the corner of every cursor picture. Ours picks at
   the mouse position and centers the pictures there, which stays exact when zoomed out.
 - Projectiles and spell effects (Make_Missiles and the spell animation code).
-- Zoomed out or moved far, the area beyond our 30 by 30 grid shows black. The original's view never
-  leaves its grid.
+- A window wider than 16 to 9 can still show black past the last row at the farthest zoom level.
+  The rows fade to black, so there is no cut edge.
 - The unit information box and the spell announcement stay in the middle 320 columns.
-- Projectiles keep positions of the screen from when they were made: moving the camera while one
-  flies moves the field under it (the fork's behavior).
 
 ### Combat bar
 - The selected unit's figure is not centered in its 32 by 25 box at (84, 173) by the size of what is

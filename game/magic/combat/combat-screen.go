@@ -217,6 +217,9 @@ type CombatScreen struct {
     Cache *lbx.LbxCache
     AudioCache *audio.AudioCache
     Mouse *mouse.MouseData
+    Landscape CombatLandscape
+    // picks the pictures of the ground around the field, see fieldedge.go
+    borderSeed uint32
     // the field fills the width of the window, see widefield.go
     wideField bool
     pass drawPass
@@ -379,6 +382,8 @@ func MakeCombatScreen(cache *lbx.LbxCache, defendingArmy *Army, attackingArmy *A
         ImageCache: imageCache,
         Mouse: mouseData,
         CameraScale: 1,
+        Landscape: landscape,
+        borderSeed: rand.Uint32(),
         DrawRoad: zone.City != nil,
         DrawClouds: zone.City != nil && zone.City.HasEnchantment(data.CityEnchantmentFlyingFortress),
         Fonts: fonts,
@@ -479,7 +484,7 @@ func (combat *CombatScreen) computeTopDownOrder() []image.Point {
  */
 func (combat *CombatScreen) createSkyProjectile(target *ArmyUnit, images []*ebiten.Image, explodeImages []*ebiten.Image, effect ProjectileEffect) *Projectile {
     // find where on the screen the unit is
-    matrix := combat.GetCameraMatrix()
+    matrix := projectileMatrix()
     screenX, screenY := matrix.Apply(float64(target.X), float64(target.Y))
     screenY -= 10
     screenX += 2
@@ -514,7 +519,7 @@ func (combat *CombatScreen) createSkyProjectile(target *ArmyUnit, images []*ebit
  */
 func (combat *CombatScreen) createVerticalSkyProjectile(target *ArmyUnit, images []*ebiten.Image, explodeImages []*ebiten.Image, effect ProjectileEffect) *Projectile {
     // find where on the screen the unit is
-    matrix := combat.GetCameraMatrix()
+    matrix := projectileMatrix()
     screenX, screenY := matrix.Apply(float64(target.X), float64(target.Y))
     screenY -= 10
     screenX += 2
@@ -562,7 +567,7 @@ const (
  */
 func (combat *CombatScreen) createUnitProjectile(target *ArmyUnit, explodeImages []*ebiten.Image, position UnitPosition, effect ProjectileEffect) *Projectile {
     // find where on the screen the unit is
-    matrix := combat.GetCameraMatrix()
+    matrix := projectileMatrix()
 
     var geom1 ebiten.GeoM
 
@@ -577,7 +582,7 @@ func (combat *CombatScreen) createUnitProjectile(target *ArmyUnit, explodeImages
             geom1.Translate(-float64(useImage.Bounds().Dx()/2), -float64(useImage.Bounds().Dy()))
     }
 
-    geom1.Scale(combat.CameraScale, combat.CameraScale)
+    geom1.Scale(projectileScale, projectileScale)
     tx, ty := matrix.Apply(float64(target.X), float64(target.Y))
     geom1.Translate(tx, ty)
 
@@ -677,7 +682,7 @@ func (combat *CombatScreen) CreateLightningBoltProjectile(target *ArmyUnit, stre
     // loopImages := images
     explodeImages := images
 
-    matrix := combat.GetCameraMatrix()
+    matrix := projectileMatrix()
     screenX, screenY := matrix.Apply(float64(target.X), float64(target.Y))
 
     screenY -= float64(images[0].Bounds().Dy())/2
@@ -707,7 +712,7 @@ func (combat *CombatScreen) CreateWarpLightningProjectile(target *ArmyUnit) *Pro
     // loopImages := images
     explodeImages := images
 
-    matrix := combat.GetCameraMatrix()
+    matrix := projectileMatrix()
     screenX, screenY := matrix.Apply(float64(target.X), float64(target.Y))
     // screenY += 13
     screenX += 3
@@ -1971,7 +1976,7 @@ func (combat *CombatScreen) createUnitToTileProjectile(attacker *ArmyUnit, targe
 }
 
 func (combat *CombatScreen) createUnitToUnitProjectile(attacker *ArmyUnit, target *ArmyUnit, offset image.Point, images []*ebiten.Image, explodeImages []*ebiten.Image, effect ProjectileEffect) *Projectile {
-    matrix := combat.GetCameraMatrix()
+    matrix := projectileMatrix()
     // find where on the screen the unit is
     screenX, screenY := matrix.Apply(float64(attacker.X), float64(attacker.Y))
     targetX, targetY := matrix.Apply(float64(target.X), float64(target.Y))
@@ -1990,27 +1995,27 @@ func (combat *CombatScreen) createUnitToUnitProjectile(attacker *ArmyUnit, targe
     screenGeom.Translate(14, 3)
     screenGeom.Translate(-float64(useImage.Bounds().Dy()/2), -float64(useImage.Bounds().Dy()/2))
     screenGeom.Translate(float64(offset.X), float64(offset.Y))
-    // screenGeom.Scale(combat.CameraScale, combat.CameraScale)
+    // screenGeom.Scale(projectileScale, projectileScale)
 
     screenX, screenY = screenGeom.Apply(0, 0)
 
     /*
-    screenY += 3 * combat.CameraScale
-    screenY -= float64(useImage.Bounds().Dy()/2) * combat.CameraScale
-    screenX += 14 * combat.CameraScale
-    screenX -= float64(useImage.Bounds().Dx()/2) * combat.CameraScale
+    screenY += 3 * projectileScale
+    screenY -= float64(useImage.Bounds().Dy()/2) * projectileScale
+    screenX += 14 * projectileScale
+    screenX -= float64(useImage.Bounds().Dx()/2) * projectileScale
 
-    screenY += float64(offset.Y) * combat.CameraScale
-    screenX += float64(offset.X) * combat.CameraScale
+    screenY += float64(offset.Y) * projectileScale
+    screenX += float64(offset.X) * projectileScale
     */
 
-    targetY += 3 * combat.CameraScale
-    targetY -= float64(useImage.Bounds().Dy()/2) * combat.CameraScale
-    targetX += 14 * combat.CameraScale
-    targetX -= float64(useImage.Bounds().Dx()/2) * combat.CameraScale
+    targetY += 3 * projectileScale
+    targetY -= float64(useImage.Bounds().Dy()/2) * projectileScale
+    targetX += 14 * projectileScale
+    targetX -= float64(useImage.Bounds().Dx()/2) * projectileScale
 
-    targetY += (rand.Float64() * 6 - 3) * combat.CameraScale
-    targetX += (rand.Float64() * 6 - 3) * combat.CameraScale
+    targetY += (rand.Float64() * 6 - 3) * projectileScale
+    targetX += (rand.Float64() * 6 - 3) * projectileScale
 
     /*
     switch position {
@@ -3829,6 +3834,9 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
     // what follows is the field, down to the numbers and the projectiles. see widefield.go
     if combat.drawsField() {
 
+    // the darkening ground around the field, see fieldedge.go
+    combat.drawFieldBorder(screen, animationIndex)
+
     // draw base land first
     for _, point := range combat.TopDownOrder {
         x := point.X
@@ -4228,6 +4236,7 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         combat.ShowExtraHighlight(screen, combat.ExtraHighlightedUnit, getTilePoints)
     }
 
+    projectileOnScreen := originalScreenMatrix(combat.GetCameraMatrix())
     for _, projectile := range combat.Model.Projectiles {
         var frame *ebiten.Image
         if projectile.Exploding {
@@ -4239,8 +4248,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             var options ebiten.DrawImageOptions
             options.GeoM.Translate(float64(-frame.Bounds().Dx()/2), float64(-frame.Bounds().Dy())/2)
             options.GeoM.Scale(combat.CameraScale, combat.CameraScale)
-            // projectiles keep positions of the screen
-            options.GeoM.Translate(projectile.X + combat.fieldShift, projectile.Y)
+            // projectiles keep positions of the field, see projectilespace.go
+            options.GeoM.Translate(projectileOnScreen.Apply(projectile.X, projectile.Y))
             scale.DrawScaled(screen, frame, &options)
         }
     }
