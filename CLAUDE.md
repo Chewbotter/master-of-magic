@@ -12,6 +12,7 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
 - COMMITS: Claude commits as it goes, one commit per finished change, by pathspec; the user pushes through GitHub Desktop. Never push. (User decision, 2026-09-27; overrides the guides' default that commits are his.)
 - `D:/Work/MasterMagic_open/_tools/` : portable Go 1.27.1 and its module cache. Go is not installed system-wide and is not on PATH.
 - `D:/Work/MasterMagic_open/_build/` : build output (`magic.exe`, logs). Never commit.
+- `D:/Work/MasterMagic_open/_sprites/` : the pictures of the battles as png files, written by `bash D:/Work/MasterMagic_open/export-sprites.sh` (`util/export-sprites`). ORIGINAL GAME DATA: outside of the repo, never commit, never redistribute. Indexed color, the numbers of the colors matter; banner colors are 215 to 218. The user changes and adds pictures there (death poses are planned). NOT BUILT YET: reading changed pictures back into the game.
 - `D:/Work/MasterMagic_open/_reference/ReMoM/` : reference reconstruction of the original, read only. See Reference workflow.
 - Original game data (owned on Steam, never copy into the repo, never commit, never redistribute):
   `D:/SteamLibrary/steamapps/common/Master of Magic Classic/Master of Magic Official Release` (101 LBX files).
