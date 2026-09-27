@@ -49,6 +49,10 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 8 | Cursor pictures of the field are drawn as large as the tiles, so they shrink when zoomed out | `combat/cursor.go` |
 | 8 | Damage numbers in the original's smallest font, in a loose cluster around the unit. One that would touch another moves away the shorter way. Each fades as one picture | `combat/damagenumbers.go` |
 
+## Different from the original on purpose (user requests)
+- The outlines of the tiles, the red pulse of the unit under the cursor and the frames of a strike
+  step at half the original's speed: every second redraw of its 18.2 a second. `combat/animation.go`.
+
 ## Judgment calls of batch 5
 - Beyond the original's screen (our field is larger and the camera zooms out) scenery continues at
   the same density: three times the count again, `sceneryBeyondScreen`.

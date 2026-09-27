@@ -54,6 +54,13 @@ const scannedOutlinePaletteIndex = 1
 const scannedOutlineRed = 55.0 / 63.0
 const scannedOutlineSteps = 8
 
+// how many of the original's redraws one step of an animation lasts. the original steps all of them
+// on every redraw. 2 is half its speed (user request). how long an attack takes is not changed,
+// only how fast its frames alternate
+const cellOutlineTicksPerFrame = 2
+const scannedOutlineTicksPerStep = 2
+const attackTicksPerFrame = 2
+
 // the original's redraw counter, from our ticks
 func (combat *CombatScreen) originalTick() uint64 {
     tps := float64(max(1, ebiten.TPS()))
@@ -84,9 +91,9 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int) int {
     }
 
     if unit.Attacking {
-        frame = figureAttackFrames[tick % uint64(len(figureAttackFrames))]
+        frame = figureAttackFrames[tick / attackTicksPerFrame % uint64(len(figureAttackFrames))]
     } else if unit.Defending {
-        frame = figureDefendFrames[tick % uint64(len(figureDefendFrames))]
+        frame = figureDefendFrames[tick / attackTicksPerFrame % uint64(len(figureDefendFrames))]
     }
 
     if frameCount <= 0 {
@@ -98,7 +105,7 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int) int {
 
 // how far the outline of the unit under the cursor is from black to red, 0 to scannedOutlineSteps
 func (combat *CombatScreen) scannedOutlineStep() int {
-    position := int(combat.originalTick() % (scannedOutlineSteps * 2))
+    position := int(combat.originalTick() / scannedOutlineTicksPerStep % (scannedOutlineSteps * 2))
     if position > scannedOutlineSteps {
         position = scannedOutlineSteps * 2 - position
     }
@@ -141,7 +148,7 @@ func (combat *CombatScreen) drawCellOutline(screen *ebiten.Image, x int, y int, 
         return
     }
 
-    frame := int(combat.originalTick() % cellOutlineFrames)
+    frame := int(combat.originalTick() / cellOutlineTicksPerFrame % cellOutlineFrames)
     frame = min(frame, len(images) - 1)
 
     matrix := combat.GetCameraMatrix()
