@@ -99,6 +99,8 @@ type MagicGame struct {
 
     // screens without a widescreen layout are drawn here first
     Canvas *ebiten.Image
+    // for the backdrop of a screen, as wide as the window
+    WideCanvas *ebiten.Image
 
     // font for the frames per second counter, loaded once the data is available
     FPSFont *font.Font
@@ -1224,6 +1226,21 @@ func (game *MagicGame) Draw(screen *ebiten.Image) {
                 game.Canvas = ebiten.NewImage(width, height)
             }
             game.Canvas.Clear()
+
+            if display.IsWideBackdropActive() {
+                // the screen fills the bars with a backdrop of its own, see display/backdrop.go
+                wideWidth, wideHeight := scale.Scale2(display.LogicalWidth(), data.ScreenHeight)
+                if game.WideCanvas == nil || game.WideCanvas.Bounds().Dx() != wideWidth || game.WideCanvas.Bounds().Dy() != wideHeight {
+                    game.WideCanvas = ebiten.NewImage(wideWidth, wideHeight)
+                }
+                game.WideCanvas.Clear()
+                display.WideBackdrop(game.WideCanvas)
+
+                var wideOptions ebiten.DrawImageOptions
+                wideOptions.GeoM.Translate(float64(display.PictureX()), float64(offsetY))
+                screen.DrawImage(game.WideCanvas, &wideOptions)
+            }
+
             game.Drawer(game.Canvas)
 
             var options ebiten.DrawImageOptions
@@ -1294,6 +1311,7 @@ func loadGameConfig() GameConfig {
     flag.StringVar(&capture.Path, "capture", "", "development: write one frame to this png file and exit")
     flag.IntVar(&capture.Frames, "capture-frames", 120, "development: frames to draw before the capture")
     flag.BoolVar(&capture.RevealAll, "capture-reveal-all", false, "development: turn on the Reveal All debug option")
+    flag.BoolVar(&capture.DamageNumbers, "capture-damage-numbers", false, "development: keep damage numbers over the units of a random battle")
     flag.StringVar(&capture.MouseAt, "capture-mouse-at", "", "development: the game sees the mouse at x,y screen pixels of the picture")
     flag.StringVar(&capture.CursorAt, "capture-cursor-at", "", "development: draw the cursor at x,y screen pixels, fractions allowed")
     flag.BoolVar(&capture.TraceWide, "capture-trace-wide", false, "development: log every change of the widescreen layout and the layers on screen")

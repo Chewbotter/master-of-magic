@@ -305,6 +305,8 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
     }
 
     defer game.restoreNormalMouse()
+    // the field fills the width of the window
+    defer combatScreen.UseWideField()()
 
     game.Drawer = func(screen *ebiten.Image) {
         combatScreen.Draw(screen)
@@ -315,6 +317,12 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
     state := combat.CombatStateRunning
     for state == combat.CombatStateRunning {
         state = combatScreen.Update(yield)
+        if capture.DamageNumbers && len(combatScreen.DamageIndicators) == 0 {
+            // development: numbers of one, two and three digits over both armies
+            for index, unit := range append(attackingArmy.GetUnits(), defendingArmy.GetUnits()...) {
+                combatScreen.AddDamageIndicator(unit, []int{3, 12, 7, 108}[index % 4])
+            }
+        }
         // the battle's own events are for the world map, nobody here needs them
         for len(events) > 0 {
             <-events

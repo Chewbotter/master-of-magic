@@ -103,6 +103,8 @@ type HudFonts struct {
     UnitName *font.StyledFont
     AttackerName *font.StyledFont
     DefenderName *font.StyledFont
+    // the numbers that rise from a unit that is hurt, see damagenumbers.go
+    Damage *font.StyledFont
     Palette color.Palette
 }
 
@@ -145,6 +147,7 @@ func makeHudFonts(cache *lbx.LbxCache, lbxFonts []*font.LbxFont, attackerBanner 
         UnitName: unitName,
         AttackerName: makeName(attackerBanner),
         DefenderName: makeName(defenderBanner),
+        Damage: makeDamageFont(lbxFonts, palette),
         Palette: palette,
     }
 }

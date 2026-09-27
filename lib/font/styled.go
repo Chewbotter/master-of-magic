@@ -14,6 +14,7 @@ package font
 import (
     "image"
     "image/color"
+    "math"
 
     "github.com/hajimehoshi/ebiten/v2"
 )
@@ -140,6 +141,11 @@ func (styled *StyledFont) Width(text string) int {
 }
 
 func (styled *StyledFont) printAt(destination *ebiten.Image, useFont *Font, x int, y int, pixelScale float64, colorScale ebiten.ColorScale, text string) {
+    styled.printFineAt(destination, useFont, x, y, 0, 0, pixelScale, colorScale, text)
+}
+
+// fineX and fineY move the text by screen pixels
+func (styled *StyledFont) printFineAt(destination *ebiten.Image, useFont *Font, x int, y int, fineX float64, fineY float64, pixelScale float64, colorScale ebiten.ColorScale, text string) {
     spacing := styled.Face.internalFont.HorizontalSpacing
     for _, c := range text {
         glyphIndex := int(c) - 32
@@ -150,13 +156,45 @@ func (styled *StyledFont) printAt(destination *ebiten.Image, useFont *Font, x in
         if useFont.Glyphs[glyphIndex].Width > 0 {
             var options ebiten.DrawImageOptions
             options.GeoM.Scale(pixelScale, pixelScale)
-            options.GeoM.Translate(float64(x) * pixelScale, float64(y) * pixelScale)
+            options.GeoM.Translate(float64(x) * pixelScale + fineX, float64(y) * pixelScale + fineY)
             options.ColorScale = colorScale
             destination.DrawImage(useFont.getGlyphImage(glyphIndex), &options)
         }
 
         x += styled.glyphWidth(glyphIndex) + spacing
     }
+}
+
+// for text that moves: x and y are art pixels with fractions, and the text lands on the nearest
+// whole screen pixel. the letters and their shadow stay on whole art pixels of each other
+func (styled *StyledFont) PrintFine(destination *ebiten.Image, x float64, y float64, options FontOptions, text string) {
+    pixelScale := options.Scale
+    if pixelScale == 0 {
+        pixelScale = 1
+    }
+
+    var colorScale ebiten.ColorScale
+    if options.Options != nil {
+        colorScale = options.Options.ColorScale
+    }
+
+    switch options.Justify {
+        case FontJustifyCenter: x -= float64(styled.Width(text) / 2)
+        case FontJustifyRight: x -= float64(styled.Width(text) - 1)
+    }
+
+    fineX := math.Round(x * pixelScale)
+    fineY := math.Round(y * pixelScale)
+
+    if styled.ShadowColor != nil {
+        shadowScale := colorScale
+        shadowScale.ScaleWithColor(styled.ShadowColor)
+        for _, offset := range styled.Shadow.Offsets() {
+            styled.printFineAt(destination, styled.Mask, offset.X, offset.Y, fineX, fineY, pixelScale, shadowScale, text)
+        }
+    }
+
+    styled.printFineAt(destination, styled.Face, 0, 0, fineX, fineY, pixelScale, colorScale, text)
 }
 
 // x and y are whole art pixels, as in the original. Justify follows the original's rules:

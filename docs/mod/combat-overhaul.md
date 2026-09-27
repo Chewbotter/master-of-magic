@@ -41,6 +41,9 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 6 | The roads of a town, the clouds of a flying fortress and the ground under an outpost on the original's place. They now scale with the zoom | `combat/scenerydraw.go` |
 | 6 | Cursor pictures are drawn with their middle or tip on the mouse position, which is the point that picks the tile | `combat/cursor.go` |
 | 6 | The red X has arms of 4 instead of 7, at the same size of pixel (user request) | `combat/cursor.go` |
+| 7 | Widescreen: the field spans the width of the window, the combat bar and windows stay in the middle | `combat/widefield.go`, `display/backdrop.go` |
+| 7 | Damage numbers: the original's font 2 in its reds with a black border, whole screen pixels. Not in the original | `combat/damagenumbers.go` |
+| 7 | Projectiles and damage numbers are drawn under the combat bar, were over it | `combat/combat-screen.go` |
 
 ## Judgment calls of batch 5
 - Beyond the original's screen (our field is larger and the camera zooms out) scenery continues at
@@ -80,7 +83,9 @@ Found while reading the reference. Not started unless noted.
 - Projectiles and spell effects (Make_Missiles and the spell animation code).
 - Zoomed out or moved far, the area beyond our 30 by 30 grid shows black. The original's view never
   leaves its grid.
-- Combat is not widescreen yet: it is drawn in the middle with black bars.
+- The unit information box and the spell announcement stay in the middle 320 columns.
+- Projectiles keep positions of the screen from when they were made: moving the camera while one
+  flies moves the field under it (the fork's behavior).
 
 ### Combat bar
 - The selected unit's figure is not centered in its 32 by 25 box at (84, 173) by the size of what is

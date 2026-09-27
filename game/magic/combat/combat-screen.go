@@ -28,6 +28,7 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/util"
     "github.com/kazzmir/master-of-magic/game/magic/data"
+    "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/unitview"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "github.com/kazzmir/master-of-magic/game/magic/pathfinding"
@@ -216,6 +217,11 @@ type CombatScreen struct {
     Cache *lbx.LbxCache
     AudioCache *audio.AudioCache
     Mouse *mouse.MouseData
+    // the field fills the width of the window, see widefield.go
+    wideField bool
+    pass drawPass
+    // how far right the field is drawn, in art pixels
+    fieldShift float64
     // the red X with shorter arms, see cursor.go
     shortCrossPicture *ebiten.Image
     WhitePixel *ebiten.Image
@@ -418,6 +424,7 @@ func (combat *CombatScreen) GetCameraMatrix() ebiten.GeoM {
 func (combat *CombatScreen) syncCamera() {
     combat.Camera.clampLevel()
     combat.Coordinates = combat.Camera.Matrix()
+    combat.Coordinates.Translate(combat.fieldShift, 0)
     combat.CameraScale = combat.Camera.Scale()
 }
 
@@ -2314,6 +2321,12 @@ func (combat *CombatScreen) doCastEnchantment(yield coroutine.YieldFunc, caster 
     combat.Drawer = func (screen *ebiten.Image){
         oldDrawer(screen)
 
+        if combat.pass == drawPassField {
+            // the wide field, see widefield.go. the text is drawn with the rest of the screen
+            vector.FillRect(screen, 0, 0, float32(screen.Bounds().Dx()), float32(screen.Bounds().Dy()), util.PremultiplyAlpha(value), false)
+            return
+        }
+
         x1 := float64(data.ScreenWidth / 2) - text / 2 - float64(1)
         x2 := float64(data.ScreenWidth / 2) + text / 2 + float64(1)
         y := 4
@@ -2323,7 +2336,13 @@ func (combat *CombatScreen) doCastEnchantment(yield coroutine.YieldFunc, caster 
 
         vector.StrokeRect(screen, float32(scale.Scale(x1)), float32(scale.Scale(y)), float32(scale.Scale(x2 - x1)), float32(scale.Scale(combat.Fonts.EnchantmentFont.Height() + 1)), float32(scale.Scale(1)), color.RGBA{R: 0xff, G: 0xff, B: 0x0, A: 0xff}, false)
 
-        vector.FillRect(screen, 0, 0, float32(screen.Bounds().Dx()), float32(screen.Bounds().Dy()), util.PremultiplyAlpha(value), false)
+        if combat.pass == drawPassInterface {
+            // the field has its tint already: only the combat bar
+            top := float32(scale.Scale(hudTop))
+            vector.FillRect(screen, 0, top, float32(screen.Bounds().Dx()), float32(screen.Bounds().Dy()) - top, util.PremultiplyAlpha(value), false)
+        } else {
+            vector.FillRect(screen, 0, 0, float32(screen.Bounds().Dx()), float32(screen.Bounds().Dy()), util.PremultiplyAlpha(value), false)
+        }
     }
 
     for counter < counterMax {
@@ -3615,6 +3634,14 @@ func (combat *CombatScreen) DrawWall(screen *ebiten.Image, x int, y int, tilePos
 }
 
 func (combat *CombatScreen) Draw(screen *ebiten.Image){
+    if combat.wideField && display.IsWideBackdropActive() {
+        // the field is on the wide picture beneath this one, see widefield.go
+        combat.pass = drawPassInterface
+        defer func() {
+            combat.pass = drawPassAll
+        }()
+    }
+
     combat.Drawer(screen)
 }
 
@@ -3798,6 +3825,9 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
     tilePosition := func(x float64, y float64) (float64, float64){
         return useMatrix.Apply(x, y)
     }
+
+    // what follows is the field, down to the numbers and the projectiles. see widefield.go
+    if combat.drawsField() {
 
     // draw base land first
     for _, point := range combat.TopDownOrder {
@@ -4198,31 +4228,6 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         combat.ShowExtraHighlight(screen, combat.ExtraHighlightedUnit, getTilePoints)
     }
 
-    combat.UI.Draw(combat.UI, screen)
-
-    for _, indicator := range combat.DamageIndicators {
-        tx, ty := tilePosition(float64(indicator.X), float64(indicator.Y))
-        tx += float64(indicator.Offset)
-        ty -= 12
-        ty -= float64(indicator.Count) / 5
-        var options ebiten.DrawImageOptions
-        if indicator.Life < 10 {
-            options.ColorScale.ScaleAlpha(float32(indicator.Life) / 10)
-        }
-        if indicator.Damage > 8 {
-            options.ColorScale.Scale(1, 0.5, 0.5, 1)
-        } else if indicator.Damage > 3 {
-            options.ColorScale.Scale(1, 0.75, 0.75, 1)
-        } else {
-            options.ColorScale.Scale(1.5, 1.5, 1.5, 1)
-        }
-        combat.Fonts.InfoFont.PrintOptions(screen, tx, ty, font.FontOptions{Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount, Options: &options, DropShadow: true}, fmt.Sprintf("%d", indicator.Damage))
-    }
-
-    if combat.Model.HighlightedUnit != nil && isVisible(combat.Model.HighlightedUnit) {
-        combat.ShowUnitInfo(screen, combat.Model.HighlightedUnit)
-    }
-
     for _, projectile := range combat.Model.Projectiles {
         var frame *ebiten.Image
         if projectile.Exploding {
@@ -4234,9 +4239,25 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             var options ebiten.DrawImageOptions
             options.GeoM.Translate(float64(-frame.Bounds().Dx()/2), float64(-frame.Bounds().Dy())/2)
             options.GeoM.Scale(combat.CameraScale, combat.CameraScale)
-            options.GeoM.Translate(projectile.X, projectile.Y)
+            // projectiles keep positions of the screen
+            options.GeoM.Translate(projectile.X + combat.fieldShift, projectile.Y)
             scale.DrawScaled(screen, frame, &options)
         }
+    }
+
+    // the numbers that rise from a unit that is hurt, see damagenumbers.go
+    combat.drawDamageNumbers(screen)
+
+    }
+
+    if !combat.drawsInterface() {
+        return
+    }
+
+    combat.UI.Draw(combat.UI, screen)
+
+    if combat.Model.HighlightedUnit != nil && isVisible(combat.Model.HighlightedUnit) {
+        combat.ShowUnitInfo(screen, combat.Model.HighlightedUnit)
     }
 
     if combat.ShowInfoLevel > 0 {

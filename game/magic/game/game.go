@@ -5048,6 +5048,8 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
             combatScreen.Draw(screen)
         })
         popCombatScreen = true
+        // the field fills the width of the window until the battle is over
+        leaveWideField := combatScreen.UseWideField()
 
         game.Music.PushSong(randomChoose(musiclib.SongCombat1, musiclib.SongCombat2))
 
@@ -5059,6 +5061,7 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
             }
         }
 
+        leaveWideField()
         game.Music.PopSong()
         combatScreen.MouseState = combat.CombatClickHud
     } else {
