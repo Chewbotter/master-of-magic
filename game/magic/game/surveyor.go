@@ -245,7 +245,14 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
                     }
 
                     infoOptions := font.FontOptions{Scale: scale.ScaleAmount}
-                    infoX := float64(245)
+
+                    // the City Resources table, see panel.go
+                    tableLabels := []string{"Maximum Pop", "Prod Bonus", "Gold Bonus"}
+                    tableValues := []string{fmt.Sprintf("%v", resources.MaximumPopulation), fmt.Sprintf("+%v%%", resources.ProductionBonus), fmt.Sprintf("+%v%%", resources.GoldBonus)}
+                    tableLeft, tableRight := surveyorTableEdges(fonts.WhiteFont, tableLabels, tableValues)
+
+                    // the City Resources heading lines up with its table
+                    infoX := tableLeft
                     if !resources.Enabled {
                         // a helper message is centered in the panel, its lines still left aligned. the
                         // City Resources heading stays at the left edge with the table under it
@@ -255,14 +262,14 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
                     y += cityInfoText.TotalHeight
 
                     if resources.Enabled {
-                        fonts.WhiteFont.Print(screen, float64(245), y, scale.ScaleAmount, ebiten.ColorScale{}, "Maximum Pop")
-                        fonts.WhiteFont.PrintRight(screen, float64(308), y, scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("%v", resources.MaximumPopulation))
-                        y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
-                        fonts.WhiteFont.Print(screen, float64(245), y, scale.ScaleAmount, ebiten.ColorScale{}, "Prod Bonus")
-                        fonts.WhiteFont.PrintRight(screen, float64(314), y, scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("+%v%%", resources.ProductionBonus))
-                        y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
-                        fonts.WhiteFont.Print(screen, float64(245), y, scale.ScaleAmount, ebiten.ColorScale{}, "Gold Bonus")
-                        fonts.WhiteFont.PrintRight(screen, float64(314), y, scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("+%v%%", resources.GoldBonus))
+                        // labels left, numbers right on one shared edge, both inside the panel margins. see panel.go
+                        for index := range tableLabels {
+                            fonts.WhiteFont.Print(screen, tableLeft, y, scale.ScaleAmount, ebiten.ColorScale{}, tableLabels[index])
+                            // PrintRight counts the gap after the last letter; shift so the letters end on the edge
+                            valueRight := tableRight + fonts.WhiteFont.MeasureTextWidth(tableValues[index], font.RelativeTextSize(scale.ScaleAmount, font.TextSizeCompact)) - fonts.WhiteFont.TextWidth(tableValues[index], font.FontOptions{Scale: scale.ScaleAmount})
+                            fonts.WhiteFont.PrintRight(screen, valueRight, y, scale.ScaleAmount, ebiten.ColorScale{}, tableValues[index])
+                            y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
+                        }
                     }
                 }
             }

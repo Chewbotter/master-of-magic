@@ -70,6 +70,16 @@ func (options FontOptions) relativeSize() float64 {
     return RelativeTextSize(scale, options.textSize())
 }
 
+// the width of the text in art pixels at the size these options draw at, without the letter gap after
+// the last letter
+func (font *Font) TextWidth(text string, options FontOptions) float64 {
+    if text == "" {
+        return 0
+    }
+    relative := options.relativeSize()
+    return font.MeasureTextWidth(text, relative) - float64(font.internalFont.HorizontalSpacing) * relative
+}
+
 // the left edge, in art pixels, that centers a wrapped block of text on centerX while its lines stay
 // left aligned with each other. the edge lands on a whole screen pixel so the letters stay sharp
 func (font *Font) CenteredBlockX(wrapped WrappedText, centerX float64, options FontOptions) float64 {

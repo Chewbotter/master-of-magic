@@ -4,6 +4,7 @@ package game
 
 import (
     "fmt"
+    "math"
 
     "github.com/kazzmir/master-of-magic/lib/font"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
@@ -22,6 +23,21 @@ var PanelReserveOutline = font.OutlineBottomRight
 // text on 280
 const SurveyorPanelCenterX = 279.5
 const SurveyorHelperTextWidth = 60
+// the City Resources table is as wide as its widest row, label plus this gap plus number, in original
+// pixels, and centered in the panel. labels are left aligned, numbers right aligned
+const SurveyorTableGap = 4
+
+// the left and right edges of a two column table centered in the surveyor panel, whole screen pixels
+func surveyorTableEdges(textFont *font.Font, labels []string, values []string) (float64, float64) {
+    options := font.FontOptions{Scale: scale.ScaleAmount}
+    width := 0.0
+    for index := range labels {
+        width = max(width, textFont.TextWidth(labels[index], options) + SurveyorTableGap + textFont.TextWidth(values[index], options))
+    }
+    left := math.Round((SurveyorPanelCenterX - width / 2) * scale.ScaleAmount) / scale.ScaleAmount
+    right := math.Round((left + width) * scale.ScaleAmount) / scale.ScaleAmount
+    return left, right
+}
 
 // the GP and MP reserves, for the screens that draw their own copy of the world map panel
 // (surveyor, road building, spell targeting). the world map's own hud draws them in MakeHudUI
