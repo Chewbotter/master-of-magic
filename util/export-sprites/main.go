@@ -29,6 +29,7 @@ import (
     "path/filepath"
     "strings"
 
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/lib/lbx"
 )
@@ -40,7 +41,7 @@ var battleArchives = []string{
     "cmbtfx.lbx", "cmbmagic.lbx", "chriver.lbx", "compix.lbx",
 }
 
-var facingNames = []string{"up", "upright", "right", "downright", "down", "downleft", "left", "upleft"}
+var facingNames = mod.FacingNames
 
 const facings = 8
 // squares of the picture of the palette, and their size in pixels
@@ -93,18 +94,6 @@ func writePng(path string, picture image.Image) error {
     defer out.Close()
 
     return png.Encode(out, picture)
-}
-
-// letters, digits and spaces only
-func folderName(name string) string {
-    var out strings.Builder
-    for _, letter := range name {
-        switch {
-            case letter >= 'a' && letter <= 'z', letter >= 'A' && letter <= 'Z', letter >= '0' && letter <= '9', letter == ' ', letter == '-':
-                out.WriteRune(letter)
-        }
-    }
-    return strings.TrimSpace(out.String())
 }
 
 // all pictures on one, rows of frames
@@ -162,7 +151,8 @@ func exportUnits(dataPath string, outPath string) (int, int) {
             continue
         }
 
-        folder := filepath.Join(outPath, "units", folderName(fmt.Sprintf("%v %v", unit.Race, unit.Name)))
+        // the name the game looks for in the replacement folder, see game/magic/mod
+        folder := filepath.Join(outPath, "units", mod.FolderName(fmt.Sprintf("%v %v", unit.Race, unit.Name)))
 
         var rows [][]*image.Paletted
         for facing := range facings {

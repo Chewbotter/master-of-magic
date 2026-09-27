@@ -49,6 +49,7 @@ import (
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     mouselib "github.com/kazzmir/master-of-magic/lib/mouse"
     "github.com/kazzmir/master-of-magic/game/magic/mainview"
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/camera"
     gamelib "github.com/kazzmir/master-of-magic/game/magic/game"
@@ -1299,6 +1300,7 @@ func loadGameConfig() GameConfig {
     var aiMode string
     var config string
 
+    flag.StringVar(&modPath, "mod", "", "folder of pictures that take the place of the game's own. The folders mod and ../mod are looked at if not given.")
     flag.StringVar(&dataPath, "data", "", "path to master of magic lbx data files. Give either a directory or a zip file. Data is searched for in the current directory if not given.")
     flag.BoolVar(&enableMusic, "music", true, "enable music playback")
     flag.BoolVar(&startGame, "start", false, "start the game immediately with a random wizard")
@@ -1373,10 +1375,28 @@ func loadGameConfig() GameConfig {
     return out
 }
 
+// the replacement folder that was asked for, see game/magic/mod
+var modPath string
+
+func setupReplacementPictures() {
+    if mod.Setup(modPath) == "" {
+        return
+    }
+
+    for _, unit := range units.AllUnits {
+        if unit.CombatLbxFile != "" {
+            mod.RegisterUnit(fmt.Sprintf("%v %v", unit.Race, unit.Name), unit.CombatLbxFile, unit.CombatIndex)
+        }
+    }
+
+    util.ReplacePictures = mod.Replace
+}
+
 func main() {
     log.SetFlags(log.Ldate | log.Lshortfile | log.Lmicroseconds)
 
     config := loadGameConfig()
+    setupReplacementPictures()
 
     if config.Trace {
         go func() {
