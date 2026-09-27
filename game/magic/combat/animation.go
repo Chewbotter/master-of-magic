@@ -24,9 +24,10 @@ import (
 // the original's redraws per second
 const OriginalTicksPerSecond = 18.2
 
-// redraws of the original one step from a cell to the next takes. the original takes 8, this is
-// half its speed (user request)
-const MoveTicksPerCell = 16
+// redraws of the original one step from a cell to the next takes. the original takes 8. slower on
+// purpose (user request): half speed was tried and was too slow. the walking frames stay at half
+// speed, see walkTicksPerFrame
+const MoveTicksPerCell = 12
 
 const figureStandFrame = 1
 // walking goes forward and back through the first three frames
