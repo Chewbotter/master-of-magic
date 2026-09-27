@@ -227,6 +227,10 @@ type CombatScreen struct {
     pass drawPass
     // how far right the field is drawn, in art pixels
     fieldShift float64
+    // figures that were killed, see figurefall.go
+    corpses []corpse
+    // see shadows.go
+    shadowLayer *ebiten.Image
     // where the figures of each unit are and how far out of step, see figurevariety.go
     figureStates map[*ArmyUnit]*unitFigures
     // the pictures of damage numbers, see damagenumbers.go
@@ -3994,6 +3998,9 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         }
     }
 
+    // while set, figures draw their shadows on this picture and nothing else, see shadows.go
+    var shadowTarget *ebiten.Image
+
     // draws one figure of a unit, and what is shown over the whole unit if overlays is set
     renderUnit := func(unit *ArmyUnit, figure int, overlays bool) {
         var unitOptions ebiten.DrawImageOptions
@@ -4067,24 +4074,39 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             // _ = index
             use := util.First(unit.GetEnchantments(), data.UnitEnchantmentNone)
 
-            // a figure that was killed falls over, see figurefall.go
             figureLost := figure >= unit.VisibleFigures()
-            var fall *figureFall
-            if FigureFall && figure >= 0 && figure < figureCount {
-                fall = combat.figureFallOf(unit, figure, figureCount, figureLost)
+            fallen := FigureFall && figure >= 0 && figure < figureCount
+
+            if shadowTarget != nil {
+                // the pass that draws the shadows of the figures that stand, see shadows.go
+                if !figureLost && (!unit.IsInvisible() || isVisible(unit)) {
+                    offsetX, offsetY := 0.0, 0.0
+                    if unit.IsFlying() {
+                        offsetX, offsetY = shadowFlyingX, shadowFlyingY
+                    }
+                    unitview.RenderCombatFigureShadow(shadowTarget, unitImage, unitOptions, figureCount, figure, shadowLean, shadowLength, offsetX, offsetY)
+                }
+                return
             }
 
-            if fall != nil && figureLost {
+            // a figure that was killed falls over and stays as a corpse, see figurefall.go
+            if fallen && combat.figureJustLost(unit, figure, figureCount, figureLost) {
                 if !unit.IsInvisible() || isVisible(unit) {
-                    progress := combat.fallProgress(fall)
-                    // pushed fast and slowing, tipping slow and faster
-                    pushed := 1 - (1 - progress) * (1 - progress)
-                    tipped := progress * progress
-
-                    fallOptions := unitOptions
-                    fallOptions.ColorScale.ScaleAlpha(lostFigureAlpha(unit))
-                    unitview.RenderCombatFigureFallen(screen, unitImage, fallOptions, figureCount, figure, fall.Angle * tipped, fall.PushX * pushed, fall.PushY * pushed)
+                    // as the picture it has now, in the colors of its banner
+                    plain, _ := combat.ImageCache.GetImagesTransform(unit.Unit.GetCombatLbxFile(), unit.Unit.GetCombatIndex(unit.Facing), banner.String(), units.MakeUpdateUnitColorsFunc(banner))
+                    if len(plain) > 0 {
+                        x, y := float64(unit.X), float64(unit.Y)
+                        if unit.Moving {
+                            x, y = unit.MoveX, unit.MoveY
+                        }
+                        x, y = combat.figurePosition(unit, figure, figureCount, x, y)
+                        combat.addCorpse(unit, plain[min(index, len(plain) - 1)], figure, figureCount, x, y)
+                    }
                 }
+            }
+
+            if fallen && figureLost {
+                // drawn as a corpse
             } else if unit.IsInvisible() {
                 // might not be visible at all, or is semi-visible if next to an enemy unit or if the enemy team has
                 // any units with illusions immunity
@@ -4198,6 +4220,21 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         if unit.LostUnitsTime > 0 {
             allDrawables = append(allDrawables, combat.unitDrawables(unit, renderUnit)...)
         }
+    }
+
+    unitDrawablesFrom := len(allDrawables)
+    allDrawables = append(allDrawables, combat.corpseDrawables(screen)...)
+
+    if FigureShadows {
+        // the shadows of all figures go on the ground before anything that stands on it
+        shadowTarget = combat.shadowPicture(screen)
+        for _, drawable := range allDrawables[:unitDrawablesFrom] {
+            if drawable.Layer == layerFigure {
+                drawable.Render()
+            }
+        }
+        shadowTarget = nil
+        combat.drawShadowPicture(screen)
     }
 
     sortFieldDrawables(allDrawables)

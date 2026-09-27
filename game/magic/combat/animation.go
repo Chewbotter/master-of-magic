@@ -24,8 +24,9 @@ import (
 // the original's redraws per second
 const OriginalTicksPerSecond = 18.2
 
-// redraws of the original one step from a cell to the next takes
-const MoveTicksPerCell = 8
+// redraws of the original one step from a cell to the next takes. the original takes 8, this is
+// half its speed (user request)
+const MoveTicksPerCell = 16
 
 const figureStandFrame = 1
 // walking goes forward and back through the first three frames
@@ -58,6 +59,7 @@ const scannedOutlineSteps = 8
 // on every redraw. 2 is half its speed (user request). how long an attack takes is not changed,
 // only how fast its frames alternate
 const cellOutlineTicksPerFrame = 2
+const walkTicksPerFrame = 2
 const scannedOutlineTicksPerStep = 2
 const attackTicksPerFrame = 2
 
@@ -92,7 +94,7 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase fl
         if flyingKind {
             frame = int(tick % figureIdleFrames)
         } else {
-            frame = figureWalkFrames[tick % uint64(len(figureWalkFrames))]
+            frame = figureWalkFrames[tick / walkTicksPerFrame % uint64(len(figureWalkFrames))]
         }
     }
 

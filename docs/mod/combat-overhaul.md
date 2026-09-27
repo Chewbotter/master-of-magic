@@ -30,7 +30,7 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 3 | Camera: whole pixel zoom levels, smooth panning with the middle mouse button (Modern controls) and the arrow keys, release glide. Space returns to the original view | `combat/camera.go` |
 | 4 | Deployment: melee units in front, ranged behind, wall corners and the structure's place skipped | `combat/deploy.go` |
 | 4 | Figure frames: standing is frame 1, walking 1 2 1 0, flying units cycle 0 1 2, strikes alternate 1 and 3, all at 18.2 steps a second | `combat/animation.go` |
-| 4 | A step to the next cell takes 8 of the original's ticks, straight or diagonal | `combat/animation.go` |
+| 4 | A step to the next cell takes 8 of the original's ticks, straight or diagonal (now 16 on purpose, see below) | `combat/animation.go` |
 | 4 | Cell outlines are the original's pictures: blue under the cursor, red under the selected unit | `combat/animation.go` |
 | 4 | The unit under the cursor: the outline of its figures pulses black to red. The selected unit no longer pulses in brightness | `combat/animation.go` |
 | 5 | Trees and rocks: the original's counts per landscape, trees in patches, its five tree and five rock pictures, its anchors | `combat/scenery.go` |
@@ -51,8 +51,12 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 
 ## Different from the original on purpose (user requests)
 - A figure that is killed is pushed back from what its unit faces and tips over around its feet,
-  each at a time of its own, then fades. `combat/figurefall.go`, `FigureFall` turns it off. The
-  original shows blood on the figure ("gibs"), the fork showed a colored shape that faded.
+  each at a time of its own. It stays as a corpse for the rest of the battle: the picture it had,
+  a little darker, in the draw order of everything else. `combat/figurefall.go`, `FigureFall` turns
+  it off. The original shows blood on the figure ("gibs"), the fork showed a colored shape that faded.
+- Figures cast shadows on the ground. `combat/shadows.go`, `FigureShadows` turns them off.
+- Units walk at half the original's speed: a step to the next cell takes 16 of its redraws, and the
+  walking frames step every second redraw.
 - The figures of a unit do not move as one: each trails its unit by up to 0.09 seconds while it
   walks, and its walking and striking frames are out of step with the others by up to 3 redraws.
   `combat/figurevariety.go`, `FigureVariety` turns it off.

@@ -23,23 +23,34 @@ func RenderCombatFigureGrey(screen *ebiten.Image, use *ebiten.Image, options ebi
     renderCombatUnitGrey(screen, use, options, count, lostCount, lostColor, enchantment, timeCounter, imageCache, figure)
 }
 
-// a figure that has fallen: turned around its feet by angle, in radians, and moved by pushX and
-// pushY art pixels from its place in the unit. total is the number of figures of the unit with the
-// lost ones. the color scale of the options fades it
-func RenderCombatFigureFallen(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, total int, figure int, angle float64, pushX float64, pushY float64) {
+// from the feet of a figure to the top left of its picture
+func FigureOffset(use *ebiten.Image) (float64, float64) {
+    return figureOffset(use)
+}
+
+// the shadow of a figure: its picture in black, laid on the ground. a point of the figure lies
+// lean to the right and length below the feet for every art pixel it is above them. offsetX and
+// offsetY move the shadow away from the feet. total is the number of figures of the unit
+func RenderCombatFigureShadow(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, total int, figure int, lean float64, length float64, offsetX float64, offsetY float64) {
     points := CombatPoints(total)
     if figure < 0 || figure >= len(points) {
         return
     }
 
+    var ground ebiten.GeoM
+    ground.SetElement(0, 0, 1)
+    ground.SetElement(0, 1, -lean)
+    ground.SetElement(1, 0, 0)
+    ground.SetElement(1, 1, -length)
+
     var draw ebiten.DrawImageOptions
-    // the feet on the origin, so the figure turns around them
+    // the feet on the origin
     draw.GeoM.Translate(figureOffset(use))
-    draw.GeoM.Rotate(angle)
-    draw.GeoM.Translate(float64(points[figure].X) + pushX, float64(points[figure].Y) + pushY)
+    draw.GeoM.Concat(ground)
+    draw.GeoM.Translate(float64(points[figure].X) + offsetX, float64(points[figure].Y) + offsetY)
     draw.GeoM.Concat(options.GeoM)
     draw.GeoM.Scale(scale.ScaleAmount, scale.ScaleAmount)
-    draw.ColorScale = options.ColorScale
+    draw.ColorScale.Scale(0, 0, 0, 1)
 
     screen.DrawImage(use, &draw)
 }
