@@ -230,6 +230,8 @@ type CombatScreen struct {
     TopDownOrder []image.Point
 
     Coordinates ebiten.GeoM
+    // zoom level and position of the battlefield, see camera.go
+    Camera BattleCamera
     // ScreenToTile ebiten.GeoM
     MouseState MouseState
 
@@ -408,6 +410,13 @@ func MakeCombatScreen(cache *lbx.LbxCache, defendingArmy *Army, attackingArmy *A
 
 func (combat *CombatScreen) GetCameraMatrix() ebiten.GeoM {
     return combat.Coordinates
+}
+
+// brings the matrix and scale the rest of the screen draws with in step with the camera, see camera.go
+func (combat *CombatScreen) syncCamera() {
+    combat.Camera.clampLevel()
+    combat.Coordinates = combat.Camera.Matrix()
+    combat.CameraScale = combat.Camera.Scale()
 }
 
 func (combat *CombatScreen) ScreenToTile(x float64, y float64) (float64, float64) {
@@ -2803,31 +2812,13 @@ func (combat *CombatScreen) ProcessInput() {
     keys = inpututil.AppendPressedKeys(keys)
     showInfo := 0
     combat.ExtraControl = false
+    // whole pixel zoom levels and smooth panning, see camera.go
+    _, cursorY := inputmanager.MousePosition()
+    combat.Camera.Update(keys, cursorY < scale.Scale(hudTop))
+    combat.syncCamera()
+
     for _, key := range keys {
-        speed := 0.8
         switch key {
-            case ebiten.KeyDown:
-                combat.Coordinates.Translate(0, -speed)
-            case ebiten.KeyUp:
-                combat.Coordinates.Translate(0, speed)
-            case ebiten.KeyLeft:
-                combat.Coordinates.Translate(speed, 0)
-            case ebiten.KeyRight:
-                combat.Coordinates.Translate(-speed, 0)
-            case ebiten.KeyEqual:
-                if combat.CameraScale < 3 {
-                    combat.CameraScale *= 1 + 0.01
-                    combat.Coordinates.Scale(1.01, 1.01)
-                }
-            case ebiten.KeyMinus:
-                if combat.CameraScale > 0.5 {
-                    combat.CameraScale *= 1.0 - 0.01
-                    combat.Coordinates.Scale(0.99, 0.99)
-                }
-            case ebiten.KeySpace:
-                normalized := 1 / combat.CameraScale
-                combat.CameraScale *= normalized
-                combat.Coordinates.Scale(normalized, normalized)
             case ebiten.KeyTab:
                 if combat.Model.SelectedUnit != nil && !combat.Model.IsAIControlled(combat.Model.SelectedUnit) {
                     combat.ExtraHighlightedUnit = combat.Model.SelectedUnit
@@ -2850,13 +2841,6 @@ func (combat *CombatScreen) ProcessInput() {
         combat.ShowInfoLevel = max(0, combat.ShowInfoLevel - infoStep)
     }
 
-    // FIXME: handle right-click drag to move the camera
-
-    _, wheelY := inputmanager.Wheel()
-
-    wheelScale := 1 + float64(wheelY) / 10
-    combat.CameraScale *= wheelScale
-    combat.Coordinates.Scale(wheelScale, wheelScale)
 }
 
 func (combat *CombatScreen) UpdateDamageIndicators() {
@@ -3782,6 +3766,9 @@ func (combat *CombatScreen) ShowCombatInfo(screen *ebiten.Image) {
 }
 
 func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
+    combat.Camera.glide()
+    combat.syncCamera()
+
     isVisible := functional.Memoize(combat.makeIsUnitVisibleFunc())
 
     animationIndex := combat.Counter / 8

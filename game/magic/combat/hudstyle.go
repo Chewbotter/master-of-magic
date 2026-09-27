@@ -52,6 +52,9 @@ const (
     hudNameFontIndex = 4
 )
 
+// the combat bar starts at this row, the battlefield is above it
+const hudTop = 164
+
 // positions, in original pixels
 const (
     hudNameRightX = 278

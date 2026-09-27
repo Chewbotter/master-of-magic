@@ -28,6 +28,8 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 2 | Figure pictures anchored by their feet at 13, 23 | `unitview/combat.go` |
 | 2 | Cave, tower, temple, keep, ruins, node pictures on the original's cell (6, 11) with its anchor | `combat/model.go`, `combat/battlefield.go` |
 
+| 3 | Camera: whole pixel zoom levels, smooth panning with the middle mouse button (Modern controls) and the arrow keys, release glide. Space returns to the original view | `combat/camera.go` |
+
 ## Still different, by area
 
 Found while reading the reference. Not started unless noted.
@@ -54,9 +56,9 @@ Found while reading the reference. Not started unless noted.
 - The cell outline under the cursor and under the selected unit (doc/Combat/MoX-Combat-Draw-SquareOutline.md).
 - Mouse cursor pictures per action (doc/Combat/MoM-CombatScreen-Mouse.md).
 - Projectiles and spell effects (Make_Missiles and the spell animation code).
-- Our battlefield can be zoomed and scrolled freely with the wheel and the arrow keys, in 1% steps.
-  The original cannot. At the native draw scale this breaks pixel exactness while zoomed. The user
-  wants combat to show a larger area in widescreen later, so this needs a decision.
+- Zoomed out or moved far, the area beyond our 30 by 30 grid shows black. The original's view never
+  leaves its grid.
+- Combat is not widescreen yet: it is drawn in the middle with black bars.
 
 ### Combat bar
 - The selected unit's figure is not centered in its 32 by 25 box at (84, 173) by the size of what is

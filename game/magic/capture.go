@@ -54,6 +54,10 @@ type frameCapture struct {
     NextTurn bool
     // start a random battle instead of the start screen
     RandomBattle bool
+    // the view of the battlefield: screen pixels per art pixel, and position in screen pixels
+    BattleLevel int
+    BattlePanX int
+    BattlePanY int
     // dx,dy in tiles
     CameraMove string
     // dx,dy in tiles

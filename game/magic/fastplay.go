@@ -200,6 +200,15 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame) {
         return
     }
 
+    if capture.BattleLevel > 0 || capture.BattlePanX != 0 || capture.BattlePanY != 0 {
+        // development: a fixed view for a capture
+        level := capture.BattleLevel
+        if level == 0 {
+            level = int(scale.ScaleAmount)
+        }
+        combatScreen.Camera.SetView(level, float64(capture.BattlePanX), float64(capture.BattlePanY))
+    }
+
     defer game.restoreNormalMouse()
 
     game.Drawer = func(screen *ebiten.Image) {
