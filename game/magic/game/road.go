@@ -335,6 +335,9 @@ func (game *Game) ShowRoadBuilder(yield coroutine.YieldFunc, engineerStack *play
 
             ui.StandardDraw(screen)
 
+            // the gold and mana reserves, like every copy of the world map panel. see panel.go
+            game.drawPanelReserves(screen)
+
             // player := game.Players[0]
 
             fonts.SurveyorFont.PrintCenter(screen, float64(280), float64(81), scale.ScaleAmount, ebiten.ColorScale{}, "Road")

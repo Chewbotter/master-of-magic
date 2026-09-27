@@ -110,10 +110,13 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
 
             player := game.Model.GetHumanPlayer()
 
-            game.Fonts.WhiteFont.PrintRight(screen, float64(276), float64(68), scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("%v GP", player.Gold))
-            game.Fonts.WhiteFont.PrintRight(screen, float64(313), float64(68), scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("%v MP", player.Mana))
+            // outlined like the world map panel, see panel.go
+            game.drawPanelReserves(screen)
 
             fonts.SurveyorFont.PrintCenter(screen, float64(280), float64(81), scale.ScaleAmount, ebiten.ColorScale{}, "Surveyor")
+
+            // everything below the title is Compact text, see lib/font/textsize.go
+            defer font.UseTextSize(font.TextSizeCompact)()
 
             if selectedPoint.X >= 0 && selectedPoint.X < game.Model.CurrentMap().Width() && selectedPoint.Y >= 0 && selectedPoint.Y < game.Model.CurrentMap().Height() {
                 if overworld.Fog[selectedPoint.X][selectedPoint.Y] != data.FogTypeUnexplored {
@@ -133,79 +136,79 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
                         }
                     }
                     fonts.YellowFont.PrintCenter(screen, 280, y, scale.ScaleAmount, ebiten.ColorScale{}, name)
-                    y += float64(fonts.YellowFont.Height())
+                    y += fonts.YellowFont.HeightAt(scale.ScaleAmount)
 
                     // Terrain bonuses
                     if tile.Corrupted() {
                         fonts.WhiteFont.PrintCenter(screen, float64(280), y, scale.ScaleAmount, ebiten.ColorScale{}, "Corruption")
-                        y += float64(fonts.WhiteFont.Height())
+                        y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                     }
 
                     foodBonus := tile.FoodBonus()
                     if !foodBonus.IsZero() {
                         fonts.WhiteFont.PrintCenter(screen, float64(280), y, scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("%v food", foodBonus.NormalString()))
-                        y += float64(fonts.WhiteFont.Height())
+                        y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                     }
 
                     productionBonus := tile.ProductionBonus(false)
                     if productionBonus != 0 {
                         fonts.WhiteFont.PrintCenter(screen, float64(280), y, scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("+%v%% production", productionBonus))
-                        y += float64(fonts.WhiteFont.Height())
+                        y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                     }
 
                     goldBonus := tile.GoldBonus(mapObject)
                     if goldBonus != 0 {
                         fonts.WhiteFont.PrintCenter(screen, float64(280), y, scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("+%v%% gold", goldBonus))
-                        y += float64(fonts.WhiteFont.Height())
+                        y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                     }
 
-                    y += float64(fonts.WhiteFont.Height())
+                    y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
 
                     // Bonuses
                     bonus := tile.GetBonus()
                     if bonus != data.BonusNone {
                         fonts.YellowFont.PrintCenter(screen, float64(280), y, scale.ScaleAmount, ebiten.ColorScale{}, bonus.String())
-                        y += float64(fonts.YellowFont.Height())
+                        y += fonts.YellowFont.HeightAt(scale.ScaleAmount)
 
                         food := bonus.FoodBonus()
                         if food != 0 {
                             fonts.WhiteFont.PrintWrapCenter(screen, float64(280), y, float64(cancelBackground.Bounds().Dx() - 5), scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("+%v food", food))
-                            y += float64(fonts.WhiteFont.Height())
+                            y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                         }
 
                         gold := bonus.GoldBonus()
                         if gold != 0 {
                             fonts.WhiteFont.PrintWrapCenter(screen, float64(280), y, float64(cancelBackground.Bounds().Dx() - 5), scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("+%v gold", gold))
-                            y += float64(fonts.WhiteFont.Height())
+                            y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                         }
 
                         power := bonus.PowerBonus()
                         if power != 0 {
                             fonts.WhiteFont.PrintWrapCenter(screen, float64(280), y, float64(cancelBackground.Bounds().Dx() - 5), scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("+%v power", power))
-                            y += float64(fonts.WhiteFont.Height())
+                            y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                         }
 
                         reduction := bonus.UnitReductionBonus()
                         if reduction != 0 {
                             fonts.WhiteFont.PrintWrapCenter(screen, float64(280), y, float64(cancelBackground.Bounds().Dx() - 5), scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("Reduces normal unit cost by %v%%", reduction))
-                            y += float64(fonts.WhiteFont.Height())
+                            y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                         }
                     }
 
                     // Nodes
                     if node != nil {
                         fonts.YellowFont.PrintWrapCenter(screen, float64(280), y, float64(cancelBackground.Bounds().Dx() - 5), scale.ScaleAmount, ebiten.ColorScale{}, node.Kind.Name())
-                        y += float64(fonts.YellowFont.Height())
+                        y += fonts.YellowFont.HeightAt(scale.ScaleAmount)
 
                         if node.Warped {
                             fonts.WhiteFont.PrintCenter(screen, float64(280), y, scale.ScaleAmount, ebiten.ColorScale{}, "Warped")
-                            y += float64(fonts.WhiteFont.Height())
+                            y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                         } else if node.MeldingWizard != nil && node.GuardianSpiritMeld {
                             fonts.WhiteFont.PrintCenter(screen, float64(280), y, scale.ScaleAmount, ebiten.ColorScale{}, "Guardian Spirit")
-                            y += float64(fonts.WhiteFont.Height())
+                            y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                         } else if node.MeldingWizard != nil {
                             fonts.WhiteFont.PrintCenter(screen, float64(280), y, scale.ScaleAmount, ebiten.ColorScale{}, "Magic Spirit")
-                            y += float64(fonts.WhiteFont.Height())
+                            y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                         }
                     }
 
@@ -213,7 +216,7 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
                     encounter := mapObject.GetEncounter(selectedPoint.X, selectedPoint.Y)
                     if encounter != nil && encounter.Type != maplib.EncounterTypeChaosNode && encounter.Type != maplib.EncounterTypeNatureNode && encounter.Type != maplib.EncounterTypeSorceryNode {
                         fonts.YellowFont.PrintCenter(screen, float64(280), y, scale.ScaleAmount, ebiten.ColorScale{}, encounter.Type.Name())
-                        y += float64(fonts.YellowFont.Height())
+                        y += fonts.YellowFont.HeightAt(scale.ScaleAmount)
                     }
 
                     // Enemies
@@ -226,7 +229,7 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
                             }
                         }
                         fonts.WhiteFont.PrintCenter(screen, float64(280), y, scale.ScaleAmount, ebiten.ColorScale{}, text)
-                        y += float64(fonts.WhiteFont.Height())
+                        y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                     }
 
                     // FIXME: how should this behave for different fog types?
@@ -238,7 +241,7 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
                     y = float64(170) - cityInfoText.TotalHeight
 
                     if resources.Enabled {
-                        y = float64(170) - float64(fonts.WhiteFont.Height()) * 3 - cityInfoText.TotalHeight
+                        y = float64(170) - fonts.WhiteFont.HeightAt(scale.ScaleAmount) * 3 - cityInfoText.TotalHeight
                     }
 
                     fonts.YellowFont.RenderWrapped(screen, float64(245), y, cityInfoText, font.FontOptions{Scale: scale.ScaleAmount})
@@ -247,10 +250,10 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
                     if resources.Enabled {
                         fonts.WhiteFont.Print(screen, float64(245), y, scale.ScaleAmount, ebiten.ColorScale{}, "Maximum Pop")
                         fonts.WhiteFont.PrintRight(screen, float64(308), y, scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("%v", resources.MaximumPopulation))
-                        y += float64(fonts.WhiteFont.Height())
+                        y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                         fonts.WhiteFont.Print(screen, float64(245), y, scale.ScaleAmount, ebiten.ColorScale{}, "Prod Bonus")
                         fonts.WhiteFont.PrintRight(screen, float64(314), y, scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("+%v%%", resources.ProductionBonus))
-                        y += float64(fonts.WhiteFont.Height())
+                        y += fonts.WhiteFont.HeightAt(scale.ScaleAmount)
                         fonts.WhiteFont.Print(screen, float64(245), y, scale.ScaleAmount, ebiten.ColorScale{}, "Gold Bonus")
                         fonts.WhiteFont.PrintRight(screen, float64(314), y, scale.ScaleAmount, ebiten.ColorScale{}, fmt.Sprintf("+%v%%", resources.GoldBonus))
                     }
@@ -366,6 +369,11 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
         ui.StandardUpdate()
 
         x, y := inputmanager.MousePosition()
+        // development: a capture points the surveyor at a tile without a mouse, see capturescreens.go
+        if CaptureSurveyorTile != nil {
+            screenX, screenY := game.TileToScreen(CaptureSurveyorTile.X, CaptureSurveyorTile.Y)
+            x, y = scale.Scale2(screenX, screenY)
+        }
 
         // within the viewable area
         if game.InOverworldArea(x, y) {
@@ -399,7 +407,7 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
                     resources.GoldBonus = game.CityGoldBonus(newX, newY, game.Model.Plane)
                 }
 
-                cityInfoText = fonts.YellowFont.CreateWrappedText(float64(cancelBackground.Bounds().Dx() - 9), 1, text)
+                cityInfoText = fonts.YellowFont.CreateWrappedText(float64(cancelBackground.Bounds().Dx() - 9), font.RelativeTextSize(scale.ScaleAmount, font.TextSizeCompact), text)
             }
         } else {
             cityInfoText.Clear()

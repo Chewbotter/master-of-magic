@@ -3,6 +3,7 @@ package game
 // Development: open a screen by name, so a frame capture can show it without clicking.
 
 import (
+    "image"
     "log"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
@@ -39,6 +40,9 @@ func (game *Game) CaptureWalk(deltaX int, deltaY int) bool {
     return true
 }
 
+// development: the tile the surveyor looks at in a capture, nil to follow the mouse
+var CaptureSurveyorTile *image.Point
+
 // puts the camera at a column, keeping its row
 func (game *Game) CaptureSetCameraX(x float64) {
     game.setCameraOffset(x, game.Camera.GetOffsetY())
@@ -74,6 +78,18 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                     game.ResearchNewSpell(yield, player)
                 },
             }
+        case "surveyorcity":
+            // the surveyor pointed at the player's first city, where it shows the most text
+            player := game.Model.GetHumanPlayer()
+            if player == nil {
+                return false
+            }
+            for _, city := range player.Cities {
+                point := image.Pt(city.X, city.Y)
+                CaptureSurveyorTile = &point
+                break
+            }
+            event = &GameEventSurveyor{}
         case "chancellor":
             game.DoChancellor()
             return true

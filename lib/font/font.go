@@ -328,7 +328,7 @@ func (font *Font) PrintOptions(image *ebiten.Image, x float64, y float64, option
 
     useX, useY := x * scale, y * scale
     // the position is in art pixels, the letters may be smaller than the art
-    scale = glyphScale(scale, options.TextSize)
+    scale = glyphScale(scale, options.textSize())
 
     switch options.Justify {
         case FontJustifyLeft:
