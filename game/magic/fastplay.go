@@ -353,6 +353,11 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
 
     game.Music.PlaySong(randomChoose(musiclib.SongCombat1, musiclib.SongCombat2))
 
+    if capture.Auto {
+        // development: the army of the player fights by itself
+        attackingArmy.Auto = true
+    }
+
     if capture.KillFigures > 0 {
         // development: figures fall. by drawn frames, the battle does not come back here on every tick
         capture.EachFrame = func(frame int) {

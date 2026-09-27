@@ -50,6 +50,10 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 8 | Damage numbers in the original's smallest font, in a loose cluster around the unit. One that would touch another moves away the shorter way. Each fades as one picture | `combat/damagenumbers.go` |
 
 ## Different from the original on purpose (user requests)
+- Units the computer controls act together, not one after the other: the enemy's army, and the
+  player's army when it is set to auto. `combat/together.go`, `ActTogether` turns it off. What a
+  turn does is decided the same way as before. Units claim the tile they step to, and a unit whose
+  target was killed by another decides again.
 - A figure that is killed is pushed back from what its unit faces and tips over around its feet,
   each at a time of its own. It stays as a corpse for the rest of the battle: the picture it had,
   a little darker and with little of its color, in the draw order of everything else. The user

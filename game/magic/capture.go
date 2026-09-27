@@ -50,6 +50,8 @@ type frameCapture struct {
     KillFigures int
     // multiplies the units of both armies of a random battle, 0 leaves the setting of the debug list
     ArmyScale int
+    // the army of the player of a random battle is set to auto
+    Auto bool
     // keep damage numbers over the units of a random battle
     DamageNumbers bool
     // x,y in screen pixels: the game sees the mouse there

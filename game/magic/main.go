@@ -1313,6 +1313,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&capture.RevealAll, "capture-reveal-all", false, "development: turn on the Reveal All debug option")
     flag.IntVar(&capture.KillFigures, "capture-kill-figures", 0, "development: the frame of a random battle at which every unit loses about half of its figures")
     flag.IntVar(&capture.ArmyScale, "capture-army-scale", 0, "development: multiplies the units of both armies of a random battle")
+    flag.BoolVar(&capture.Auto, "capture-auto", false, "development: the army of the player of a random battle is set to auto")
     flag.BoolVar(&capture.DamageNumbers, "capture-damage-numbers", false, "development: keep damage numbers over the units of a random battle")
     flag.StringVar(&capture.MouseAt, "capture-mouse-at", "", "development: the game sees the mouse at x,y screen pixels of the picture")
     flag.StringVar(&capture.CursorAt, "capture-cursor-at", "", "development: draw the cursor at x,y screen pixels, fractions allowed")

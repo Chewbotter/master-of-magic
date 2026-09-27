@@ -237,6 +237,9 @@ type CombatScreen struct {
     shadowStartY float64
     // where the figures of each unit are and how far out of step, see figurevariety.go
     figureStates map[*ArmyUnit]*unitFigures
+    // units act together, see together.go
+    together bool
+    claimedTiles map[image.Point]*ArmyUnit
     // the pictures of damage numbers, see damagenumbers.go
     damagePictures map[string]*ebiten.Image
     // the red X with shorter arms, see cursor.go
@@ -1973,6 +1976,16 @@ func distanceAboveRange(x1 float64, y1 float64, x2 float64, y2 float64, r float6
 }
 
 func (combat *CombatScreen) doProjectiles(yield coroutine.YieldFunc) {
+    if combat.together {
+        // the projectiles move with the clock of the battle, see together.go
+        for len(combat.Model.Projectiles) > 0 {
+            if yield() != nil {
+                return
+            }
+        }
+        return
+    }
+
     for combat.Model.UpdateProjectiles(combat.Counter) {
         combat.Counter += 1
         combat.ProcessInput()
@@ -2485,6 +2498,12 @@ func (combat *CombatScreen) UpdateAnimations(){
 
 func (combat *CombatScreen) doTeleport(yield coroutine.YieldFunc, mover *ArmyUnit, x int, y int, merge bool) {
 
+    // while units act together: nobody else may go there, see together.go
+    if !combat.claimTile(mover, x, y) {
+        return
+    }
+    defer combat.releaseTiles(mover)
+
     sound, err := combat.AudioCache.GetSound(mover.Unit.GetMovementSound().LbxIndex())
     if err == nil && combat.IsUnitVisible(mover) {
         sound.Play()
@@ -2495,19 +2514,13 @@ func (combat *CombatScreen) doTeleport(yield coroutine.YieldFunc, mover *ArmyUni
 
     if merge {
         for i := range mergeCount {
-            combat.Counter += 1
-            combat.UpdateAnimations()
-            combat.UpdateDamageIndicators()
-            combat.ProcessInput()
+            combat.actionTick()
             mover.SetHeight(-i/mergeSpeed)
             yield()
         }
     } else {
         for i := range mergeCount {
-            combat.Counter += 1
-            combat.UpdateAnimations()
-            combat.UpdateDamageIndicators()
-            combat.ProcessInput()
+            combat.actionTick()
             mover.SetFade(float32(i)/float32(mergeCount))
             yield()
         }
@@ -2517,20 +2530,14 @@ func (combat *CombatScreen) doTeleport(yield coroutine.YieldFunc, mover *ArmyUni
 
     if merge {
         for i := range mergeCount {
-            combat.Counter += 1
-            combat.UpdateAnimations()
-            combat.UpdateDamageIndicators()
-            combat.ProcessInput()
+            combat.actionTick()
             mover.SetHeight(-(mergeCount/mergeSpeed - i/mergeSpeed))
             yield()
         }
         mover.SetHeight(0)
     } else {
         for i := range mergeCount {
-            combat.Counter += 1
-            combat.UpdateAnimations()
-            combat.UpdateDamageIndicators()
-            combat.ProcessInput()
+            combat.actionTick()
             mover.SetFade(float32(mergeCount - i)/float32(mergeCount))
             yield()
         }
@@ -2669,6 +2676,11 @@ func (combat *CombatScreen) doMoveUnit(yield coroutine.YieldFunc, mover *ArmyUni
         mover.CurrentPath = path
         targetX, targetY := path[0].X, path[0].Y
 
+        // while units act together: the tile it steps to is its own, or it stops. see together.go
+        if !combat.claimTile(mover, targetX, targetY) {
+            break
+        }
+
         combat.Model.AddLogEvent(fmt.Sprintf("Moving %v %v,%v -> %v,%v", mover.Unit.GetName(), mover.X, mover.Y, targetX, targetY))
 
         angle := math.Atan2(float64(targetY) - mover.MoveY, float64(targetX) - mover.MoveX)
@@ -2689,15 +2701,15 @@ func (combat *CombatScreen) doMoveUnit(yield coroutine.YieldFunc, mover *ArmyUni
 
         reached := false
         for !reached && mover.MovesLeft.GreaterThan(fraction.FromInt(0)) {
-            combat.UpdateAnimations()
-            combat.UpdateDamageIndicators()
-            combat.ProcessInput()
-            combat.Counter += 1
+            // the clock of the battle, see together.go
+            combat.actionTick()
 
-            mouseX, mouseY := inputmanager.MousePosition()
-            tileX, tileY := combat.ScreenToTile(float64(mouseX), float64(mouseY))
-            combat.MouseTileX = int(math.Round(tileX))
-            combat.MouseTileY = int(math.Round(tileY))
+            if !combat.together {
+                mouseX, mouseY := inputmanager.MousePosition()
+                tileX, tileY := combat.ScreenToTile(float64(mouseX), float64(mouseY))
+                combat.MouseTileX = int(math.Round(tileX))
+                combat.MouseTileY = int(math.Round(tileY))
+            }
 
             mover.MoveX += math.Cos(angle) * speed
             mover.MoveY += math.Sin(angle) * speed
@@ -2710,6 +2722,7 @@ func (combat *CombatScreen) doMoveUnit(yield coroutine.YieldFunc, mover *ArmyUni
             distanceAboveRange(float64(mover.X), float64(mover.Y), float64(targetX), float64(targetY), 2.5) {
 
                 died := combat.Model.MoveUnit(mover, targetX, targetY)
+                combat.releaseTiles(mover)
                 if died {
                     return
                 }
@@ -2727,6 +2740,7 @@ func (combat *CombatScreen) doMoveUnit(yield coroutine.YieldFunc, mover *ArmyUni
         }
     }
 
+    combat.releaseTiles(mover)
     mover.Moving = false
     mover.CurrentPath = nil
     mover.Paths = make(map[image.Point]pathfinding.Path)
@@ -2760,11 +2774,11 @@ func (combat *CombatScreen) doMeleeWall(yield coroutine.YieldFunc, attacker *Arm
     }
 
     for i := range 60 {
-        combat.Counter += 1
-        combat.UpdateAnimations()
-        combat.UpdateDamageIndicators()
-        combat.ProcessInput()
-        combat.ProcessEvents(yield) // ignore return
+        // the clock of the battle, see together.go
+        combat.actionTick()
+        if !combat.together {
+            combat.ProcessEvents(yield) // ignore return
+        }
 
         // delay the actual melee computation to give time for the sound to play
         if i == 20 {
@@ -2797,13 +2811,18 @@ func (combat *CombatScreen) doMelee(yield coroutine.YieldFunc, attacker *ArmyUni
     combat.Model.AddLogEvent(fmt.Sprintf("%v attacks %v", attacker.Unit.GetName(), defender.Unit.GetName()))
 
     for i := range 60 {
-        combat.Counter += 1
-        combat.UpdateAnimations()
-        combat.UpdateDamageIndicators()
-        combat.ProcessInput()
-        combat.ProcessEvents(yield) // ignore return
+        // the clock of the battle, see together.go
+        combat.actionTick()
+        if !combat.together {
+            combat.ProcessEvents(yield) // ignore return
+        }
 
         // delay the actual melee computation to give time for the sound to play
+        // while units act together another unit can have killed one of the two, see together.go
+        if combat.together && (attacker.GetHealth() <= 0 || defender.GetHealth() <= 0) {
+            return
+        }
+
         if i == 20 {
             attackerDamage, defenderDamage := combat.Model.meleeAttack(attacker, defender)
 
@@ -3152,6 +3171,12 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
         combat: combat,
         extraControl: combat.ExtraControl,
         singleAuto: updates.SingleAuto,
+    }
+
+    // units the computer controls act together, see together.go
+    if units := combat.togetherUnits(); len(units) > 0 {
+        combat.runTogether(yield, units)
+        return CombatStateRunning
     }
 
     combat.Model.Update(combat, combatActions, leftClick, selectTileX, selectTileY)
