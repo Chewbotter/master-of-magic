@@ -46,6 +46,8 @@ type frameCapture struct {
     DragSpeed int
     // x,y in screen pixels
     CursorAt string
+    // the frame of a random battle at which every unit loses about half of its figures, 0 is never
+    KillFigures int
     // keep damage numbers over the units of a random battle
     DamageNumbers bool
     // x,y in screen pixels: the game sees the mouse there

@@ -50,6 +50,9 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 8 | Damage numbers in the original's smallest font, in a loose cluster around the unit. One that would touch another moves away the shorter way. Each fades as one picture | `combat/damagenumbers.go` |
 
 ## Different from the original on purpose (user requests)
+- A figure that is killed is pushed back from what its unit faces and tips over around its feet,
+  each at a time of its own, then fades. `combat/figurefall.go`, `FigureFall` turns it off. The
+  original shows blood on the figure ("gibs"), the fork showed a colored shape that faded.
 - The figures of a unit do not move as one: each trails its unit by up to 0.09 seconds while it
   walks, and its walking and striking frames are out of step with the others by up to 3 redraws.
   `combat/figurevariety.go`, `FigureVariety` turns it off.
@@ -76,7 +79,7 @@ Found while reading the reference. Not started unless noted.
   old search.
 - Unit enchantment outlines, invisibility and other figure effects (Combat_Figure_Effect,
   Combat_Unit_Enchantment_Outline_Draw).
-- Death: the original plays "gibs" frames per lost figure. Ours fades the figure to a color.
+- Death: the original plays "gibs" frames per lost figure. Ours lets the figure fall, see above.
 - Missiles, vortexes and curse pictures are not part of the draw order yet: drawn after everything.
 
 ### Battlefield

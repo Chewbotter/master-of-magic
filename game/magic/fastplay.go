@@ -314,6 +314,17 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
 
     game.Music.PlaySong(randomChoose(musiclib.SongCombat1, musiclib.SongCombat2))
 
+    if capture.KillFigures > 0 {
+        // development: figures fall. by drawn frames, the battle does not come back here on every tick
+        capture.EachFrame = func(frame int) {
+            if frame == capture.KillFigures {
+                for _, unit := range append(attackingArmy.GetUnits(), defendingArmy.GetUnits()...) {
+                    unit.TakeDamage(unit.GetHealth() / 2, combat.DamageNormal)
+                }
+            }
+        }
+    }
+
     state := combat.CombatStateRunning
     for state == combat.CombatStateRunning {
         state = combatScreen.Update(yield)

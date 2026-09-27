@@ -4066,7 +4066,26 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
             // _ = index
             use := util.First(unit.GetEnchantments(), data.UnitEnchantmentNone)
-            if unit.IsInvisible() {
+
+            // a figure that was killed falls over, see figurefall.go
+            figureLost := figure >= unit.VisibleFigures()
+            var fall *figureFall
+            if FigureFall && figure >= 0 && figure < figureCount {
+                fall = combat.figureFallOf(unit, figure, figureCount, figureLost)
+            }
+
+            if fall != nil && figureLost {
+                if !unit.IsInvisible() || isVisible(unit) {
+                    progress := combat.fallProgress(fall)
+                    // pushed fast and slowing, tipping slow and faster
+                    pushed := 1 - (1 - progress) * (1 - progress)
+                    tipped := progress * progress
+
+                    fallOptions := unitOptions
+                    fallOptions.ColorScale.ScaleAlpha(lostFigureAlpha(unit))
+                    unitview.RenderCombatFigureFallen(screen, unitImage, fallOptions, figureCount, figure, fall.Angle * tipped, fall.PushX * pushed, fall.PushY * pushed)
+                }
+            } else if unit.IsInvisible() {
                 // might not be visible at all, or is semi-visible if next to an enemy unit or if the enemy team has
                 // any units with illusions immunity
                 canBeSeen := isVisible(unit)

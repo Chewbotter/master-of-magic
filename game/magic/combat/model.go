@@ -1766,6 +1766,10 @@ func (unit *ArmyUnit) TakeDamage(damage int, damageType DamageType) int {
         unit.LostUnits = lost
     } else {
         unit.LostUnits += lost
+        if lost > 0 {
+            // the new ones get their time to fall, see figurefall.go
+            unit.LostUnitsTime = LostUnitsMax
+        }
     }
 
     return lost

@@ -36,6 +36,8 @@ type figureState struct {
     // where the figure is, as the position of its unit, in tiles
     X float64
     Y float64
+    // see figurefall.go
+    Fall figureFall
 }
 
 type unitFigures struct {
