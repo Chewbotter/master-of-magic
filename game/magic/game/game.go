@@ -1659,6 +1659,8 @@ func (game *Game) blinkRed(yield coroutine.YieldFunc) {
         vector.FillRect(screen, 0, 0, float32(screen.Bounds().Dx()), float32(screen.Bounds().Dy()), scale.Apply(color.RGBA{R: 0xff, G: 0, B: 0, A: 0xff}), false)
     })
     defer game.PopDrawer()
+    // a tint over the world map, not a screen of its own: the map stays wide, see wide.go
+    game.markOverlayDrawer()
 
     for i := uint64(0); i < fadeSpeed; i++ {
         counter += 1

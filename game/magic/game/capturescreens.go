@@ -9,7 +9,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors"}
+var CaptureScreenNames = []string{"armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink"}
 
 // puts the camera at a column, keeping its row
 func (game *Game) CaptureSetCameraX(x float64) {
@@ -27,6 +27,13 @@ func (game *Game) CaptureOpenScreen(name string) bool {
         case "spellbook": event = &GameEventCastSpellBook{}
         case "surveyor": event = &GameEventSurveyor{}
         case "cartographer": event = &GameEventCartographer{}
+        case "blink":
+            // the red flash of an invalid move
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    game.blinkRed(yield)
+                },
+            }
         case "advisors":
             game.HudUI.AddElements(game.MakeInfoUI(60, 25))
             return true
