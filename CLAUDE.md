@@ -58,6 +58,9 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
 - Rejected: per-tile `ebiten.FilterPixelated`. It blends each tile's edge with transparency and leaves a grid of seams. Do not bring it back.
 - `OverworldCleanZoom = false` restores the original look; dev flag `-capture-nearest` does the same.
 
+## Frame rate standard
+- This game should never drop below the vsync cap (user, 2026-09-27). The user often runs a second heavy process while working, and Claude's own captures run alongside it, so single low readings in captures are environment noise. Treat a dip as real only if it repeats across runs on the same screen, and compare against the world map in the same session.
+
 ## Dev capture flags (magic.exe)
 `-capture out.png -capture-frames N` (implies `-corner`), `-capture-zoom 2..12`, `-capture-zoom-animation -1..1`, `-capture-window-width W` (corner window W x 200, tests other screen shapes), `-capture-popup`, `-capture-nearest`. The log line reports the frame rate at capture time. Frame rate readings in the corner window vary between about 60 and 115 run to run; compare several runs, never one.
 
