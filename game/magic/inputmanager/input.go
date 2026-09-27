@@ -119,6 +119,10 @@ func MousePosition() (int, int) {
         log.Fatal("InputManager.Update() not called")
     }
 
+    if FixedMouse {
+        return FixedMouseX, FixedMouseY
+    }
+
     return theInputManager.mouseX, theInputManager.mouseY
 }
 

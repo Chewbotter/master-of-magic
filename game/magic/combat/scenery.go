@@ -482,6 +482,15 @@ var wallPieces = []wallPiece{
     {Piece: 13, CellX: 8, CellY: 10, ShiftX: 0, ShiftY: 14, AnchorX: 16, MagicAnchorY: 30, MagicOnly: true, Near: true},
 }
 
+// the ground of a town is one picture: its roads, or the clouds of a flying fortress. the original
+// draws it this far up and left of the ground picture of the nearest cell of the town
+const townGroundLbx = "cmbtcity.lbx"
+const townRoadsIndex = 0
+const townCloudsIndex = 113
+const townGroundShift = 48
+// the ground under an outpost
+const outpostGroundIndex = 1
+
 const wallLbx = "citywall.lbx"
 const wallRiseLbx = "wallrise.lbx"
 const wallStonePictures = 12

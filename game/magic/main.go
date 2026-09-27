@@ -1068,6 +1068,12 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
         }
     }
 
+    if capture.MouseAt != "" {
+        // development: the game sees the mouse at a fixed position
+        fmt.Sscanf(capture.MouseAt, "%d,%d", &inputmanager.FixedMouseX, &inputmanager.FixedMouseY)
+        inputmanager.FixedMouse = true
+    }
+
     if capture.RandomBattle {
         // development: straight into a random battle
         runRandomBattle(yield, game, false)
@@ -1288,6 +1294,7 @@ func loadGameConfig() GameConfig {
     flag.StringVar(&capture.Path, "capture", "", "development: write one frame to this png file and exit")
     flag.IntVar(&capture.Frames, "capture-frames", 120, "development: frames to draw before the capture")
     flag.BoolVar(&capture.RevealAll, "capture-reveal-all", false, "development: turn on the Reveal All debug option")
+    flag.StringVar(&capture.MouseAt, "capture-mouse-at", "", "development: the game sees the mouse at x,y screen pixels of the picture")
     flag.StringVar(&capture.CursorAt, "capture-cursor-at", "", "development: draw the cursor at x,y screen pixels, fractions allowed")
     flag.BoolVar(&capture.TraceWide, "capture-trace-wide", false, "development: log every change of the widescreen layout and the layers on screen")
     flag.StringVar(&capture.Walk, "capture-walk", "", "development: send the selected unit walking dx,dy tiles and log the camera")

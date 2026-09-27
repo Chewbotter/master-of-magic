@@ -216,6 +216,8 @@ type CombatScreen struct {
     Cache *lbx.LbxCache
     AudioCache *audio.AudioCache
     Mouse *mouse.MouseData
+    // the red X with shorter arms, see cursor.go
+    shortCrossPicture *ebiten.Image
     WhitePixel *ebiten.Image
     UI *uilib.UI
 
@@ -2792,17 +2794,18 @@ func (combat *CombatScreen) AddDamageIndicator(unit *ArmyUnit, damage int) {
 
 func (combat *CombatScreen) UpdateMouseState() {
     switch combat.MouseState {
+        // each picture with its own middle or tip on the mouse position, see cursor.go
         case CombatMoveOk:
-            globalMouse.Mouse.SetImage(combat.Mouse.Move)
+            combat.setCursor(combat.Mouse.Move, cursorHotMove)
         case CombatClickHud:
             globalMouse.Mouse.SetImage(combat.Mouse.Normal)
         case CombatMeleeAttackOk:
             // mouseOptions.GeoM.Translate(-1, -1)
-            globalMouse.Mouse.SetImage(combat.Mouse.Attack)
+            combat.setCursor(combat.Mouse.Attack, cursorHotAttack)
         case CombatRangeAttackOk:
-            globalMouse.Mouse.SetImage(combat.Mouse.Arrow)
+            combat.setCursor(combat.Mouse.Arrow, cursorHotRanged)
         case CombatNotOk:
-            globalMouse.Mouse.SetImage(combat.Mouse.Error)
+            combat.setCursor(combat.shortCross(), cursorHotCross)
         case CombatCast:
             index := (combat.Counter / 8) % uint64(len(combat.Mouse.Cast))
             globalMouse.Mouse.SetImage(combat.Mouse.Cast[index])
@@ -3820,27 +3823,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         // vector.DrawFilledCircle(screen, float32(tx), float32(ty), 2, color.RGBA{R: 0xff, G: 0, B: 0, A: 0xff}, false)
     }
 
-    if combat.DrawRoad {
-        tx, ty := tilePosition(TownCenterX-1, TownCenterY-4)
-
-        road, _ := combat.ImageCache.GetImageTransform("cmbtcity.lbx", 0, 0, "crop", util.AutoCrop)
-        options.GeoM.Reset()
-        options.GeoM.Scale(combat.CameraScale, combat.CameraScale)
-        options.GeoM.Translate(tx, ty)
-        options.GeoM.Translate(0, float64(tile0.Bounds().Dy())/2)
-        scale.DrawScaled(screen, road, &options)
-    }
-
-    if combat.DrawClouds {
-        tx, ty := tilePosition(TownCenterX, TownCenterY-5)
-
-        clouds, _ := combat.ImageCache.GetImage("cmbtcity.lbx", 113, 0)
-        options.GeoM.Reset()
-        options.GeoM.Scale(combat.CameraScale, combat.CameraScale)
-        options.GeoM.Translate(tx, ty)
-        options.GeoM.Translate(0, float64(tile0.Bounds().Dy())/2)
-        scale.DrawScaled(screen, clouds, &options)
-    }
+    // the roads of a town, or the clouds a flying fortress stands on. see scenerydraw.go
+    combat.drawTownGround(screen)
 
     drawExtraObject := func(x int, y int, extra TileTop) {
         if extra.Drawer != nil {

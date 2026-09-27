@@ -38,6 +38,9 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 5 | Walls of stone, fire and darkness: the original's 12 and 14 pieces with their cells, shifts and anchors. Myrror has its own stone | `combat/scenery.go`, `combat/scenerydraw.go` |
 | 5 | Draw order: figures one by one, trees, rocks, houses, walls and the structure all in the original's order | `combat/scenerydraw.go`, `unitview/figure.go` |
 | 5 | The fortress takes its cell. A city without one has no blocked cell | `combat/model.go` |
+| 6 | The roads of a town, the clouds of a flying fortress and the ground under an outpost on the original's place. They now scale with the zoom | `combat/scenerydraw.go` |
+| 6 | Cursor pictures are drawn with their middle or tip on the mouse position, which is the point that picks the tile | `combat/cursor.go` |
+| 6 | The red X has arms of 4 instead of 7, at the same size of pixel (user request) | `combat/cursor.go` |
 
 ## Judgment calls of batch 5
 - Beyond the original's screen (our field is larger and the camera zooms out) scenery continues at
@@ -67,11 +70,13 @@ Found while reading the reference. Not started unless noted.
   stand on grass cells in the original, and add 1 to the cost of moving through their cell. Ours has
   neither.
 - Forest squares: the original has 31 to 60 trees there. Our landscapes have no forest, it counts as grass.
-- The road and the dirt paths of a town are still the fork's one picture.
+- Roads that lead out of a town, and enchanted roads.
 - The sorcery and chaos nodes were not checked.
 - A wall of stone rising (the Wall of Stone spell) has no animation.
 - The cell outline under the cursor and under the selected unit (doc/Combat/MoX-Combat-Draw-SquareOutline.md).
-- Mouse cursor pictures per action (doc/Combat/MoM-CombatScreen-Mouse.md).
+- Mouse cursor pictures per action (doc/Combat/MoM-CombatScreen-Mouse.md). ON PURPOSE different:
+  the original picks the cell 4 right and 4 below the corner of every cursor picture. Ours picks at
+  the mouse position and centers the pictures there, which stays exact when zoomed out.
 - Projectiles and spell effects (Make_Missiles and the spell animation code).
 - Zoomed out or moved far, the area beyond our 30 by 30 grid shows black. The original's view never
   leaves its grid.

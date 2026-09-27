@@ -231,3 +231,33 @@ func (combat *CombatScreen) unitDrawables(unit *ArmyUnit, render func(unit *Army
 
     return out
 }
+
+// the roads of a town, the clouds of a flying fortress, the ground under an outpost. part of the
+// ground: drawn before anything that stands on the field
+// (ReMoM: MoM/src/Combat.c, the end of the ground loop of the map draw)
+func (combat *CombatScreen) drawTownGround(screen *ebiten.Image) {
+    city := combat.Model.Zone.City
+    if city == nil {
+        return
+    }
+
+    draw := func(index int, cgx int, cgy int, shift int) {
+        pictures, err := combat.ImageCache.GetImages(townGroundLbx, index)
+        if err != nil || len(pictures) == 0 {
+            return
+        }
+        x, y := cellScreen(cgx, cgy, 0, 0)
+        combat.drawOnField(screen, pictures[0], x + cellTerrainX - shift, y - shift)
+    }
+
+    if city.Outpost {
+        draw(outpostGroundIndex, lairCellX, lairCellY, 0)
+        return
+    }
+
+    if combat.DrawClouds {
+        draw(townCloudsIndex, townCellMaxX, townCellMaxY, townGroundShift)
+    } else {
+        draw(townRoadsIndex, townCellMaxX, townCellMaxY, townGroundShift)
+    }
+}

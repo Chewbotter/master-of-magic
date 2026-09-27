@@ -46,6 +46,8 @@ type frameCapture struct {
     DragSpeed int
     // x,y in screen pixels
     CursorAt string
+    // x,y in screen pixels: the game sees the mouse there
+    MouseAt string
     // a screen to open, see game.CaptureScreenNames
     Screen string
     // camera column, below 0 is off
