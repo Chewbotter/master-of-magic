@@ -294,6 +294,8 @@ type CombatFonts struct {
     EnchantmentFont *font.Font
     AttackingWizardFont *font.Font
     DefendingWizardFont *font.Font
+    // the combat bar in the original's style, see hudstyle.go
+    Hud *HudFonts
 }
 
 func MakeCombatFonts(cache *lbx.LbxCache, defendingArmy *Army, attackingArmy *Army) CombatFonts {
@@ -327,6 +329,7 @@ func MakeCombatFonts(cache *lbx.LbxCache, defendingArmy *Army, attackingArmy *Ar
         EnchantmentFont: loader(fontslib.MediumOrange),
         AttackingWizardFont: attackingWizardFont,
         DefendingWizardFont: defendingWizardFont,
+        Hud: makeHudFonts(cache, fonts, attackingArmy.Player.GetWizard().Banner, defendingArmy.Player.GetWizard().Banner),
     }
 }
 
@@ -1502,7 +1505,7 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
 
             if combat.Model.AttackingArmy.Player == player && (combat.DoSelectUnit || combat.DoSelectTile) {
             } else {
-                combat.Fonts.AttackingWizardFont.PrintOptions(screen, 280, 167, font.FontOptions{Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount, DropShadow: true}, combat.Model.AttackingArmy.Player.GetWizard().Name)
+                combat.Fonts.Hud.AttackerName.Print(screen, hudNameRightX, hudNameY, hudOptionsCenter(), combat.Model.AttackingArmy.Player.GetWizard().Name)
 
                 options.GeoM.Reset()
                 options.GeoM.Translate(246, 179)
@@ -1514,22 +1517,21 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
             }
 
             humanArmy := combat.Model.GetHumanArmy()
-            y := 173
-            right := 239
-            combat.Fonts.HudFont.PrintOptions(screen, float64(200), float64(y), font.FontOptions{Scale: scale.ScaleAmount}, "Skill:")
-            combat.Fonts.HudFont.PrintOptions(screen, float64(right), float64(y), font.FontOptions{Scale: scale.ScaleAmount, Justify: font.FontJustifyRight}, fmt.Sprintf("%v", humanArmy.ManaPool))
-            y += combat.Fonts.HudFont.Height() + 2
-
-            combat.Fonts.HudFont.PrintOptions(screen, float64(200), float64(y), font.FontOptions{Scale: scale.ScaleAmount}, "Mana:")
-            combat.Fonts.HudFont.PrintOptions(screen, float64(right), float64(y), font.FontOptions{Scale: scale.ScaleAmount, Justify: font.FontJustifyRight}, fmt.Sprintf("%v", humanArmy.Player.GetMana()))
-            y += combat.Fonts.HudFont.Height() + 2
-
-            combat.Fonts.HudFont.PrintOptions(screen, float64(200), float64(y), font.FontOptions{Scale: scale.ScaleAmount}, "Range:")
-            combat.Fonts.HudFont.PrintOptions(screen, float64(right), float64(y), font.FontOptions{Scale: scale.ScaleAmount, Justify: font.FontJustifyRight}, fmt.Sprintf("%vx", humanArmy.Range.ToFloat()))
+            hudText := combat.Fonts.Hud.Text
+            hudText.Print(screen, hudInfoValueX, hudSkillY, hudOptionsRight(), fmt.Sprintf("%v", humanArmy.ManaPool))
+            hudText.Print(screen, hudInfoLabelX, hudSkillY, hudOptions(), "Skill:")
+            hudText.Print(screen, hudInfoValueX, hudManaY, hudOptionsRight(), fmt.Sprintf("%v", humanArmy.Player.GetMana()))
+            hudText.Print(screen, hudInfoLabelX, hudManaY, hudOptions(), "Mana:")
+            hudText.Print(screen, hudInfoLabelX, hudRangeY, hudOptions(), "Range:")
+            hudText.Print(screen, hudInfoValueX, hudRangeY, hudOptionsRight(), fmt.Sprintf("%vx", humanArmy.Range.ToFloat()))
 
             if combat.Model.DefendingArmy.Player == player && (combat.DoSelectUnit || combat.DoSelectTile) {
             } else {
-                combat.Fonts.DefendingWizardFont.PrintOptions(screen, 40, 167, font.FontOptions{Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter, DropShadow: true}, combat.Model.DefendingArmy.Player.GetWizard().Name)
+                defenderNameY := hudNameLeftY
+                if combat.Model.Zone.Encounter != ZoneNone {
+                    defenderNameY = hudNameY
+                }
+                combat.Fonts.Hud.DefenderName.Print(screen, hudNameLeftX, defenderNameY, hudOptionsCenter(), combat.Model.DefendingArmy.Player.GetWizard().Name)
 
                 options.GeoM.Reset()
                 options.GeoM.Translate(float64(7), float64(179))
@@ -1547,35 +1549,35 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
                 options.GeoM.Translate(85, 170)
                 scale.DrawScaled(screen, rightImage, &options)
 
-                combat.Fonts.HudFont.PrintOptions(screen, 96, 166, font.FontOptions{Scale: scale.ScaleAmount}, combat.Model.SelectedUnit.Unit.GetName())
+                combat.Fonts.Hud.UnitName.Print(screen, hudUnitNameX, hudUnitNameY, hudOptionsCenter(), combat.Model.SelectedUnit.Unit.GetName())
 
                 plainAttack, _ := combat.ImageCache.GetImage("compix.lbx", 29, 0)
                 options.GeoM.Reset()
-                options.GeoM.Translate(130, 173)
+                options.GeoM.Translate(hudStatIconX, hudMeleeIconY)
                 scale.DrawScaled(screen, plainAttack, &options)
-                combat.Fonts.HudFont.PrintOptions(screen, 130, 174, font.FontOptions{Scale: scale.ScaleAmount, Justify: font.FontJustifyRight}, fmt.Sprintf("%v", combat.Model.SelectedUnit.GetMeleeAttackPower()))
+                hudText.Print(screen, hudStatValueX, hudMeleeValueY, hudOptionsRight(), fmt.Sprintf("%v", combat.Model.SelectedUnit.GetMeleeAttackPower()))
 
                 if combat.Model.SelectedUnit.CanRangeAttack() {
-                    y := float64(180)
+                    y := float64(hudRangedIconY)
                     switch combat.Model.SelectedUnit.Unit.GetRangedAttackDamageType() {
                         case units.DamageRangedPhysical:
                             arrow, _ := combat.ImageCache.GetImage("compix.lbx", 34, 0)
                             options.GeoM.Reset()
-                            options.GeoM.Translate(float64(130), y)
+                            options.GeoM.Translate(float64(hudStatIconX), y)
                             scale.DrawScaled(screen, arrow, &options)
-                            combat.Fonts.HudFont.PrintOptions(screen, 130, y+float64(2), font.FontOptions{Scale: scale.ScaleAmount, Justify: font.FontJustifyRight}, fmt.Sprintf("%v", combat.Model.SelectedUnit.GetRangedAttackPower()))
+                            hudText.Print(screen, hudStatValueX, hudRangedValueY, hudOptionsRight(), fmt.Sprintf("%v", combat.Model.SelectedUnit.GetRangedAttackPower()))
                         case units.DamageRangedBoulder:
                             boulder, _ := combat.ImageCache.GetImage("compix.lbx", 35, 0)
                             options.GeoM.Reset()
-                            options.GeoM.Translate(float64(130), y)
+                            options.GeoM.Translate(float64(hudStatIconX), y)
                             scale.DrawScaled(screen, boulder, &options)
-                            combat.Fonts.HudFont.PrintOptions(screen, 130, y+float64(2), font.FontOptions{Scale: scale.ScaleAmount, Justify: font.FontJustifyRight}, fmt.Sprintf("%v", combat.Model.SelectedUnit.GetRangedAttackPower()))
+                            hudText.Print(screen, hudStatValueX, hudRangedValueY, hudOptionsRight(), fmt.Sprintf("%v", combat.Model.SelectedUnit.GetRangedAttackPower()))
                         case units.DamageRangedMagical:
                             magic, _ := combat.ImageCache.GetImage("compix.lbx", 30, 0)
                             options.GeoM.Reset()
-                            options.GeoM.Translate(float64(130), y)
+                            options.GeoM.Translate(float64(hudStatIconX), y)
                             scale.DrawScaled(screen, magic, &options)
-                            combat.Fonts.HudFont.PrintOptions(screen, 130, y+float64(2), font.FontOptions{Scale: scale.ScaleAmount, Justify: font.FontJustifyRight}, fmt.Sprintf("%v", combat.Model.SelectedUnit.GetRangedAttackPower()))
+                            hudText.Print(screen, hudStatValueX, hudRangedValueY, hudOptionsRight(), fmt.Sprintf("%v", combat.Model.SelectedUnit.GetRangedAttackPower()))
                     }
                 }
 
@@ -1587,11 +1589,11 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
                 }
 
                 options.GeoM.Reset()
-                options.GeoM.Translate(130, 188)
+                options.GeoM.Translate(hudStatIconX, hudMovesIconY)
                 scale.DrawScaled(screen, movementImage, &options)
-                combat.Fonts.HudFont.PrintOptions(screen, 130, 190, font.FontOptions{Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, fmt.Sprintf("%v", combat.Model.SelectedUnit.MovesLeft.ToFloat()))
+                hudText.Print(screen, hudStatValueX, hudMovesValueY, hudOptionsRight(), fmt.Sprintf("%v", combat.Model.SelectedUnit.MovesLeft.ToFloat()))
 
-                combat.DrawHealthBar(screen, 123, 197, 255, combat.Model.SelectedUnit)
+                combat.drawHudHealthBar(screen, combat.Model.SelectedUnit)
             }
 
             ui.StandardDraw(screen)

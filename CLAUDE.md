@@ -12,6 +12,7 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
 - COMMITS: Claude commits as it goes, one commit per finished change, by pathspec; the user pushes through GitHub Desktop. Never push. (User decision, 2026-09-27; overrides the guides' default that commits are his.)
 - `D:/Work/MasterMagic_open/_tools/` : portable Go 1.27.1 and its module cache. Go is not installed system-wide and is not on PATH.
 - `D:/Work/MasterMagic_open/_build/` : build output (`magic.exe`, logs). Never commit.
+- `D:/Work/MasterMagic_open/_reference/ReMoM/` : reference reconstruction of the original, read only. See Reference workflow.
 - Original game data (owned on Steam, never copy into the repo, never commit, never redistribute):
   `D:/SteamLibrary/steamapps/common/Master of Magic Classic/Master of Magic Official Release` (101 LBX files).
   Sibling folders hold the Community Patch and Caster of Magic data; the code targets the official release.
@@ -64,6 +65,25 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
 
 ## Dev capture flags (magic.exe)
 `-capture out.png -capture-frames N` (implies `-corner`), `-capture-zoom 2..12`, `-capture-zoom-animation -1..1`, `-capture-window-width W` (corner window W x 200, tests other screen shapes), `-capture-popup`, `-capture-nearest`. The log line reports the frame rate at capture time. Frame rate readings in the corner window vary between about 60 and 115 run to run; compare several runs, never one.
+
+## Reference workflow: ReMoM (user decision 2026-09-27)
+We keep building on this fork and rebuild any visual that does not match the original, using ReMoM as the reference instead of screenshots from the user.
+- What it is: a C reconstruction of Master of Magic v1.31 from disassembly, https://github.com/jbalcomb/ReMoM. Cloned at `D:/Work/MasterMagic_open/_reference/ReMoM` (commit a9cc082, 2026-08-31), OUTSIDE this repo.
+- LICENSE RULE: ReMoM has no license and derives from the original program. Read it for FACTS (positions, palette indexes, font numbers, shadow modes, thresholds, strings) and write our own code. Never copy its code, never commit any of it here. Say in a comment which ReMoM function the facts came from.
+- The user's release plan stays on this fork (BSD). Switching base to ReMoM was considered and rejected: fixed 320x200 256 color buffer, global state, no license.
+- How to match a screen:
+  1. Find its draw function: `MoM/src/<Screen>.c` (Combat.c, CityScr.c, MainScr.c, MagicScr.c, ArmyList.c, ...), described in `doc/MoM-*.md`. Grep for a string shown on the screen.
+  2. Read the text setup before each Print: `Set_Font_Style*(font, color block, ...)`, `Set_Font_Colors_15(font, colors)` (pixel value k of a glyph gets colors[k]; value 0 is the alias pixel), `Set_Outline_Color(n)`, `Set_Font_Spacing_Width(n)`. Shadow modes and their offsets: `MoX/src/Fonts.c` Print_Display.
+  3. Read positions from `Print*(x, y, ...)` and `FLIC_Draw(x, y, picture)`; pictures from `LBX_Reload_Next(file, entry, ...)`.
+  4. Resolve palette indexes to colors: indexes below 224 come from the game palette; 224 and up come from the palette embedded in the screen's own pictures. In our code: `lbxFile.GetPalette(entry)` on the screen's background picture gives both.
+  5. Build the text with `font.MakeStyledFont(lbxFont, colors, shadow, shadowColor)` and `StyledFont.Print` (whole art pixel positions, the original's alignment rules). Our glyph images use palette index k + 1 for pixel value k; MakeStyledFont handles that.
+  6. Capture ours and compare.
+- Alignment rules of the original (now in StyledFont): width has no letter gap after the last letter; right aligned text ends ON x; centered text starts at x minus half the width rounded down.
+- Not set up yet: running ReMoM itself. It has scripted input replay and a headless mode (`doc/Devel-HeMoM-Testing.md`, `showcase/README.md`), which could give pixel exact reference captures of any screen. Needs its release binary or a build (CMake, MSVC, SDL2).
+
+## Combat bar (first screen matched through ReMoM, 2026-09-27)
+- `game/magic/combat/hudstyle.go`: chiseled text (font 0, letters 243, edge and shadow 227, shadow down), wizard names (font 4, four banner shades, shadow 241), exact positions, the health bar as a line on its own track picture (compix 18) with the original's colors and thresholds.
+- Known differences left: the selected unit's figure is not centered in its box the original's way; the INFO button is never greyed out; the original always puts the human player's name on the right, the fork puts the attacker there; for lairs and neutral defenders the original prints the lair type, "Monsters" or "Raiders" on the left, the fork prints the defending player's name. The old `DrawHealthBar` is still used on the battlefield and in popups.
 
 ## Original look law
 - Every copy of the world map panel draws GP and MP through `game.drawPanelReserves` (panel.go): surveyor, spell targeting (cast.go) and road building (road.go, which drew none before). The world map hud draws its own in MakeHudUI with the same style. Other screens that show gold and mana (city list, vault, magic screen, mirror) have their own panels and styles and were left alone.
