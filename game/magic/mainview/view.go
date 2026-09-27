@@ -34,6 +34,24 @@ const (
     MainScreenStateLoadGame
 )
 
+// main menu tunables. positions are in original 320x200 pixels
+
+// y position of the last menu row (Quit to Dos). rows stack upwards from here
+const MenuLastRowY = 187
+// extra pixels between menu rows, added to the font height
+const MenuRowGap = 1
+// area the credits scroll through. the bottom edge sits above the first menu row
+const CreditsTop = 35
+const CreditsBottom = 118
+const CreditsLeft = 60
+const CreditsRight = 270
+// game ticks per pixel of credits scroll. higher is slower
+const CreditsTicksPerPixel = 3
+// blank pixels before the first credits line enters
+const CreditsLeadGap = 40
+// true: credits repeat until the button is pressed again. false: one pass and stop
+const CreditsLoop = false
+
 type MainScreenEvent interface {
 }
 
@@ -51,6 +69,27 @@ type MainScreen struct {
     GameLoader gamemenu.GameLoader
     Events chan MainScreenEvent
     Drawer func(screen *ebiten.Image)
+    // credits only scroll after the Credits button is pressed
+    CreditsPlaying bool
+    // value of the ui counter when the credits started
+    CreditsStart uint64
+    // the main menu ui, held here while the options screen is showing
+    MenuUI *uilib.UI
+    // the coroutine yield passed to the latest Update
+    Yield coroutine.YieldFunc
+}
+
+// start the credits from the top, or stop them if they are playing
+func (main *MainScreen) ToggleCredits() {
+    if main.CreditsPlaying {
+        main.CreditsPlaying = false
+        return
+    }
+
+    main.CreditsPlaying = true
+    if main.UI != nil {
+        main.CreditsStart = main.UI.Counter
+    }
 }
 
 func MakeMainScreen(cache *lbx.LbxCache, gameLoader gamemenu.GameLoader, music *musiclib.Music, settings *settingslib.Settings) *MainScreen {
@@ -124,8 +163,9 @@ func (main *MainScreen) MakeUI() *uilib.UI {
 
     var elements []*uilib.UIElement
 
-    makeButton := func(cx, cy int, helpName string, isActive bool, action func()) *uilib.UIElement {
-        length := int(titleFont.MeasureTextWidth(helpName, 1))
+    // label is the text on screen, helpName is the entry shown on right click
+    makeLabeledButton := func(cx, cy int, label string, helpName string, isActive bool, action func()) *uilib.UIElement {
+        length := int(titleFont.MeasureTextWidth(label, 1))
 
         x := cx - length / 2
         y := cy
@@ -160,9 +200,13 @@ func (main *MainScreen) MakeUI() *uilib.UI {
                     use = titleFontHighlight
                 }
 
-                use.PrintOptions(screen, float64(cx), float64(y), font.FontOptions{DropShadow: true, Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, helpName)
+                use.PrintOptions(screen, float64(cx), float64(y), font.FontOptions{DropShadow: true, Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, label)
             },
         }
+    }
+
+    makeButton := func(cx, cy int, helpName string, isActive bool, action func()) *uilib.UIElement {
+        return makeLabeledButton(cx, cy, helpName, helpName, isActive, action)
     }
 
     abs := func(x int) int {
@@ -247,16 +291,28 @@ func (main *MainScreen) MakeUI() *uilib.UI {
         makeCreditsSection("Special thanks", "Jenna Cowlishaw"),
     )
 
-    creditsRect := image.Rect(60, 35, 270, 130)
+    creditsRect := image.Rect(CreditsLeft, CreditsTop, CreditsRight, CreditsBottom)
     elements = append(elements, &uilib.UIElement{
         Draw: func(element *uilib.UIElement, screen *ebiten.Image) {
+            if !main.CreditsPlaying {
+                return
+            }
+
             sub := screen.SubImage(scale.ScaleRect(creditsRect)).(*ebiten.Image)
 
             var options ebiten.DrawImageOptions
 
-            gap := 40
+            gap := CreditsLeadGap
 
-            where := (ui.Counter / 3) % uint64(creditsRect.Dy() + gap + (len(credits)) * creditsFont.Height())
+            totalScroll := uint64(creditsRect.Dy() + gap + (len(credits)) * creditsFont.Height())
+            where := (ui.Counter - main.CreditsStart) / CreditsTicksPerPixel
+            if where >= totalScroll {
+                if !CreditsLoop {
+                    main.CreditsPlaying = false
+                    return
+                }
+                where = where % totalScroll
+            }
             middle := creditsRect.Min.X + creditsRect.Dx() / 2
             for i, currentLine := range credits {
                 if len(currentLine.lineLeft) + len(currentLine.lineCenter) + len(currentLine.lineRight) == 0 {
@@ -295,8 +351,9 @@ func (main *MainScreen) MakeUI() *uilib.UI {
     isLoadGameBtnActive := true
 
     centerX := data.ScreenWidth / 2
-    yBase := 154
-    yGap := titleFont.Height() + 1
+    yGap := titleFont.Height() + MenuRowGap
+    // seven rows: quick start, continue, load, new game, options, credits, quit
+    yBase := MenuLastRowY - yGap * 5
 
     elements = append(elements, makeButton(centerX, yBase - yGap * 1, "Quick Start", true, func(){
         main.State = MainScreenStateQuickGame
@@ -320,10 +377,20 @@ func (main *MainScreen) MakeUI() *uilib.UI {
         main.State = MainScreenStateNewGame
     }))
 
+    // options
+    elements = append(elements, makeButton(centerX, yBase + yGap * 3, "Settings", true, func(){
+        main.ShowOptions()
+    }))
+
+    // credits
+    elements = append(elements, makeButton(centerX, yBase + yGap * 4, "Credits", true, func(){
+        main.ToggleCredits()
+    }))
+
     // FIXME: add "Hall of Fame" button
 
     // exit
-    elements = append(elements, makeButton(centerX, yBase + yGap * 3, "Quit to Dos", true, func(){
+    elements = append(elements, makeLabeledButton(centerX, yBase + yGap * 5, "Quit", "Quit to Dos", true, func(){
         main.State = MainScreenStateQuit
     }))
 
@@ -339,7 +406,7 @@ type SettingsUI struct {
 }
 
 func (settings *SettingsUI) RunSettingsUI() {
-    group, done := settingslib.MakeSettingsUI(settings.yield, settings.ui, settings.main.Cache, &settings.main.ImageCache, settings.main.Settings, settings.main.Music)
+    group, done, _ := settingslib.MakeOptionsUI(settings.yield, settings.ui, settings.main.Cache, &settings.main.ImageCache, settings.main.Settings, settings.main.Music)
 
     settings.ui.AddGroup(group)
     defer settings.ui.RemoveGroup(group)
@@ -399,6 +466,7 @@ func (main *MainScreen) RunGameScreen(yield coroutine.YieldFunc) MainScreenState
 
 func (main *MainScreen) Update(yield coroutine.YieldFunc) MainScreenState {
     main.Counter += 1
+    main.Yield = yield
 
     main.UI.StandardUpdate()
 

@@ -2,6 +2,7 @@ package mouse
 
 import (
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
+    "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
 
     "github.com/hajimehoshi/ebiten/v2"
@@ -44,6 +45,8 @@ func (mouse *GlobalMouse) SetImageFunc(imageFunc func (*ebiten.Image, *ebiten.Dr
 func (mouse *GlobalMouse) Draw(screen *ebiten.Image) {
     if mouse != nil && mouse.Enabled {
         x, y := inputmanager.MousePosition()
+        // the cursor is drawn on the real screen, outside of any black bars
+        x += display.ContentOffsetX()
         mouse.Options.GeoM.Reset()
         mouse.Options.GeoM.Translate(scale.Unscale(float64(x)), scale.Unscale(float64(y)))
         mouse.DrawFunc(screen, &mouse.Options)

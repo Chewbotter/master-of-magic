@@ -3,6 +3,8 @@ package inputmanager
 import (
     "log"
 
+    "github.com/kazzmir/master-of-magic/game/magic/display"
+
     "github.com/hajimehoshi/ebiten/v2"
     "github.com/hajimehoshi/ebiten/v2/inpututil"
 )
@@ -39,7 +41,7 @@ func (manager *InputManager) Update() {
     manager.rightClick = false
 
     if manager.lastTouchX == 0 && manager.lastTouchY == 0 {
-        manager.mouseX, manager.mouseY = ebiten.CursorPosition()
+        manager.mouseX, manager.mouseY = display.CursorPosition()
     }
 
     if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
@@ -57,7 +59,7 @@ func (manager *InputManager) Update() {
     pressedTouchIds := inpututil.AppendJustPressedTouchIDs(nil)
     if len(pressedTouchIds) > 0 {
         touchId := pressedTouchIds[0]
-        manager.lastTouchX, manager.lastTouchY = ebiten.TouchPosition(touchId)
+        manager.lastTouchX, manager.lastTouchY = display.AdjustPosition(ebiten.TouchPosition(touchId))
         manager.touchStartTime = manager.Counter
     }
 

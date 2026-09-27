@@ -14,6 +14,7 @@ import (
     "github.com/kazzmir/master-of-magic/lib/functional"
     "github.com/kazzmir/master-of-magic/game/magic/util"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
+    "github.com/kazzmir/master-of-magic/game/magic/display"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
@@ -304,7 +305,7 @@ func MakeCartographer(cache *lbx.LbxCache, cities []*citylib.City, stacks []*pla
         for !quit {
             counter += 1
 
-            mouseX, mouseY = ebiten.CursorPosition()
+            mouseX, mouseY = display.CursorPosition()
             mouseX, mouseY = scale.Unscale2(mouseX, mouseY)
 
             usePlane := data.PlaneArcanus

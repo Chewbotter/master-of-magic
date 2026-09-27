@@ -15,7 +15,7 @@ import (
     "compress/gzip"
     "encoding/json"
     "image"
-    // "image/color"
+    "image/color"
 
     // for trace/pprof
     "net/http"
@@ -27,6 +27,7 @@ import (
     */
 
     "github.com/kazzmir/master-of-magic/lib/lbx"
+    "github.com/kazzmir/master-of-magic/lib/font"
     "github.com/kazzmir/master-of-magic/lib/system"
     "github.com/kazzmir/master-of-magic/lib/coroutine"
     "github.com/kazzmir/master-of-magic/lib/fraction"
@@ -48,6 +49,7 @@ import (
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     mouselib "github.com/kazzmir/master-of-magic/lib/mouse"
     "github.com/kazzmir/master-of-magic/game/magic/mainview"
+    "github.com/kazzmir/master-of-magic/game/magic/display"
     gamelib "github.com/kazzmir/master-of-magic/game/magic/game"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
@@ -93,11 +95,20 @@ type MagicGame struct {
     Music *musiclib.Music
 
     Config GameConfig
+
+    // screens without a widescreen layout are drawn here first
+    Canvas *ebiten.Image
+
+    // font for the frames per second counter, loaded once the data is available
+    FPSFont *font.Font
 }
 
 func randomChoose[T any](choices... T) T {
     return choices[rand.N(len(choices))]
 }
+
+// true: play the animated intro before the main menu. false: go straight to the main menu
+const PlayIntroOnStartup = false
 
 func runIntro(yield coroutine.YieldFunc, game *MagicGame) {
     mouse.Mouse.Disable()
@@ -342,7 +353,10 @@ func initializePlayer(game *gamelib.Game, wizard setup.WizardCustom, isHuman boo
     player.LiftFog(cityX, cityY, 3, introCity.Plane)
 
     if isHuman {
-        game.Events <- gamelib.StartingCityEvent(introCity)
+        // a frame capture wants the plain world map, not the city naming prompt
+        if capture.Path == "" || capture.CityPrompt {
+            game.Events <- gamelib.StartingCityEvent(introCity)
+        }
         game.Camera.Center(cityX, cityY)
         game.Model.Plane = startingPlane
     }
@@ -513,7 +527,55 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
         game.Draw(screen)
     }
 
+    // the world map is the one screen that fills a wide picture by itself
+    display.WideContent = func() bool {
+        return game.IsWideOverland()
+    }
+    defer func() {
+        display.WideContent = nil
+    }()
+
     game.RefreshUI()
+
+    if capture.Zoom > 0 {
+        // development: capture the world map at a given zoom level
+        game.Camera.Zoom = capture.Zoom
+        game.Camera.AnimatedZoom = capture.ZoomAnimation
+    }
+
+    if capture.RevealAll {
+        gamelib.DebugRevealAll = true
+    }
+
+    // these wait until the start of game events have settled, which rebuild the hud and center the camera
+    capture.Later = func() {
+        if capture.PanX != 0 || capture.PanY != 0 {
+            before := fmt.Sprintf("%.3f, %.3f", game.Camera.GetOffsetX(), game.Camera.GetOffsetY())
+            game.PanBy(capture.PanX, capture.PanY)
+            log.Printf("capture pan %v,%v: camera from %v to %.3f, %.3f", capture.PanX, capture.PanY, before, game.Camera.GetOffsetX(), game.Camera.GetOffsetY())
+        }
+
+        if capture.DebugMenu {
+            game.HudUI.AddElements(game.DebugMenuForCapture())
+        }
+    }
+
+    if capture.NoSelection {
+        // development: no unit selected, so the panel shows the income pictures
+        humanPlayer := game.Model.GetHumanPlayer()
+        if humanPlayer != nil {
+            humanPlayer.SelectedStack = nil
+        }
+        game.RefreshUI()
+    }
+
+    if capture.Popup {
+        // development: open the game menu so the capture shows a popup over the world map
+        select {
+            case game.Events <- &gamelib.GameEventGameMenu{}:
+            default:
+        }
+    }
 
     /*
     runtime.AddCleanup(game, func(x int){
@@ -898,10 +960,12 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
     }
 
     if config.LoadSave == "" {
-        game.Music.PlaySong(musiclib.SongIntro)
-        runIntro(yield, game)
+        if PlayIntroOnStartup {
+            game.Music.PlaySong(musiclib.SongIntro)
+            runIntro(yield, game)
 
-        yield()
+            yield()
+        }
 
         game.Music.PlaySong(musiclib.SongTitle)
     }
@@ -1024,17 +1088,41 @@ func (game *MagicGame) Update() error {
 }
 
 func (game *MagicGame) Layout(outsideWidth int, outsideHeight int) (int, int) {
-    return scale.Scale2(data.ScreenWidth, data.ScreenHeight)
+    return scale.Scale2(display.UpdateLayout(outsideWidth, outsideHeight), data.ScreenHeight)
 }
 
 func (game *MagicGame) Draw(screen *ebiten.Image) {
     // screen.Fill(color.RGBA{0x80, 0xa0, 0xc0, 0xff})
 
+    // solid black underneath everything, this is what the bars are made of
+    screen.Fill(color.RGBA{R: 0, G: 0, B: 0, A: 0xff})
+
     if game.Drawer != nil {
-        game.Drawer(screen)
+        offsetX := display.ContentOffsetX()
+        if offsetX > 0 {
+            // a screen without a widescreen layout: draw it at its original size in the middle, black bars on both sides
+            width, height := scale.Scale2(data.ScreenWidth, data.ScreenHeight)
+            if game.Canvas == nil || game.Canvas.Bounds().Dx() != width || game.Canvas.Bounds().Dy() != height {
+                game.Canvas = ebiten.NewImage(width, height)
+            }
+            game.Canvas.Clear()
+            game.Drawer(game.Canvas)
+
+            var options ebiten.DrawImageOptions
+            options.GeoM.Translate(float64(offsetX), 0)
+            screen.DrawImage(game.Canvas, &options)
+        } else {
+            game.Drawer(screen)
+        }
     }
 
+    game.drawFPS(screen)
+
     mouse.Mouse.Draw(screen)
+
+    if capture.Update(screen) {
+        game.MainCoroutine.Stop()
+    }
 }
 
 func loadGameConfigFromFile(path string) GameConfig {
@@ -1084,9 +1172,28 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&trainMode, "train", false, "train the AI in watch mode. model weights are saved as ai.json")
     flag.StringVar(&aiMode, "ai", "", "select ai mode. 'default', 'enemy2', 'net'")
     flag.StringVar(&config, "config", "", "path to config file (yaml or ini)")
+    flag.StringVar(&capture.Path, "capture", "", "development: write one frame to this png file and exit")
+    flag.IntVar(&capture.Frames, "capture-frames", 120, "development: frames to draw before the capture")
+    flag.BoolVar(&capture.RevealAll, "capture-reveal-all", false, "development: turn on the Reveal All debug option")
+    flag.BoolVar(&capture.DebugMenu, "capture-debug-menu", false, "development: open the debug menu")
+    flag.IntVar(&capture.PanX, "capture-pan-x", 0, "development: pan the map this many screen pixels to the right before the capture")
+    flag.IntVar(&capture.PanY, "capture-pan-y", 0, "development: pan the map this many screen pixels down before the capture")
+    flag.BoolVar(&capture.CityPrompt, "capture-city-prompt", false, "development: keep the starting city name prompt in the capture")
+    flag.BoolVar(&capture.NoSelection, "capture-no-selection", false, "development: no unit selected in the capture")
+    flag.BoolVar(&capture.Popup, "capture-popup", false, "development: open the game menu over the world map before the capture")
+    flag.IntVar(&capture.Zoom, "capture-zoom", 0, "development: world map zoom level for the capture, 2 to 12")
+    flag.IntVar(&display.CornerWidthOverride, "capture-window-width", 0, "development: width of the corner window in pixels, its height is 200")
+    flag.Float64Var(&capture.ZoomAnimation, "capture-zoom-animation", 0, "development: freeze the zoom animation at this offset, -1 to 1")
+    flag.BoolVar(&capture.Corner, "corner", false, "development: small window in the lower right corner of the screen. implied by -capture")
+    var nearest bool
+    flag.BoolVar(&nearest, "capture-nearest", false, "development: draw the world map zoom the original way")
     flag.Parse()
 
     out := DefaultGameConfig()
+
+    if nearest {
+        gamelib.OverworldCleanZoom = false
+    }
 
     if config != "" {
         out = loadGameConfigFromFile(config)
@@ -1120,7 +1227,16 @@ func main() {
         }()
     }
 
-    ebiten.SetWindowSize(data.ScreenWidth * 4, data.ScreenHeight * 4)
+    developmentRun := capture.Corner || capture.Path != ""
+    if developmentRun {
+        display.SettingsFile = display.DevelopmentSettingsFile
+    }
+
+    display.Load().Apply()
+    if developmentRun {
+        // development runs stay out of the way. a normal launch is centered
+        display.PlaceInCorner()
+    }
     ebiten.SetWindowTitle("magic")
     ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
     ebiten.SetWindowClosingHandled(true)

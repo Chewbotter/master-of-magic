@@ -11,6 +11,7 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/util"
     "github.com/kazzmir/master-of-magic/game/magic/audio"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
+    "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
     "github.com/kazzmir/master-of-magic/lib/lbx"
     "github.com/kazzmir/master-of-magic/lib/font"
@@ -184,6 +185,8 @@ type UI struct {
     Draw func(*UI, *ebiten.Image)
     HandleKeys UIKeyFunc
     Counter uint64
+    // optional. converts the cursor from real screen pixels to the position this ui's elements were built for
+    CursorTransform func(x int, y int) (int, int)
 
     focusedElement *UIElement
     lastTouchX int
@@ -551,7 +554,7 @@ func (ui *UI) StandardUpdate() {
     leftClickReleased := inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft)
     rightClick := inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight)
 
-    mouseX, mouseY := ebiten.CursorPosition()
+    mouseX, mouseY := display.CursorPosition()
 
     /*
     touchIds := inpututil.AppendJustPressedTouchIDs(nil)
@@ -565,7 +568,7 @@ func (ui *UI) StandardUpdate() {
     pressedTouchIds := inpututil.AppendJustPressedTouchIDs(nil)
     if len(pressedTouchIds) > 0 {
         touchId := pressedTouchIds[0]
-        ui.lastTouchX, ui.lastTouchY = ebiten.TouchPosition(touchId)
+        ui.lastTouchX, ui.lastTouchY = display.AdjustPosition(ebiten.TouchPosition(touchId))
         ui.touchStartTime = ui.Counter
     }
 
@@ -618,6 +621,10 @@ func (ui *UI) StandardUpdate() {
     elementLeftClicked := false
 
     wheelX, wheelY := inputmanager.Wheel()
+
+    if ui.CursorTransform != nil {
+        mouseX, mouseY = ui.CursorTransform(mouseX, mouseY)
+    }
 
     mouseX, mouseY = scale.Unscale2(mouseX, mouseY)
 

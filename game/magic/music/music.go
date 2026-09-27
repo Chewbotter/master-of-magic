@@ -197,7 +197,7 @@ func MakeMusic(cache *lbx.LbxCache) *Music {
         Cache: cache,
         XmiCache: make(map[Song]*smf.SMF),
         Enabled: true,
-        volume: 1.0,
+        volume: DefaultVolume,
     }
 }
 

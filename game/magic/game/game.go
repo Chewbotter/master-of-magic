@@ -1112,15 +1112,18 @@ func (game *Game) doInput(yield coroutine.YieldFunc, title string, name string, 
         Draw: func(ui *uilib.UI, screen *ebiten.Image){
             ui.StandardDraw(screen)
         },
+        // centered over the wide world map, see wide.go
+        CursorTransform: game.overlayCursorTransform,
     }
     ui.SetElementsFromArray(nil)
 
     oldDrawer := game.LastDrawer()
     game.PushDrawer(func (screen *ebiten.Image){
         oldDrawer(screen)
-        ui.Draw(ui, screen)
+        game.drawOverlayUI(ui, screen)
     })
     defer game.PopDrawer()
+    defer game.markOverlayDrawer()()
 
     input := &uilib.UIElement{
         TextEntry: func(element *uilib.UIElement, text string) string {
@@ -1698,7 +1701,7 @@ type SettingsUI struct {
 }
 
 func (settings *SettingsUI) RunSettingsUI() {
-    group, quit := settingslib.MakeSettingsUI(settings.Yield, settings.Game.HudUI, settings.Game.Cache, &settings.Game.ImageCache, settings.Game.Settings, settings.Game.Music)
+    group, quit, _ := settingslib.MakeOptionsUI(settings.Yield, settings.Game.HudUI, settings.Game.Cache, &settings.Game.ImageCache, settings.Game.Settings, settings.Game.Music)
     settings.Game.doRunUI(settings.Yield, group, quit)
 }
 
@@ -3390,7 +3393,7 @@ func (game *Game) doInputZoom(yield coroutine.YieldFunc) bool {
 
         if wheelY > 0 {
             oldZoom := game.Camera.Zoom
-            game.Camera.Zoom = min(game.Camera.Zoom + 1, camera.ZoomMax)
+            game.Camera.Zoom = min(game.Camera.Zoom + camera.ZoomStep, camera.ZoomMax)
             game.Camera.AnimatedZoom = float64(oldZoom - game.Camera.Zoom)
 
             if oldZoom != game.Camera.Zoom {
@@ -3402,7 +3405,7 @@ func (game *Game) doInputZoom(yield coroutine.YieldFunc) bool {
                 */
 
                 for i := 0; i < 90; i += zoomSpeed2 {
-                    game.Camera.AnimatedZoom = math.Sin(float64(i) * math.Pi / 180.0) - 1
+                    game.Camera.AnimatedZoom = float64(oldZoom - game.Camera.Zoom) * (1 - math.Sin(float64(i) * math.Pi / 180.0))
                     game.Counter += 1
                     yield()
 
@@ -3419,7 +3422,7 @@ func (game *Game) doInputZoom(yield coroutine.YieldFunc) bool {
             return true
         } else if wheelY < 0 {
             oldZoom := game.Camera.Zoom
-            game.Camera.Zoom = max(game.Camera.Zoom - 1, camera.ZoomMin)
+            game.Camera.Zoom = max(game.Camera.Zoom - camera.ZoomStep, camera.ZoomMin)
             game.Camera.AnimatedZoom = float64(oldZoom - game.Camera.Zoom)
 
             if oldZoom != game.Camera.Zoom {
@@ -3431,7 +3434,7 @@ func (game *Game) doInputZoom(yield coroutine.YieldFunc) bool {
                 */
 
                 for i := 0; i < 90; i += zoomSpeed2 {
-                    game.Camera.AnimatedZoom = 1.0 - math.Sin(float64(i) * math.Pi / 180.0)
+                    game.Camera.AnimatedZoom = float64(oldZoom - game.Camera.Zoom) * (1 - math.Sin(float64(i) * math.Pi / 180.0))
                     game.Counter += 1
                     yield()
 
@@ -3857,7 +3860,7 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
 
 // given a position on the screen in pixels, return true if the position is within the area of the ui designated for the overworld
 func (game *Game) InOverworldArea(x int, y int) bool {
-    scaledX, scaledY := scale.Scale2(240, 18)
+    scaledX, scaledY := scale.Scale2(game.OverworldWidth(), OverworldAreaTop)
     return x < scaledX && y > scaledY
 }
 
@@ -3869,6 +3872,8 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
 
     zoomed := game.doInputZoom(yield)
     _ = zoomed
+
+    game.doInputPan()
 
     mouseX, mouseY := inputmanager.MousePosition()
     leftClick := inputmanager.LeftClick()
@@ -4068,6 +4073,8 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
 func (game *Game) DoViewInput(yield coroutine.YieldFunc) {
     zoomed := game.doInputZoom(yield)
     _ = zoomed
+
+    game.doInputPan()
 
     rightClick := inputmanager.RightClick()
 
@@ -6151,12 +6158,9 @@ func (game *Game) MakeHudUI() *uilib.UI {
     ui := &uilib.UI{
         Cache: game.Cache,
         Draw: func(ui *uilib.UI, screen *ebiten.Image){
-            var options ebiten.DrawImageOptions
-            mainHud, _ := game.ImageCache.GetImage("main.lbx", 0, 0)
-            scale.DrawScaled(screen, mainHud, &options)
-
-            ui.StandardDraw(screen)
+            game.drawHud(ui, screen)
         },
+        CursorTransform: game.hudCursorTransform,
         HandleKeys: func(keys []ebiten.Key){
             player := game.Model.Players[game.Model.CurrentPlayer]
             if player.IsHuman() {
@@ -6947,27 +6951,25 @@ func (game *Game) MakeHudUI() *uilib.UI {
                     negative := options
                     negative.ColorScale = negativeScale
 
-                    negativeOptions := font.FontOptions{Justify: font.FontJustifyCenter, Options: &negative, Scale: scale.ScaleAmount,
-						DropShadow: true, ShadowColor: color.RGBA{128, 0, 0, 255}, ShadowDistance: 0.55}
-                    normalOptions := font.FontOptions{Justify: font.FontJustifyCenter, Options: &options, Scale: scale.ScaleAmount, 
-						DropShadow: true, ShadowColor: color.RGBA{80, 30, 0, 255}, ShadowDistance: 0.55}
+                    negativeOptions := font.FontOptions{Justify: font.FontJustifyCenter, Options: &negative, Scale: scale.ScaleAmount}
+                    normalOptions := font.FontOptions{Justify: font.FontJustifyCenter, Options: &options, Scale: scale.ScaleAmount}
 
                     if goldPerTurn < 0 {
-                        game.Fonts.InfoFontRed.PrintOptions(screen, 278, 103, negativeOptions, fmt.Sprintf("%v Gold", goldPerTurn))
+                        game.Fonts.InfoFontRed.PrintOutlined(screen, 278, 103, negativeOptions, PanelIncomeOutline, fmt.Sprintf("%v Gold", goldPerTurn))
                     } else {
-                        game.Fonts.InfoFontYellow.PrintOptions(screen, 278, 103, normalOptions, fmt.Sprintf("%v Gold", goldPerTurn))
+                        game.Fonts.InfoFontYellow.PrintOutlined(screen, 278, 103, normalOptions, PanelIncomeOutline, fmt.Sprintf("%v Gold", goldPerTurn))
                     }
 
                     if foodPerTurn < 0 {
-                        game.Fonts.InfoFontRed.PrintOptions(screen, 278, 135, negativeOptions, fmt.Sprintf("%v Food", foodPerTurn))
+                        game.Fonts.InfoFontRed.PrintOutlined(screen, 278, 135, negativeOptions, PanelIncomeOutline, fmt.Sprintf("%v Food", foodPerTurn))
                     } else {
-                        game.Fonts.InfoFontYellow.PrintOptions(screen, 278, 135, normalOptions, fmt.Sprintf("%v Food", foodPerTurn))
+                        game.Fonts.InfoFontYellow.PrintOutlined(screen, 278, 135, normalOptions, PanelIncomeOutline, fmt.Sprintf("%v Food", foodPerTurn))
                     }
 
                     if manaPerTurn < 0 {
-                        game.Fonts.InfoFontRed.PrintOptions(screen, 278, 167, negativeOptions, fmt.Sprintf("%v Mana", manaPerTurn))
+                        game.Fonts.InfoFontRed.PrintOutlined(screen, 278, 167, negativeOptions, PanelIncomeOutline, fmt.Sprintf("%v Mana", manaPerTurn))
                     } else {
-                        game.Fonts.InfoFontYellow.PrintOptions(screen, 278, 167, normalOptions, fmt.Sprintf("%v Mana", manaPerTurn))
+                        game.Fonts.InfoFontYellow.PrintOutlined(screen, 278, 167, normalOptions, PanelIncomeOutline, fmt.Sprintf("%v Mana", manaPerTurn))
                     }
 
                     if conjunction != "" {
@@ -7013,15 +7015,19 @@ func (game *Game) MakeHudUI() *uilib.UI {
 
     elements = append(elements, &uilib.UIElement{
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
-            game.Fonts.WhiteFont.PrintOptions(screen, 276, 68, font.FontOptions{Justify: font.FontJustifyRight, DropShadow: true, Scale: scale.ScaleAmount}, fmt.Sprintf("%v GP", game.Model.GetHumanPlayer().Gold))
+            game.Fonts.WhiteFont.PrintOutlined(screen, 276, 68, font.FontOptions{Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, PanelReserveOutline, fmt.Sprintf("%v GP", game.Model.GetHumanPlayer().Gold))
         },
     })
 
     elements = append(elements, &uilib.UIElement{
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
-            game.Fonts.WhiteFont.PrintOptions(screen, 314, 68, font.FontOptions{Justify: font.FontJustifyRight, DropShadow: true, Scale: scale.ScaleAmount}, fmt.Sprintf("%v MP", game.Model.GetHumanPlayer().Mana))
+            game.Fonts.WhiteFont.PrintOutlined(screen, 314, 68, font.FontOptions{Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, PanelReserveOutline, fmt.Sprintf("%v MP", game.Model.GetHumanPlayer().Mana))
         },
     })
+
+    if ShowDebugButton {
+        elements = append(elements, game.makeDebugButton())
+    }
 
     ui.SetElementsFromArray(elements)
 
@@ -8270,6 +8276,10 @@ func (overworld *Overworld) DrawMinimap(screen *ebiten.Image){
 
 // FIXME: pass in an UnscaledGeom here
 func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM){
+    // even pixels at every zoom level, see zoom.go
+    if overworld.drawCleanZoom(screen, geom) {
+        return
+    }
 
     screen.Fill(color.RGBA{R: 32, G: 32, B: 32, A: 0xff})
 
@@ -8504,6 +8514,7 @@ func (game *Game) Draw(screen *ebiten.Image){
 }
 
 func (game *Game) DrawGame(screen *ebiten.Image){
+    game.updateCameraSize()
 
     var cities []*citylib.City
     var citiesMiniMap []maplib.MiniMapCity
@@ -8539,6 +8550,10 @@ func (game *Game) DrawGame(screen *ebiten.Image){
         }
     }
 
+    if DebugRevealAll {
+        fog = revealedFogFor(game.Model.CurrentMap().Width(), game.Model.CurrentMap().Height())
+    }
+
     useCounter := game.Counter
     /*
     if data.ScreenScale == 1 && game.Camera.GetZoom() < 0.9 {
@@ -8566,10 +8581,10 @@ func (game *Game) DrawGame(screen *ebiten.Image){
 
         game.WatchUI.Draw(game.WatchUI, screen)
     } else {
-        overworldScreen := screen.SubImage(image.Rect(0, scale.Scale(18), scale.Scale(240), scale.Scale(data.ScreenHeight))).(*ebiten.Image)
+        overworldScreen := screen.SubImage(image.Rect(0, scale.Scale(OverworldAreaTop), scale.Scale(game.OverworldWidth()), scale.Scale(data.ScreenHeight))).(*ebiten.Image)
         overworld.DrawOverworld(overworldScreen, ebiten.GeoM{})
 
-        mini := screen.SubImage(game.GetMinimapRect()).(*ebiten.Image)
+        mini := screen.SubImage(game.GetMinimapScreenRect()).(*ebiten.Image)
         if mini.Bounds().Dx() > 0 {
             overworld.DrawMinimap(mini)
         }

@@ -5,9 +5,12 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/data"
 )
 
-const ZoomMin = 2
+// only zoom levels where the art is a whole multiple of its size: 12, 8 and 4 (3x, 2x, 1x)
+const ZoomMin = 4
 const ZoomMax = 12
 const ZoomDefault = ZoomMax
+// how far one notch of the mouse wheel moves the zoom
+const ZoomStep = 4
 // const ZoomStep = 15
 
 type Camera struct {
@@ -80,7 +83,9 @@ func (camera *Camera) Center(x int, y int) {
 }
 
 func (camera *Camera) GetTileBounds() (int, int, int, int) {
-    tilesHorizontal := data.ScreenWidth / (20.0 * float64(camera.GetAnimatedZoom()))
+    // the view is as wide as the original screen unless the camera covers more tiles than the original 12
+    viewWidth := max(float64(data.ScreenWidth), float64(camera.SizeX * 20 + 80))
+    tilesHorizontal := viewWidth / (20.0 * float64(camera.GetAnimatedZoom()))
     middleX := camera.GetOffsetX() + 2 // / camera.GetAnimatedZoom()
     minX := middleX - tilesHorizontal/2 - 0
 
