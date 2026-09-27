@@ -419,6 +419,8 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
     // page 1 would be left: unit spells 1-2, right: empty
 
     wrapWidth := float64(130)
+    // smaller description text, see textsize.go. wrapping follows the size the letters really come out at
+    descriptionSize := font.RelativeTextSize(scale.ScaleAmount, SpellDescriptionTextSize)
 
     spellDescriptionNormalCache := make(map[int]font.WrappedText)
 
@@ -428,7 +430,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
             return text
         }
 
-        wrapped := spellTextNormalFont.CreateWrappedText(wrapWidth, 1, spellDescriptions[index])
+        wrapped := spellTextNormalFont.CreateWrappedText(wrapWidth, descriptionSize, spellDescriptions[index])
         spellDescriptionNormalCache[index] = wrapped
         return wrapped
     }
@@ -441,7 +443,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
             return text
         }
 
-        wrapped := spellTextAlienFont.CreateWrappedText(wrapWidth, 1, spellDescriptions[index])
+        wrapped := spellTextAlienFont.CreateWrappedText(wrapWidth, descriptionSize, spellDescriptions[index])
         spellDescriptionAlienCache[index] = wrapped
         return wrapped
     }
@@ -616,7 +618,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
                     }
 
                     wrapped := getSpellDescriptionNormalText(spell.Index)
-                    spellTextNormalFont.RenderWrapped(pageImage, x, y, wrapped, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions})
+                    spellTextNormalFont.RenderWrapped(pageImage, x, y, wrapped, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions, TextSize: SpellDescriptionTextSize})
 
                     if !flipping && learnedSpell.Name == spell.Name && !learnSpellAnimation.Done() {
                         animationOptions := options
@@ -628,7 +630,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
                 } else {
                     spellTitleAlienFont.PrintOptions(pageImage, x, y, font.FontOptions{Scale: scale.ScaleAmount, Options: &options}, spell.Name)
                     wrapped := getSpellDescriptionAlienText(spell.Index)
-                    spellTextAlienFont.RenderWrapped(pageImage, x, y + float64(10), wrapped, font.FontOptions{Scale: scale.ScaleAmount, Options: &options})
+                    spellTextAlienFont.RenderWrapped(pageImage, x, y + float64(10), wrapped, font.FontOptions{Scale: scale.ScaleAmount, Options: &options, TextSize: SpellDescriptionTextSize})
                 }
             }
         }

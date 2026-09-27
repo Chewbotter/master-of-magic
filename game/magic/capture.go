@@ -98,7 +98,7 @@ func (capture *frameCapture) laterFrames() int {
     if capture.Drag > 0 {
         return capture.Drag + CaptureCoastFrames
     }
-    if capture.NextTurn || capture.Walk != "" || capture.Screen == "nextunit" {
+    if capture.NextTurn || capture.Walk != "" || capture.Screen == "nextunit" || capture.Screen == "research" {
         return CaptureNextTurnFrames
     }
     return CaptureLaterFrames

@@ -32,6 +32,8 @@ type FontOptions struct {
     // if nil then the default options are used (no scaling, no color scaling)
     Options *ebiten.DrawImageOptions
     Scale float64
+    // letters smaller than the art, 0.5 is about half size. 0 or 1 is full size. see textsize.go
+    TextSize float64
 }
 
 type Font struct {
@@ -325,6 +327,8 @@ func (font *Font) PrintOptions(image *ebiten.Image, x float64, y float64, option
     }
 
     useX, useY := x * scale, y * scale
+    // the position is in art pixels, the letters may be smaller than the art
+    scale = glyphScale(scale, options.TextSize)
 
     switch options.Justify {
         case FontJustifyLeft:
@@ -396,7 +400,8 @@ func (font *Font) RenderWrapped(image *ebiten.Image, x float64, y float64, wrapp
     yPos := y
     for _, line := range wrapped.Lines {
         font.PrintOptions(image, x, yPos, options, line)
-        yPos += float64(font.Height()) + 1
+        // smaller letters get closer lines, see textsize.go
+        yPos += (float64(font.Height()) + 1) * options.relativeSize()
     }
 }
 

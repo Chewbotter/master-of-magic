@@ -40,6 +40,7 @@ func (font *Font) PrintOutlined(destination *ebiten.Image, x float64, y float64,
     }
 
     useX, useY := x * scale, y * scale
+    scale = glyphScale(scale, options.TextSize)
 
     switch options.Justify {
         case FontJustifyLeft:

@@ -95,6 +95,11 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
 - At the native draw scale every drawn camera position is rounded to whole screen pixels (`roundToPixel` in pan.go), moves included.
 - Dev: `-capture-camera-move dx,dy` moves the camera like a right click and logs every frame.
 
+## Text size law
+- Text only ever gets SMALLER than the art, never bigger, and only case by case (user decision 2026-09-27). `FontOptions.TextSize` (0.5 is about half) shrinks the letters while positions stay in art pixels; the glyph scale is rounded to whole screen pixels so letters stay sharp (`lib/font/textsize.go`): half size is 4 of 7 at the user's scale. `RenderWrapped` spaces lines by the size; wrapping must pass `font.RelativeTextSize(scale.ScaleAmount, size)` to `CreateWrappedText`. `PrintOutlined` honors it too.
+- In use: research spellbook descriptions at 0.5 (`spellbook/textsize.go`), which stopped long descriptions running into the next spell's name. Title screen and everything else stay full size.
+- Dev: `-capture-screen research` opens the research spellbook a second into the capture.
+
 ## Control type
 - Settings has Controls: Modern (default) or Classic, saved in the settings file as `control-type` (`game/magic/display/controls.go`). Classic is the original game's controls and stays untouched. New control behavior goes behind `display.ModernControls()`.
 - Additions made before the toggle existed (middle mouse pan and glide, eased camera moves, panel text, debug button) are in both schemes for now; the user has not said whether Classic should drop them.

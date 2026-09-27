@@ -10,7 +10,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit"}
+var CaptureScreenNames = []string{"armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -63,6 +63,17 @@ func (game *Game) CaptureOpenScreen(name string) bool {
             }
             game.DoNextUnit(player)
             return true
+        case "research":
+            // the spellbook for choosing new research, with spell descriptions
+            player := game.Model.GetHumanPlayer()
+            if player == nil {
+                return false
+            }
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    game.ResearchNewSpell(yield, player)
+                },
+            }
         case "blink":
             // the red flash of an invalid move
             event = &GameEventInvokeRoutine{
