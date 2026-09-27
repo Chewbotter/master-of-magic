@@ -36,8 +36,9 @@ func (game *MagicGame) drawFPS(screen *ebiten.Image) {
         }
     }
 
-    // the right edge of the real screen, outside of any black bars
-    x := float64(display.LogicalWidth() - FPSMarginX)
+    // the right edge of the picture, which may sit inside margins in the window
+    x := float64(display.LogicalWidth() - FPSMarginX) + float64(display.PictureX()) / scale.ScaleAmount
+    y := float64(FPSMarginY) + float64(display.ContentOffsetY()) / scale.ScaleAmount
     text := fmt.Sprintf("%.0f FPS", ebiten.ActualFPS())
-    game.FPSFont.PrintOptions(screen, x, FPSMarginY, font.FontOptions{DropShadow: true, Scale: scale.ScaleAmount, Justify: font.FontJustifyRight}, text)
+    game.FPSFont.PrintOptions(screen, x, y, font.FontOptions{DropShadow: true, Scale: scale.ScaleAmount, Justify: font.FontJustifyRight}, text)
 }

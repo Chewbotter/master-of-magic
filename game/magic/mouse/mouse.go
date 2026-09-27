@@ -45,8 +45,16 @@ func (mouse *GlobalMouse) SetImageFunc(imageFunc func (*ebiten.Image, *ebiten.Dr
 func (mouse *GlobalMouse) Draw(screen *ebiten.Image) {
     if mouse != nil && mouse.Enabled {
         x, y := inputmanager.MousePosition()
+        if SmoothPosition != nil {
+            // gliding in step with the world map, see smooth.go
+            if smoothX, smoothY, ok := SmoothPosition(x, y); ok {
+                mouse.drawBetweenPixels(screen, smoothX + float64(display.ContentOffsetX()), smoothY + float64(display.ContentOffsetY()))
+                return
+            }
+        }
         // the cursor is drawn on the real screen, outside of any black bars
         x += display.ContentOffsetX()
+        y += display.ContentOffsetY()
         mouse.Options.GeoM.Reset()
         mouse.Options.GeoM.Translate(scale.Unscale(float64(x)), scale.Unscale(float64(y)))
         mouse.DrawFunc(screen, &mouse.Options)

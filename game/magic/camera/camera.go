@@ -5,12 +5,11 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/data"
 )
 
-// only zoom levels where the art is a whole multiple of its size: 12, 8 and 4 (3x, 2x, 1x)
-const ZoomMin = 4
-const ZoomMax = 12
+// the camera shows the art at Zoom / ZoomMax of the draw scale. 2520 divides evenly by every draw
+// scale from 1 to 10, so every whole number of screen pixels per art pixel is a whole Zoom.
+// the levels the mouse wheel steps through are in levels.go
+const ZoomMax = 2520
 const ZoomDefault = ZoomMax
-// how far one notch of the mouse wheel moves the zoom
-const ZoomStep = 4
 // const ZoomStep = 15
 
 type Camera struct {
@@ -104,7 +103,9 @@ func (camera *Camera) GetTileBounds() (int, int, int, int) {
     maxY += -10 * (camera.GetAnimatedZoom() - 1)
 
     // +1 here is a hack
-    return int(minX), int(minY), int(maxX), int(maxY + 1)
+    // floor, not int(): past column 0 the view is at negative columns, and int() rounds those
+    // toward zero, which skipped the leftmost column and showed the background there
+    return int(math.Floor(minX)), int(math.Floor(minY)), int(maxX), int(maxY + 1)
 }
 
 // return the bounds of a rectangle upper left (x1, y1) and lower right (x2, y2)

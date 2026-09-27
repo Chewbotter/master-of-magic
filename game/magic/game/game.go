@@ -3393,7 +3393,7 @@ func (game *Game) doInputZoom(yield coroutine.YieldFunc) bool {
 
         if wheelY > 0 {
             oldZoom := game.Camera.Zoom
-            game.Camera.Zoom = min(game.Camera.Zoom + camera.ZoomStep, camera.ZoomMax)
+            game.Camera.Zoom = camera.NextZoom(game.Camera.Zoom, scale.ScaleAmount, 1)
             game.Camera.AnimatedZoom = float64(oldZoom - game.Camera.Zoom)
 
             if oldZoom != game.Camera.Zoom {
@@ -3422,7 +3422,7 @@ func (game *Game) doInputZoom(yield coroutine.YieldFunc) bool {
             return true
         } else if wheelY < 0 {
             oldZoom := game.Camera.Zoom
-            game.Camera.Zoom = max(game.Camera.Zoom - camera.ZoomStep, camera.ZoomMin)
+            game.Camera.Zoom = camera.NextZoom(game.Camera.Zoom, scale.ScaleAmount, -1)
             game.Camera.AnimatedZoom = float64(oldZoom - game.Camera.Zoom)
 
             if oldZoom != game.Camera.Zoom {
@@ -3456,6 +3456,8 @@ func (game *Game) doInputZoom(yield coroutine.YieldFunc) bool {
 
 func (game *Game) doMoveCamera(yield coroutine.YieldFunc, x int, y int) {
     camera := game.Camera
+    // the limits are worked out for the target tile itself, not for where a pan left the camera
+    camera.SetOffset(0, 0)
 
     camera.Center(x, y)
     minY := math.Floor(-1 / camera.GetZoom())
@@ -3479,25 +3481,8 @@ func (game *Game) doMoveCamera(yield coroutine.YieldFunc, x int, y int) {
         y = game.Model.CurrentMap().Height()
     }
 
-    dx := game.Model.CurrentMap().XDistance(game.Camera.GetX(), x)
-    dy := y - game.Camera.GetY()
-    length := math.Sqrt(float64(dx * dx + dy * dy))
-
-    angle := math.Atan2(float64(dy), float64(dx))
-    angle_cos := math.Cos(angle)
-    angle_sin := math.Sin(angle)
-
-    steps := 10
-
-    for i := range steps {
-        value := float64(i) / float64(steps) * math.Pi / 2
-        magnitude := length * math.Sin(value)
-        game.Camera.SetOffset(angle_cos * magnitude, angle_sin * magnitude)
-        yield()
-    }
-
-    game.Camera.SetOffset(0, 0)
-    game.Camera.Center(game.Model.CurrentMap().WrapX(x), y)
+    // starts where the map is drawn and eases in and out, see cameramove.go
+    game.animateCameraTo(yield, x, y)
 }
 
 func (game *Game) ResolveStackAt(x int, y int, plane data.Plane) {
@@ -4232,6 +4217,8 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
             options.ColorScale.ScaleAlpha(getAlpha())
             game.Fonts.WhiteFont.PrintOptions(screen, 40, 30, font.FontOptions{DropShadow: true, Scale: scale.ScaleAmount, Options: &options}, fmt.Sprintf("AI thinking %v...", thinkingCounter / 60))
         })
+        // a label over the world map, not a screen of its own: the map stays wide, see wide.go
+        game.markOverlayDrawer()
 
         for !done {
             game.Counter += 1
@@ -8486,6 +8473,9 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
 // do not invoke the returned function after popping the drawer
 func (game *Game) PushDrawer(drawer func(screen *ebiten.Image)) func (func(screen *ebiten.Image)) {
     game.Drawers = append(game.Drawers, drawer)
+    // a new layer is a full screen until marked as a popup, and remember who pushed it. see wide.go
+    game.clearOverlayMark()
+    game.noteDrawerPush()
     index := len(game.Drawers) - 1
     return func(newDrawer func(screen *ebiten.Image)) {
         game.Drawers[index] = newDrawer
@@ -8562,7 +8552,8 @@ func (game *Game) DrawGame(screen *ebiten.Image){
     */
 
     overworld := Overworld{
-        Camera: game.Camera,
+        // the gliding view while a pan settles, see pan.go
+        Camera: game.displayCamera(),
         Counter: useCounter,
         Map: game.Model.CurrentMap(),
         Cities: cities,

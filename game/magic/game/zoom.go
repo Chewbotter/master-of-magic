@@ -23,6 +23,8 @@ var OverworldCleanZoom = true
 const ZoomCanvasMargin = 2
 // scales closer than this to a whole multiple are treated as whole
 const ZoomWholeTolerance = 1e-6
+// camera positions closer than this to a whole screen pixel are drawn directly, in screen pixels
+const ZoomSubpixelTolerance = 0.01
 
 var zoomCanvas *ebiten.Image
 var drawingZoomCanvas bool
@@ -36,7 +38,13 @@ func getZoomCanvas(width int, height int) *ebiten.Image {
     return zoomCanvas.SubImage(image.Rect(0, 0, width, height)).(*ebiten.Image)
 }
 
-// draws the world map through the canvas when the zoom level is not a whole multiple.
+// how far a value is from the nearest whole number
+func offWhole(value float64) float64 {
+    return math.Abs(value - math.Round(value))
+}
+
+// draws the world map through the canvas when the zoom level is not a whole multiple, or when the
+// camera is between two screen pixels (while the view glides after a pan, see pan.go).
 // returns false when the map should be drawn directly
 func (overworld *Overworld) drawCleanZoom(screen *ebiten.Image, geom ebiten.GeoM) bool {
     if !OverworldCleanZoom || drawingZoomCanvas {
@@ -48,14 +56,41 @@ func (overworld *Overworld) drawCleanZoom(screen *ebiten.Image, geom ebiten.GeoM
         return false
     }
 
+    tileWidth := float64(overworld.Map.TileWidth())
+    tileHeight := float64(overworld.Map.TileHeight())
+
     target := scale.ScaleAmount * zoom
-    if math.Abs(target - math.Round(target)) < ZoomWholeTolerance {
+    wholeZoom := offWhole(target) < ZoomWholeTolerance
+
+    // where the map starts, in screen pixels
+    screenX := overworld.Camera.GetZoomedX() * tileWidth * target
+    screenY := overworld.Camera.GetZoomedY() * tileHeight * target
+    betweenPixels := offWhole(screenX) > ZoomSubpixelTolerance || offWhole(screenY) > ZoomSubpixelTolerance
+
+    if wholeZoom && !betweenPixels {
         return false
     }
 
     whole := max(1, math.Ceil(target))
+    if wholeZoom {
+        whole = math.Round(target)
+    }
     // how much larger the canvas is than the screen, between 1 and 2
     ratio := whole / target
+
+    // draw the map on whole canvas pixels, and move it by the leftover fraction when the canvas
+    // is put on the screen. the smooth filter spreads that fraction over neighboring pixels
+    canvasX := overworld.Camera.GetZoomedX() * tileWidth * whole
+    canvasY := overworld.Camera.GetZoomedY() * tileHeight * whole
+    fractionX := canvasX - math.Floor(canvasX)
+    fractionY := canvasY - math.Floor(canvasY)
+
+    oldCamera := overworld.Camera
+    overworld.Camera.DX -= fractionX / (tileWidth * whole)
+    overworld.Camera.DY -= fractionY / (tileHeight * whole)
+    defer func() {
+        overworld.Camera = oldCamera
+    }()
 
     bounds := screen.Bounds()
     margin := float64(ZoomCanvasMargin)
@@ -78,7 +113,8 @@ func (overworld *Overworld) drawCleanZoom(screen *ebiten.Image, geom ebiten.GeoM
     scale.UpdateScale(oldScale)
 
     var options ebiten.DrawImageOptions
-    options.GeoM.Translate(-margin, -margin)
+    // the camera was moved back by the fraction, so the map sits that much too far right and down
+    options.GeoM.Translate(-margin - fractionX, -margin - fractionY)
     options.GeoM.Scale(1 / ratio, 1 / ratio)
     options.Filter = ebiten.FilterLinear
     screen.DrawImage(canvas, &options)

@@ -50,6 +50,7 @@ import (
     mouselib "github.com/kazzmir/master-of-magic/lib/mouse"
     "github.com/kazzmir/master-of-magic/game/magic/mainview"
     "github.com/kazzmir/master-of-magic/game/magic/display"
+    "github.com/kazzmir/master-of-magic/game/magic/camera"
     gamelib "github.com/kazzmir/master-of-magic/game/magic/game"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
@@ -539,8 +540,8 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
 
     if capture.Zoom > 0 {
         // development: capture the world map at a given zoom level
-        game.Camera.Zoom = capture.Zoom
-        game.Camera.AnimatedZoom = capture.ZoomAnimation
+        game.Camera.Zoom = camera.ZoomForPixels(float64(capture.Zoom), scale.ScaleAmount)
+        game.Camera.AnimatedZoom = capture.ZoomAnimation * float64(camera.ZoomMax) / scale.ScaleAmount
     }
 
     if capture.RevealAll {
@@ -548,15 +549,67 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
     }
 
     // these wait until the start of game events have settled, which rebuild the hud and center the camera
-    capture.Later = func() {
+    if capture.TraceWide {
+        capture.Describe = game.DescribeDrawers
+    }
+
+    if capture.PanX != 0 || capture.PanY != 0 || capture.DebugMenu || capture.Screen != "" || capture.CameraX >= 0 || capture.NextTurn || capture.CameraMove != "" {
+      capture.Later = func() {
+        if capture.NextTurn {
+            select {
+                case game.Events <- &gamelib.GameEventNextTurn{}:
+                default:
+            }
+        }
+        if capture.CameraX >= 0 {
+            game.CaptureSetCameraX(capture.CameraX)
+        }
+        if capture.CameraMove != "" {
+            var moveX, moveY int
+            fmt.Sscanf(capture.CameraMove, "%d,%d", &moveX, &moveY)
+            startX, startY := game.Camera.GetOffsetX(), game.Camera.GetOffsetY()
+            gamelib.CameraMoveTrace = func(x float64, y float64) {
+                log.Printf("camera move: %.3f, %.3f", x, y)
+            }
+            log.Printf("camera move from %.3f, %.3f to tile %v, %v", startX, startY, game.Camera.GetX() + moveX, game.Camera.GetY() + moveY)
+            select {
+                case game.Events <- &gamelib.GameEventMoveCamera{Plane: game.Model.Plane, X: game.Camera.GetX() + moveX, Y: game.Camera.GetY() + moveY}:
+                default:
+            }
+        }
+        if capture.Screen != "" && !game.CaptureOpenScreen(capture.Screen) {
+            log.Printf("capture: unknown screen %v", capture.Screen)
+        }
         if capture.PanX != 0 || capture.PanY != 0 {
             before := fmt.Sprintf("%.3f, %.3f", game.Camera.GetOffsetX(), game.Camera.GetOffsetY())
-            game.PanBy(capture.PanX, capture.PanY)
+            game.PanBy(float64(capture.PanX), float64(capture.PanY))
             log.Printf("capture pan %v,%v: camera from %v to %.3f, %.3f", capture.PanX, capture.PanY, before, game.Camera.GetOffsetX(), game.Camera.GetOffsetY())
         }
 
         if capture.DebugMenu {
             game.HudUI.AddElements(game.DebugMenuForCapture())
+        }
+      }
+    }
+
+    if capture.CursorAt != "" {
+        // development: draw the cursor at a fixed position through the between pixels path
+        var cursorX, cursorY float64
+        fmt.Sscanf(capture.CursorAt, "%f,%f", &cursorX, &cursorY)
+        mouse.SmoothPosition = func(x int, y int) (float64, float64, bool) {
+            return cursorX, cursorY, true
+        }
+    }
+
+    if capture.Drag > 0 {
+        gamelib.PanTrace = true
+        capture.EachFrame = func(frame int) {
+            if frame <= capture.Drag {
+                game.SimulatePanStep(capture.DragSpeed, 0, true)
+            } else if frame == capture.Drag + 1 {
+                log.Printf("drag released")
+                game.SimulatePanStep(0, 0, false)
+            }
         }
     }
 
@@ -1069,6 +1122,7 @@ func NewMagicGame(config GameConfig) (*MagicGame, error) {
 }
 
 func (game *MagicGame) Update() error {
+    display.FinishStartup(capture.Corner || capture.Path != "")
     inputmanager.Update()
 
     if ebiten.IsWindowBeingClosed() {
@@ -1088,7 +1142,8 @@ func (game *MagicGame) Update() error {
 }
 
 func (game *MagicGame) Layout(outsideWidth int, outsideHeight int) (int, int) {
-    return scale.Scale2(display.UpdateLayout(outsideWidth, outsideHeight), data.ScreenHeight)
+    // draw at the window's real pixel size, see display/drawscale.go
+    return display.Layout(outsideWidth, outsideHeight)
 }
 
 func (game *MagicGame) Draw(screen *ebiten.Image) {
@@ -1099,9 +1154,15 @@ func (game *MagicGame) Draw(screen *ebiten.Image) {
 
     if game.Drawer != nil {
         offsetX := display.ContentOffsetX()
-        if offsetX > 0 {
-            // a screen without a widescreen layout: draw it at its original size in the middle, black bars on both sides
-            width, height := scale.Scale2(data.ScreenWidth, data.ScreenHeight)
+        offsetY := display.ContentOffsetY()
+        if offsetX > 0 || offsetY > 0 {
+            // the picture is drawn on its own and placed in the window: in the middle with black bars when
+            // the screen has no widescreen layout, and inside the margins the native draw scale leaves
+            pictureWidth := data.ScreenWidth
+            if display.IsWideContentActive() {
+                pictureWidth = display.LogicalWidth()
+            }
+            width, height := scale.Scale2(pictureWidth, data.ScreenHeight)
             if game.Canvas == nil || game.Canvas.Bounds().Dx() != width || game.Canvas.Bounds().Dy() != height {
                 game.Canvas = ebiten.NewImage(width, height)
             }
@@ -1109,7 +1170,7 @@ func (game *MagicGame) Draw(screen *ebiten.Image) {
             game.Drawer(game.Canvas)
 
             var options ebiten.DrawImageOptions
-            options.GeoM.Translate(float64(offsetX), 0)
+            options.GeoM.Translate(float64(offsetX), float64(offsetY))
             screen.DrawImage(game.Canvas, &options)
         } else {
             game.Drawer(screen)
@@ -1175,18 +1236,27 @@ func loadGameConfig() GameConfig {
     flag.StringVar(&capture.Path, "capture", "", "development: write one frame to this png file and exit")
     flag.IntVar(&capture.Frames, "capture-frames", 120, "development: frames to draw before the capture")
     flag.BoolVar(&capture.RevealAll, "capture-reveal-all", false, "development: turn on the Reveal All debug option")
+    flag.StringVar(&capture.CursorAt, "capture-cursor-at", "", "development: draw the cursor at x,y screen pixels, fractions allowed")
+    flag.BoolVar(&capture.TraceWide, "capture-trace-wide", false, "development: log every change of the widescreen layout and the layers on screen")
+    flag.StringVar(&capture.CameraMove, "capture-camera-move", "", "development: move the camera by dx,dy tiles the way a right click does, and log each frame")
+    flag.BoolVar(&capture.NextTurn, "capture-next-turn", false, "development: press Next Turn, and trace the widescreen layout while the turn runs")
+    flag.Float64Var(&capture.CameraX, "capture-camera-x", -1, "development: put the camera at this column before the capture, fractions allowed")
+    flag.IntVar(&capture.DragSpeed, "capture-drag-speed", 1, "development: screen pixels the simulated drag moves each frame")
+    flag.IntVar(&capture.Drag, "capture-drag", 0, "development: simulate a slow drag of this many frames and log the view")
     flag.BoolVar(&capture.DebugMenu, "capture-debug-menu", false, "development: open the debug menu")
     flag.IntVar(&capture.PanX, "capture-pan-x", 0, "development: pan the map this many screen pixels to the right before the capture")
     flag.IntVar(&capture.PanY, "capture-pan-y", 0, "development: pan the map this many screen pixels down before the capture")
     flag.BoolVar(&capture.CityPrompt, "capture-city-prompt", false, "development: keep the starting city name prompt in the capture")
     flag.BoolVar(&capture.NoSelection, "capture-no-selection", false, "development: no unit selected in the capture")
     flag.BoolVar(&capture.Popup, "capture-popup", false, "development: open the game menu over the world map before the capture")
-    flag.IntVar(&capture.Zoom, "capture-zoom", 0, "development: world map zoom level for the capture, 2 to 12")
+    flag.IntVar(&capture.Zoom, "capture-zoom", 0, "development: world map zoom for the capture, in screen pixels per art pixel")
     flag.IntVar(&display.CornerWidthOverride, "capture-window-width", 0, "development: width of the corner window in pixels, its height is 200")
-    flag.Float64Var(&capture.ZoomAnimation, "capture-zoom-animation", 0, "development: freeze the zoom animation at this offset, -1 to 1")
+    flag.Float64Var(&capture.ZoomAnimation, "capture-zoom-animation", 0, "development: freeze the zoom animation this many screen pixels per art pixel away from the zoom, -1 to 1")
     flag.BoolVar(&capture.Corner, "corner", false, "development: small window in the lower right corner of the screen. implied by -capture")
     var nearest bool
     flag.BoolVar(&nearest, "capture-nearest", false, "development: draw the world map zoom the original way")
+    flag.Float64Var(&display.DrawScaleOverride, "scale", 0, "development: screen pixels per art pixel the game draws at. development runs default to the saved window scale")
+    flag.StringVar(&capture.Screen, "capture-screen", "", "development: open a screen before the capture: armies, cities, magic, spellbook, city, surveyor, cartographer, advisors")
     flag.Parse()
 
     out := DefaultGameConfig()
@@ -1236,6 +1306,10 @@ func main() {
     if developmentRun {
         // development runs stay out of the way. a normal launch is centered
         display.PlaceInCorner()
+        // the small corner window would draw at scale 1. draw as the saved window would, so captures show the real thing
+        if display.NativeDrawScale && display.DrawScaleOverride == 0 {
+            display.DrawScaleOverride = float64(display.Current.WindowScale)
+        }
     }
     ebiten.SetWindowTitle("magic")
     ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)

@@ -8,9 +8,13 @@ package game
 // The map itself keeps its position, tile size and zoom, it only shows more columns.
 
 import (
+    "fmt"
     "image"
     "image/color"
     "math"
+    "path/filepath"
+    "runtime"
+    "strings"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/display"
@@ -26,6 +30,43 @@ const OverworldAreaWidth = 240
 const OverworldAreaTop = 18
 // tiles across the original world map area
 const OverworldTilesX = 12
+
+// development: where each drawer layer was pushed from, per game
+var drawerOrigins = map[*Game]map[int]string{}
+
+func (game *Game) noteDrawerPush() {
+    _, file, line, ok := runtime.Caller(2)
+    if !ok {
+        return
+    }
+    if drawerOrigins[game] == nil {
+        drawerOrigins[game] = map[int]string{}
+    }
+    drawerOrigins[game][len(game.Drawers) - 1] = fmt.Sprintf("%v:%v", filepath.Base(file), line)
+}
+
+// a newly pushed layer is a screen of its own until it is marked as a popup, whatever sat at its
+// place in the stack before
+func (game *Game) clearOverlayMark() {
+    delete(overlayDrawers[game], len(game.Drawers) - 1)
+}
+
+// development: the drawer layers above the world map and where they came from
+func (game *Game) DescribeDrawers() string {
+    var parts []string
+    for index := 1; index < len(game.Drawers); index++ {
+        kind := "screen"
+        if overlayDrawers[game][index] {
+            kind = "popup"
+        }
+        parts = append(parts, fmt.Sprintf("%v from %v", kind, drawerOrigins[game][index]))
+    }
+    popupLayer := 0
+    if game.HudUI != nil {
+        popupLayer = int(game.HudUI.GetHighestLayerValue())
+    }
+    return fmt.Sprintf("%v layers [%v], hud popup layer %v, player %v", len(game.Drawers), strings.Join(parts, "; "), popupLayer, game.Model.CurrentPlayer)
+}
 
 // drawer layers, per game, that are small popups over the world map rather than screens of their own
 var overlayDrawers = map[*Game]map[int]bool{}

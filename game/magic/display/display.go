@@ -12,9 +12,10 @@ import (
     "github.com/hajimehoshi/ebiten/v2"
 )
 
-// window sizes are whole multiples of the original 320x200 screen so pixels stay even
-// 5 is 1776 x 1000 in widescreen, 1600 x 1000 without
+// window sizes are whole multiples of the original 320x200 screen so pixels stay even.
+// with the native draw scale (drawscale.go) the window scale is the draw scale, in real pixels
 const DefaultWindowScale = 5
+const DefaultNativeWindowScale = 7
 const MinWindowScale = 2
 const MaxWindowScale = 12
 const DefaultFullscreen = false
@@ -32,16 +33,24 @@ type Settings struct {
     Fullscreen bool `json:"fullscreen"`
     WindowScale int `json:"window-scale"`
     Widescreen bool `json:"widescreen"`
+    // true once WindowScale means the draw scale in real pixels. files saved before that are converted once
+    ScaleIsDrawScale bool `json:"scale-is-draw-scale"`
 }
 
 // the preferences in use by the running game
 var Current *Settings = MakeDefault()
 
 func MakeDefault() *Settings {
+    windowScale := DefaultWindowScale
+    if NativeDrawScale {
+        windowScale = DefaultNativeWindowScale
+    }
+
     return &Settings{
         Fullscreen: DefaultFullscreen,
-        WindowScale: DefaultWindowScale,
+        WindowScale: windowScale,
         Widescreen: DefaultWidescreen,
+        ScaleIsDrawScale: NativeDrawScale,
     }
 }
 
@@ -56,6 +65,10 @@ func (settings *Settings) WindowSize() (int, int) {
 
 func ResolutionName(windowScale int) string {
     width, height := SizeForScale(windowScale)
+    if NativeDrawScale {
+        // the real pixel size, which is what the draw scale is based on
+        width, height = realSizeForScale(windowScale, Current.Widescreen)
+    }
     return fmt.Sprintf("%v x %v", width, height)
 }
 
@@ -72,7 +85,7 @@ func AvailableScales() []int {
         width, height := SizeForScale(windowScale)
         // an unknown monitor size allows everything up to the default
         if monitorWidth <= 0 || monitorHeight <= 0 {
-            if windowScale <= DefaultWindowScale {
+            if windowScale <= MakeDefault().WindowScale {
                 out = append(out, windowScale)
             }
             continue
@@ -165,6 +178,8 @@ func Load() *Settings {
     file, err := os.Open(SettingsFile)
     if err == nil {
         defer file.Close()
+        // a file without the key was saved before window scales meant draw scales
+        settings.ScaleIsDrawScale = false
         err = json.NewDecoder(file).Decode(settings)
         if err != nil {
             log.Printf("Unable to read display settings: %v", err)
@@ -173,7 +188,7 @@ func Load() *Settings {
     }
 
     if settings.WindowScale < MinWindowScale || settings.WindowScale > MaxWindowScale {
-        settings.WindowScale = DefaultWindowScale
+        settings.WindowScale = MakeDefault().WindowScale
     }
 
     Current = settings

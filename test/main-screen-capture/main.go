@@ -81,7 +81,13 @@ func main(){
     var rollout bool
     flag.BoolVar(&options, "options", false, "show the options screen before capturing")
     flag.BoolVar(&rollout, "rollout", false, "open the resolution rollout on the options screen")
+    var drawScale float64
+    flag.Float64Var(&drawScale, "scale", 0, "screen pixels per art pixel, instead of 3")
     flag.Parse()
+
+    if drawScale > 0 {
+        scale.UpdateScale(drawScale)
+    }
 
     cache := lbx.CacheFromPath(dataPath)
     if cache == nil {
