@@ -61,6 +61,12 @@ const cellOutlineTicksPerFrame = 2
 const scannedOutlineTicksPerStep = 2
 const attackTicksPerFrame = 2
 
+// the same counter for a figure whose frames are out of step, see figurevariety.go
+func (combat *CombatScreen) originalTickAhead(phase float64) uint64 {
+    tps := float64(max(1, ebiten.TPS()))
+    return uint64(float64(combat.Counter) * OriginalTicksPerSecond / tps + phase)
+}
+
 // the original's redraw counter, from our ticks
 func (combat *CombatScreen) originalTick() uint64 {
     tps := float64(max(1, ebiten.TPS()))
@@ -73,8 +79,8 @@ func moveTicksPerCell() float64 {
 }
 
 // the frame of its picture a unit shows
-func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int) int {
-    tick := combat.originalTick()
+func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase float64) int {
+    tick := combat.originalTickAhead(phase)
 
     flyingKind := unit.Unit.IsFlying()
     animateIdle := (flyingKind && unit.IsFlying()) || alwaysAnimated[unit.Unit.GetName()]

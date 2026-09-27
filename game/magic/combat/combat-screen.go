@@ -227,6 +227,8 @@ type CombatScreen struct {
     pass drawPass
     // how far right the field is drawn, in art pixels
     fieldShift float64
+    // where the figures of each unit are and how far out of step, see figurevariety.go
+    figureStates map[*ArmyUnit]*unitFigures
     // the pictures of damage numbers, see damagenumbers.go
     damagePictures map[string]*ebiten.Image
     // the red X with shorter arms, see cursor.go
@@ -4010,10 +4012,12 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             var tx float64
             var ty float64
 
+            // each figure trails its unit a little, see figurevariety.go
+            figureCount := unit.VisibleFigures() + unit.LostUnits
             if unit.Moving {
-                tx, ty = tilePosition(unit.MoveX, unit.MoveY)
+                tx, ty = tilePosition(combat.figurePosition(unit, figure, figureCount, unit.MoveX, unit.MoveY))
             } else {
-                tx, ty = tilePosition(float64(unit.X), float64(unit.Y))
+                tx, ty = tilePosition(combat.figurePosition(unit, figure, figureCount, float64(unit.X), float64(unit.Y)))
             }
 
             /*
@@ -4031,7 +4035,7 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             // unitOptions.GeoM.Translate(0, float64(-unit.Height))
 
             // the original's frames and timing, see animation.go
-            index := combat.figureFrame(unit, len(combatImages))
+            index := combat.figureFrame(unit, len(combatImages), combat.figurePhase(unit, figure, figureCount))
 
             // for summoning units out of the ground, or the merging ability
             unitImage := combatImages[index]

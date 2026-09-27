@@ -50,6 +50,9 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 8 | Damage numbers in the original's smallest font, in a loose cluster around the unit. One that would touch another moves away the shorter way. Each fades as one picture | `combat/damagenumbers.go` |
 
 ## Different from the original on purpose (user requests)
+- The figures of a unit do not move as one: each trails its unit by up to 0.09 seconds while it
+  walks, and its walking and striking frames are out of step with the others by up to 3 redraws.
+  `combat/figurevariety.go`, `FigureVariety` turns it off.
 - The outlines of the tiles, the red pulse of the unit under the cursor and the frames of a strike
   step at half the original's speed: every second redraw of its 18.2 a second. `combat/animation.go`.
 
