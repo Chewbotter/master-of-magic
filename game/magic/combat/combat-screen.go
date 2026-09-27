@@ -353,12 +353,9 @@ func MakeCombatScreen(cache *lbx.LbxCache, defendingArmy *Army, attackingArmy *A
 
     tile0, _ := imageCache.GetImage("cmbgrass.lbx", 0, 0)
 
-    // the battlefield is rotated by 45 degrees
-    coordinates.Rotate(-math.Pi / 4)
-    // coordinates.Scale(float64(tile0.Bounds().Dx())/2, float64(tile0.Bounds().Dy())/2)
-    // FIXME: this math is hacky, but it works for now
-    coordinates.Scale(float64(tile0.Bounds().Dx()) * 3 / 4 - 2, float64(tile0.Bounds().Dy()) * 3 / 4 - 1)
-    coordinates.Translate(float64(-220), float64(80))
+    // the original's grid: 16 across and 8 down per step, see battlefield.go
+    _ = tile0
+    coordinates = MakeBattlefieldMatrix()
 
     quit, cancel := context.WithCancel(context.Background())
 
@@ -3817,8 +3814,9 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         images, _ := combat.ImageCache.GetImages(combat.Model.Tiles[y][x].Lbx, combat.Model.Tiles[y][x].Index)
         image := images[animationIndex % uint64(len(images))]
         options.GeoM.Reset()
-        // tx,ty is the middle of the tile
+        // tx,ty is the middle of the tile, the picture starts up and left of it
         tx, ty := tilePosition(float64(x), float64(y))
+        options.GeoM.Translate(TerrainOffsetX, TerrainOffsetY)
         options.GeoM.Scale(combat.CameraScale, combat.CameraScale)
         options.GeoM.Translate(tx, ty)
         scale.DrawScaled(screen, image, &options)
@@ -3873,11 +3871,17 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             geom.Translate(tx, ty)
 
             extraImages, _ := combat.ImageCache.GetImagesTransform(extra.Lbx, extra.Index, "crop", util.AutoCrop)
+            if extra.Alignment == TileAlignStructure || extra.Alignment == TileAlignNatureNode {
+                // placed by the whole picture, like the original
+                extraImages, _ = combat.ImageCache.GetImages(extra.Lbx, extra.Index)
+            }
 
             index := animationIndex % uint64(len(extraImages))
             extraImage := extraImages[index]
 
             switch extra.Alignment {
+                case TileAlignStructure, TileAlignNatureNode:
+                    options.GeoM.Translate(structureOffset(extraImage.Bounds().Dx(), extraImage.Bounds().Dy(), extra.Alignment == TileAlignNatureNode))
                 case TileAlignBottom:
                     options.GeoM.Translate(0, float64(tile0.Bounds().Dy())/2)
                     options.GeoM.Translate(-float64(extraImage.Bounds().Dy())/2, -float64(extraImage.Bounds().Dy()))

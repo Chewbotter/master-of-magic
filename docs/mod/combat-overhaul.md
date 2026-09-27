@@ -1,0 +1,71 @@
+# Combat scene overhaul
+
+Goal: the combat scene looks and reads like the original game. The reference is the ReMoM
+reconstruction (see CLAUDE.md, Reference workflow): we read facts from it and write our own code.
+
+Work goes in batches. After each batch the user compares the result with the original.
+
+## How our battlefield maps to the original's
+
+The original's grid is 21 by 22 cells, (cgx, cgy). Ours is 30 by 30 tiles, (x, y), and already lays
+out armies, the city walls and the gate like the original under this mapping:
+
+    cgx = y - 3
+    cgy = 22 - x
+
+The anchor of a cell on the screen is x = (cgx - cgy) * 16 + 158, y = (cgx + cgy) * 8 - 80, the top
+corner of its diamond. The middle of the diamond is 1 right and 8 below the anchor. Our camera matrix
+maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` holds all of this.
+
+## Done
+
+| Batch | What | Where |
+|---|---|---|
+| 1 | Combat bar: chiseled text, banner shaded names, exact positions, health bar on its track | `combat/hudstyle.go`, `lib/font/styled.go` |
+| 2 | Projection: 16 across and 8 down per cell, was about 14.5 and 7.8 | `combat/battlefield.go` |
+| 2 | Terrain pictures sit on their own diamonds, were shifted half a tile | `combat/combat-screen.go` |
+| 2 | Figure positions for units of 1 to 8 figures, were "copied from case 8" guesses for 2 to 7 | `unitview/combat.go` |
+| 2 | Figure pictures anchored by their feet at 13, 23 | `unitview/combat.go` |
+| 2 | Cave, tower, temple, keep, ruins, node pictures on the original's cell (6, 11) with its anchor | `combat/model.go`, `combat/battlefield.go` |
+
+## Still different, by area
+
+Found while reading the reference. Not started unless noted.
+
+### Units on the field
+- Deployment order: the original places melee units first, then ranged ones behind, and skips the
+  slots taken by walls or the structure (Deploy_Battle_Units). Ours fills slots in army order.
+- Animation: the original's walk cycle goes frame 0, 1, 2, 1; idle has its own 3 frame cycle; attack
+  and defend alternate frames 1 and 3; a move takes 8 steps per cell (Combat_Compose_Background,
+  MOVE_ANIM_CNT). Ours cycles frames on a timer.
+- The selected unit: the original draws a red outline around its figures
+  (Combat_Figure_Active_Red_Outline). Ours pulses the brightness of the figures.
+- Unit enchantment outlines, invisibility and other figure effects (Combat_Figure_Effect,
+  Combat_Unit_Enchantment_Outline_Draw).
+- Death: the original plays "gibs" frames per lost figure. Ours fades the figure to a color.
+- Draw order of figures, trees and structures (Set_Entity_Draw_Order).
+
+### Battlefield
+- Trees and rocks: the original places a fixed set with anchors (8, 13) and (6, 12)
+  (Spawn_Tree_Entities, Spawn_Rock_Entities). Ours scatters them at random, one tile in ten.
+- Terrain choice per cell, rivers, roads, mud.
+- City: houses, walls, gate, fortress pictures and their anchors (Spawn_Structure_Entities,
+  Spawn_Stone_Wall_Entities).
+- The cell outline under the cursor and under the selected unit (doc/Combat/MoX-Combat-Draw-SquareOutline.md).
+- Mouse cursor pictures per action (doc/Combat/MoM-CombatScreen-Mouse.md).
+- Projectiles and spell effects (Make_Missiles and the spell animation code).
+- Our battlefield can be zoomed and scrolled freely with the wheel and the arrow keys, in 1% steps.
+  The original cannot. At the native draw scale this breaks pixel exactness while zoomed. The user
+  wants combat to show a larger area in widescreen later, so this needs a decision.
+
+### Combat bar
+- The selected unit's figure is not centered in its 32 by 25 box at (84, 173) by the size of what is
+  actually drawn.
+- The INFO and SPELL buttons are never shown locked.
+- The original always shows the human player's name on the right. Ours shows the attacker there.
+- For a lair or a neutral defender the original prints the lair type, "Monsters" or "Raiders" on the
+  left. Ours prints the defending player's name.
+- Enchantment icon rows.
+
+### Windows
+- Unit information popup, combat information window, end of combat scroll.

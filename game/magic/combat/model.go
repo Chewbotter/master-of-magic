@@ -121,6 +121,9 @@ type TileAlignment int
 const (
     TileAlignMiddle TileAlignment = iota
     TileAlignBottom
+    // the structure in the middle of a battlefield, placed the original's way. see battlefield.go
+    TileAlignStructure
+    TileAlignNatureNode
 )
 
 type TileDraw func(*ebiten.Image, *util.ImageCache, *ebiten.DrawImageOptions, uint64)
@@ -366,55 +369,56 @@ func makeTiles(width int, height int, landscape CombatLandscape, plane data.Plan
 
     } else {
         // FIXME: maybe put these in the sorted list in the combat screen draw method
+        lairX, lairY := LairTile()
         switch zone.Encounter {
             case ZoneTower:
-                tiles[TownCenterY][TownCenterX].ExtraObject = TileTop{
+                tiles[lairY][lairX].ExtraObject = TileTop{
                     Lbx: "cmbtcity.lbx",
                     Index: 20,
-                    Alignment: TileAlignBottom,
+                    Alignment: TileAlignStructure,
                 }
             case ZoneAbandonedKeep:
-                tiles[TownCenterY][TownCenterX].ExtraObject = TileTop{
+                tiles[lairY][lairX].ExtraObject = TileTop{
                     Lbx: "cmbtcity.lbx",
                     Index: 22,
-                    Alignment: TileAlignBottom,
+                    Alignment: TileAlignStructure,
                 }
             case ZoneAncientTemple:
-                tiles[TownCenterY][TownCenterX].ExtraObject = TileTop{
+                tiles[lairY][lairX].ExtraObject = TileTop{
                     Lbx: "cmbtcity.lbx",
                     Index: 23,
-                    Alignment: TileAlignBottom,
+                    Alignment: TileAlignStructure,
                 }
             case ZoneFallenTemple:
-                tiles[TownCenterY][TownCenterX].ExtraObject = TileTop{
+                tiles[lairY][lairX].ExtraObject = TileTop{
                     Lbx: "cmbtcity.lbx",
                     // FIXME: check on this
                     Index: 21,
-                    Alignment: TileAlignBottom,
+                    Alignment: TileAlignStructure,
                 }
             case ZoneLair:
-                tiles[TownCenterY][TownCenterX].ExtraObject = TileTop{
+                tiles[lairY][lairX].ExtraObject = TileTop{
                     Lbx: "cmbtcity.lbx",
                     Index: 19,
-                    Alignment: TileAlignBottom,
+                    Alignment: TileAlignStructure,
                 }
             case ZoneRuins, ZoneDungeon:
-                tiles[TownCenterY][TownCenterX].ExtraObject = TileTop{
+                tiles[lairY][lairX].ExtraObject = TileTop{
                     Lbx: "cmbtcity.lbx",
                     Index: 21,
-                    Alignment: TileAlignBottom,
+                    Alignment: TileAlignStructure,
                 }
             case ZoneNatureNode:
-                tiles[TownCenterY][TownCenterX].ExtraObject = TileTop{
+                tiles[lairY][lairX].ExtraObject = TileTop{
                     Lbx: "cmbtcity.lbx",
                     Index: 65,
-                    Alignment: TileAlignBottom,
+                    Alignment: TileAlignNatureNode,
                 }
             case ZoneSorceryNode:
-                tiles[TownCenterY][TownCenterX].ExtraObject = TileTop{
+                tiles[lairY][lairX].ExtraObject = TileTop{
                     Lbx: "cmbtcity.lbx",
                     Index: 66,
-                    Alignment: TileAlignBottom,
+                    Alignment: TileAlignStructure,
                 }
             case ZoneChaosNode:
                 tiles[TownCenterY-1][TownCenterX].ExtraObject = TileTop{

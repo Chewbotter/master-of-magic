@@ -12,78 +12,23 @@ import (
     "github.com/hajimehoshi/ebiten/v2/colorm"
 )
 
-// hard coding the points is what the real master of magic does
-// see Unit_Figure_Position() in UnitView.C
-// https://github.com/jbalcomb/ReMoM/blob/8642bb8c46433cc31c058759b28f297947b3b501/src/UnitView.C#L2685
+// where each figure of a unit stands, relative to the middle of its tile, for units of 1 to 8 figures.
+// these are the original's positions (ReMoM: MoM/src/CMBTDEF.h BATTLE_UNIT_FIGURE_POSITION), which it
+// gives relative to the top corner of the tile's diamond, 1 left and 8 above the middle
 func CombatPoints(count int) []image.Point {
     switch count {
         case 0: return nil
         case 1: return []image.Point{image.Pt(0, 0)}
-        case 2:
-            // FIXME: this was just copied from case 8
-            return []image.Point{
-                image.Pt(2, -4),
-                image.Pt(6, -2),
-            }
-        case 3:
-            // FIXME: this was just copied from case 8
-            return []image.Point{
-                image.Pt(2, -4),
-                image.Pt(6, -2),
-                image.Pt(-1, 0),
-            }
-        case 4:
-            // FIXME: this was just copied from case 8
-            return []image.Point{
-                image.Pt(1, -4),
-                image.Pt(7, -2),
-                image.Pt(-1, 3),
-                image.Pt(-8, 0),
-            }
-        case 5:
-            // FIXME: this was just copied from case 8
-            return []image.Point{
-                image.Pt(2, -4),
-                image.Pt(6, -2),
-                image.Pt(-1, 0),
-                image.Pt(-8, 0),
-                image.Pt(10, 0),
-            }
-        case 6:
-            // FIXME: this was just copied from case 8
-            return []image.Point{
-                image.Pt(2, -4),
-                image.Pt(6, -2),
-                image.Pt(-1, 0),
-                image.Pt(-8, 0),
-                image.Pt(10, 0),
-                image.Pt(3, 4),
-            }
-        case 7:
-            // FIXME: this was just copied from case 8
-            return []image.Point{
-                image.Pt(2, -4),
-                image.Pt(6, -2),
-                image.Pt(-1, 0),
-                image.Pt(-8, 0),
-                image.Pt(10, 0),
-                image.Pt(3, 1),
-                image.Pt(-4, 3),
-            }
-        case 8:
-            // fairly accurate
-            return []image.Point{
-                image.Pt(2, -4),
-                image.Pt(6, -2),
-                image.Pt(-1, 0),
-                image.Pt(-8, 0),
-                image.Pt(10, 0),
-                image.Pt(3, 1),
-                image.Pt(-4, 3),
-                image.Pt(1, 5),
-            }
+        case 2: return []image.Point{image.Pt(-8, 1), image.Pt(6, 1)}
+        case 3: return []image.Point{image.Pt(-1, -4), image.Pt(-7, 2), image.Pt(6, 2)}
+        case 4: return []image.Point{image.Pt(0, -4), image.Pt(-8, 0), image.Pt(7, 0), image.Pt(0, 3)}
+        case 5: return []image.Point{image.Pt(0, -4), image.Pt(-8, 0), image.Pt(0, 0), image.Pt(7, 0), image.Pt(0, 3)}
+        case 6: return []image.Point{image.Pt(0, -4), image.Pt(3, -1), image.Pt(-9, 0), image.Pt(8, 0), image.Pt(-4, 1), image.Pt(0, 3)}
+        case 7: return []image.Point{image.Pt(0, -4), image.Pt(5, -2), image.Pt(-9, 0), image.Pt(0, 0), image.Pt(9, 0), image.Pt(-4, 3), image.Pt(0, 3)}
+        case 8: return []image.Point{image.Pt(0, -4), image.Pt(5, -2), image.Pt(-3, -1), image.Pt(-9, 0), image.Pt(9, 0), image.Pt(2, 1), image.Pt(-4, 3), image.Pt(0, 3)}
     }
 
+    // more figures than the original ever has: a plain block
     rows := math.Round(math.Sqrt(float64(count)))
     columns := math.Round(float64(count) / rows)
 
@@ -109,10 +54,29 @@ func CombatPoints(count int) []image.Point {
     return points
 }
 
+// the pictures of combat figures are 28 by 30, and the original draws them with this point of the
+// picture, the feet, on the figure's position
+const FigureWidth = 28
+const FigureHeight = 30
+const FigureAnchorX = 13
+const FigureAnchorY = 23
+
+// from a figure's position to the top left of its picture
+func figureOffset(use *ebiten.Image) (float64, float64) {
+    if use.Bounds().Dx() == FigureWidth && use.Bounds().Dy() == FigureHeight {
+        return -FigureAnchorX, -FigureAnchorY
+    }
+
+    // a picture of another size, or one cut short while a unit rises from the ground: feet 6 above the bottom
+    if use.Bounds().Dx() == FigureWidth {
+        return -FigureAnchorX, -FigureAnchorY
+    }
+
+    return -float64(use.Bounds().Dx() / 2), -float64(use.Bounds().Dy()) + 6
+}
+
 // draws the unit semi-transparently in a solid greyish color
 func RenderCombatSemiInvisible(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, count int, lostCount int, lostColor *colorm.ColorM, timeCounter uint64, imageCache *util.ImageCache) {
-    // the ground is always 6 pixels above the bottom of the unit image
-    groundHeight := float64(6)
 
     var greyScale colorm.ColorM
     greyScale.Scale(0, 0, 0, 0.45)
@@ -127,7 +91,7 @@ func RenderCombatSemiInvisible(screen *ebiten.Image, use *ebiten.Image, options 
     for i, point := range CombatPoints(count + lostCount) {
         greyOptions.GeoM.Reset()
         greyOptions.GeoM.Translate(float64(point.X), float64(point.Y))
-        greyOptions.GeoM.Translate(-float64(use.Bounds().Dx() / 2), -float64(use.Bounds().Dy()) + groundHeight)
+        greyOptions.GeoM.Translate(figureOffset(use))
 
         greyOptions.GeoM.Concat(geoM)
         greyOptions.GeoM.Scale(scale.ScaleAmount, scale.ScaleAmount)
@@ -143,8 +107,6 @@ func RenderCombatSemiInvisible(screen *ebiten.Image, use *ebiten.Image, options 
 }
 
 func RenderCombatUnitGrey(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, count int, lostCount int, lostColor *colorm.ColorM, enchantment data.UnitEnchantment, timeCounter uint64, imageCache *util.ImageCache){
-    // the ground is always 6 pixels above the bottom of the unit image
-    groundHeight := float64(6)
 
     var greyScale colorm.ColorM
     greyScale.Scale(1, 1, 1, float64(options.ColorScale.A()))
@@ -158,7 +120,7 @@ func RenderCombatUnitGrey(screen *ebiten.Image, use *ebiten.Image, options ebite
     for i, point := range CombatPoints(count + lostCount) {
         greyOptions.GeoM.Reset()
         greyOptions.GeoM.Translate(float64(point.X), float64(point.Y))
-        greyOptions.GeoM.Translate(-float64(use.Bounds().Dx() / 2), -float64(use.Bounds().Dy()) + groundHeight)
+        greyOptions.GeoM.Translate(figureOffset(use))
 
         greyOptions.GeoM.Concat(geoM)
         greyOptions.GeoM.Scale(scale.ScaleAmount, scale.ScaleAmount)
@@ -177,8 +139,6 @@ func RenderCombatUnitGrey(screen *ebiten.Image, use *ebiten.Image, options ebite
 }
 
 func RenderCombatUnit(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, count int, lostCount int, lostColor *colorm.ColorM, enchantment data.UnitEnchantment, timeCounter uint64, imageCache *util.ImageCache){
-    // the ground is always 6 pixels above the bottom of the unit image
-    groundHeight := float64(6)
 
     totalCount := count + lostCount
 
@@ -188,7 +148,7 @@ func RenderCombatUnit(screen *ebiten.Image, use *ebiten.Image, options ebiten.Dr
     for i, point := range CombatPoints(totalCount) {
         options.GeoM.Reset()
         options.GeoM.Translate(float64(point.X), float64(point.Y))
-        options.GeoM.Translate(-float64(use.Bounds().Dx() / 2), -float64(use.Bounds().Dy()) + groundHeight)
+        options.GeoM.Translate(figureOffset(use))
 
         options.GeoM.Concat(geoM)
         options.GeoM.Scale(scale.ScaleAmount, scale.ScaleAmount)

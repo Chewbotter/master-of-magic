@@ -81,6 +81,10 @@ We keep building on this fork and rebuild any visual that does not match the ori
 - Alignment rules of the original (now in StyledFont): width has no letter gap after the last letter; right aligned text ends ON x; centered text starts at x minus half the width rounded down.
 - Not set up yet: running ReMoM itself. It has scripted input replay and a headless mode (`doc/Devel-HeMoM-Testing.md`, `showcase/README.md`), which could give pixel exact reference captures of any screen. Needs its release binary or a build (CMake, MSVC, SDL2).
 
+## Combat overhaul (user decision 2026-09-27)
+- The whole combat scene is being rebuilt against ReMoM in batches; the user compares after each. The plan, the grid mapping, what is done and the list of known differences live in `docs/mod/combat-overhaul.md`. READ IT before touching combat, and update it with every batch.
+- Batch 2 done: exact projection (`combat/battlefield.go`, `MakeBattlefieldMatrix`; the matrix maps a tile to the MIDDLE of its diamond, terrain pictures are drawn at `TerrainOffsetX/Y` from it), exact figure positions and feet anchor (`unitview/combat.go`), structures on cell (6, 11).
+
 ## Combat bar (first screen matched through ReMoM, 2026-09-27)
 - `game/magic/combat/hudstyle.go`: chiseled text (font 0, letters 243, edge and shadow 227, shadow down), wizard names (font 4, four banner shades, shadow 241), exact positions, the health bar as a line on its own track picture (compix 18) with the original's colors and thresholds.
 - Known differences left: the selected unit's figure is not centered in its box the original's way; the INFO button is never greyed out; the original always puts the human player's name on the right, the fork puts the attacker there; for lairs and neutral defenders the original prints the lair type, "Monsters" or "Raiders" on the left, the fork prints the defending player's name. The old `DrawHealthBar` is still used on the battlefield and in popups.
