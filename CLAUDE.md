@@ -95,6 +95,10 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
 - At the native draw scale every drawn camera position is rounded to whole screen pixels (`roundToPixel` in pan.go), moves included.
 - Dev: `-capture-camera-move dx,dy` moves the camera like a right click and logs every frame.
 
+## Control type
+- Settings has Controls: Modern (default) or Classic, saved in the settings file as `control-type` (`game/magic/display/controls.go`). Classic is the original game's controls and stays untouched. New control behavior goes behind `display.ModernControls()`.
+- Additions made before the toggle existed (middle mouse pan and glide, eased camera moves, panel text, debug button) are in both schemes for now; the user has not said whether Classic should drop them.
+
 ## Current state
 - 2026-09-27 (debug, pan): Debug button and menu with Reveal All. Middle mouse button drag pans the world map (`game/magic/game/pan.go`, `PanButton`), starting only on the map, keeping the camera's vertical limits. The camera keeps a fractional position after a pan; the next jump to a tile drops the fraction.
 - Capture options that must wait for the start of game events (pan, open menu) run through `capture.Later`, 20 frames before the capture. Flags: `-capture-reveal-all`, `-capture-debug-menu`, `-capture-pan-x`, `-capture-pan-y`.

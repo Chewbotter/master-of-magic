@@ -38,6 +38,10 @@ const ResolutionBoxHeight = 13
 const FullscreenCheckboxY = 84
 // y of the widescreen checkbox
 const WidescreenCheckboxY = 106
+// the control type row: caption, and a box that switches between Modern and Classic when clicked
+const ControlsRowY = 128
+const ControlsBoxX = DisplayColumnX + 45
+const ControlsBoxWidth = 50
 // opacity of the resolution box while fullscreen makes it meaningless
 const DisplayDisabledAlpha = 0.4
 // ticks for the fade, matches upstream's settings screen
@@ -182,6 +186,41 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
             displaySettings.SetWidescreen(value)
         },
     )
+
+    // control type
+    group.AddElement(&uilib.UIElement{
+        Layer: settingsLayer,
+        Draw: func(element *uilib.UIElement, screen *ebiten.Image){
+            printText(screen, DisplayColumnX, ControlsRowY, getAlpha(), "Controls")
+        },
+    })
+
+    controlsRect := image.Rect(ControlsBoxX, ControlsRowY - 2, ControlsBoxX + ControlsBoxWidth, ControlsRowY - 2 + ResolutionBoxHeight)
+    controlsInside := false
+    group.AddElement(&uilib.UIElement{
+        Layer: settingsLayer,
+        Rect: controlsRect,
+        LeftClick: func(element *uilib.UIElement){
+            if closing {
+                return
+            }
+            if displaySettings.Controls() == display.ControlsModern {
+                displaySettings.SetControlType(display.ControlsClassic)
+            } else {
+                displaySettings.SetControlType(display.ControlsModern)
+            }
+        },
+        Inside: func(element *uilib.UIElement, x int, y int){
+            controlsInside = true
+        },
+        NotInside: func(element *uilib.UIElement){
+            controlsInside = false
+        },
+        Draw: func(element *uilib.UIElement, screen *ebiten.Image){
+            drawBox(screen, controlsRect, getAlpha(), controlsInside)
+            printText(screen, controlsRect.Min.X + 6, controlsRect.Min.Y + 3, getAlpha(), displaySettings.Controls().Name())
+        },
+    })
 
     if OptionsStartWithRolloutOpen && !displaySettings.Fullscreen {
         openRollout()

@@ -35,6 +35,8 @@ type Settings struct {
     Widescreen bool `json:"widescreen"`
     // true once WindowScale means the draw scale in real pixels. files saved before that are converted once
     ScaleIsDrawScale bool `json:"scale-is-draw-scale"`
+    // classic or modern, see controls.go
+    ControlType ControlType `json:"control-type"`
 }
 
 // the preferences in use by the running game
@@ -51,6 +53,7 @@ func MakeDefault() *Settings {
         WindowScale: windowScale,
         Widescreen: DefaultWidescreen,
         ScaleIsDrawScale: NativeDrawScale,
+        ControlType: DefaultControlType,
     }
 }
 
