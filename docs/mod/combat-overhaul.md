@@ -27,21 +27,22 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 2 | Figure positions for units of 1 to 8 figures, were "copied from case 8" guesses for 2 to 7 | `unitview/combat.go` |
 | 2 | Figure pictures anchored by their feet at 13, 23 | `unitview/combat.go` |
 | 2 | Cave, tower, temple, keep, ruins, node pictures on the original's cell (6, 11) with its anchor | `combat/model.go`, `combat/battlefield.go` |
-
 | 3 | Camera: whole pixel zoom levels, smooth panning with the middle mouse button (Modern controls) and the arrow keys, release glide. Space returns to the original view | `combat/camera.go` |
+| 4 | Deployment: melee units in front, ranged behind, wall corners and the structure's place skipped | `combat/deploy.go` |
+| 4 | Figure frames: standing is frame 1, walking 1 2 1 0, flying units cycle 0 1 2, strikes alternate 1 and 3, all at 18.2 steps a second | `combat/animation.go` |
+| 4 | A step to the next cell takes 8 of the original's ticks, straight or diagonal | `combat/animation.go` |
+| 4 | Cell outlines are the original's pictures: blue under the cursor, red under the selected unit | `combat/animation.go` |
+| 4 | The unit under the cursor: the outline of its figures pulses black to red. The selected unit no longer pulses in brightness | `combat/animation.go` |
 
 ## Still different, by area
 
 Found while reading the reference. Not started unless noted.
 
 ### Units on the field
-- Deployment order: the original places melee units first, then ranged ones behind, and skips the
-  slots taken by walls or the structure (Deploy_Battle_Units). Ours fills slots in army order.
-- Animation: the original's walk cycle goes frame 0, 1, 2, 1; idle has its own 3 frame cycle; attack
-  and defend alternate frames 1 and 3; a move takes 8 steps per cell (Combat_Compose_Background,
-  MOVE_ANIM_CNT). Ours cycles frames on a timer.
-- The selected unit: the original draws a red outline around its figures
-  (Combat_Figure_Active_Red_Outline). Ours pulses the brightness of the figures.
+- When the original shows each cell outline depends on the cursor's action (Assign_Mouse_Image). Ours
+  always shows the blue one under the cursor and the red one under a selected unit that stands still.
+- Armies of more than 12 units do not exist in the original. Ours places the extra units with the
+  old search.
 - Unit enchantment outlines, invisibility and other figure effects (Combat_Figure_Effect,
   Combat_Unit_Enchantment_Outline_Draw).
 - Death: the original plays "gibs" frames per lost figure. Ours fades the figure to a color.

@@ -2185,7 +2185,24 @@ func (army *Army) LayoutUnits(team Team, legalLocation LegalLocation){
 
     occupied := make(map[image.Point]bool)
 
+    // the original's places first, see deploy.go. what follows only places units that found none
+    walled := false
+    city := false
+    if model, ok := legalLocation.(*CombatModel); ok {
+        city = model.Zone.City != nil
+        walled = city && len(model.WallTiles()) > 0
+    }
+
+    remaining := deployUnits(army.units, team, walled, city, legalLocation, func(unit *ArmyUnit){
+        unit.Facing = facing
+    })
     for _, unit := range army.units {
+        if !slices.Contains(remaining, unit) {
+            occupied[image.Pt(unit.X, unit.Y)] = true
+        }
+    }
+
+    for _, unit := range remaining {
         accept := false
         for !accept {
             newX := x + offsetX

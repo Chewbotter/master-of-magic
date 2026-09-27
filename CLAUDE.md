@@ -83,6 +83,8 @@ We keep building on this fork and rebuild any visual that does not match the ori
 
 ## Combat overhaul (user decision 2026-09-27)
 - The whole combat scene is being rebuilt against ReMoM in batches; the user compares after each. The plan, the grid mapping, what is done and the list of known differences live in `docs/mod/combat-overhaul.md`. READ IT before touching combat, and update it with every batch.
+- Batch 3 done: battle camera (`combat/camera.go`), whole pixel zoom levels and smooth pan, KEEP IN STEP with the world map's pan constants. Batch 4 done: deployment (`combat/deploy.go`), figure frames, move timing, cell outline pictures, red outline of the unit under the cursor (`combat/animation.go`). The original runs at 18.2 redraws a second; `originalTick()` converts.
+- Known dev tool noise: capture runs of a battle can log `panic: ebiten: NewImage cannot be called after RunGame finishes` at exit, after the frame is written. Harmless, capture only.
 - Batch 2 done: exact projection (`combat/battlefield.go`, `MakeBattlefieldMatrix`; the matrix maps a tile to the MIDDLE of its diamond, terrain pictures are drawn at `TerrainOffsetX/Y` from it), exact figure positions and feet anchor (`unitview/combat.go`), structures on cell (6, 11).
 
 ## Combat bar (first screen matched through ReMoM, 2026-09-27)

@@ -2641,8 +2641,11 @@ func (combat *CombatScreen) doMoveUnit(yield coroutine.YieldFunc, mover *ArmyUni
 
         mover.Facing = computeFacing(useAngle)
 
-        // speed := float64(combat.Counter - combat.SelectedUnit.MovementTick) / 4
-        speed := float64(0.04)
+        // a step to the next cell takes as long as in the original, straight or diagonal. see animation.go
+        speed := math.Hypot(float64(targetX) - mover.MoveX, float64(targetY) - mover.MoveY) / moveTicksPerCell()
+        if speed <= 0 {
+            speed = 0.04
+        }
 
         reached := false
         for !reached && mover.MovesLeft.GreaterThan(fraction.FromInt(0)) {
@@ -3893,7 +3896,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         drawExtraObject(x, y, extra)
     }
 
-    combat.DrawHighlightedTile(screen, combat.MouseTileX, combat.MouseTileY, &useMatrix, color.NRGBA{R: 0, G: 0x67, B: 0x78, A: 255}, color.NRGBA{R: 0, G: 0xef, B: 0xff, A: 255})
+    // the blue outline of the cell under the cursor, see animation.go
+    combat.drawCellOutline(screen, combat.MouseTileX, combat.MouseTileY, false)
 
     if combat.Model.SelectedUnit != nil && isVisible(combat.Model.SelectedUnit) {
         // if the unit is currently selecting a spell, then don't draw the movement path
@@ -3952,17 +3956,23 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         }
 
         if !combat.Model.SelectedUnit.Moving {
-            minColor := color.NRGBA{R: 32, G: 0, B: 0, A: 255}
-            maxColor := color.NRGBA{R: 255, G: 0, B: 0, A: 255}
-
-            combat.DrawHighlightedTile(screen, combat.Model.SelectedUnit.X, combat.Model.SelectedUnit.Y, &useMatrix, minColor, maxColor)
+            // the red outline of the selected unit's cell
+            combat.drawCellOutline(screen, combat.Model.SelectedUnit.X, combat.Model.SelectedUnit.Y, true)
         }
     }
 
     renderUnit := func(unit *ArmyUnit) {
         var unitOptions ebiten.DrawImageOptions
         banner := unit.Unit.GetBanner()
-        combatImages, _ := combat.ImageCache.GetImagesTransform(unit.Unit.GetCombatLbxFile(), unit.Unit.GetCombatIndex(unit.Facing), banner.String(), units.MakeUpdateUnitColorsFunc(banner))
+        imageKey := banner.String()
+        imageTransform := units.MakeUpdateUnitColorsFunc(banner)
+        if combat.Model.HighlightedUnit == unit {
+            // the unit under the cursor: the outline of its figures pulses red, see animation.go
+            step := combat.scannedOutlineStep()
+            imageKey = scannedOutlineKey(imageKey, step)
+            imageTransform = withScannedOutline(imageTransform, step)
+        }
+        combatImages, _ := combat.ImageCache.GetImagesTransform(unit.Unit.GetCombatLbxFile(), unit.Unit.GetCombatIndex(unit.Facing), imageKey, imageTransform)
 
         if combatImages != nil {
             var tx float64
@@ -3988,26 +3998,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
             // unitOptions.GeoM.Translate(0, float64(-unit.Height))
 
-            index := uint64(0)
-            // sort of a hack here, but we use unit.Unit.IsFlying() to bypass a webbed unit so that the unit
-            // still animates if it was originally flying
-            if unit.Unit.IsFlying() || unit.Moving {
-                index = animationIndex % (uint64(len(combatImages)) - 1)
-            }
-
-            if unit.Attacking || unit.Defending {
-                index = 2 + animationIndex % 2
-            }
-
-            if combat.Model.SelectedUnit == unit {
-                scaleValue := 1.5 + math.Sin(float64(combat.Counter)/6)/2
-                unitOptions.ColorScale.Scale(float32(scaleValue), float32(scaleValue), 1, 1)
-            }
-
-            if combat.Model.HighlightedUnit == unit {
-                scaleValue := 1.5 + math.Sin(float64(combat.Counter)/6)/2
-                unitOptions.ColorScale.Scale(float32(scaleValue), 1, 1, 1)
-            }
+            // the original's frames and timing, see animation.go
+            index := combat.figureFrame(unit, len(combatImages))
 
             // for summoning units out of the ground, or the merging ability
             unitImage := combatImages[index]
