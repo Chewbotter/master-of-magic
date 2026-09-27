@@ -48,6 +48,8 @@ type frameCapture struct {
     CursorAt string
     // the frame of a random battle at which every unit loses about half of its figures, 0 is never
     KillFigures int
+    // multiplies the units of both armies of a random battle, 0 leaves the setting of the debug list
+    ArmyScale int
     // keep damage numbers over the units of a random battle
     DamageNumbers bool
     // x,y in screen pixels: the game sees the mouse there

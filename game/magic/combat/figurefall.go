@@ -6,6 +6,9 @@ package combat
 // it had when it was killed. Corpses are drawn in the same order as everything else on the field,
 // by where they lie.
 // Not in the original, which shows a splash of blood on a lost figure that then is gone.
+//
+// PLANNED (user, 2026-09-27): pictures of death poses, made by the user, to lie here in place of
+// the tipped over standing picture. addCorpse is where a corpse gets its picture.
 
 import (
     "math"
@@ -16,6 +19,7 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/unitview"
 
     "github.com/hajimehoshi/ebiten/v2"
+    "github.com/hajimehoshi/ebiten/v2/colorm"
 )
 
 // turns it off: lost figures fade where they stand, in a color
@@ -31,8 +35,10 @@ const figureFallPushMax = 9.0
 // how far it tips over, in degrees. 90 is flat on its back
 const figureFallAngleMin = 75.0
 const figureFallAngleMax = 100.0
-// how bright a corpse is, and the seconds it takes to darken once it lies
+// how bright a corpse is, how much of its color it keeps, and the seconds it takes to get there
+// once it lies
 const corpseBrightness = 0.65
+const corpseSaturation = 0.3
 const corpseDarkenTime = 0.5
 
 // the way a unit faces on the screen, across and down
@@ -152,19 +158,23 @@ func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawabl
         darkened := max(0, min(1, (seconds - figureFallTime) / corpseDarkenTime))
         brightness := float32(1 - (1 - corpseBrightness) * darkened)
         brightness *= fieldBrightness(int(x), int(y))
+        saturation := 1 - (1 - corpseSaturation) * darkened
 
         out = append(out, fieldDrawable{
             Order: DrawOrder(int(math.Floor(x)), int(math.Floor(y))),
             Layer: layerFigure,
             Render: func() {
-                var options ebiten.DrawImageOptions
+                var options colorm.DrawImageOptions
                 // the feet on the origin, so the figure turns around them
                 options.GeoM.Translate(unitview.FigureOffset(body.Picture))
                 options.GeoM.Rotate(body.Angle * tipped)
                 options.GeoM.Translate(x, y)
                 options.GeoM.Concat(originalScreenMatrix(combat.GetCameraMatrix()))
-                options.ColorScale.Scale(brightness, brightness, brightness, 1)
-                scale.DrawScaled(screen, body.Picture, &options)
+                options.GeoM.Scale(scale.ScaleAmount, scale.ScaleAmount)
+
+                var colors colorm.ColorM
+                colors.ChangeHSV(0, saturation, float64(brightness))
+                colorm.DrawImage(screen, body.Picture, colors, &options)
             },
         })
     }

@@ -52,7 +52,8 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 ## Different from the original on purpose (user requests)
 - A figure that is killed is pushed back from what its unit faces and tips over around its feet,
   each at a time of its own. It stays as a corpse for the rest of the battle: the picture it had,
-  a little darker, in the draw order of everything else. `combat/figurefall.go`, `FigureFall` turns
+  a little darker and with little of its color, in the draw order of everything else. The user
+  plans pictures of death poses to replace the tipped over picture. `combat/figurefall.go`, `FigureFall` turns
   it off. The original shows blood on the figure ("gibs"), the fork showed a colored shape that faded.
 - Figures cast shadows on the ground, to the lower right, made of pixels of the art.
   `combat/shadows.go`, `FigureShadows` turns them off.
@@ -80,8 +81,8 @@ Found while reading the reference. Not started unless noted.
 ### Units on the field
 - When the original shows each cell outline depends on the cursor's action (Assign_Mouse_Image). Ours
   always shows the blue one under the cursor and the red one under a selected unit that stands still.
-- Armies of more than 12 units do not exist in the original. Ours places the extra units with the
-  old search.
+- Armies of more than 12 units do not exist in the original. Ours stand in rows of 8, five rows
+  deep (`combat/deploy.go`). The debug setting Army Size x3 makes such armies.
 - Unit enchantment outlines, invisibility and other figure effects (Combat_Figure_Effect,
   Combat_Unit_Enchantment_Outline_Draw).
 - Death: the original plays "gibs" frames per lost figure. Ours lets the figure fall, see above.

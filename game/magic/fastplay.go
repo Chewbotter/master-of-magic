@@ -7,6 +7,7 @@ package main
 // the attackers. When the battle and its results screen are over, the start screen comes back.
 
 import (
+    "fmt"
     "image"
     "log"
     "math/rand/v2"
@@ -49,12 +50,38 @@ const FastPlayRowGap = 3
 type fastPlayEntry struct {
     Label string
     State mainview.MainScreenState
+    // a setting: a click changes it and the start screen stays. its text replaces the label
+    Change func()
+    Text func() string
+}
+
+func (entry fastPlayEntry) text() string {
+    if entry.Text != nil {
+        return entry.Text()
+    }
+    return entry.Label
 }
 
 var fastPlayEntries = []fastPlayEntry{
     {Label: "Random Battle", State: mainview.MainScreenStateRandomBattle},
     {Label: "Random City Battle", State: mainview.MainScreenStateRandomCityBattle},
+    {
+        Change: func() {
+            if randomBattleArmyScale == 1 {
+                randomBattleArmyScale = RandomBattleLargeArmies
+            } else {
+                randomBattleArmyScale = 1
+            }
+        },
+        Text: func() string {
+            return fmt.Sprintf("Army Size: x%v", randomBattleArmyScale)
+        },
+    },
 }
+
+// how many times the units of both armies of a random battle are multiplied. a setting of the debug list
+var randomBattleArmyScale = 1
+const RandomBattleLargeArmies = 3
 
 // true while the start screen shows, so the list is drawn and clickable
 var fastPlayShowing bool
@@ -114,13 +141,18 @@ func (game *MagicGame) updateFastPlay(menu *mainview.MainScreen) (mainview.MainS
 
     cursor := fastPlayCursor()
     for index, entry := range fastPlayEntries {
-        if cursor.In(fastPlayRow(index + 1, entry.Label).Inset(-1)) {
+        if cursor.In(fastPlayRow(index + 1, entry.text()).Inset(-1)) {
             fastPlayHover = index
         }
     }
 
     if fastPlayHover >= 0 && inputmanager.LeftClick() {
-        return fastPlayEntries[fastPlayHover].State, true
+        entry := fastPlayEntries[fastPlayHover]
+        if entry.Change != nil {
+            entry.Change()
+            return 0, false
+        }
+        return entry.State, true
     }
 
     return 0, false
@@ -147,7 +179,7 @@ func (game *MagicGame) drawFastPlay(screen *ebiten.Image) {
         if index == fastPlayHover {
             use = fastPlayFontHighlight
         }
-        print(use, index + 1, entry.Label)
+        print(use, index + 1, entry.text())
     }
 }
 
@@ -229,8 +261,13 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
     attacker := playerlib.MakePlayer(setup.WizardCustom{Name: race.String(), Banner: banner, Race: race}, true, 0, 0, nil, &playerlib.NoGlobalEnchantments{})
     defender := playerlib.MakePlayer(setup.WizardCustom{Name: "Cave", Banner: data.BannerBrown}, false, 0, 0, nil, &playerlib.NoGlobalEnchantments{})
 
+    armyScale := max(1, randomBattleArmyScale)
+    if capture.ArmyScale > 0 {
+        armyScale = capture.ArmyScale
+    }
+
     attackingArmy := &combat.Army{Player: attacker}
-    for range RandomBattleArmyCopies {
+    for range RandomBattleArmyCopies * armyScale {
         for _, unit := range startingUnits(race) {
             attackingArmy.AddUnit(units.MakeOverworldUnitFromUnit(unit, 1, 1, data.PlaneArcanus, attacker.Wizard.Banner, attacker.MakeExperienceInfo(), attacker.MakeUnitEnchantmentProvider()))
         }
@@ -250,8 +287,10 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         }
         defender = playerlib.MakePlayer(setup.WizardCustom{Name: cityRace.String(), Banner: cityBanner, Race: cityRace}, false, 0, 0, nil, &playerlib.NoGlobalEnchantments{})
         defendingArmy = &combat.Army{Player: defender}
-        for _, unit := range startingUnits(cityRace) {
-            defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(unit, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
+        for range armyScale {
+            for _, unit := range startingUnits(cityRace) {
+                defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(unit, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
+            }
         }
 
         choice := makeRandomCity()
@@ -279,7 +318,7 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         log.Printf("Random battle: %v army attacks a %v city, %+v, landscape %v", race, cityRace, choice, landscape)
     } else {
         monster := randomChoose(randomBattleMonsters...)
-        count := RandomBattleMinMonsters + rand.N(RandomBattleMaxMonsters - RandomBattleMinMonsters + 1)
+        count := (RandomBattleMinMonsters + rand.N(RandomBattleMaxMonsters - RandomBattleMinMonsters + 1)) * armyScale
         for range count {
             defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(monster, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
         }
