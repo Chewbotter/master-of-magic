@@ -1621,12 +1621,23 @@ func (game *Game) showMovement(yield coroutine.YieldFunc, oldX int, oldY int, st
 
     game.MovingStack = stack
 
+    if center {
+        // the unit is still drawn on its old tile while the camera pans over to it, if it is elsewhere.
+        // see cameramove.go
+        stack.SetOffset(dx, dy)
+        game.doMoveCamera(yield, oldX, oldY)
+    }
+
     for i := 0; i < frames; i++ {
         game.Counter += 1
 
         interpolate := float64(frames - i) / float64(frames)
 
         stack.SetOffset(dx * interpolate, dy * interpolate)
+        if center {
+            // the camera moves with the unit instead of jumping a tile after it
+            game.followMovingStack(stack.X(), stack.Y(), dx * interpolate, dy * interpolate)
+        }
         game.DoViewInput(yield)
         yield()
     }
@@ -1636,7 +1647,7 @@ func (game *Game) showMovement(yield coroutine.YieldFunc, oldX int, oldY int, st
 
     stack.SetOffset(0, 0)
     if center {
-        game.Camera.Center(stack.X(), stack.Y())
+        game.followMovingStack(stack.X(), stack.Y(), 0, 0)
     }
 }
 
@@ -7049,7 +7060,8 @@ func (game *Game) DoNextUnit(player *playerlib.Player){
 
                 if player.IsHuman() {
                     select {
-                        case game.Events <- &GameEventMoveCamera{Plane: stack.Plane(), X: stack.X(), Y: stack.Y(), Instant: true}:
+                        // pans over the way a right click does, see cameramove.go
+                        case game.Events <- &GameEventMoveCamera{Plane: stack.Plane(), X: stack.X(), Y: stack.Y(), Instant: false}:
                         default:
                     }
                 }

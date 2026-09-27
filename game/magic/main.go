@@ -551,9 +551,12 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
     // these wait until the start of game events have settled, which rebuild the hud and center the camera
     if capture.TraceWide {
         capture.Describe = game.DescribeDrawers
+        gamelib.CameraMoveTrace = func(x float64, y float64) {
+            log.Printf("camera: %.3f, %.3f", x, y)
+        }
     }
 
-    if capture.PanX != 0 || capture.PanY != 0 || capture.DebugMenu || capture.Screen != "" || capture.CameraX >= 0 || capture.NextTurn || capture.CameraMove != "" {
+    if capture.PanX != 0 || capture.PanY != 0 || capture.DebugMenu || capture.Screen != "" || capture.CameraX >= 0 || capture.NextTurn || capture.CameraMove != "" || capture.Walk != "" {
       capture.Later = func() {
         if capture.NextTurn {
             select {
@@ -563,6 +566,20 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
         }
         if capture.CameraX >= 0 {
             game.CaptureSetCameraX(capture.CameraX)
+        }
+        if capture.Walk != "" {
+            // the walk starts a second later, once any pan has settled on screen
+            capture.EachFrame = func(frame int) {
+                if frame != CaptureWalkDelayFrames {
+                    return
+                }
+                var walkX, walkY int
+                fmt.Sscanf(capture.Walk, "%d,%d", &walkX, &walkY)
+                gamelib.CameraMoveTrace = func(x float64, y float64) {
+                    log.Printf("camera: %.3f, %.3f", x, y)
+                }
+                log.Printf("walk %v,%v from camera %.3f, %.3f: %v", walkX, walkY, game.Camera.GetOffsetX(), game.Camera.GetOffsetY(), game.CaptureWalk(walkX, walkY))
+            }
         }
         if capture.CameraMove != "" {
             var moveX, moveY int
@@ -577,7 +594,14 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
                 default:
             }
         }
-        if capture.Screen != "" && !game.CaptureOpenScreen(capture.Screen) {
+        if capture.Screen == "nextunit" {
+            // a second later, once any pan has settled on screen
+            capture.EachFrame = func(frame int) {
+                if frame == CaptureWalkDelayFrames {
+                    game.CaptureOpenScreen(capture.Screen)
+                }
+            }
+        } else if capture.Screen != "" && !game.CaptureOpenScreen(capture.Screen) {
             log.Printf("capture: unknown screen %v", capture.Screen)
         }
         if capture.PanX != 0 || capture.PanY != 0 {
@@ -1238,6 +1262,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&capture.RevealAll, "capture-reveal-all", false, "development: turn on the Reveal All debug option")
     flag.StringVar(&capture.CursorAt, "capture-cursor-at", "", "development: draw the cursor at x,y screen pixels, fractions allowed")
     flag.BoolVar(&capture.TraceWide, "capture-trace-wide", false, "development: log every change of the widescreen layout and the layers on screen")
+    flag.StringVar(&capture.Walk, "capture-walk", "", "development: send the selected unit walking dx,dy tiles and log the camera")
     flag.StringVar(&capture.CameraMove, "capture-camera-move", "", "development: move the camera by dx,dy tiles the way a right click does, and log each frame")
     flag.BoolVar(&capture.NextTurn, "capture-next-turn", false, "development: press Next Turn, and trace the widescreen layout while the turn runs")
     flag.Float64Var(&capture.CameraX, "capture-camera-x", -1, "development: put the camera at this column before the capture, fractions allowed")

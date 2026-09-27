@@ -8,6 +8,7 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
 
 ## Layout
 - `D:/Work/MasterMagic_open/mastermagic_game/` : this repo. Remote `origin` is the user's public fork https://github.com/Chewbotter/master-of-magic (master tracks origin/master); `upstream` is kazzmir's original, fetch only.
+- SAVES: the user plays no real games during development (2026-09-27). Breaking save files or save compatibility is acceptable; do not let it hold back a change.
 - COMMITS: Claude commits as it goes, one commit per finished change, by pathspec; the user pushes through GitHub Desktop. Never push. (User decision, 2026-09-27; overrides the guides' default that commits are his.)
 - `D:/Work/MasterMagic_open/_tools/` : portable Go 1.27.1 and its module cache. Go is not installed system-wide and is not on PATH.
 - `D:/Work/MasterMagic_open/_build/` : build output (`magic.exe`, logs). Never commit.
@@ -89,6 +90,8 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
 
 ## Camera moves
 - `game/magic/game/cameramove.go`: every camera move of the game's own (right click, jump to a unit, spell targeting) runs through `doMoveCamera` -> `animateCameraTo`. It starts from where the map is DRAWN (`shownCameraOffset`: the pan glide view if active, else the camera), takes `CameraMoveTime` (0.3 s) at any distance, eases in and out, and takes over from any pan glide or coast. The original started from the whole tile and dropped the pan's fraction, so its first frame jumped back, sometimes against the direction of travel.
+- The next unit after Next Turn (`DoNextUnit`) pans over the same way (its camera event is no longer Instant). A walking unit (`showMovement` with center): the camera eases over to the unit first if it is elsewhere, then follows it through each step (`followMovingStack`) instead of jumping a tile after every step. Moves shorter than `CameraMoveThreshold` happen at once. Computer players' visible moves use the same path, so their turns can take up to 0.3 s longer per stack that the camera is not already on.
+- Dev: `-capture-walk dx,dy` sends the selected unit walking a second after the delayed options (so a pan has settled); `-capture-screen nextunit` does the next unit selection the same way. Options that follow a pan must wait for it to show on screen, or the camera counts as already there. A walk can reveal a rival wizard and open the meeting screen, which stops the trace.
 - At the native draw scale every drawn camera position is rounded to whole screen pixels (`roundToPixel` in pan.go), moves included.
 - Dev: `-capture-camera-move dx,dy` moves the camera like a right click and logs every frame.
 

@@ -54,6 +54,8 @@ type frameCapture struct {
     NextTurn bool
     // dx,dy in tiles
     CameraMove string
+    // dx,dy in tiles
+    Walk string
     TraceWide bool
     // development: describes what is on screen, for the layout trace
     Describe func() string
@@ -96,7 +98,7 @@ func (capture *frameCapture) laterFrames() int {
     if capture.Drag > 0 {
         return capture.Drag + CaptureCoastFrames
     }
-    if capture.NextTurn {
+    if capture.NextTurn || capture.Walk != "" || capture.Screen == "nextunit" {
         return CaptureNextTurnFrames
     }
     return CaptureLaterFrames
@@ -106,6 +108,8 @@ func (capture *frameCapture) laterFrames() int {
 const CaptureCoastFrames = 80
 // frames after pressing Next Turn, enough for the other players' turns
 const CaptureNextTurnFrames = 600
+// frames between the delayed capture options and a simulated walk
+const CaptureWalkDelayFrames = 60
 
 // called at the end of every Draw. returns true once the frame has been written
 func (capture *frameCapture) Update(screen *ebiten.Image) bool {

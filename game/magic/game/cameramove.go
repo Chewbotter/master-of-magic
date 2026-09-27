@@ -17,6 +17,20 @@ import (
 
 // seconds a camera move takes, whatever the distance
 const CameraMoveTime = 0.3
+// a move shorter than this, in tiles, happens at once
+const CameraMoveThreshold = 0.01
+
+// while a unit walks one tile: the camera stays centered on it. the offset is how far the unit is
+// drawn from its new tile, in tiles, as in showMovement
+func (game *Game) followMovingStack(stackX int, stackY int, offsetX float64, offsetY float64) {
+    view.active = false
+    coasting = false
+    game.setCameraOffset(float64(stackX) + offsetX, float64(stackY) + offsetY)
+    game.setCameraOffset(game.Camera.GetOffsetX(), game.clampCameraY())
+    if CameraMoveTrace != nil {
+        CameraMoveTrace(game.Camera.GetOffsetX(), game.Camera.GetOffsetY())
+    }
+}
 
 // where the map is drawn right now, in tile offsets: the gliding view after a pan, or the camera
 func (game *Game) shownCameraOffset() (float64, float64) {
@@ -47,6 +61,12 @@ func (game *Game) animateCameraTo(yield coroutine.YieldFunc, x int, y int) {
 
     deltaX := wrapDelta(float64(x) - startX, width)
     deltaY := float64(y) - startY
+
+    // already there: no waiting
+    if math.Abs(deltaX) < CameraMoveThreshold && math.Abs(deltaY) < CameraMoveThreshold {
+        game.setCameraOffset(float64(x), float64(y))
+        return
+    }
 
     frames := max(1, int(math.Round(CameraMoveTime * float64(ebiten.TPS()))))
     for frame := 1; frame < frames; frame++ {
