@@ -239,6 +239,10 @@ type CombatScreen struct {
     figureStates map[*ArmyUnit]*unitFigures
     // units act together, see together.go
     together bool
+    // how many units still act
+    togetherRunning int
+    // the units whose turn has done all it does to the battle
+    settledUnits map[*ArmyUnit]bool
     claimedTiles map[image.Point]*ArmyUnit
     // the pictures of damage numbers, see damagenumbers.go
     damagePictures map[string]*ebiten.Image
@@ -2641,6 +2645,12 @@ func (combat *CombatScreen) doMoveUnit(yield coroutine.YieldFunc, mover *ArmyUni
         return
     }
 
+    if combat.together {
+        // see together.go
+        combat.moveTogether(yield, mover, path)
+        return
+    }
+
     mover.Moving = true
     mover.MoveX = float64(mover.X)
     mover.MoveY = float64(mover.Y)
@@ -2783,6 +2793,7 @@ func (combat *CombatScreen) doMeleeWall(yield coroutine.YieldFunc, attacker *Arm
         // delay the actual melee computation to give time for the sound to play
         if i == 20 {
             combat.Model.meleeAttackWall(attacker, x, y)
+            combat.settleIfDone(attacker)
         }
 
         if yield() != nil {
@@ -2828,6 +2839,9 @@ func (combat *CombatScreen) doMelee(yield coroutine.YieldFunc, attacker *ArmyUni
 
             combat.AddDamageIndicator(defender, attackerDamage)
             combat.AddDamageIndicator(attacker, defenderDamage)
+
+            // the blow has struck, the rest is its picture. see together.go
+            combat.settleIfDone(attacker)
         }
 
         if yield() != nil {

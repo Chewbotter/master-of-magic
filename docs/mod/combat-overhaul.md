@@ -51,9 +51,11 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 
 ## Different from the original on purpose (user requests)
 - Units the computer controls act together, not one after the other: the enemy's army, and the
-  player's army when it is set to auto. `combat/together.go`, `ActTogether` turns it off. What a
-  turn does is decided the same way as before. Units claim the tile they step to, and a unit whose
-  target was killed by another decides again.
+  player's army when it is set to auto. `combat/together.go`, `ActTogether` turns it off. Every
+  unit decides on the battle it would have found in its turn: it waits until the unit before it has
+  done all its turn does to the battle. Walking and the rest of an attack after the blow overlap.
+  Measured on the same battle run both ways, 24 units: every unit stood on the same tile at the
+  start of turns 2 and 3, and a turn took about 4 seconds in place of about 19.
 - A figure that is killed is pushed back from what its unit faces and tips over around its feet,
   each at a time of its own. It stays as a corpse for the rest of the battle: the picture it had,
   a little darker and with little of its color, in the draw order of everything else. The user

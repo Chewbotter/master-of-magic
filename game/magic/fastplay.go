@@ -256,6 +256,12 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
     }
 
     race := randomChoose(randomBattleRaces...)
+    if capture.SameBattle {
+        race = randomBattleRaces[0]
+    }
+    if capture.InTurn {
+        combat.ActTogether = false
+    }
     banner := randomChoose(data.BannerGreen, data.BannerBlue, data.BannerRed, data.BannerPurple, data.BannerYellow)
 
     attacker := playerlib.MakePlayer(setup.WizardCustom{Name: race.String(), Banner: banner, Race: race}, true, 0, 0, nil, &playerlib.NoGlobalEnchantments{})
@@ -275,6 +281,9 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
 
     defendingArmy := &combat.Army{Player: defender}
     landscape := randomChoose(randomBattleLandscapes...)
+    if capture.SameBattle {
+        landscape = randomBattleLandscapes[0]
+    }
     zone := combat.ZoneType{Encounter: combat.ZoneLair}
     plane := data.PlaneArcanus
 
@@ -319,6 +328,10 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
     } else {
         monster := randomChoose(randomBattleMonsters...)
         count := (RandomBattleMinMonsters + rand.N(RandomBattleMaxMonsters - RandomBattleMinMonsters + 1)) * armyScale
+        if capture.SameBattle {
+            monster = randomBattleMonsters[0]
+            count = RandomBattleMaxMonsters * armyScale
+        }
         for range count {
             defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(monster, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
         }
@@ -369,8 +382,18 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         }
     }
 
+    loggedTurn := -1
     state := combat.CombatStateRunning
     for state == combat.CombatStateRunning {
+        if capture.SameBattle && model.CurrentTurn != loggedTurn {
+            // development: where everybody stands at the start of the turn
+            loggedTurn = model.CurrentTurn
+            places := ""
+            for _, unit := range append(attackingArmy.GetUnits(), defendingArmy.GetUnits()...) {
+                places += fmt.Sprintf(" %v,%v", unit.X, unit.Y)
+            }
+            log.Printf("places turn %v:%v", loggedTurn, places)
+        }
         state = combatScreen.Update(yield)
         if capture.DamageNumbers && len(combatScreen.DamageIndicators) == 0 {
             // development: numbers of one, two and three digits over both armies
