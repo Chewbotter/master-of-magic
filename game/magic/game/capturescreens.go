@@ -10,7 +10,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research"}
+var CaptureScreenNames = []string{"armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -74,6 +74,21 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                     game.ResearchNewSpell(yield, player)
                 },
             }
+        case "chancellor":
+            game.DoChancellor()
+            return true
+        case "apprentice": event = &GameEventApprenticeUI{}
+        case "historian": event = &GameEventHistorian{}
+        case "astrologer": event = &GameEventAstrologer{}
+        case "taxcollector":
+            game.ShowTaxCollectorUI(50, 35)
+            return true
+        case "vizier":
+            game.ShowGrandVizierUI()
+            return true
+        case "mirror":
+            game.ShowMirror()
+            return true
         case "blink":
             // the red flash of an invalid move
             event = &GameEventInvokeRoutine{

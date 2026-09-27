@@ -421,6 +421,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
     wrapWidth := float64(130)
     // smaller description text, see textsize.go. wrapping follows the size the letters really come out at
     descriptionSize := font.RelativeTextSize(scale.ScaleAmount, SpellDescriptionTextSize)
+    costSize := font.RelativeTextSize(scale.ScaleAmount, SpellCostTextSize)
 
     spellDescriptionNormalCache := make(map[int]font.WrappedText)
 
@@ -600,8 +601,8 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
                         if turns > 1 {
                             turnString = "turns"
                         }
-                        spellTextNormalFont.PrintOptions(pageImage, x, y, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions}, fmt.Sprintf("Research Cost:%v (%v %v)", spell.ResearchCost, turns, turnString))
-                        y += float64(spellTextNormalFont.Height())
+                        spellTextNormalFont.PrintOptions(pageImage, x, y, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions, TextSize: SpellCostTextSize}, fmt.Sprintf("Research Cost:%v (%v %v)", spell.ResearchCost, turns, turnString))
+                        y += float64(spellTextNormalFont.Height()) * costSize
                     } else {
                         spellCost := caster.ComputeEffectiveSpellCost(spell, true)
 
@@ -613,8 +614,8 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
                         if turns > 1 {
                             turnString = "turns"
                         }
-                        spellTextNormalFont.PrintOptions(pageImage, x, y, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions}, fmt.Sprintf("Casting cost:%v (%v %v)", spellCost, turns, turnString))
-                        y += float64(spellTextNormalFont.Height())
+                        spellTextNormalFont.PrintOptions(pageImage, x, y, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions, TextSize: SpellCostTextSize}, fmt.Sprintf("Casting cost:%v (%v %v)", spellCost, turns, turnString))
+                        y += float64(spellTextNormalFont.Height()) * costSize
                     }
 
                     wrapped := getSpellDescriptionNormalText(spell.Index)

@@ -19,9 +19,11 @@ import (
 const ShowDebugButton = true
 const DebugButtonLabel = "Debug"
 
-// position of the button text in widescreen, inside the empty stretch of the top bar. original pixels
-const DebugButtonBarX = 5
+// position of the button text in widescreen, centered in the empty stretch of the top bar between
+// the bar's left border and the Game button. original pixels
 const DebugButtonBarY = 7
+// left edge of the Game button in the hud
+const HudGameButtonX = 7
 // position without widescreen, or when the stretch of bar is too short for the button
 const DebugButtonMapX = 4
 const DebugButtonMapY = 22
@@ -69,8 +71,10 @@ func (game *Game) debugButtonScreenRect() image.Rectangle {
 
     x, y := DebugButtonMapX, DebugButtonMapY
     extra := game.WideExtra()
-    if extra >= DebugButtonBarX + width + DebugButtonPadding * 2 {
-        x, y = DebugButtonBarX, DebugButtonBarY
+    stretchLeft := HudBarBorderWidth
+    stretchRight := extra + HudGameButtonX
+    if stretchRight - stretchLeft >= width + DebugButtonPadding * 2 {
+        x, y = (stretchLeft + stretchRight - width) / 2, DebugButtonBarY
     }
 
     return image.Rect(x, y, x + width, y + height).Inset(-DebugButtonPadding)

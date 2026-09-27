@@ -281,6 +281,8 @@ func MakeCartographer(cache *lbx.LbxCache, cities []*citylib.City, stacks []*pla
     }
 
     ui.SetElementsFromArray(nil)
+    // centered in the wide screen, see wide.go
+    ui.CursorTransform = transformCursor
 
     pageTurnRect := image.Rect(283, 173, 315, 198)
     ui.AddElement(&uilib.UIElement{
@@ -305,7 +307,7 @@ func MakeCartographer(cache *lbx.LbxCache, cities []*citylib.City, stacks []*pla
         for !quit {
             counter += 1
 
-            mouseX, mouseY = display.CursorPosition()
+            mouseX, mouseY = transformCursor(display.CursorPosition())
             mouseX, mouseY = scale.Unscale2(mouseX, mouseY)
 
             usePlane := data.PlaneArcanus

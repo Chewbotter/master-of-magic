@@ -1341,6 +1341,8 @@ func (game *Game) showScroll(yield coroutine.YieldFunc, title string, text strin
     game.PushDrawer(func (screen *ebiten.Image){
         drawer(screen)
 
+        // in the middle of the wide map, see wide.go
+        game.drawCentered(screen, func (screen *ebiten.Image){
         var options ebiten.DrawImageOptions
         options.ColorScale.ScaleAlpha(getAlpha())
 
@@ -1372,8 +1374,10 @@ func (game *Game) showScroll(yield coroutine.YieldFunc, title string, text strin
         scrollOptions := options
         scrollOptions.GeoM.Translate(float64(-63), float64(-20))
         scale.DrawScaled(screen, scrollAnimation.Frame(), &scrollOptions)
+        })
     })
     defer game.PopDrawer()
+    game.markOverlayDrawer()
 
     quit := false
 
@@ -3197,9 +3201,15 @@ func (game *Game) doCartographer(yield coroutine.YieldFunc) {
     oldDrawer := game.LastDrawer()
     game.PushDrawer(func (screen *ebiten.Image){
         oldDrawer(screen)
-        draw(screen)
+        // in the middle of the wide map, with bars once it covers the screen. see wide.go
+        game.drawCentered(screen, draw)
     })
     defer game.PopDrawer()
+    game.markOverlayDrawer()
+    cartographer.CursorTransform = game.overlayCursorTransform
+    defer func() {
+        cartographer.CursorTransform = nil
+    }()
 
     logic(yield)
 }

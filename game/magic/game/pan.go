@@ -109,6 +109,15 @@ func (game *Game) panTick(mapX float64, mapY float64) {
 
 // moves the camera while the pan button is held, and lets it coast after release. returns true while panning
 func (game *Game) doInputPan() bool {
+    if !display.ModernControls() {
+        // the classic controls have no middle mouse pan
+        panning = false
+        coasting = false
+        game.snapZoomToLevel()
+        game.snapCameraToPixel()
+        return false
+    }
+
     mouseX, mouseY := inputmanager.MousePosition()
 
     pressed := ebiten.IsMouseButtonPressed(PanButton)

@@ -218,14 +218,13 @@ func (game *Game) drawHud(ui *uilib.UI, screen *ebiten.Image) {
         ui.DrawLayers(popup, isPopupLayer)
         ui.RenderTooltip(popup)
 
-        game.drawPopupBars(screen, popup, extra)
+        hudPopupBars.draw(screen, popup, extra)
 
         var popupOptions ebiten.DrawImageOptions
         popupOptions.GeoM.Translate(float64(scale.Scale(extra / 2)), 0)
         screen.DrawImage(popup, &popupOptions)
     } else {
-        popupBarAlpha = 0
-        popupBarCounter = 0
+        hudPopupBars = popupBars{}
     }
 }
 
@@ -234,13 +233,27 @@ const PopupBarProbeFrames = 4
 // how far in from the left and right edge of the popup the looks are taken, in real pixels
 const PopupBarProbeInset = 2
 
-var popupBarAlpha uint8
-var popupBarCounter uint64
+// the black bars beside a popup, for one kind of popup
+type popupBars struct {
+    alpha uint8
+    counter uint64
+}
+
+// popups in the hud, and popups that push their own layer (drawCentered)
+var hudPopupBars popupBars
+var centeredPopupBars popupBars
 
 // a popup that covers the whole original screen (the game menu, for one) is a screen of its own:
 // it gets black bars like any other screen without a widescreen layout. a small popup leaves the map visible.
 // the bars are as solid as the popup is at its left and right edge, so they fade in and out with it
-func (game *Game) drawPopupBars(screen *ebiten.Image, popup *ebiten.Image, extra int) {
+func (bars *popupBars) draw(screen *ebiten.Image, popup *ebiten.Image, extra int) {
+    popupBarAlpha := bars.alpha
+    popupBarCounter := bars.counter
+    defer func() {
+        bars.alpha = popupBarAlpha
+        bars.counter = popupBarCounter
+    }()
+
     if popupBarCounter % PopupBarProbeFrames == 0 {
         bounds := popup.Bounds()
         lowest := uint32(0xffff)
@@ -263,6 +276,51 @@ func (game *Game) drawPopupBars(screen *ebiten.Image, popup *ebiten.Image, extra
     black := color.NRGBA{R: 0, G: 0, B: 0, A: popupBarAlpha}
     vector.FillRect(screen, 0, 0, barWidth, height, black, false)
     vector.FillRect(screen, float32(screen.Bounds().Dx()) - barWidth, 0, barWidth, height, black, false)
+}
+
+var centeredCanvas *ebiten.Image
+
+// draws a popup that works in the original 320 wide coordinates in the middle of the wide world map,
+// with black bars that fade in when it covers the whole original width. the layer that calls this
+// must be marked with markOverlayDrawer
+func (game *Game) drawCentered(screen *ebiten.Image, draw func(*ebiten.Image)) {
+    extra := game.WideExtra()
+    if extra == 0 {
+        draw(screen)
+        return
+    }
+
+    canvas := getCanvas(&centeredCanvas)
+    draw(canvas)
+    centeredPopupBars.draw(screen, canvas, extra)
+
+    var options ebiten.DrawImageOptions
+    options.GeoM.Translate(float64(scale.Scale(extra / 2)), 0)
+    screen.DrawImage(canvas, &options)
+}
+
+// a map mode (surveyor, and later road building and spell targeting) draws its own copy of the hud
+// frame and a panel in original coordinates. in the wide layout that goes against the right edge
+// like the world map's hud, with the top bar extended to the left edge
+func (game *Game) drawWideHud(ui *uilib.UI, screen *ebiten.Image) {
+    extra := game.WideExtra()
+    if extra == 0 {
+        ui.Draw(ui, screen)
+        return
+    }
+
+    canvas := getCanvas(&hudCanvas)
+    ui.Draw(ui, canvas)
+
+    var options ebiten.DrawImageOptions
+    options.GeoM.Translate(float64(scale.Scale(extra)), 0)
+    screen.DrawImage(canvas, &options)
+    game.drawTopBarFiller(screen, extra)
+}
+
+// the cursor for a ui drawn by drawWideHud
+func (game *Game) shiftedCursorTransform(x int, y int) (int, int) {
+    return x - scale.Scale(game.WideExtra()), y
 }
 
 // the top bar of the hud frame, in original pixels

@@ -343,21 +343,20 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
     })
 
     game.PushDrawer(func(screen *ebiten.Image){
-        overworld.Camera = game.Camera
+        // the wide map layout, like the world map. see wide.go
+        game.updateCameraSize()
+        overworld.Camera = game.displayCamera()
 
         overworld.DrawOverworld(screen, ebiten.GeoM{})
 
-        var miniGeom ebiten.GeoM
-        miniGeom.Translate(float64(250), float64(20))
-        mx, my := miniGeom.Apply(0, 0)
-        miniWidth := 60
-        miniHeight := 31
-        mini := screen.SubImage(scale.ScaleRect(image.Rect(int(mx), int(my), int(mx) + miniWidth, int(my) + miniHeight))).(*ebiten.Image)
+        mini := screen.SubImage(game.GetMinimapScreenRect()).(*ebiten.Image)
         overworld.DrawMinimap(mini)
 
-        ui.Draw(ui, screen)
+        game.drawWideHud(ui, screen)
     })
     defer game.PopDrawer()
+    game.markOverlayDrawer()
+    ui.CursorTransform = game.shiftedCursorTransform
 
     for !quit {
         overworld.Counter += 1
