@@ -52,6 +52,8 @@ type frameCapture struct {
     CameraX float64
     // press Next Turn and trace the layout
     NextTurn bool
+    // start a random battle instead of the start screen
+    RandomBattle bool
     // dx,dy in tiles
     CameraMove string
     // dx,dy in tiles

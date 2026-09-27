@@ -107,6 +107,11 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
 - In use (`spellbook/textsize.go`): spellbook descriptions and the Research Cost / Casting cost lines at Compact (6 of 7 at the user's scale; the user found 0.5 too small). Spell names and everything else full size. At 0.8 the longest three-line descriptions nearly touch the next spell name; 0.7 (5 of 7) is the next sharp step.
 - Dev: `-capture-screen research` opens the research spellbook a second into the capture.
 
+## Start screen fast-play (debug)
+- `game/magic/fastplay.go`: a Debug list at the left edge of the start screen, drawn over it by `MagicGame.Draw` (outside the start screen's own ui, so it works in its black bars), clicks read in `runMainMenu` before the menu updates. Hidden while the start screen shows Settings or its Load screen. `ShowFastPlay` turns it off.
+- Random Battle: a random race's starting units twice over attack a cave (lair zone) held by 2 to 4 of one low level monster (war bears, giant spiders, skeletons, zombies, hell hounds, ghouls) on a random landscape; the player controls the attackers, no spells. Then the results screen, then back to the start screen. New entries: add to `fastPlayEntries` with a state from `mainview/fastplay.go`.
+- Dev: `-capture-random-battle` starts one directly.
+
 ## Control type
 - Settings has Controls: Modern (default) or Classic, saved in the settings file as `control-type` (`game/magic/display/controls.go`). Classic is the original game's controls and stays untouched. New control behavior goes behind `display.ModernControls()`.
 - Modern only: middle mouse pan with its glide, coast and cursor glide (user, 2026-09-27). In both: eased camera moves, panel text style, debug button.

@@ -177,7 +177,20 @@ func runMainMenu(yield coroutine.YieldFunc, game *MagicGame, gameLoader *Origina
         menu.Draw(screen)
     }
 
-    for menu.Update(yield) == mainview.MainScreenStateRunning {
+    // the debug fast-play options at the left edge, see fastplay.go
+    fastPlayShowing = true
+    defer func() {
+        fastPlayShowing = false
+    }()
+
+    for {
+        if state, clicked := game.updateFastPlay(menu); clicked {
+            return nil, state
+        }
+
+        if menu.Update(yield) != mainview.MainScreenStateRunning {
+            break
+        }
 
         select {
             case newGame := <-gameLoader.NewGame:
@@ -1055,6 +1068,11 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
         }
     }
 
+    if capture.RandomBattle {
+        // development: straight into a random battle
+        runRandomBattle(yield, game)
+    }
+
     for {
         newGame, state := runMainMenu(yield, game, gameLoader, game.Music)
         switch state {
@@ -1083,6 +1101,11 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
 
                     game.Music.PlaySong(musiclib.SongTitle)
                 }
+            case mainview.MainScreenStateRandomBattle:
+                game.Music.Stop()
+                yield()
+                runRandomBattle(yield, game)
+                game.Music.PlaySong(musiclib.SongTitle)
             case mainview.MainScreenStateQuickGame:
                 game.Music.Stop()
                 yield()
@@ -1201,6 +1224,7 @@ func (game *MagicGame) Draw(screen *ebiten.Image) {
         }
     }
 
+    game.drawFastPlay(screen)
     game.drawFPS(screen)
 
     mouse.Mouse.Draw(screen)
@@ -1264,6 +1288,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&capture.TraceWide, "capture-trace-wide", false, "development: log every change of the widescreen layout and the layers on screen")
     flag.StringVar(&capture.Walk, "capture-walk", "", "development: send the selected unit walking dx,dy tiles and log the camera")
     flag.StringVar(&capture.CameraMove, "capture-camera-move", "", "development: move the camera by dx,dy tiles the way a right click does, and log each frame")
+    flag.BoolVar(&capture.RandomBattle, "capture-random-battle", false, "development: start a random battle instead of the start screen")
     flag.BoolVar(&capture.NextTurn, "capture-next-turn", false, "development: press Next Turn, and trace the widescreen layout while the turn runs")
     flag.Float64Var(&capture.CameraX, "capture-camera-x", -1, "development: put the camera at this column before the capture, fractions allowed")
     flag.IntVar(&capture.DragSpeed, "capture-drag-speed", 1, "development: screen pixels the simulated drag moves each frame")
