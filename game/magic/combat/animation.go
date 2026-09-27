@@ -15,6 +15,7 @@ import (
     "image/color"
     "math"
 
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/util"
 
@@ -37,6 +38,10 @@ const figureIdleFrames = 3
 // a strike alternates between the pose and the strike frame. the defender is one step out of phase
 var figureAttackFrames = []int{3, 1}
 var figureDefendFrames = []int{1, 3}
+// with the frames 4, 5 and 6 of the replacement folder a strike goes through these and around, and
+// does not show the standing frame. the defender is half of it behind. see game/magic/mod
+var figureLongStrikeFrames = []int{3, 4, 5, 6}
+const figureLongStrikeBehind = 2
 
 // units that animate while standing although they do not fly
 var alwaysAnimated = map[string]bool{
@@ -82,6 +87,11 @@ func moveTicksPerCell() float64 {
 }
 
 // the frame of its picture a unit shows
+// true if the figure of the unit, as it faces, has the frames of the long strike
+func longStrike(unit *ArmyUnit) bool {
+    return mod.HasFrames(unit.Unit.GetCombatLbxFile(), unit.Unit.GetCombatIndex(unit.Facing), mod.FrameStrike + 1, mod.FrameStrikeLast)
+}
+
 func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase float64) int {
     tick := combat.originalTickAhead(phase)
 
@@ -99,10 +109,19 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase fl
         }
     }
 
-    if unit.Attacking {
-        frame = figureAttackFrames[tick / attackTicksPerFrame % uint64(len(figureAttackFrames))]
-    } else if unit.Defending {
-        frame = figureDefendFrames[tick / attackTicksPerFrame % uint64(len(figureDefendFrames))]
+    if unit.Attacking || unit.Defending {
+        step := tick / attackTicksPerFrame
+
+        if longStrike(unit) {
+            if unit.Defending && !unit.Attacking {
+                step += figureLongStrikeBehind
+            }
+            frame = figureLongStrikeFrames[step % uint64(len(figureLongStrikeFrames))]
+        } else if unit.Attacking {
+            frame = figureAttackFrames[step % uint64(len(figureAttackFrames))]
+        } else {
+            frame = figureDefendFrames[step % uint64(len(figureDefendFrames))]
+        }
     }
 
     if frameCount <= 0 {

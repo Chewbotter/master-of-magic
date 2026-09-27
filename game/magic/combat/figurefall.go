@@ -7,13 +7,15 @@ package combat
 // by where they lie.
 // Not in the original, which shows a splash of blood on a lost figure that then is gone.
 //
-// PLANNED (user, 2026-09-27): pictures of death poses, made by the user, to lie here in place of
-// the tipped over standing picture. addCorpse is where a corpse gets its picture.
+// DEATH FRAMES (user, 2026-09-27): a figure that has the frames 7 and 8 in the replacement folder
+// (game/magic/mod) does not tip over. It shows 7 while it goes down and 8 from then on. With only 8
+// it shows 8 at once. It is still pushed back, darkens and loses its color.
 
 import (
     "math"
     "math/rand/v2"
 
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/unitview"
@@ -64,6 +66,10 @@ func facingOnScreen(facing units.Facing) (float64, float64) {
 type corpse struct {
     // the picture of the figure when it was killed
     Picture *ebiten.Image
+    // the death frames of the figure, if it has them: on its way down, and lying. with them it does
+    // not tip over
+    Dying *ebiten.Image
+    Dead *ebiten.Image
     // where its feet stood, on the original's screen, in art pixels
     X float64
     Y float64
@@ -104,10 +110,25 @@ func (combat *CombatScreen) figureJustLost(unit *ArmyUnit, figure int, count int
 }
 
 // x, y is where the unit of the figure is, in tiles
-func (combat *CombatScreen) addCorpse(unit *ArmyUnit, picture *ebiten.Image, figure int, count int, x float64, y float64) {
+func (combat *CombatScreen) addCorpse(unit *ArmyUnit, frames []*ebiten.Image, frame int, figure int, count int, x float64, y float64) {
     points := unitview.CombatPoints(count)
-    if picture == nil || figure < 0 || figure >= len(points) {
+    if len(frames) == 0 || figure < 0 || figure >= len(points) {
         return
+    }
+
+    picture := frames[min(max(0, frame), len(frames) - 1)]
+
+    // the death frames of the replacement folder
+    var dying *ebiten.Image
+    var dead *ebiten.Image
+    archive := unit.Unit.GetCombatLbxFile()
+    entry := unit.Unit.GetCombatIndex(unit.Facing)
+    if len(frames) > mod.FrameDead && mod.HasFrame(archive, entry, mod.FrameDead) {
+        dead = frames[mod.FrameDead]
+        dying = dead
+        if mod.HasFrame(archive, entry, mod.FrameDying) {
+            dying = frames[mod.FrameDying]
+        }
     }
 
     field := MakeBattlefieldMatrix()
@@ -125,6 +146,8 @@ func (combat *CombatScreen) addCorpse(unit *ArmyUnit, picture *ebiten.Image, fig
 
     combat.corpses = append(combat.corpses, corpse{
         Picture: picture,
+        Dying: dying,
+        Dead: dead,
         X: screenX + float64(points[figure].X),
         Y: screenY + float64(points[figure].Y),
         PushX: -faceX * push,
@@ -164,17 +187,28 @@ func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawabl
             Order: DrawOrder(int(math.Floor(x)), int(math.Floor(y))),
             Layer: layerFigure,
             Render: func() {
+                picture := body.Picture
+                turned := body.Angle * tipped
+                if body.Dead != nil {
+                    // its own pictures of dying, not the standing one tipped over
+                    turned = 0
+                    picture = body.Dying
+                    if progress >= 1 {
+                        picture = body.Dead
+                    }
+                }
+
                 var options colorm.DrawImageOptions
                 // the feet on the origin, so the figure turns around them
-                options.GeoM.Translate(unitview.FigureOffset(body.Picture))
-                options.GeoM.Rotate(body.Angle * tipped)
+                options.GeoM.Translate(unitview.FigureOffset(picture))
+                options.GeoM.Rotate(turned)
                 options.GeoM.Translate(x, y)
                 options.GeoM.Concat(originalScreenMatrix(combat.GetCameraMatrix()))
                 options.GeoM.Scale(scale.ScaleAmount, scale.ScaleAmount)
 
                 var colors colorm.ColorM
                 colors.ChangeHSV(0, saturation, float64(brightness))
-                colorm.DrawImage(screen, body.Picture, colors, &options)
+                colorm.DrawImage(screen, picture, colors, &options)
             },
         })
     }

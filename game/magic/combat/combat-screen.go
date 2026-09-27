@@ -4143,7 +4143,7 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                             x, y = unit.MoveX, unit.MoveY
                         }
                         x, y = combat.figurePosition(unit, figure, figureCount, x, y)
-                        combat.addCorpse(unit, plain[min(index, len(plain) - 1)], figure, figureCount, x, y)
+                        combat.addCorpse(unit, plain, index, figure, figureCount, x, y)
                     }
                 }
             }

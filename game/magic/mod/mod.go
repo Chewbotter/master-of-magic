@@ -9,8 +9,13 @@ package mod
 //   archives/<file>/<entry>_<frame>.png          any picture of any archive, <entry> with 3 digits
 //
 // A picture that is not there is the game's own. Every frame is a file of its own: the sheets the
-// export writes are for looking at and are not read. Frames past the ones the game has are added
-// when they follow without a gap.
+// export writes are for looking at and are not read.
+//
+// NEW FRAMES (user, 2026-09-27). The figures of the game have the frames 0 to 3. The replacement
+// folder can give a figure more, per facing:
+//   4, 5, 6   more frames of the strike: the figure strikes through 3, 4, 5, 6 and around
+//   7, 8      death: 7 on the way down, 8 lying, where the figure stays
+// A figure can have some of them and not others. HasFrame says which are there.
 //
 // Pictures are read when they are first needed by a screen, and a battle asks again when it
 // starts: a picture that was changed shows in the next battle, without starting the game again.
@@ -28,6 +33,7 @@ import (
     "os"
     "path/filepath"
     "strings"
+    "time"
 )
 
 // the folders that are looked at when none was given, from where the game runs
@@ -38,8 +44,16 @@ const archivesFolder = "archives"
 
 // pixels less solid than this, of 255, are see-through
 const solidFrom = 128
-// a frame past the ones the game has is looked for up to this number
-const maxFrames = 64
+// frames are looked for up to this number
+const maxFrames = 16
+// the files of a folder are looked up again after this long, so a picture that was added is found
+const folderListTime = 2 * time.Second
+
+// the frames of a figure the replacement folder can add, see the top of the file
+const FrameStrike = 3
+const FrameStrikeLast = 6
+const FrameDying = 7
+const FrameDead = 8
 
 // the first color of the palette is see-through
 const clearColor = 0
@@ -52,6 +66,50 @@ var folder string
 var unitEntries = make(map[string]unitEntry)
 // what was said in the log already
 var reported = make(map[string]bool)
+// by archive and entry: the frames that came from the replacement folder
+var replaced = make(map[string]map[int]bool)
+
+type folderList struct {
+    Files map[string]bool
+    Read time.Time
+}
+
+var folderLists = make(map[string]*folderList)
+
+// true if the folder has the file. looks the folder up once in a while, not for every file
+func hasFile(path string) bool {
+    directory := filepath.Dir(path)
+
+    list, ok := folderLists[directory]
+    if !ok || time.Since(list.Read) > folderListTime {
+        list = &folderList{Files: make(map[string]bool), Read: time.Now()}
+        entries, err := os.ReadDir(directory)
+        if err == nil {
+            for _, entry := range entries {
+                list.Files[strings.ToLower(entry.Name())] = true
+            }
+        }
+        folderLists[directory] = list
+    }
+
+    return list.Files[strings.ToLower(filepath.Base(path))]
+}
+
+// true if the frame of the entry came from the replacement folder
+func HasFrame(archive string, entry int, frame int) bool {
+    frames, ok := replaced[entryKey(archive, entry)]
+    return ok && frames[frame]
+}
+
+// true if all frames from first to last came from the replacement folder
+func HasFrames(archive string, entry int, first int, last int) bool {
+    for frame := first; frame <= last; frame++ {
+        if !HasFrame(archive, entry, frame) {
+            return false
+        }
+    }
+    return true
+}
 
 type unitEntry struct {
     Folder string
@@ -253,6 +311,10 @@ func toPaletted(source image.Image, palette color.Palette, path string) *image.P
 
 func readFrame(paths []string, palette color.Palette) *image.Paletted {
     for _, path := range paths {
+        if !hasFile(path) {
+            continue
+        }
+
         file, err := os.Open(path)
         if err != nil {
             continue
@@ -280,24 +342,38 @@ func Replace(archive string, entry int, pictures []*image.Paletted) []*image.Pal
     }
 
     palette := pictures[0].Palette
-    var out []*image.Paletted
-    changed := false
+    key := entryKey(archive, entry)
+    delete(replaced, key)
 
+    found := make(map[int]*image.Paletted)
+    last := len(pictures) - 1
     for frame := 0; frame < maxFrames; frame++ {
         replacement := readFrame(framePaths(archive, entry, frame), palette)
-
         if replacement != nil {
-            out = append(out, replacement)
-            changed = true
-        } else if frame < len(pictures) {
-            out = append(out, pictures[frame])
-        } else {
-            break
+            found[frame] = replacement
+            last = max(last, frame)
         }
     }
 
-    if !changed {
+    if len(found) == 0 {
         return pictures
+    }
+
+    replaced[key] = make(map[int]bool)
+
+    var out []*image.Paletted
+    for frame := 0; frame <= last; frame++ {
+        replacement, ok := found[frame]
+        switch {
+            case ok:
+                out = append(out, replacement)
+                replaced[key][frame] = true
+            case frame < len(pictures):
+                out = append(out, pictures[frame])
+            default:
+                // a frame that is not there, before one that is: never shown, HasFrame says it is missing
+                out = append(out, pictures[min(1, len(pictures) - 1)])
+        }
     }
 
     return out
