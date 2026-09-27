@@ -84,6 +84,7 @@ We keep building on this fork and rebuild any visual that does not match the ori
 ## Combat overhaul (user decision 2026-09-27)
 - The whole combat scene is being rebuilt against ReMoM in batches; the user compares after each. The plan, the grid mapping, what is done and the list of known differences live in `docs/mod/combat-overhaul.md`. READ IT before touching combat, and update it with every batch.
 - Batch 3 done: battle camera (`combat/camera.go`), whole pixel zoom levels and smooth pan, KEEP IN STEP with the world map's pan constants. Batch 4 done: deployment (`combat/deploy.go`), figure frames, move timing, cell outline pictures, red outline of the unit under the cursor (`combat/animation.go`). The original runs at 18.2 redraws a second; `originalTick()` converts.
+- Batch 5 done: environments. `combat/scenery.go` makes trees, rocks, houses, fortress (`CombatModel.Scenery`, positions on the ORIGINAL'S SCREEN in art pixels) and holds the wall piece table; `combat/scenerydraw.go` draws everything on the field through one sorted list (`fieldDrawable`, `DrawOrder`), figures one at a time (`unitview/figure.go`). Anything new that stands on the field joins that list. Tiles no longer carry trees or houses; the upstream `DrawWall` is unused.
 - Known dev tool noise: capture runs of a battle can log `panic: ebiten: NewImage cannot be called after RunGame finishes` at exit, after the frame is written. Harmless, capture only.
 - Batch 2 done: exact projection (`combat/battlefield.go`, `MakeBattlefieldMatrix`; the matrix maps a tile to the MIDDLE of its diamond, terrain pictures are drawn at `TerrainOffsetX/Y` from it), exact figure positions and feet anchor (`unitview/combat.go`), structures on cell (6, 11).
 
@@ -136,7 +137,8 @@ We keep building on this fork and rebuild any visual that does not match the ori
 ## Start screen fast-play (debug)
 - `game/magic/fastplay.go`: a Debug list at the left edge of the start screen, drawn over it by `MagicGame.Draw` (outside the start screen's own ui, so it works in its black bars), clicks read in `runMainMenu` before the menu updates. Hidden while the start screen shows Settings or its Load screen. `ShowFastPlay` turns it off.
 - Random Battle: a random race's starting units twice over attack a cave (lair zone) held by 2 to 4 of one low level monster (war bears, giant spiders, skeletons, zombies, hell hounds, ghouls) on a random landscape; the player controls the attackers, no spells. Then the results screen, then back to the start screen. New entries: add to `fastPlayEntries` with a state from `mainview/fastplay.go`.
-- Dev: `-capture-random-battle` starts one directly.
+- Random City Battle: the same army attacks a city of a random race held by its starting units; size, walls, fortress, wall of fire and wall of darkness are random.
+- Dev: `-capture-random-battle` starts one directly. `-capture-city-battle "walls,fortress,fire,darkness,outpost,myrror,size=8"` (or `random`) starts a city battle with exactly what is listed.
 
 ## Control type
 - Settings has Controls: Modern (default) or Classic, saved in the settings file as `control-type` (`game/magic/display/controls.go`). Classic is the original game's controls and stays untouched. New control behavior goes behind `display.ModernControls()`.

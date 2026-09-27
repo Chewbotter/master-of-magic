@@ -54,6 +54,8 @@ type frameCapture struct {
     NextTurn bool
     // start a random battle instead of the start screen
     RandomBattle bool
+    // start a random battle for a city. a list of: walls, fortress, fire, darkness, outpost, myrror, size=N
+    CityBattle string
     // the view of the battlefield: screen pixels per art pixel, and position in screen pixels
     BattleLevel int
     BattlePanX int

@@ -95,3 +95,7 @@ func structureOffset(width int, height int, natureNode bool) (float64, float64) 
 
     return float64(-structureAnchorX - cellMiddleX), float64(-(height - structureAnchorBelow) - cellMiddleY)
 }
+
+// the size of our battlefield, in tiles
+const BattlefieldWidth = 30
+const BattlefieldHeight = 30

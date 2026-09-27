@@ -77,6 +77,11 @@ func figureOffset(use *ebiten.Image) (float64, float64) {
 
 // draws the unit semi-transparently in a solid greyish color
 func RenderCombatSemiInvisible(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, count int, lostCount int, lostColor *colorm.ColorM, timeCounter uint64, imageCache *util.ImageCache) {
+    renderCombatSemiInvisible(screen, use, options, count, lostCount, lostColor, timeCounter, imageCache, AllFigures)
+}
+
+// only: the figure to draw, or AllFigures. see figure.go
+func renderCombatSemiInvisible(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, count int, lostCount int, lostColor *colorm.ColorM, timeCounter uint64, imageCache *util.ImageCache, only int) {
 
     var greyScale colorm.ColorM
     greyScale.Scale(0, 0, 0, 0.45)
@@ -89,6 +94,10 @@ func RenderCombatSemiInvisible(screen *ebiten.Image, use *ebiten.Image, options 
     var dyingOptions colorm.DrawImageOptions
 
     for i, point := range CombatPoints(count + lostCount) {
+        if only != AllFigures && i != only {
+            continue
+        }
+
         greyOptions.GeoM.Reset()
         greyOptions.GeoM.Translate(float64(point.X), float64(point.Y))
         greyOptions.GeoM.Translate(figureOffset(use))
@@ -107,6 +116,10 @@ func RenderCombatSemiInvisible(screen *ebiten.Image, use *ebiten.Image, options 
 }
 
 func RenderCombatUnitGrey(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, count int, lostCount int, lostColor *colorm.ColorM, enchantment data.UnitEnchantment, timeCounter uint64, imageCache *util.ImageCache){
+    renderCombatUnitGrey(screen, use, options, count, lostCount, lostColor, enchantment, timeCounter, imageCache, AllFigures)
+}
+
+func renderCombatUnitGrey(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, count int, lostCount int, lostColor *colorm.ColorM, enchantment data.UnitEnchantment, timeCounter uint64, imageCache *util.ImageCache, only int){
 
     var greyScale colorm.ColorM
     greyScale.Scale(1, 1, 1, float64(options.ColorScale.A()))
@@ -118,6 +131,10 @@ func RenderCombatUnitGrey(screen *ebiten.Image, use *ebiten.Image, options ebite
     geoM := options.GeoM
 
     for i, point := range CombatPoints(count + lostCount) {
+        if only != AllFigures && i != only {
+            continue
+        }
+
         greyOptions.GeoM.Reset()
         greyOptions.GeoM.Translate(float64(point.X), float64(point.Y))
         greyOptions.GeoM.Translate(figureOffset(use))
@@ -139,6 +156,10 @@ func RenderCombatUnitGrey(screen *ebiten.Image, use *ebiten.Image, options ebite
 }
 
 func RenderCombatUnit(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, count int, lostCount int, lostColor *colorm.ColorM, enchantment data.UnitEnchantment, timeCounter uint64, imageCache *util.ImageCache){
+    renderCombatUnit(screen, use, options, count, lostCount, lostColor, enchantment, timeCounter, imageCache, AllFigures)
+}
+
+func renderCombatUnit(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, count int, lostCount int, lostColor *colorm.ColorM, enchantment data.UnitEnchantment, timeCounter uint64, imageCache *util.ImageCache, only int){
 
     totalCount := count + lostCount
 
@@ -146,6 +167,10 @@ func RenderCombatUnit(screen *ebiten.Image, use *ebiten.Image, options ebiten.Dr
 
     geoM := options.GeoM
     for i, point := range CombatPoints(totalCount) {
+        if only != AllFigures && i != only {
+            continue
+        }
+
         options.GeoM.Reset()
         options.GeoM.Translate(float64(point.X), float64(point.Y))
         options.GeoM.Translate(figureOffset(use))

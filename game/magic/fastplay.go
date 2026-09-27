@@ -10,8 +10,12 @@ import (
     "image"
     "log"
     "math/rand/v2"
+    "strconv"
+    "strings"
     "time"
 
+    buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
+    citylib "github.com/kazzmir/master-of-magic/game/magic/city"
     "github.com/kazzmir/master-of-magic/game/magic/combat"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/display"
@@ -49,6 +53,7 @@ type fastPlayEntry struct {
 
 var fastPlayEntries = []fastPlayEntry{
     {Label: "Random Battle", State: mainview.MainScreenStateRandomBattle},
+    {Label: "Random City Battle", State: mainview.MainScreenStateRandomCityBattle},
 }
 
 // true while the start screen shows, so the list is drawn and clickable
@@ -160,7 +165,58 @@ var randomBattleRaces = []data.Race{
 
 var randomBattleLandscapes = []combat.CombatLandscape{combat.CombatLandscapeGrass, combat.CombatLandscapeDesert, combat.CombatLandscapeMountain, combat.CombatLandscapeTundra}
 
-func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame) {
+// the city of a random city battle
+const RandomCityMinCitizens = 2
+const RandomCityMaxCitizens = 16
+// one in this many
+const RandomCityWallsChance = 2
+const RandomCityFortressChance = 3
+const RandomCityMagicWallChance = 5
+
+type randomCity struct {
+    Citizens int
+    Walls bool
+    Fortress bool
+    Fire bool
+    Darkness bool
+    Outpost bool
+    Myrror bool
+}
+
+func makeRandomCity() randomCity {
+    city := randomCity{
+        Citizens: RandomCityMinCitizens + rand.N(RandomCityMaxCitizens - RandomCityMinCitizens + 1),
+        Walls: rand.N(RandomCityWallsChance) == 0,
+        Fortress: rand.N(RandomCityFortressChance) == 0,
+        Fire: rand.N(RandomCityMagicWallChance) == 0,
+        Darkness: rand.N(RandomCityMagicWallChance) == 0,
+    }
+
+    // development: the city a capture asks for
+    if capture.CityBattle != "" && capture.CityBattle != "random" {
+        city = randomCity{Citizens: city.Citizens}
+        for _, word := range strings.Split(capture.CityBattle, ",") {
+            switch {
+                case word == "walls": city.Walls = true
+                case word == "fortress": city.Fortress = true
+                case word == "fire": city.Fire = true
+                case word == "darkness": city.Darkness = true
+                case word == "outpost": city.Outpost = true
+                case word == "myrror": city.Myrror = true
+                case strings.HasPrefix(word, "size="):
+                    size, err := strconv.Atoi(strings.TrimPrefix(word, "size="))
+                    if err == nil {
+                        city.Citizens = size
+                    }
+            }
+        }
+    }
+
+    return city
+}
+
+// a cave held by monsters, or a city held by a garrison
+func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool) {
     allSpells, err := spellbook.ReadSpellsFromCache(game.Cache)
     if err != nil {
         log.Printf("Random battle: unable to read spells: %v", err)
@@ -181,20 +237,59 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame) {
     }
 
     defendingArmy := &combat.Army{Player: defender}
-    monster := randomChoose(randomBattleMonsters...)
-    count := RandomBattleMinMonsters + rand.N(RandomBattleMaxMonsters - RandomBattleMinMonsters + 1)
-    for range count {
-        defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(monster, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
-    }
-
     landscape := randomChoose(randomBattleLandscapes...)
     zone := combat.ZoneType{Encounter: combat.ZoneLair}
+    plane := data.PlaneArcanus
 
-    log.Printf("Random battle: %v army attacks a cave with %v %v, landscape %v", race, count, monster.Name, landscape)
+    if cityBattle {
+        // a city of another race, held by its starting units
+        cityRace := randomChoose(randomBattleRaces...)
+        cityBanner := data.BannerBlue
+        if banner == cityBanner {
+            cityBanner = data.BannerRed
+        }
+        defender = playerlib.MakePlayer(setup.WizardCustom{Name: cityRace.String(), Banner: cityBanner, Race: cityRace}, false, 0, 0, nil, &playerlib.NoGlobalEnchantments{})
+        defendingArmy = &combat.Army{Player: defender}
+        for _, unit := range startingUnits(cityRace) {
+            defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(unit, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
+        }
+
+        choice := makeRandomCity()
+        city := citylib.MakeCity("City", 10, 10, cityRace, nil, nil, nil, defender)
+        city.Population = choice.Citizens * 1000
+        city.Outpost = choice.Outpost
+        if choice.Fortress {
+            city.Buildings.Insert(buildinglib.BuildingFortress)
+        }
+        if choice.Walls {
+            city.Buildings.Insert(buildinglib.BuildingCityWalls)
+        }
+        if choice.Fire {
+            city.AddEnchantment(data.CityEnchantmentWallOfFire, cityBanner)
+        }
+        if choice.Darkness {
+            city.AddEnchantment(data.CityEnchantmentWallOfDarkness, cityBanner)
+        }
+        if choice.Myrror {
+            plane = data.PlaneMyrror
+        }
+
+        zone = combat.ZoneType{City: city}
+
+        log.Printf("Random battle: %v army attacks a %v city, %+v, landscape %v", race, cityRace, choice, landscape)
+    } else {
+        monster := randomChoose(randomBattleMonsters...)
+        count := RandomBattleMinMonsters + rand.N(RandomBattleMaxMonsters - RandomBattleMinMonsters + 1)
+        for range count {
+            defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(monster, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
+        }
+
+        log.Printf("Random battle: %v army attacks a cave with %v %v, landscape %v", race, count, monster.Name, landscape)
+    }
 
     events := make(chan combat.CombatEvent, 1000)
-    model := combat.MakeCombatModel(allSpells, defendingArmy, attackingArmy, landscape, data.PlaneArcanus, zone, data.MagicNone, 0, 0, events)
-    combatScreen := combat.MakeCombatScreen(game.Cache, defendingArmy, attackingArmy, optional.Of[combat.ArmyPlayer](attacker), landscape, data.PlaneArcanus, zone, model)
+    model := combat.MakeCombatModel(allSpells, defendingArmy, attackingArmy, landscape, plane, zone, data.MagicNone, 0, 0, events)
+    combatScreen := combat.MakeCombatScreen(game.Cache, defendingArmy, attackingArmy, optional.Of[combat.ArmyPlayer](attacker), landscape, plane, zone, model)
     if combatScreen == nil {
         log.Printf("Random battle: unable to make the combat screen")
         return

@@ -3893,6 +3893,10 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         y := point.Y
 
         extra := combat.Model.Tiles[y][x].ExtraObject
+        if extra.standsOnField() {
+            // drawn in order with the units, see scenerydraw.go
+            continue
+        }
         drawExtraObject(x, y, extra)
     }
 
@@ -3961,7 +3965,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         }
     }
 
-    renderUnit := func(unit *ArmyUnit) {
+    // draws one figure of a unit, and what is shown over the whole unit if overlays is set
+    renderUnit := func(unit *ArmyUnit, figure int, overlays bool) {
         var unitOptions ebiten.DrawImageOptions
         banner := unit.Unit.GetBanner()
         imageKey := banner.String()
@@ -4035,13 +4040,13 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                 // any units with illusions immunity
                 canBeSeen := isVisible(unit)
                 if canBeSeen {
-                    unitview.RenderCombatSemiInvisible(screen, unitImage, unitOptions, unit.VisibleFigures(), unit.LostUnits, &dying, combat.Counter, &combat.ImageCache)
+                    unitview.RenderCombatFigureSemiInvisible(screen, unitImage, unitOptions, unit.VisibleFigures(), unit.LostUnits, &dying, combat.Counter, &combat.ImageCache, figure)
                 } else {
                     // if can't be seen then don't render anything at all
                 }
 
             } else if unit.IsAsleep() {
-                unitview.RenderCombatUnitGrey(screen, unitImage, unitOptions, unit.VisibleFigures(), unit.LostUnits, &dying, use, combat.Counter, &combat.ImageCache)
+                unitview.RenderCombatFigureGrey(screen, unitImage, unitOptions, unit.VisibleFigures(), unit.LostUnits, &dying, use, combat.Counter, &combat.ImageCache, figure)
             } else {
                 warpCreature := false
                 for _, curse := range unit.GetCurses() {
@@ -4061,11 +4066,15 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                     unitOptions.ColorScale.ScaleWithColor(color.RGBA{R: 0xb5, G: 0x5e, B: 0xf3, A: 0xff})
                 }
 
-                unitview.RenderCombatUnit(screen, unitImage, unitOptions, unit.VisibleFigures(), unit.LostUnits, &dying, use, combat.Counter, &combat.ImageCache)
+                unitview.RenderCombatFigure(screen, unitImage, unitOptions, unit.VisibleFigures(), unit.LostUnits, &dying, use, combat.Counter, &combat.ImageCache, figure)
 
                 if warpCreature {
                     unitOptions.ColorScale = savedColor
                 }
+            }
+
+            if !overlays {
+                return
             }
 
             var curseOptions ebiten.DrawImageOptions
@@ -4114,123 +4123,34 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         }
     }
 
-    type Drawable struct {
-        GetY func() float64
-        GetX func() float64
-        Render func()
-    }
+    // everything that stands on the field, in the original's order. see scenerydraw.go
+    allDrawables := make([]fieldDrawable, 0, 200)
 
-    unitDrawable := func(unit *ArmyUnit) Drawable {
-        return Drawable{
-            GetX: func() float64 {
-                return float64(unit.X)
-            },
-            GetY: func() float64 {
-                return float64(unit.Y)
-            },
-            Render: func() {
-                renderUnit(unit)
-            },
-        }
-    }
-
-    wallDrawable := func(tile TilePoint) Drawable {
-        var offset float64 = 0
-
-        if tile.Tile.HasEasternWall() || tile.Tile.HasSouthernWall() {
-            offset += 0.1
-        } else {
-            offset -= 0.1
-        }
-
-        return Drawable{
-            GetX: func() float64 {
-                return float64(tile.X)
-            },
-            GetY: func() float64 {
-                return float64(tile.Y) + offset
-            },
-            Render: func() {
-                combat.DrawWall(screen, tile.X, tile.Y, tilePosition, animationIndex)
-            },
-        }
-    }
-
-    fortressDrawable := func() Drawable {
-        extra := TileTop{
-            Lbx: "cmbtcity.lbx",
-            Index: 17,
-            Alignment: TileAlignBottom,
-        }
-
-        return Drawable{
-            GetX: func() float64 {
-                return float64(TownCenterX)
-            },
-            GetY: func() float64 {
-                return float64(TownCenterY)
-            },
-            Render: func() {
-                drawExtraObject(TownCenterX, TownCenterY, extra)
-            },
-        }
-    }
-
-    // sort units in top down order before drawing them
-    allDrawables := make([]Drawable, 0, len(combat.Model.DefendingArmy.units) + len(combat.Model.AttackingArmy.units) + 100)
+    allDrawables = append(allDrawables, combat.sceneryDrawables(screen)...)
+    allDrawables = append(allDrawables, combat.wallDrawables(screen)...)
+    allDrawables = append(allDrawables, combat.structureDrawables(drawExtraObject)...)
 
     for _, unit := range combat.Model.AttackingArmy.units {
-        allDrawables = append(allDrawables, unitDrawable(unit))
+        allDrawables = append(allDrawables, combat.unitDrawables(unit, renderUnit)...)
     }
 
     for _, unit := range combat.Model.DefendingArmy.units {
-        allDrawables = append(allDrawables, unitDrawable(unit))
-    }
-
-    if combat.Model.Zone.City != nil && combat.Model.Zone.City.HasFortress() {
-        allDrawables = append(allDrawables, fortressDrawable())
+        allDrawables = append(allDrawables, combat.unitDrawables(unit, renderUnit)...)
     }
 
     for _, unit := range combat.Model.AttackingArmy.KilledUnits {
         if unit.LostUnitsTime > 0 {
-            allDrawables = append(allDrawables, unitDrawable(unit))
+            allDrawables = append(allDrawables, combat.unitDrawables(unit, renderUnit)...)
         }
     }
 
     for _, unit := range combat.Model.DefendingArmy.KilledUnits {
         if unit.LostUnitsTime > 0 {
-            allDrawables = append(allDrawables, unitDrawable(unit))
+            allDrawables = append(allDrawables, combat.unitDrawables(unit, renderUnit)...)
         }
     }
 
-    for _, tile := range combat.Model.WallTiles() {
-        allDrawables = append(allDrawables, wallDrawable(tile))
-    }
-
-    compareDrawable := func(drawA Drawable, drawB Drawable) int {
-        ax, ay := tilePosition(drawA.GetX(), drawA.GetY())
-        bx, by := tilePosition(drawB.GetX(), drawB.GetY())
-
-        if ay < by {
-            return -1
-        }
-
-        if ay > by {
-            return 1
-        }
-
-        if ax < bx {
-            return -1
-        }
-
-        if ax > bx {
-            return 1
-        }
-
-        return 0
-    }
-
-    slices.SortFunc(allDrawables, compareDrawable)
+    sortFieldDrawables(allDrawables)
 
     for _, drawable := range allDrawables {
         drawable.Render()

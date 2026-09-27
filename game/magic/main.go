@@ -1070,7 +1070,11 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
 
     if capture.RandomBattle {
         // development: straight into a random battle
-        runRandomBattle(yield, game)
+        runRandomBattle(yield, game, false)
+    }
+
+    if capture.CityBattle != "" {
+        runRandomBattle(yield, game, true)
     }
 
     for {
@@ -1101,10 +1105,10 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
 
                     game.Music.PlaySong(musiclib.SongTitle)
                 }
-            case mainview.MainScreenStateRandomBattle:
+            case mainview.MainScreenStateRandomBattle, mainview.MainScreenStateRandomCityBattle:
                 game.Music.Stop()
                 yield()
-                runRandomBattle(yield, game)
+                runRandomBattle(yield, game, state == mainview.MainScreenStateRandomCityBattle)
                 game.Music.PlaySong(musiclib.SongTitle)
             case mainview.MainScreenStateQuickGame:
                 game.Music.Stop()
@@ -1292,6 +1296,7 @@ func loadGameConfig() GameConfig {
     flag.IntVar(&capture.BattlePanX, "capture-battle-pan-x", 0, "development: move the battlefield right by this many screen pixels")
     flag.IntVar(&capture.BattlePanY, "capture-battle-pan-y", 0, "development: move the battlefield down by this many screen pixels")
     flag.BoolVar(&capture.RandomBattle, "capture-random-battle", false, "development: start a random battle instead of the start screen")
+    flag.StringVar(&capture.CityBattle, "capture-city-battle", "", "development: start a random battle for a city. a list of: walls, fortress, fire, darkness, outpost, myrror, size=N, or random")
     flag.BoolVar(&capture.NextTurn, "capture-next-turn", false, "development: press Next Turn, and trace the widescreen layout while the turn runs")
     flag.Float64Var(&capture.CameraX, "capture-camera-x", -1, "development: put the camera at this column before the capture, fractions allowed")
     flag.IntVar(&capture.DragSpeed, "capture-drag-speed", 1, "development: screen pixels the simulated drag moves each frame")

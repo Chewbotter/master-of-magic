@@ -33,6 +33,20 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 4 | A step to the next cell takes 8 of the original's ticks, straight or diagonal | `combat/animation.go` |
 | 4 | Cell outlines are the original's pictures: blue under the cursor, red under the selected unit | `combat/animation.go` |
 | 4 | The unit under the cursor: the outline of its figures pulses black to red. The selected unit no longer pulses in brightness | `combat/animation.go` |
+| 5 | Trees and rocks: the original's counts per landscape, trees in patches, its five tree and five rock pictures, its anchors | `combat/scenery.go` |
+| 5 | City: one house per citizen up to a full town, house style by race, fortress and outpost on cell (6, 11) | `combat/scenery.go` |
+| 5 | Walls of stone, fire and darkness: the original's 12 and 14 pieces with their cells, shifts and anchors. Myrror has its own stone | `combat/scenery.go`, `combat/scenerydraw.go` |
+| 5 | Draw order: figures one by one, trees, rocks, houses, walls and the structure all in the original's order | `combat/scenerydraw.go`, `unitview/figure.go` |
+| 5 | The fortress takes its cell. A city without one has no blocked cell | `combat/model.go` |
+
+## Judgment calls of batch 5
+- Beyond the original's screen (our field is larger and the camera zooms out) scenery continues at
+  the same density: three times the count again, `sceneryBeyondScreen`.
+- The original draws rocks with the count and the picture numbers of the trees (its bug). Ours draws
+  every rock with its own picture.
+- The original reads the broken state of the near walls from the cells of the far walls (its bug or
+  the reconstruction's). Ours uses each piece's own cell.
+- Rising walls of fire and darkness keep the fork's timing, 8 of our ticks per frame.
 
 ## Still different, by area
 
@@ -46,14 +60,16 @@ Found while reading the reference. Not started unless noted.
 - Unit enchantment outlines, invisibility and other figure effects (Combat_Figure_Effect,
   Combat_Unit_Enchantment_Outline_Draw).
 - Death: the original plays "gibs" frames per lost figure. Ours fades the figure to a color.
-- Draw order of figures, trees and structures (Set_Entity_Draw_Order).
+- Missiles, vortexes and curse pictures are not part of the draw order yet: drawn after everything.
 
 ### Battlefield
-- Trees and rocks: the original places a fixed set with anchors (8, 13) and (6, 12)
-  (Spawn_Tree_Entities, Spawn_Rock_Entities). Ours scatters them at random, one tile in ten.
-- Terrain choice per cell, rivers, roads, mud.
-- City: houses, walls, gate, fortress pictures and their anchors (Spawn_Structure_Entities,
-  Spawn_Stone_Wall_Entities).
+- Terrain choice per cell (grass, rough and dirt patches), rivers, roads, mud. Trees and rocks only
+  stand on grass cells in the original, and add 1 to the cost of moving through their cell. Ours has
+  neither.
+- Forest squares: the original has 31 to 60 trees there. Our landscapes have no forest, it counts as grass.
+- The road and the dirt paths of a town are still the fork's one picture.
+- The sorcery and chaos nodes were not checked.
+- A wall of stone rising (the Wall of Stone spell) has no animation.
 - The cell outline under the cursor and under the selected unit (doc/Combat/MoX-Combat-Draw-SquareOutline.md).
 - Mouse cursor pictures per action (doc/Combat/MoM-CombatScreen-Mouse.md).
 - Projectiles and spell effects (Make_Missiles and the spell animation code).

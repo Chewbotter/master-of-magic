@@ -292,22 +292,7 @@ func makeTiles(width int, height int, landscape CombatLandscape, plane data.Plan
             }
     }
 
-    maybeExtraTile := func() TileTop {
-        // water never has trees/rocks
-        if landscape == CombatLandscapeWater {
-            return TileTop{Index: -1}
-        }
-
-        if rand.N(10) == 0 {
-            // trees/rocks
-            return TileTop{
-                Lbx: baseLbx,
-                Index: 48 + rand.N(10),
-                Alignment: TileAlignMiddle,
-            }
-        }
-        return TileTop{Index: -1}
-    }
+    // trees, rocks and houses are not part of the tiles, see scenery.go
 
     tiles := make([][]Tile, height)
     for y := 0; y < len(tiles); y++ {
@@ -317,7 +302,7 @@ func makeTiles(width int, height int, landscape CombatLandscape, plane data.Plan
                 // Index: rand.N(48),
                 Lbx: baseLbx,
                 Index: tileStart + rand.N(tileMax),
-                ExtraObject: maybeExtraTile(),
+                ExtraObject: TileTop{Index: -1},
             }
         }
     }
@@ -327,12 +312,6 @@ func makeTiles(width int, height int, landscape CombatLandscape, plane data.Plan
 
         townSquare := image.Rect(TownCenterX - 2, TownCenterY - 2, TownCenterX + 1, TownCenterY + 1)
 
-        randTownSquare := func() (int, int) {
-            x := rand.N(townSquare.Dx())
-            y := rand.N(townSquare.Dy())
-            return townSquare.Min.X + x, townSquare.Min.Y + y
-        }
-
         flyingFortress := zone.City != nil && zone.City.HasEnchantment(data.CityEnchantmentFlyingFortress)
 
         // clear all space around the city
@@ -341,17 +320,6 @@ func makeTiles(width int, height int, landscape CombatLandscape, plane data.Plan
                 tiles[y][x].ExtraObject.Index = -1
                 tiles[y][x].InsideTown = true
                 tiles[y][x].Flying = flyingFortress
-            }
-        }
-
-        // add random houses
-        for range 8 {
-            x, y := randTownSquare()
-
-            tiles[y][x].ExtraObject = TileTop{
-                Lbx: "cmbtcity.lbx",
-                Index: 2 + rand.N(5),
-                Alignment: TileAlignBottom,
             }
         }
 
@@ -2324,6 +2292,8 @@ type CombatModel struct {
     DefendingArmy *Army
     AttackingArmy *Army
     Tiles [][]Tile
+    // trees, rocks, houses and the fortress, see scenery.go
+    Scenery []SceneryPiece
     // when the user hovers over a unit, that unit should be shown in a little info box at the upper right
     HighlightedUnit *ArmyUnit
     MagicVortexes []*MagicVortex
@@ -2379,7 +2349,8 @@ func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingA
         Turn: TeamDefender,
         Plane: plane,
         SelectedUnit: nil,
-        Tiles: makeTiles(30, 30, landscape, plane, zone),
+        Tiles: makeTiles(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone),
+        Scenery: makeScenery(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone),
         TurnAttacker: 0,
         TurnDefender: 0,
         AttackingArmy: attackingArmy,
@@ -2439,10 +2410,10 @@ func (model *CombatModel) IsLegalLocation(x int, y int) bool {
         return false
     }
 
-    if model.Zone.City != nil {
-        if x == TownCenterX && y == TownCenterY {
-            return false
-        }
+    // the fortress of a city takes a cell, see scenery.go
+    fortressX, fortressY, fortress := fortressTile(model.Zone)
+    if fortress && x == fortressX && y == fortressY {
+        return false
     }
 
     return true
