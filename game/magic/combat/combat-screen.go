@@ -231,6 +231,10 @@ type CombatScreen struct {
     corpses []corpse
     // see shadows.go
     shadowLayer *ebiten.Image
+    // screen pixels per pixel of the shadow picture, and where its first pixel is on the screen
+    shadowPixel float64
+    shadowStartX float64
+    shadowStartY float64
     // where the figures of each unit are and how far out of step, see figurevariety.go
     figureStates map[*ArmyUnit]*unitFigures
     // the pictures of damage numbers, see damagenumbers.go
@@ -4084,7 +4088,7 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                     if unit.IsFlying() {
                         offsetX, offsetY = shadowFlyingX, shadowFlyingY
                     }
-                    unitview.RenderCombatFigureShadow(shadowTarget, unitImage, unitOptions, figureCount, figure, shadowLean, shadowLength, offsetX, offsetY)
+                    unitview.RenderCombatFigureShadow(shadowTarget, unitImage, unitOptions, figureCount, figure, shadowLean, shadowLength, offsetX, offsetY, combat.shadowMatrix())
                 }
                 return
             }

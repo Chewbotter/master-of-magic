@@ -30,8 +30,9 @@ func FigureOffset(use *ebiten.Image) (float64, float64) {
 
 // the shadow of a figure: its picture in black, laid on the ground. a point of the figure lies
 // lean to the right and length below the feet for every art pixel it is above them. offsetX and
-// offsetY move the shadow away from the feet. total is the number of figures of the unit
-func RenderCombatFigureShadow(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, total int, figure int, lean float64, length float64, offsetX float64, offsetY float64) {
+// offsetY move the shadow away from the feet. total is the number of figures of the unit.
+// onto maps positions of the screen to the picture the shadow is drawn on
+func RenderCombatFigureShadow(screen *ebiten.Image, use *ebiten.Image, options ebiten.DrawImageOptions, total int, figure int, lean float64, length float64, offsetX float64, offsetY float64, onto ebiten.GeoM) {
     points := CombatPoints(total)
     if figure < 0 || figure >= len(points) {
         return
@@ -50,6 +51,7 @@ func RenderCombatFigureShadow(screen *ebiten.Image, use *ebiten.Image, options e
     draw.GeoM.Translate(float64(points[figure].X) + offsetX, float64(points[figure].Y) + offsetY)
     draw.GeoM.Concat(options.GeoM)
     draw.GeoM.Scale(scale.ScaleAmount, scale.ScaleAmount)
+    draw.GeoM.Concat(onto)
     draw.ColorScale.Scale(0, 0, 0, 1)
 
     screen.DrawImage(use, &draw)
