@@ -203,6 +203,8 @@ type DamageIndicator struct {
     X int
     Y int
     Offset int
+    // up or down, see damagenumbers.go
+    OffsetY int
     Damage int // the damage to show
     Life int // how many more frames to show this indicator, counts down to 0
     Count int
@@ -225,6 +227,8 @@ type CombatScreen struct {
     pass drawPass
     // how far right the field is drawn, in art pixels
     fieldShift float64
+    // the pictures of damage numbers, see damagenumbers.go
+    damagePictures map[string]*ebiten.Image
     // the red X with shorter arms, see cursor.go
     shortCrossPicture *ebiten.Image
     WhitePixel *ebiten.Image
@@ -2804,11 +2808,12 @@ func (combat *CombatScreen) doMelee(yield coroutine.YieldFunc, attacker *ArmyUni
 }
 
 func (combat *CombatScreen) AddDamageIndicator(unit *ArmyUnit, damage int) {
-    offsetWidth := 8
+    // a loose cluster around the unit, see damagenumbers.go
     indicator := DamageIndicator{
         X: unit.X,
         Y: unit.Y,
-        Offset: rand.N(offsetWidth * 2 + 1) - offsetWidth,
+        Offset: rand.N(damageSpreadX * 2 + 1) - damageSpreadX,
+        OffsetY: rand.N(damageSpreadY * 2 + 1) - damageSpreadY,
         Damage: damage,
         Life: 50,
     }

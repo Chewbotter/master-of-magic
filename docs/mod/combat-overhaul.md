@@ -47,7 +47,7 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 8 | Ground around the field: 16 rows of tiles nobody can enter, each darker, black at the last. Trees and rocks continue on it. The camera stops where its view would leave it | `combat/fieldedge.go` |
 | 8 | Projectiles keep positions of the field, so they stay on their way while the camera moves or zooms | `combat/projectilespace.go` |
 | 8 | Cursor pictures of the field are drawn as large as the tiles, so they shrink when zoomed out | `combat/cursor.go` |
-| 8 | Damage numbers in the original's smallest font, over the middle of the unit, stacked where they would touch | `combat/damagenumbers.go` |
+| 8 | Damage numbers in the original's smallest font, in a loose cluster around the unit. One that would touch another moves away the shorter way. Each fades as one picture | `combat/damagenumbers.go` |
 
 ## Judgment calls of batch 5
 - Beyond the original's screen (our field is larger and the camera zooms out) scenery continues at

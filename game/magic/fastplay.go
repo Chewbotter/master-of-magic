@@ -321,6 +321,11 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
             // development: numbers of one, two and three digits over both armies
             for index, unit := range append(attackingArmy.GetUnits(), defendingArmy.GetUnits()...) {
                 combatScreen.AddDamageIndicator(unit, []int{3, 12, 7, 108}[index % 4])
+                if index == 0 {
+                    // several on one unit
+                    combatScreen.AddDamageIndicator(unit, 5)
+                    combatScreen.AddDamageIndicator(unit, 24)
+                }
             }
         }
         // the battle's own events are for the world map, nobody here needs them
