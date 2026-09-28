@@ -21,10 +21,11 @@ package combat
 // The unit that is attacked shows the same frames in the same steps, half a swing later, and does
 // not move (see DefenderSlides in figureslide.go).
 //
-// AN ATTACK IS ONE SWING (user, 2026-09-28). The swing starts when the attack does, and the
-// attack lasts until the unit that attacks and the one that is attacked have both done theirs.
-// The blow is struck when the figures of the attacker are furthest forward. Before its swing
-// starts and after it is over a figure stands.
+// AN ATTACK IS WHOLE SWINGS (user, 2026-09-28), SwingsPerAttack of them, one after the other and
+// none cut short. The first starts when the attack does, and the attack lasts until the unit
+// that attacks and the one that is attacked have both done theirs. The blow is struck when the
+// figures of the attacker are furthest forward in the swing SwingOfTheBlow. Before its swings
+// start and after they are over a figure stands.
 
 import (
     "math"
@@ -43,6 +44,13 @@ const swingLandTime = 1.0
 // the moment it stays furthest forward on its last frame, after the time the frame has anyway
 const swingStayTime = 1.0
 const swingReturnTime = 1.0
+
+// the swings of an attack
+const SwingsPerAttack = 2
+// the swing the blow is struck in, from 1: what the attack does to the units, the numbers, the
+// blood and the figures that fall come when this swing lands. the last one, so nobody strikes at
+// figures that have fallen already
+const SwingOfTheBlow = SwingsPerAttack
 
 // one step of a swing
 type swingStep struct {
@@ -116,17 +124,19 @@ func swingLands(steps []swingStep) float64 {
     return time
 }
 
-// the frame a figure shows and where it is at a time of its swing, in frames of a strike. before
-// the swing and after it the figure stands, in the frame the swing starts with
-func swingAt(steps []swingStep, time float64) (int, float64) {
+// the frame a figure shows and where it is at a time of its swings, in frames of a strike. it
+// swings a number of times, one swing after the other. before and after them the figure stands,
+// in the frame a swing starts with
+func swingAt(steps []swingStep, time float64, swings int) (int, float64) {
     total := swingTime(steps)
     if len(steps) == 0 || total <= 0 {
         return figureStandFrame, 0
     }
 
-    if time < 0 || time >= total {
+    if time < 0 || time >= total * float64(swings) {
         return steps[0].Frame, 0
     }
+    time = math.Mod(time, total)
 
     for _, step := range steps {
         if time >= step.Time {
@@ -173,7 +183,7 @@ func unitSwing(unit *ArmyUnit, ticks float64) (int, float64) {
         ticks -= unit.SwingDelay
     }
 
-    frame, place := swingAt(steps, ticks / attackTicksPerFrame)
+    frame, place := swingAt(steps, ticks / attackTicksPerFrame, SwingsPerAttack)
     if defends && !DefenderSlides {
         place = 0
     }
@@ -197,14 +207,15 @@ func (combat *CombatScreen) startSwing(attacker *ArmyUnit, defender *ArmyUnit) (
     attacker.SwingDelay = 0
 
     // the figures of a unit are out of step by up to this, see figurevariety.go
-    lasts := swingRedraws(attacker) + figurePhaseMax
-    lands := swingLands(swingSteps(extraStrikeFrames(attacker))) * attackTicksPerFrame + figurePhaseMax / 2
+    lasts := swingRedraws(attacker) * SwingsPerAttack + figurePhaseMax
+    lands := swingRedraws(attacker) * (SwingOfTheBlow - 1)
+    lands += swingLands(swingSteps(extraStrikeFrames(attacker))) * attackTicksPerFrame + figurePhaseMax / 2
 
     if defender != nil {
         defender.SwingStart = combat.Counter
         // half a swing of the attacker later
         defender.SwingDelay = swingRedraws(attacker) / 2
-        lasts = max(lasts, defender.SwingDelay + swingRedraws(defender) + figurePhaseMax)
+        lasts = max(lasts, defender.SwingDelay + swingRedraws(defender) * SwingsPerAttack + figurePhaseMax)
     }
 
     return redrawTicks(lasts), redrawTicks(lands)

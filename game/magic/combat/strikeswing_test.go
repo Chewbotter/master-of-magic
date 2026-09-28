@@ -11,7 +11,7 @@ func swingOrder(steps []swingStep) ([]int, []float64) {
     var places []float64
     time := 0.0
     for _, step := range steps {
-        frame, place := swingAt(steps, time + step.Time / 2)
+        frame, place := swingAt(steps, time + step.Time / 2, 1)
         frames = append(frames, frame)
         places = append(places, place)
         time += step.Time
@@ -69,30 +69,43 @@ func TestSwingWithThreeFrames(test *testing.T) {
     }
 
     // after the swing and before it the figure stands
-    frame, place := swingAt(steps, swingTime(steps))
+    frame, place := swingAt(steps, swingTime(steps), 1)
     if frame != 3 || place != 0 {
         test.Errorf("after the swing: frame %v at %v", frame, place)
     }
-    frame, place = swingAt(steps, swingTime(steps) * 3)
+    frame, place = swingAt(steps, swingTime(steps) * 3, 1)
     if frame != 3 || place != 0 {
         test.Errorf("long after the swing: frame %v at %v", frame, place)
     }
-    frame, place = swingAt(steps, -1)
+    frame, place = swingAt(steps, -1, 1)
     if frame != 3 || place != 0 {
         test.Errorf("before the swing: frame %v at %v", frame, place)
     }
 
+    // two swings: the second is the first again, whole, and then the figure stands
+    for _, at := range []float64{0.5, 1.5, 2.5, 3.3, 4.5, 6} {
+        firstFrame, firstPlace := swingAt(steps, at, 2)
+        secondFrame, secondPlace := swingAt(steps, at + swingTime(steps), 2)
+        if firstFrame != secondFrame || math.Abs(firstPlace - secondPlace) > 1e-9 {
+            test.Errorf("at %v: frame %v at %v in the first swing, frame %v at %v in the second", at, firstFrame, firstPlace, secondFrame, secondPlace)
+        }
+    }
+    frame, place = swingAt(steps, swingTime(steps) * 2, 2)
+    if frame != 3 || place != 0 {
+        test.Errorf("after two swings: frame %v at %v", frame, place)
+    }
+
     // the blow lands when the figure gets furthest forward
     lands := swingLands(steps)
-    frame, place = swingAt(steps, lands)
+    frame, place = swingAt(steps, lands, 1)
     if frame != 5 || place != forward {
         test.Errorf("when the blow lands: frame %v at %v", frame, place)
     }
-    frame, _ = swingAt(steps, lands - 0.01)
+    frame, _ = swingAt(steps, lands - 0.01, 1)
     if frame != 4 {
         test.Errorf("just before the blow lands: frame %v", frame)
     }
-    _, place = swingAt(steps, swingTime(steps) - 0.0001)
+    _, place = swingAt(steps, swingTime(steps) - 0.0001, 1)
     if math.Abs(place) > 0.01 {
         test.Errorf("at the end of the swing it is at %v", place)
     }
@@ -134,9 +147,9 @@ func TestSwingIsSmooth(test *testing.T) {
         steps := swingSteps(extra)
         total := swingTime(steps)
 
-        _, last := swingAt(steps, 0)
-        for step := 1; step <= 1000; step++ {
-            _, place := swingAt(steps, total * float64(step) / 1000)
+        _, last := swingAt(steps, 0, 2)
+        for step := 1; step <= 2000; step++ {
+            _, place := swingAt(steps, total * float64(step) / 1000, 2)
             if math.Abs(place - last) > 0.12 {
                 test.Fatalf("frames %v: from %v to %v at step %v", extra, last, place, step)
             }
