@@ -4093,6 +4093,9 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                 ty += (lungeY + regroupY) * combat.CameraScale
             }
 
+            // on the art pixels of the field, see fieldpixel.go
+            tx, ty = combat.onFieldPixel(tx, ty)
+
             unitOptions.GeoM.Scale(combat.CameraScale, combat.CameraScale)
             unitOptions.GeoM.Translate(tx, ty)
             // unitOptions.GeoM.Translate(float64(tile0.Bounds().Dx()/2) * combat.CameraScale, 0)
