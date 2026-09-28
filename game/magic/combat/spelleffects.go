@@ -143,6 +143,8 @@ type spellEffects struct {
     // what a unit was last hit by, for the color of its corpses. see figurefall.go
     Causes map[*ArmyUnit]deathCause
 
+    // the figures the units had at the start of the tick, see blood.go
+    Figures map[*ArmyUnit]int
     // the stains of blood on the ground, see blood.go
     Stains bloodStains
     StainStrength float64
@@ -375,6 +377,8 @@ func (combat *CombatScreen) updateSpellEffects() {
     effects.Counter = combat.Counter
 
     combat.effectsTick()
+    // how many figures the units have before anything is hurt, see blood.go
+    combat.noteFigures()
     // nothing is owed for standing still when units act together
     effects.HitStop = min(effects.HitStop, hitStopMost())
     if combat.together {

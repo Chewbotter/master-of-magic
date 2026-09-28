@@ -98,7 +98,9 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
   throws, and lie facing where it came from.
 - Blood: the original plays pictures of blood over the figures of a unit that is hurt in a fight
   or by a missile. Here drops of single art pixels fly off the figures and leave stains on the
-  ground that stay (`combat/blood.go`). How much a unit bleeds is the original's rule.
+  ground that stay (`combat/blood.go`). Most of it is that of the figures that die; a unit that
+  is hurt and loses none bleeds a little, by the original's rule of how much; a unit that is hit
+  and takes no damage gives off sparks.
 - Bolts of spells go on with every tick of the game in place of 10 pixels with every redraw of
   the original (`SmoothBolts` in `combat/spellanim.go`). Way, time and frames are the original's.
 - Cursors over the field are drawn on the art pixels of the field (`CursorOnFieldPixels`), the

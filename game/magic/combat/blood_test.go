@@ -28,6 +28,33 @@ func TestBloodAmount(test *testing.T) {
     }
 }
 
+// most of the blood is that of the figures that die
+func TestBloodDrops(test *testing.T) {
+    values := gameBlood(bloodPart)
+
+    _, ofUnit := bloodDrops(values, 1, 0)
+    if ofUnit <= 0 || ofUnit > 4 {
+        test.Errorf("a unit that is hurt a little and loses no figure: %v drops", ofUnit)
+    }
+
+    ofDead, ofUnit := bloodDrops(values, 2, 3)
+    if ofDead * 3 < ofUnit * 4 {
+        test.Errorf("3 figures die: %v drops each, the unit %v", ofDead, ofUnit)
+    }
+
+    // never more than the most
+    ofDead, _ = bloodDrops(BloodValues{DropsKill: 500}, 5, 8)
+    if ofDead * 8 > bloodDropsMost {
+        test.Errorf("%v drops for each of 8 figures", ofDead)
+    }
+
+    // sparks leave no stains and are gone sooner
+    sparks := gameBlood(sparksPart)
+    if sparks.StainStrength != 0 || sparks.Drops <= 0 || sparks.Life >= values.Life {
+        test.Errorf("sparks: %+v", sparks)
+    }
+}
+
 // a drop that leaves a stain ends where it comes down, and is noted once
 func TestBloodLands(test *testing.T) {
     var system particleSystem
@@ -83,14 +110,14 @@ func TestBloodField(test *testing.T) {
 
 // the file gives values over the ones of the game, and the template has the parts of the blood
 func TestBloodValues(test *testing.T) {
-    file := mod.ParseEffects("[blood]\ndrops = 9\ncolors = 00ff00\nstain-strength = 0\n")
+    file := mod.ParseEffects("[blood]\ndrops = 9\ndrops-kill = 20\ncolors = 00ff00\nstain-strength = 0\n")
     values := bloodValues(bloodPart, file)
-    if values.Drops != 9 || len(values.Colors) != 1 || values.StainStrength != 0 || values.Speed != gameBlood(bloodPart).Speed {
+    if values.DropsKill != 20 || values.Drops != 9 || len(values.Colors) != 1 || values.StainStrength != 0 || values.Speed != gameBlood(bloodPart).Speed {
         test.Errorf("%+v", values)
     }
 
     template := mod.ParseEffects(EffectsTemplate())
-    for _, part := range []string{bloodPart, bloodUndeadPart, bloodSpiritPart} {
+    for _, part := range bloodParts {
         if len(template[part]) != len(bloodValueNames) {
             test.Errorf("the template has %v values of [%v]", len(template[part]), part)
         }

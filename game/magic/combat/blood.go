@@ -8,14 +8,19 @@ package combat
 // plays one of 5 pictures of 4 frames over every figure, CMBTCITY 24 to 28. The code here is
 // ours, and so is how it looks.) Spells have effects of their own and draw no blood.
 //
-// HOW: drops fly off every figure of the unit, away from what the unit faces, which is what hit
-// it. They rise a little, fall, and where one comes down on the ground it leaves a stain that
-// stays for the battle. Drops and stains are single art pixels.
+// HOW: drops fly off the unit, away from what the unit faces, which is what hit it. They rise a
+// little, fall, and where one comes down on the ground it leaves a stain that stays for the
+// battle. Drops and stains are single art pixels.
+//
+// HOW MUCH (user, 2026-09-28: by the rule of the original alone it was a lot): most of the blood
+// is that of the figures that die, from where they stood. A unit that is hurt and loses no figure
+// bleeds a little. A unit that is hit and takes no damage gives off sparks, as of a blow that
+// was turned.
 //
 // Not everything bleeds: what is undead or of the realm of death gives off dark dust, what has
 // no body a pale mist, and neither leaves stains.
 //
-// The values are in effects.txt, in the parts [blood], [blood undead] and [blood spirit].
+// The values are in effects.txt, in the parts [blood], [blood undead], [blood spirit] and [sparks].
 
 import (
     "image"
@@ -49,10 +54,15 @@ const (
     bloodPart = "blood"
     bloodUndeadPart = "blood undead"
     bloodSpiritPart = "blood spirit"
+    // what flies off a unit that is hit and takes no damage
+    sparksPart = "sparks"
 )
 
 type BloodValues struct {
-    // drops for every figure and every step of how much it bleeds
+    // drops for every figure that dies
+    DropsKill float64
+    // drops of a unit that is hurt, for every step of how much it bleeds (1 to 5), whether
+    // figures die or not. for a unit that is not hurt: all there are
     Drops float64
     // art pixels a second: how fast they fly, and how fast they rise at first
     Speed float64
@@ -76,25 +86,30 @@ func gameBlood(part string) BloodValues {
     switch part {
         case bloodUndeadPart:
             return BloodValues{
-                Drops: 2, Speed: 30, Lift: 30, Gravity: 120, Life: 0.7, Height: 9, Spread: 70,
+                DropsKill: 8, Drops: 2, Speed: 30, Lift: 30, Gravity: 120, Life: 0.7, Height: 9, Spread: 70,
                 Colors: colors("8a7a90 5a4a66 3a2e46 221a2a"),
             }
         case bloodSpiritPart:
             return BloodValues{
-                Drops: 2, Speed: 22, Lift: 35, Gravity: -30, Life: 0.8, Height: 10, Spread: 180,
+                DropsKill: 8, Drops: 2, Speed: 22, Lift: 35, Gravity: -30, Life: 0.8, Height: 10, Spread: 180,
                 Colors: colors("ffffff c8e8ff 88b8e8 5078b0"),
+            }
+        case sparksPart:
+            return BloodValues{
+                Drops: 9, Speed: 60, Lift: 35, Gravity: 240, Life: 0.35, Height: 11, Spread: 75,
+                Colors: colors("ffffff fff4b0 ffd040 e08818 804008"),
             }
     }
 
     return BloodValues{
-        Drops: 3, Speed: 42, Lift: 48, Gravity: 260, Life: 0.9, Height: 9, Spread: 50,
+        DropsKill: 12, Drops: 2, Speed: 42, Lift: 48, Gravity: 260, Life: 0.9, Height: 9, Spread: 50,
         Colors: colors("ff3030 d81818 a80c0c 780606"),
         Stain: color.RGBA{R: 0x6a, G: 0x08, B: 0x08, A: 0xff},
         StainStrength: 0.8,
     }
 }
 
-var bloodValueNames = []string{"drops", "speed", "lift", "gravity", "life", "height", "spread", "colors", "stain", "stain-strength"}
+var bloodValueNames = []string{"drops-kill", "drops", "speed", "lift", "gravity", "life", "height", "spread", "colors", "stain", "stain-strength"}
 
 func (values *BloodValues) text(name string) string {
     number := func(value float64) string {
@@ -102,6 +117,7 @@ func (values *BloodValues) text(name string) string {
     }
 
     switch name {
+        case "drops-kill": return number(values.DropsKill)
         case "drops": return number(values.Drops)
         case "speed": return number(values.Speed)
         case "lift": return number(values.Lift)
@@ -138,6 +154,7 @@ func (values *BloodValues) set(name string, text string) bool {
     }
 
     switch name {
+        case "drops-kill": values.DropsKill = number
         case "drops": values.Drops = number
         case "speed": values.Speed = number
         case "lift": values.Lift = number
@@ -165,8 +182,11 @@ func bloodValues(part string, file map[string]map[string]string) BloodValues {
 func bloodTemplate() string {
     var out strings.Builder
     out.WriteString(`# Blood: what flies off a unit that is hurt in a fight or by a missile. [blood undead] is for
-# what is undead or of the realm of death, [blood spirit] for what has no body.
-#   drops           drops for every figure, times how much the unit bleeds (1 to 5)
+# what is undead or of the realm of death, [blood spirit] for what has no body. [sparks] is what
+# flies off a unit that is hit and takes no damage.
+#   drops-kill      drops for every figure that dies, from where it stood
+#   drops           drops of the unit that is hurt, times how much it bleeds (1 to 5). For
+#                   [sparks]: how many sparks
 #   speed           how fast they fly
 #   lift            how fast they rise at first
 #   gravity         how fast they get faster downward. below 0 they rise
@@ -179,7 +199,7 @@ func bloodTemplate() string {
 
 `)
 
-    for _, part := range []string{bloodPart, bloodUndeadPart, bloodSpiritPart} {
+    for _, part := range bloodParts {
         values := gameBlood(part)
         out.WriteString("[" + part + "]\n")
         for _, name := range bloodValueNames {
@@ -189,6 +209,20 @@ func bloodTemplate() string {
     }
 
     return out.String()
+}
+
+var bloodParts = []string{bloodPart, bloodUndeadPart, bloodSpiritPart, sparksPart}
+
+// how many drops fly off a unit: the ones of each figure that dies, and the ones of the unit that
+// is hurt
+func bloodDrops(values BloodValues, amount int, died int) (int, int) {
+    ofDead := int(math.Round(values.DropsKill))
+    ofUnit := int(math.Round(values.Drops * float64(amount)))
+
+    if died > 0 {
+        ofDead = min(ofDead, bloodDropsMost / died)
+    }
+    return max(0, ofDead), max(0, min(ofUnit, bloodDropsMost))
 }
 
 // how much a unit bleeds that takes damage, 0 to 5, as the original has it
@@ -277,9 +311,28 @@ func (combat *CombatScreen) drawStains(screen *ebiten.Image) {
     scale.DrawScaled(screen, stains.Picture, &options)
 }
 
-// a unit is hurt: blood
+// notes how many figures the units have, to know how many of them die of a blow. once a tick,
+// before anything is hurt in it
+func (combat *CombatScreen) noteFigures() {
+    if combat.Model == nil || combat.Model.AttackingArmy == nil || combat.Model.DefendingArmy == nil {
+        return
+    }
+
+    effects := &combat.effects
+    if effects.Figures == nil {
+        effects.Figures = make(map[*ArmyUnit]int)
+    }
+
+    for _, army := range []*Army{combat.Model.AttackingArmy, combat.Model.DefendingArmy} {
+        for _, unit := range army.units {
+            effects.Figures[unit] = unit.VisibleFigures()
+        }
+    }
+}
+
+// a unit is hit: blood, or sparks if it takes no damage
 func (combat *CombatScreen) bleed(unit *ArmyUnit, damage int) {
-    if !Blood || !SpellEffects || unit == nil || damage <= 0 {
+    if !Blood || !SpellEffects || unit == nil || damage < 0 {
         return
     }
 
@@ -293,16 +346,33 @@ func (combat *CombatScreen) bleed(unit *ArmyUnit, damage int) {
 
     figures := max(1, unit.VisibleFigures() + unit.LostUnits)
     amount := bloodAmount(damage, figures)
-    if amount <= 0 {
-        return
+
+    // the figures that have died of it
+    before, known := effects.Figures[unit]
+    died := 0
+    if known {
+        died = max(0, before - unit.VisibleFigures())
+    }
+    if effects.Figures != nil {
+        effects.Figures[unit] = unit.VisibleFigures()
     }
 
     file, _ := mod.Effects()
-    values := bloodValues(bloodKind(unit), file)
-    if values.Drops <= 0 || len(values.Colors) == 0 {
+    kind := bloodKind(unit)
+    if damage == 0 {
+        // the blow was turned
+        kind = sparksPart
+        amount = 1
+        died = 0
+    }
+
+    values := bloodValues(kind, file)
+    if len(values.Colors) == 0 {
         return
     }
-    effects.StainStrength = values.StainStrength
+    if values.StainStrength > 0 {
+        effects.StainStrength = values.StainStrength
+    }
 
     field := MakeBattlefieldMatrix()
     x, y := float64(unit.X), float64(unit.Y)
@@ -316,14 +386,31 @@ func (combat *CombatScreen) bleed(unit *ArmyUnit, damage int) {
     away := math.Atan2(-faceY / groundSquash, -faceX)
 
     points := unitview.CombatPoints(figures)
-    drops := int(math.Round(values.Drops * float64(amount)))
-    drops = max(1, min(drops, bloodDropsMost / len(points)))
+    ofDead, ofUnit := bloodDrops(values, amount, died)
 
-    for _, point := range points {
+    spray := func(point image.Point, drops int) {
+        if drops <= 0 {
+            return
+        }
         effects.Particles.emitSpray(
             screenX + float64(point.X), screenY + float64(point.Y), values.Height, drops,
             away, values.Spread * math.Pi / 180, values.Speed, values.Lift, values.Gravity, values.Life,
             values.Colors, values.StainStrength > 0, values.Stain)
+    }
+
+    // the figures that have died, from where they stood: the last ones of the unit
+    alive := unit.VisibleFigures()
+    for figure := alive; figure < alive + died && figure < len(points); figure++ {
+        spray(points[figure], ofDead)
+    }
+
+    // the unit that is hit: from figures of it by chance, that live if any do
+    from := len(points)
+    if alive > 0 {
+        from = min(alive, len(points))
+    }
+    for range ofUnit {
+        spray(points[rand.N(from)], 1)
     }
 }
 
