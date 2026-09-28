@@ -24,6 +24,9 @@ import (
 
 // turns the lunge off
 const StrikeSlide = true
+// false: only the unit that attacks lunges, the one that is attacked stands. on as a trial (user,
+// 2026-09-28): the unit that is attacked strikes back with the same frames and lunges the same way
+const DefenderSlides = true
 // how far a figure slides back on its wind up and forward at the end of its swing, in art pixels
 // from where it stands
 const strikeSlideBack = 2.0
@@ -76,21 +79,29 @@ func easeInOut(part float64) float64 {
 
 // how far the figure is from where it stands, across and down in art pixels, for its lunge
 func (combat *CombatScreen) strikeSlide(unit *ArmyUnit, phase float64) (float64, float64) {
-    if !StrikeSlide || !unit.Attacking {
+    defends := unit.Defending && !unit.Attacking
+    if !StrikeSlide || !(unit.Attacking || unit.Defending) || (defends && !DefenderSlides) {
         return 0, 0
     }
 
+    // the frames of the swing and where in them the unit starts, as figureFrame shows them
     frames := longStrikeFrames(unit)
-    if len(frames) == 0 {
-        // the strike of the game, as figureFrame shows it
-        frames = figureAttackFrames
+    ahead := 0
+    switch {
+        case len(frames) > 0 && defends:
+            ahead = len(frames) / 2
+        case len(frames) > 0:
+        case defends:
+            frames = figureDefendFrames
+        default:
+            frames = figureAttackFrames
     }
 
     // where in the swing the figure is, with the part of the frame that has gone by
     tps := float64(max(1, ebiten.TPS()))
     ticks := float64(combat.Counter) * OriginalTicksPerSecond / tps + phase
     // the whole part of this is the frame figureFrame shows, the rest is how far into it
-    step := ticks / attackTicksPerFrame
+    step := ticks / attackTicksPerFrame + float64(ahead)
     place := math.Mod(step, float64(len(frames)))
     index := int(place)
     part := place - float64(index)
