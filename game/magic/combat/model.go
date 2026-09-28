@@ -65,6 +65,9 @@ type ZoneType struct {
 
     // a lair or node
     Encounter ZoneEncounter
+
+    // forest, hills and roads around the battle, see terrain.go
+    Ground ZoneGround
 }
 
 func (zone *ZoneType) GetMagic() data.MagicType {
@@ -194,6 +197,9 @@ type Tile struct {
     Index int
     // tree/rock on top, or -1 if nothing
     ExtraObject TileTop
+    // the kind of ground and whether a road runs over it, see terrain.go
+    Ground TerrainGroup
+    Road bool
     Mud bool
     // whether to show fire on this tile
     Fire *set.Set[FireSide]
@@ -2321,6 +2327,8 @@ type CombatModel struct {
     DefendingArmy *Army
     AttackingArmy *Army
     Tiles [][]Tile
+    // the ground of the field and its border, nil on the water. see terrain.go
+    Ground *BattleGround
     // trees, rocks, houses and the fortress, see scenery.go
     Scenery []SceneryPiece
     // when the user hovers over a unit, that unit should be shown in a little info box at the upper right
@@ -2376,12 +2384,17 @@ type CombatModel struct {
 }
 
 func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingArmy *Army, landscape CombatLandscape, plane data.Plane, zone ZoneType, influence data.MagicType, overworldX int, overworldY int, events chan CombatEvent) *CombatModel {
+    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, landscape, zone)
+    tiles := makeTiles(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone)
+    ground.applyTo(tiles)
+
     model := &CombatModel{
         Turn: TeamDefender,
         Plane: plane,
         SelectedUnit: nil,
-        Tiles: makeTiles(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone),
-        Scenery: makeScenery(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone),
+        Tiles: tiles,
+        Ground: ground,
+        Scenery: makeScenery(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone, ground),
         TurnAttacker: 0,
         TurnDefender: 0,
         AttackingArmy: attackingArmy,

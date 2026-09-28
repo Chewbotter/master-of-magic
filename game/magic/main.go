@@ -1352,6 +1352,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&capture.RandomBattle, "capture-random-battle", false, "development: start a random battle instead of the start screen")
     flag.StringVar(&capture.CityBattle, "capture-city-battle", "", "development: start a random battle for a city. a list of: walls, fortress, fire, darkness, outpost, myrror, size=N, or random")
     flag.BoolVar(&capture.NextTurn, "capture-next-turn", false, "development: press Next Turn, and trace the widescreen layout while the turn runs")
+    flag.StringVar(&capture.BattleGround, "capture-battle-ground", "", "development: the ground of a random battle. a list of: grass, desert, mountain, tundra, forest, hills, roads, road=N, enchanted")
     flag.Float64Var(&capture.CameraX, "capture-camera-x", -1, "development: put the camera at this column before the capture, fractions allowed")
     flag.IntVar(&capture.DragSpeed, "capture-drag-speed", 1, "development: screen pixels the simulated drag moves each frame")
     flag.IntVar(&capture.Drag, "capture-drag", 0, "development: simulate a slow drag of this many frames and log the view")

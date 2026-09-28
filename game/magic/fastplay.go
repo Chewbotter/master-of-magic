@@ -283,6 +283,67 @@ type randomCity struct {
     Myrror bool
 }
 
+// the ground of a random battle as the world map could give it: on grass land sometimes forest or
+// hills, and roads, always in a town. one in this many
+const RandomBattleForestChance = 3
+const RandomBattleHillsChance = 3
+const RandomBattleRoadChance = 2
+const RandomBattleRoadSideChance = 3
+const RandomBattleEnchantedRoadChance = 4
+
+func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.CombatLandscape, combat.ZoneGround) {
+    var ground combat.ZoneGround
+
+    if landscape == combat.CombatLandscapeGrass {
+        switch {
+            case rand.N(RandomBattleForestChance) == 0: ground.Forest = true
+            case rand.N(RandomBattleHillsChance) == 0: ground.Hills = true
+        }
+    }
+
+    if town || rand.N(RandomBattleRoadChance) == 0 {
+        ground.Roads[4] = true
+        for side := range ground.Roads {
+            if side != 4 && rand.N(RandomBattleRoadSideChance) == 0 {
+                ground.Roads[side] = true
+            }
+        }
+        ground.EnchantedRoads = rand.N(RandomBattleEnchantedRoadChance) == 0
+    }
+
+    // development: the ground a capture asks for
+    if capture.BattleGround != "" {
+        ground = combat.ZoneGround{}
+        for _, word := range strings.Split(capture.BattleGround, ",") {
+            switch {
+                case word == "grass": landscape = combat.CombatLandscapeGrass
+                case word == "desert": landscape = combat.CombatLandscapeDesert
+                case word == "mountain": landscape = combat.CombatLandscapeMountain
+                case word == "tundra": landscape = combat.CombatLandscapeTundra
+                case word == "forest":
+                    landscape = combat.CombatLandscapeGrass
+                    ground.Forest = true
+                case word == "hills":
+                    landscape = combat.CombatLandscapeGrass
+                    ground.Hills = true
+                case word == "roads":
+                    for side := range ground.Roads {
+                        ground.Roads[side] = true
+                    }
+                case word == "enchanted": ground.EnchantedRoads = true
+                case strings.HasPrefix(word, "road="):
+                    side, err := strconv.Atoi(strings.TrimPrefix(word, "road="))
+                    if err == nil && side >= 0 && side < len(ground.Roads) {
+                        ground.Roads[4] = true
+                        ground.Roads[side] = true
+                    }
+            }
+        }
+    }
+
+    return landscape, ground
+}
+
 func makeRandomCity() randomCity {
     city := randomCity{
         Citizens: RandomCityMinCitizens + rand.N(RandomCityMaxCitizens - RandomCityMinCitizens + 1),
@@ -493,8 +554,11 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         }
 
         zone = combat.ZoneType{City: city}
+        if !capture.SameBattle || capture.BattleGround != "" {
+            landscape, zone.Ground = randomBattleGround(landscape, !city.Outpost)
+        }
 
-        log.Printf("Random battle: %v army attacks a %v city, %+v, landscape %v", race, cityRace, choice, landscape)
+        log.Printf("Random battle: %v army attacks a %v city, %+v, landscape %v, ground %+v", race, cityRace, choice, landscape, zone.Ground)
     } else {
         monster := randomChoose(randomBattleMonsters...)
         count := (RandomBattleMinMonsters + rand.N(RandomBattleMaxMonsters - RandomBattleMinMonsters + 1)) * armyScale
@@ -506,7 +570,11 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
             defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(monster, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
         }
 
-        log.Printf("Random battle: %v army attacks a cave with %v %v, landscape %v", race, count, monster.Name, landscape)
+        if !capture.SameBattle || capture.BattleGround != "" {
+            landscape, zone.Ground = randomBattleGround(landscape, false)
+        }
+
+        log.Printf("Random battle: %v army attacks a cave with %v %v, landscape %v, ground %+v", race, count, monster.Name, landscape, zone.Ground)
     }
 
     // on auto the army of the player fights without spells: they are for the player to try

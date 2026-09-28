@@ -3857,6 +3857,9 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         options.GeoM.Translate(tx, ty)
         scale.DrawScaled(screen, image, &options)
 
+        // roads, see terraindraw.go
+        combat.drawRoad(screen, x, y, &options)
+
         if combat.Model.Tiles[y][x].Mud {
             mudTiles, _ := combat.ImageCache.GetImages("cmbtcity.lbx", 118)
             index := animationIndex % uint64(len(mudTiles))

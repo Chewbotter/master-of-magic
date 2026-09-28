@@ -43,8 +43,8 @@ var environmentLandscapes = []struct {
     {Set: "Tundra Myrror", Archive: "cmbtundc.lbx"},
 }
 
-// pictures of a landscape: ground 00 to 31 is the ground the game picks from at random, 32 to 47 is
-// raised ground it does not use. then five trees and five rocks
+// pictures of a landscape: ground 00 to 31 is the flat ground, 32 to 47 the raised ground, as
+// combat/terrain.go picks them. then five trees and five rocks
 const environmentGround = 32
 const environmentRaisedGround = 16
 const environmentTrees = 48
@@ -76,9 +76,11 @@ func makeEnvironmentPictures() []EnvironmentPicture {
     }
 
     for _, landscape := range environmentLandscapes {
-        addRow(landscape.Set, "ground", landscape.Archive, 0, environmentGround, true, "the ground, one of these at random for every tile")
+        for index := range environmentGround {
+            add(landscape.Set, fmt.Sprintf("ground %02d", index), landscape.Archive, index, groundNote(index))
+        }
         for index := range environmentRaisedGround {
-            add(landscape.Set, fmt.Sprintf("ground %02d", environmentGround + index), landscape.Archive, environmentGround + index, "raised ground, not used by the game")
+            add(landscape.Set, fmt.Sprintf("ground %02d", environmentGround + index), landscape.Archive, environmentGround + index, roughNotes[index])
         }
         addRow(landscape.Set, "tree", landscape.Archive, environmentTrees, environmentScenery, false, "a tree, one of these at random")
         addRow(landscape.Set, "rock", landscape.Archive, environmentRocks, environmentScenery, false, "a rock, one of these at random")
@@ -97,8 +99,8 @@ func makeEnvironmentPictures() []EnvironmentPicture {
     add("Town", "fortress", "cmbtcity.lbx", 17, "the fortress of a town")
     add("Town", "outpost", "cmbtcity.lbx", 18, "an outpost")
     add("Town", "clouds", "cmbtcity.lbx", 113, "the ground of a town with a flying fortress")
-    addRow("Town", "road", "cmbtcity.lbx", 69, 14, true, "pieces of road, not used by the game")
-    addRow("Town", "enchanted road", "cmbtcity.lbx", 83, 14, true, "pieces of road, not used by the game")
+    addRow("Town", "road", "cmbtcity.lbx", 69, 14, true, "pieces of the roads that lead out of the field. 00 to 05 one set, 07 to 12 the other, 06 and 13 not used")
+    addRow("Town", "enchanted road", "cmbtcity.lbx", 83, 14, true, "the same for enchanted roads")
 
     add("Other", "mud", "cmbtcity.lbx", 118, "on a tile that was turned to mud")
     addRow("Other", "river", "cmbtcity.lbx", 103, 6, true, "pieces of river, not used by the game")
@@ -126,6 +128,52 @@ func makeEnvironmentPictures() []EnvironmentPicture {
     addRow("Walls", "darkness rising", "wallrise.lbx", 50, environmentMagicPieces, true, "a wall of darkness while it is cast")
 
     return out
+}
+
+// the flat ground by number, as Set_Terrain_Tile_Types of the original picks it. the sides are the
+// ones of the diamond on the screen: the grid's up is its upper right edge, right its lower right,
+// down its lower left, left its upper left
+func groundNote(index int) string {
+    switch {
+        case index < 4: return "grass, one of these at random"
+        case index < 8: return "dirt, one of these at random"
+    }
+
+    edges := []string{
+        "grass with dirt beyond its bottom corner",
+        "grass with dirt beyond its lower left edge",
+        "grass with dirt beyond its lower left and lower right edges",
+        "grass with dirt beyond its left corner",
+        "grass with dirt beyond its lower left and upper left edges",
+        "grass with dirt beyond its upper left edge",
+        "grass with dirt beyond its top corner",
+        "grass with dirt beyond its upper right and upper left edges",
+        "grass with dirt beyond its upper right edge",
+        "grass with dirt beyond its right corner",
+        "grass with dirt beyond its upper right and lower right edges",
+        "grass with dirt beyond its lower right edge",
+    }
+    return edges[(index - 8) / 2] + ", one of two"
+}
+
+// the raised ground (rough) by the edges it goes on across, the sides as in groundNote
+var roughNotes = []string{
+    "rough, goes on across its lower left edge",
+    "rough, goes on across its upper right and lower left edges",
+    "rough, goes on across its lower right edge",
+    "rough, goes on across its upper left and lower right edges",
+    "rough, goes on across all edges",
+    "rough, goes on across its upper right edge",
+    "rough, goes on across its upper left edge",
+    "rough, goes on across its lower left and lower right edges",
+    "rough, goes on across its lower left, upper left and lower right edges",
+    "rough, goes on across its lower left and upper left edges",
+    "rough, goes on across its upper right, lower left and lower right edges",
+    "rough, goes on across its upper right, lower left and upper left edges",
+    "rough, goes on across its upper right and lower right edges",
+    "rough, goes on across its upper right, upper left and lower right edges",
+    "rough, goes on across its upper right and upper left edges",
+    "rough on its own",
 }
 
 // by archive and entry: the picture

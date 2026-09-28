@@ -86,6 +86,9 @@ type frameCapture struct {
     RandomBattle bool
     // start a random battle for a city. a list of: walls, fortress, fire, darkness, outpost, myrror, size=N
     CityBattle string
+    // the ground of a random battle. a list of: grass, desert, mountain, tundra, forest, hills,
+    // roads (on all sides), road=N (0 to 8, rows of 3 from the north west), enchanted
+    BattleGround string
     // the view of the battlefield: screen pixels per art pixel, and position in screen pixels
     BattleLevel int
     BattlePanX int

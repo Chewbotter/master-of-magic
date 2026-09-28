@@ -89,7 +89,13 @@ func (combat *CombatScreen) drawFieldBorder(screen *ebiten.Image, animationIndex
                 continue
             }
 
-            pictures, err := combat.ImageCache.GetImages(lbx, start + combat.borderPicture(x, y, count))
+            // the ground goes on from the field, see terrain.go. on the water a random picture
+            index := start + combat.borderPicture(x, y, count)
+            if combat.Model.Ground != nil {
+                index = combat.Model.Ground.PictureOfTile(x, y)
+            }
+
+            pictures, err := combat.ImageCache.GetImages(lbx, index)
             if err != nil || len(pictures) == 0 {
                 continue
             }
@@ -101,6 +107,7 @@ func (combat *CombatScreen) drawFieldBorder(screen *ebiten.Image, animationIndex
             options.ColorScale.Reset()
             options.ColorScale.Scale(brightness, brightness, brightness, 1)
             scale.DrawScaled(screen, pictures[animationIndex % uint64(len(pictures))], &options)
+            combat.drawRoad(screen, x, y, &options)
         }
     }
 }

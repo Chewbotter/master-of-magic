@@ -4961,6 +4961,8 @@ func (game *Game) maybeDoNaturesWrath(caster *playerlib.Player) {
  */
 func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player, attackerStack *playerlib.UnitStack, defender *playerlib.Player, defenderStack *playerlib.UnitStack, zone combat.ZoneType) combat.CombatState {
     landscape := game.GetCombatLandscape(defenderStack.X(), defenderStack.Y(), defenderStack.Plane())
+    // forest, hills and roads for the ground of the battlefield, see battleground.go
+    zone.Ground = game.combatGround(defenderStack.X(), defenderStack.Y(), defenderStack.Plane())
 
     // do graphic combat only if a human is involved
     useHuman := attacker.IsHuman() || defender.IsHuman()

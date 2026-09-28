@@ -155,7 +155,10 @@ func terrainSetLbx(landscape CombatLandscape, plane data.Plane) string {
     return "cmbgrasc.lbx"
 }
 
-func treeCount(landscape CombatLandscape) int {
+func treeCount(landscape CombatLandscape, ground ZoneGround) int {
+    if ground.Forest {
+        return 30 + roll(30)
+    }
     switch landscape {
         case CombatLandscapeDesert: return roll(10)
         case CombatLandscapeMountain: return roll(40)
@@ -164,7 +167,10 @@ func treeCount(landscape CombatLandscape) int {
     return roll(20)
 }
 
-func rockCount(landscape CombatLandscape) int {
+func rockCount(landscape CombatLandscape, ground ZoneGround) int {
+    if ground.Forest {
+        return roll(8)
+    }
     switch landscape {
         case CombatLandscapeDesert: return roll(8) - 1
         case CombatLandscapeMountain: return roll(12)
@@ -245,7 +251,7 @@ func (area sceneryArea) contains(cgx int, cgy int) bool {
     return cgx >= area.MinX && cgx <= area.MaxX && cgy >= area.MinY && cgy <= area.MaxY
 }
 
-func scatterTrees(count int, lbx string, zone ZoneType, area sceneryArea) []SceneryPiece {
+func scatterTrees(count int, lbx string, zone ZoneType, area sceneryArea, ground *BattleGround) []SceneryPiece {
     var out []SceneryPiece
 
     if count <= 0 {
@@ -261,6 +267,12 @@ func scatterTrees(count int, lbx string, zone ZoneType, area sceneryArea) []Scen
     tries := 0
     for range patches {
         patchX, patchY := area.randomCell()
+        for picks := 0; !ground.sceneryAllowed(patchX, patchY); picks++ {
+            if picks >= sceneryMaxTries {
+                return out
+            }
+            patchX, patchY = area.randomCell()
+        }
 
         placed := 0
         for placed < patchSize {
@@ -268,7 +280,7 @@ func scatterTrees(count int, lbx string, zone ZoneType, area sceneryArea) []Scen
             cgy := patchY + roll(treePatchReach * 2 + 1) - treePatchReach - 1
             screenX, screenY := cellScreen(cgx, cgy, roll(treeSubcellMax), roll(treeSubcellMax))
 
-            if area.contains(cgx, cgy) && !sceneryCellTaken(zone, cgx, cgy, false) && area.Accept(screenX, screenY) {
+            if area.contains(cgx, cgy) && !sceneryCellTaken(zone, cgx, cgy, false) && ground.sceneryAllowed(cgx, cgy) && area.Accept(screenX, screenY) {
                 out = append(out, SceneryPiece{
                     Kind: SceneryTree,
                     ScreenX: screenX - sceneryShiftX,
@@ -290,7 +302,7 @@ func scatterTrees(count int, lbx string, zone ZoneType, area sceneryArea) []Scen
     return out
 }
 
-func scatterRocks(count int, lbx string, zone ZoneType, area sceneryArea) []SceneryPiece {
+func scatterRocks(count int, lbx string, zone ZoneType, area sceneryArea, ground *BattleGround) []SceneryPiece {
     var out []SceneryPiece
 
     tries := 0
@@ -300,7 +312,7 @@ func scatterRocks(count int, lbx string, zone ZoneType, area sceneryArea) []Scen
         subY := rockSubcellMin + rand.N(rockSubcellMax - rockSubcellMin + 1)
         screenX, screenY := cellScreen(cgx, cgy, subX, subY)
 
-        if sceneryCellTaken(zone, cgx, cgy, true) || !area.Accept(screenX, screenY) {
+        if sceneryCellTaken(zone, cgx, cgy, true) || !ground.sceneryAllowed(cgx, cgy) || !area.Accept(screenX, screenY) {
             tries += 1
             continue
         }
@@ -408,7 +420,7 @@ func makeHouses(zone ZoneType) []SceneryPiece {
 }
 
 // everything that stands on a battlefield from its start to its end
-func makeScenery(width int, height int, landscape CombatLandscape, plane data.Plane, zone ZoneType) []SceneryPiece {
+func makeScenery(width int, height int, landscape CombatLandscape, plane data.Plane, zone ZoneType, ground *BattleGround) []SceneryPiece {
     out := makeHouses(zone)
 
     // water has neither trees nor rocks
@@ -418,13 +430,13 @@ func makeScenery(width int, height int, landscape CombatLandscape, plane data.Pl
 
     lbx := terrainSetLbx(landscape, plane)
 
-    trees := treeCount(landscape)
-    out = append(out, scatterTrees(trees, lbx, zone, originalArea())...)
-    out = append(out, scatterTrees(trees * sceneryBeyondScreen(width, height), lbx, zone, beyondArea(width, height))...)
+    trees := treeCount(landscape, zone.Ground)
+    out = append(out, scatterTrees(trees, lbx, zone, originalArea(), ground)...)
+    out = append(out, scatterTrees(trees * sceneryBeyondScreen(width, height), lbx, zone, beyondArea(width, height), ground)...)
 
-    rocks := rockCount(landscape)
-    out = append(out, scatterRocks(rocks, lbx, zone, originalArea())...)
-    out = append(out, scatterRocks(rocks * sceneryBeyondScreen(width, height), lbx, zone, beyondArea(width, height))...)
+    rocks := rockCount(landscape, zone.Ground)
+    out = append(out, scatterRocks(rocks, lbx, zone, originalArea(), ground)...)
+    out = append(out, scatterRocks(rocks * sceneryBeyondScreen(width, height), lbx, zone, beyondArea(width, height), ground)...)
 
     return out
 }
