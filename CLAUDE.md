@@ -23,7 +23,7 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
   Sibling folders hold the Community Patch and Caster of Magic data; the code targets the official release.
 
 ## Verify commands (Bash)
-- Build: `bash D:/Work/MasterMagic_open/build.sh`
+- Build: `bash D:/Work/MasterMagic_open/build.sh`. EVERY DELIVERY ENDS WITH IT: the user plays `_build/magic.exe`; a probe exe built for captures (`_build/probe/*.exe`) does not update his game, and another conversation may have built magic.exe from a half-done working tree. (2026-09-28: he judged the plateaus on a stale magic.exe.)
 - Tests, once per change: `bash D:/Work/MasterMagic_open/test.sh` (expect every line `ok`, no `FAIL`)
 - Menu capture (Claude's instrument): `go build -o ../_build/capture.exe ./test/main-screen-capture`, then run as in Current state.
 - Boot probe: `cd D:/Work/MasterMagic_open/_build && timeout 12 ./magic.exe -corner -data "<data path>" -start -music=false > boot.log 2>&1`
