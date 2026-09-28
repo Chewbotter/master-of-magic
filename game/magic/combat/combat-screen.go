@@ -3880,6 +3880,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
     // pieces of 2 by 2 tiles over the ground, see large.go
     combat.drawLargePieces(screen, animationIndex)
+    // props that lie on the ground, see props.go
+    combat.drawFlatProps(screen, animationIndex)
 
     // mud lies over all of the ground
     for _, point := range combat.TopDownOrder {

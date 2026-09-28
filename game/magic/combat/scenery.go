@@ -27,6 +27,9 @@ const (
     SceneryHouse
     // the fortress of a city, or an outpost
     SceneryStructure
+    // props that stand and props that lie on the ground, see props.go
+    SceneryProp
+    SceneryFlat
 )
 
 type SceneryPiece struct {
@@ -465,6 +468,9 @@ func makeScenery(width int, height int, landscape CombatLandscape, plane data.Pl
     out = append(out, scatterRocks(rocks, rockPool, zone, originalArea(), ground)...)
     out = append(out, scatterRocks(rocks * sceneryBeyondScreen(width, height), rockPool, zone, beyondArea(width, height), ground)...)
 
+    // what the replacement folder has of props, see props.go
+    out = append(out, makeProps(width, height, set, zone, ground)...)
+
     return out
 }
 
@@ -475,6 +481,8 @@ func (piece *SceneryPiece) anchor(width int, height int) (int, int) {
         case SceneryRock: return width / 2, height - rockAnchorBelow
         case SceneryHouse: return width / 2, height - houseAnchorBelow
         case SceneryStructure: return structureAnchorX, height - structureAnchorBelow
+        case SceneryProp: return width / 2, height - propAnchorBelow
+        case SceneryFlat: return width / 2, height / 2
     }
     return 0, 0
 }

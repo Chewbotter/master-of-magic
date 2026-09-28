@@ -48,13 +48,21 @@ func (combat *CombatScreen) drawOnFieldDimmed(screen *ebiten.Image, picture *ebi
 func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawable {
     var out []fieldDrawable
 
+    // props move with the ground
+    animationIndex := combat.Counter / 8
+
     for index := range combat.Model.Scenery {
         piece := &combat.Model.Scenery[index]
+
+        // props on the ground are drawn with it, see props.go
+        if piece.Kind == SceneryFlat {
+            continue
+        }
 
         layer := layerStructure
         switch piece.Kind {
             case SceneryTree: layer = layerTree
-            case SceneryRock: layer = layerRock
+            case SceneryRock, SceneryProp: layer = layerRock
         }
 
         brightness := fieldBrightness(piece.ScreenX, piece.ScreenY)
@@ -71,6 +79,9 @@ func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawab
                     return
                 }
                 picture := pictures[0]
+                if piece.Kind == SceneryProp {
+                    picture = pictures[animationIndex % uint64(len(pictures))]
+                }
                 anchorX, anchorY := piece.anchor(picture.Bounds().Dx(), picture.Bounds().Dy())
                 combat.drawOnFieldDimmed(screen, picture, piece.ScreenX - anchorX, piece.ScreenY - anchorY, brightness)
             },

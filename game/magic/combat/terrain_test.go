@@ -340,3 +340,43 @@ func TestRockCluster(test *testing.T) {
         test.Fatalf("the game makes %v large pieces", largeGameCount)
     }
 }
+
+// props: none without pictures, and with pictures the ones that lie and the ones that stand, on
+// grass without a road and off the large pieces
+func TestProps(test *testing.T) {
+    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, ZoneType{})
+
+    // the replacement folder has none
+    if props := makeProps(BattlefieldWidth, BattlefieldHeight, "Grass", ZoneType{}, ground); len(props) != 0 {
+        test.Fatalf("%v props without pictures", len(props))
+    }
+
+    pool := sceneryPool{Set: "Grass", Name: propFlatName, Extras: 3}
+    props := scatterProps(propsFlat, SceneryFlat, pool, ZoneType{}, originalArea(), ground)
+    if len(props) != propsFlat {
+        test.Fatalf("%v props of %v", len(props), propsFlat)
+    }
+
+    numbers := make(map[int]bool)
+    for range 20 {
+        for _, prop := range scatterProps(propsFlat, SceneryFlat, pool, ZoneType{}, originalArea(), ground) {
+            numbers[prop.Number] = true
+            if prop.Kind != SceneryFlat || prop.Set != "Grass" || prop.Name != propFlatName {
+                test.Fatalf("a prop of %v %v/%v", prop.Kind, prop.Set, prop.Name)
+            }
+        }
+    }
+    if len(numbers) != 3 || !numbers[1] || !numbers[3] {
+        test.Fatalf("pictures of props: %v", numbers)
+    }
+
+    // one that lies has its middle on its place, one that stands its foot
+    flat := SceneryPiece{Kind: SceneryFlat}
+    standing := SceneryPiece{Kind: SceneryProp}
+    if x, y := flat.anchor(20, 10); x != 10 || y != 5 {
+        test.Fatalf("flat: %v, %v", x, y)
+    }
+    if x, y := standing.anchor(20, 10); x != 10 || y != 10 - propAnchorBelow {
+        test.Fatalf("standing: %v, %v", x, y)
+    }
+}
