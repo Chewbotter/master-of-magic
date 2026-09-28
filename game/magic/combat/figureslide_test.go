@@ -29,4 +29,30 @@ func TestStrikeSlide(test *testing.T) {
     slideEnds(test, "3 4 4", []int{3, 4, 4}, []float64{forward, back, back})
     // the frames of the game: back on 1, forward on 3
     slideEnds(test, "3 1", figureAttackFrames, []float64{forward, back})
+
+    // the frame the blow lands on shows longer: the figure stays forward
+    slideEnds(test, "3 4 4 5 6 6", []int{3, 4, 4, 5, 6, 6}, []float64{back, back, back, middle, forward, forward})
+    slideEnds(test, "3 3 4 4", []int{3, 3, 4, 4}, []float64{forward, forward, back, back})
+    slideEnds(test, "3 3 1", []int{3, 3, 1}, []float64{forward, forward, back})
+}
+
+// the frame the blow lands on is in the swing as often as it is held
+func TestFollowHold(test *testing.T) {
+    same := func(name string, got []int, want []int) {
+        if len(got) != len(want) {
+            test.Errorf("%v: %v, should be %v", name, got, want)
+            return
+        }
+        for index := range want {
+            if got[index] != want[index] {
+                test.Errorf("%v: %v, should be %v", name, got, want)
+                return
+            }
+        }
+    }
+
+    same("3 4 4 5 6", withFollowHold([]int{3, 4, 4, 5, 6}), []int{3, 4, 4, 5, 6, 6})
+    same("3 4 4 5", withFollowHold([]int{3, 4, 4, 5}), []int{3, 4, 4, 5, 5})
+    same("3 4 4", withFollowHold([]int{3, 4, 4}), []int{3, 3, 4, 4})
+    same("3 1", gameStrikeFrames(), []int{3, 3, 1})
 }

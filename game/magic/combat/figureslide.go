@@ -45,10 +45,15 @@ const regroupSpeed = 30.0
 // where it stands. frames are the frames of the swing in their order, a frame that shows longer
 // more than once
 func strikeSlideEnds(frames []int) []float64 {
+    // a frame that shows longer is in the list more than once: the figure is where it was
+    again := func(index int) bool {
+        return index > 0 && frames[index] == frames[index - 1]
+    }
+
     // the frames the figure moves forward on, 5 and 6
     forward := 0
-    for _, frame := range frames {
-        if frame > strikeWindUpFrame {
+    for index, frame := range frames {
+        if frame > strikeWindUpFrame && !again(index) {
             forward += 1
         }
     }
@@ -58,6 +63,9 @@ func strikeSlideEnds(frames []int) []float64 {
 
     for index, frame := range frames {
         switch {
+            case again(index):
+                // it stays: held back on its wind up, and forward where its blow has landed
+                ends[index] = ends[index - 1]
             case frame > strikeWindUpFrame:
                 // forward, by the same part on each of these frames
                 done += 1
@@ -98,7 +106,7 @@ func (combat *CombatScreen) strikeSlide(unit *ArmyUnit, phase float64) (float64,
         case defends:
             frames = figureDefendFrames
         default:
-            frames = figureAttackFrames
+            frames = gameStrikeFrames()
     }
 
     // where in the swing the figure is, with the part of the frame that has gone by

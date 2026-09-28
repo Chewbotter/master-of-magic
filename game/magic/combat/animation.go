@@ -91,6 +91,46 @@ func moveTicksPerCell() float64 {
 // as the other frames of a long strike. one rule for all units, to be looked at again
 const strikeWindUpFrame = 4
 const strikeWindUpHold = 2
+// the frame the blow lands on, on which a figure that attacks is furthest forward, shows this
+// many times as long as the other frames: the figure stays forward for a moment before it steps
+// back for its next blow (user, 2026-09-28). 1: as long as the others
+const strikeFollowHold = 2
+
+// the frame of a swing the blow lands on: the last of a long strike that has frames after its
+// wind up, the strike frame of any other
+func strikeLandsOn(frames []int) int {
+    lands := mod.FrameStrike
+    for _, frame := range frames {
+        if frame > strikeWindUpFrame {
+            lands = max(lands, frame)
+        }
+    }
+    return lands
+}
+
+// the frames of a swing with the one the blow lands on shown longer
+func withFollowHold(frames []int) []int {
+    if strikeFollowHold <= 1 || len(frames) == 0 {
+        return frames
+    }
+
+    lands := strikeLandsOn(frames)
+    var out []int
+    for _, frame := range frames {
+        out = append(out, frame)
+        if frame == lands {
+            for range strikeFollowHold - 1 {
+                out = append(out, frame)
+            }
+        }
+    }
+    return out
+}
+
+// the frames of the swing of a unit that attacks and has the frames of the game only
+func gameStrikeFrames() []int {
+    return withFollowHold(figureAttackFrames)
+}
 
 // the frames of the long strike of the figure of the unit, as it faces: the strike frame and the
 // frames after it that the replacement folder has, up to the first that is missing. nothing if the
@@ -118,7 +158,7 @@ func longStrikeFrames(unit *ArmyUnit) []int {
         }
     }
 
-    return frames
+    return withFollowHold(frames)
 }
 
 func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase float64) int {
@@ -147,7 +187,8 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase fl
             }
             frame = long[step % uint64(len(long))]
         } else if unit.Attacking {
-            frame = figureAttackFrames[step % uint64(len(figureAttackFrames))]
+            strike := gameStrikeFrames()
+            frame = strike[step % uint64(len(strike))]
         } else {
             frame = figureDefendFrames[step % uint64(len(figureDefendFrames))]
         }
