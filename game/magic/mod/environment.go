@@ -12,7 +12,12 @@ package mod
 
 import (
     "fmt"
+    "image"
+    "image/png"
+    "os"
     "path/filepath"
+    "strconv"
+    "strings"
 )
 
 const environmentFolder = "environment"
@@ -228,4 +233,118 @@ func environmentFramePath(archive string, entry int, frame int) string {
         return ""
     }
     return filepath.Join(folder, environmentFolder, picture.Set, EnvironmentFrameFile(picture.Name, frame))
+}
+
+// MORE PICTURES OF THE GROUND (user, 2026-09-28). The ground of a landscape has a few pictures for
+// every use: 4 of grass, 2 of grass with dirt beyond its SE edge, 1 of each piece of raised ground.
+// The replacement folder can add to them. The names go on counting where the game's end:
+//
+//   environment/Grass/grass 5_0.png, grass 6_0.png, ...
+//   environment/Grass/dirt edge SE 3_0.png, ...
+//   environment/Grass/rough NE SW 2_0.png, ...
+//
+// They end with the first number that is not there. The battle picks among all of them, the
+// game's and the added ones (combat/terrain.go). Added pictures are shown as they are painted,
+// with frames _0, _1 and on as the others.
+
+// a use of pictures of the ground: its name, its first picture in the archive of a landscape, and
+// how many the game has
+type GroundRole struct {
+    Name string
+    First int
+    Count int
+}
+
+var GroundRoles = makeGroundRoles()
+
+// the uses, from the names of the pictures: "grass 1" to "grass 4" are the use "grass"
+func makeGroundRoles() []GroundRole {
+    var out []GroundRole
+    for index, ground := range groundNames {
+        name := ground.Name
+        cut := strings.LastIndex(name, " ")
+        if cut >= 0 {
+            _, err := strconv.Atoi(name[cut + 1:])
+            if err == nil {
+                name = name[:cut]
+            }
+        }
+
+        if len(out) > 0 && out[len(out) - 1].Name == name {
+            out[len(out) - 1].Count += 1
+        } else {
+            out = append(out, GroundRole{Name: name, First: index, Count: 1})
+        }
+    }
+    return out
+}
+
+// the most pictures that can be added to a use
+const maxGroundExtras = 99
+
+// the folder of the pictures of a landscape, by its archive. nothing if the archive is none
+func EnvironmentSet(archive string) string {
+    for _, landscape := range environmentLandscapes {
+        if strings.EqualFold(landscape.Archive, archive) {
+            return landscape.Set
+        }
+    }
+    return ""
+}
+
+// the name of a picture of a use, by its number from 1
+func GroundPictureName(role GroundRole, number int) string {
+    return fmt.Sprintf("%v %v", role.Name, number)
+}
+
+// how many pictures the replacement folder adds to a use of the ground of a landscape
+func CountGroundExtras(set string, role GroundRole) int {
+    if folder == "" || set == "" {
+        return 0
+    }
+
+    directory := filepath.Join(folder, environmentFolder, set)
+    // the files of the folder are looked up anew
+    delete(folderLists, directory)
+
+    count := 0
+    for count < maxGroundExtras {
+        name := GroundPictureName(role, role.Count + count + 1)
+        if !hasFile(filepath.Join(directory, EnvironmentFrameFile(name, 0))) {
+            break
+        }
+        count += 1
+    }
+    return count
+}
+
+// the frames of an added picture of the ground, as they are
+func ReadGroundExtra(set string, role GroundRole, number int) []image.Image {
+    if folder == "" || set == "" {
+        return nil
+    }
+
+    var out []image.Image
+    name := GroundPictureName(role, number)
+    for frame := 0; frame < maxFrames; frame++ {
+        path := filepath.Join(folder, environmentFolder, set, EnvironmentFrameFile(name, frame))
+        if !hasFile(path) {
+            break
+        }
+
+        file, err := os.Open(path)
+        if err != nil {
+            break
+        }
+        picture, err := png.Decode(file)
+        file.Close()
+        if err != nil {
+            reportOnce(fmt.Sprintf("Replacement picture %v can not be read: %v", path, err))
+            break
+        }
+
+        reportOnce(fmt.Sprintf("Replacement picture %v", path))
+        out = append(out, picture)
+    }
+    return out
 }

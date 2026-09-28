@@ -221,6 +221,8 @@ type CombatScreen struct {
     Landscape CombatLandscape
     // picks the pictures of the ground around the field, see fieldedge.go
     borderSeed uint32
+    // the pictures of the ground the replacement folder adds, see terraindraw.go
+    groundExtras map[int][]*ebiten.Image
     // the shading of the plateaus and where it lies on the original's screen, see slopes.go
     slopeShading *ebiten.Image
     slopesMade bool
@@ -3855,7 +3857,10 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         x := point.X
         y := point.Y
 
-        images, _ := combat.ImageCache.GetImages(combat.Model.Tiles[y][x].Lbx, combat.Model.Tiles[y][x].Index)
+        images := combat.groundTilePictures(combat.Model.Tiles[y][x].Lbx, combat.Model.Tiles[y][x].Index)
+        if len(images) == 0 {
+            continue
+        }
         image := images[animationIndex % uint64(len(images))]
         options.GeoM.Reset()
         // tx,ty is the middle of the tile, the picture starts up and left of it

@@ -2384,7 +2384,7 @@ type CombatModel struct {
 }
 
 func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingArmy *Army, landscape CombatLandscape, plane data.Plane, zone ZoneType, influence data.MagicType, overworldX int, overworldY int, events chan CombatEvent) *CombatModel {
-    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, landscape, zone)
+    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone)
     tiles := makeTiles(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone)
     ground.applyTo(tiles)
 

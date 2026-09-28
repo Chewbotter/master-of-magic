@@ -444,7 +444,9 @@ environment/<set>/<name>_<frame>.png
                     The directions are the ones of the tile on the screen: its edges NE (upper
                     right), SE, SW, NW and its corners N (top), E, S (bottom), W. "dirt edge SE"
                     is grass with dirt beyond its lower right edge, "rough NE SW" raised ground
-                    that goes on across its upper right and lower left edges
+                    that goes on across its upper right and lower left edges.
+                    Pictures of the ground can be added in the replacement folder, their names
+                    counting on: grass 5, dirt edge SE 3, rough NE SW 2. Its README says how
         Water, Water Myrror    the ground of a battle on the water
         Town        roads, houses, huts, tree houses, fortress, outpost, clouds under a flying
                     fortress, the pieces of the roads that lead out of the field ("road NE SW 1"

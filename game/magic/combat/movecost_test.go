@@ -12,7 +12,7 @@ func TestStepCostsOfTheGround(test *testing.T) {
     PlateauGround = false
     defer func() { PlateauGround = true }()
 
-    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, ZoneType{})
+    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, ZoneType{})
     for index := range ground.Trees {
         ground.Trees[index] = 0
     }

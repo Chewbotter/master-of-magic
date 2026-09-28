@@ -95,8 +95,8 @@ func (combat *CombatScreen) drawFieldBorder(screen *ebiten.Image, animationIndex
                 index = combat.Model.Ground.PictureOfTile(x, y)
             }
 
-            pictures, err := combat.ImageCache.GetImages(lbx, index)
-            if err != nil || len(pictures) == 0 {
+            pictures := combat.groundTilePictures(lbx, index)
+            if len(pictures) == 0 {
                 continue
             }
 

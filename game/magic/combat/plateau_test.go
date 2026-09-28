@@ -114,7 +114,7 @@ func TestSlopeShading(test *testing.T) {
 func TestPlateaus(test *testing.T) {
     zone := ZoneType{City: &citylib.City{}}
     for range 20 {
-        ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeMountain, zone)
+        ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeMountain, 0, zone)
         raised := 0
         for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
             for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
@@ -131,7 +131,7 @@ func TestPlateaus(test *testing.T) {
         }
     }
 
-    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, ZoneType{})
+    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, ZoneType{})
     for index := range ground.Heights {
         ground.Heights[index] = 0
         ground.Trees[index] = 0

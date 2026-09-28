@@ -87,7 +87,7 @@ func TestGroundKeepsTheOriginalsRules(test *testing.T) {
     zone.Ground.Roads[5] = true
 
     for range 20 {
-        ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeMountain, zone)
+        ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeMountain, 0, zone)
 
         reachesEdge := false
         for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
@@ -131,10 +131,52 @@ func TestGroundKeepsTheOriginalsRules(test *testing.T) {
 func TestNoRoadsWithoutOne(test *testing.T) {
     zone := ZoneType{}
     zone.Ground.Roads[5] = true
-    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, zone)
+    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, zone)
     for _, bits := range ground.Roads {
         if bits != 0 {
             test.Fatalf("a road without one at the battle")
         }
+    }
+}
+
+// with pictures added to a use, the battle picks among the game's and the added ones
+func TestAddedPicturesArePicked(test *testing.T) {
+    ground := testGround(5, 5)
+    ground.Extras = map[int]int{groundGrassFirst: 2, groundRoughFirst + 15: 1}
+
+    seen := make(map[int]bool)
+    for range 400 {
+        seen[ground.pictureOf(2, 2)] = true
+    }
+    for _, picture := range []int{0, 1, 2, 3, groundExtraFirst, groundExtraFirst + 1} {
+        if !seen[picture] {
+            test.Fatalf("grass %v was never picked: %v", picture, seen)
+        }
+    }
+    if len(seen) != 6 {
+        test.Fatalf("grass: %v", seen)
+    }
+
+    role, number, added := groundExtra(groundExtraFirst + 1)
+    if !added || role.Name != "grass" || number != 6 {
+        test.Fatalf("the second added grass: %+v %v %v", role, number, added)
+    }
+    if _, _, added := groundExtra(47); added {
+        test.Fatalf("a picture of the game counts as added")
+    }
+
+    // a piece of raised ground on its own has one picture of the game, 47
+    ground.setGroup(2, 2, TerrainRough)
+    seen = make(map[int]bool)
+    for range 200 {
+        seen[ground.pictureOf(2, 2)] = true
+    }
+    extra := groundExtraFirst + (groundRoughFirst + 15) * groundExtraStep
+    if len(seen) != 2 || !seen[47] || !seen[extra] {
+        test.Fatalf("rough: %v", seen)
+    }
+    role, number, _ = groundExtra(extra)
+    if role.Name != "rough single" || number != 2 {
+        test.Fatalf("the added rough: %+v %v", role, number)
     }
 }

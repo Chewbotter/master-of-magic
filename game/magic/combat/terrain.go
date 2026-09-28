@@ -16,8 +16,17 @@ package combat
 // across the edge of the field. The original's grid gets the original's number of patches, the rest
 // as many for its size.
 //
+// The replacement folder can add pictures to every use of the ground (mod/environment.go, user
+// 2026-09-28): the battle then picks among the game's and the added ones. An added picture has a
+// number from groundExtraFirst on in place of the number of a picture of the archive.
+//
 // Not made, as in the original: rivers. The original has the code for them, but never gives it a
 // river to follow.
+
+import (
+    "github.com/kazzmir/master-of-magic/game/magic/data"
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
+)
 
 type TerrainGroup int
 
@@ -56,10 +65,17 @@ const dirtBase = 0
 const roughRemovePasses = 8
 const dirtMergePasses = 10
 
-// the pictures of a terrain set, by number
+// the pictures of a terrain set, by number, and how many the game has of each use
 const groundGrassFirst = 0
 const groundDirtFirst = 4
 const groundRoughFirst = 32
+const groundGrassCount = 4
+const groundDirtCount = 4
+const groundEdgeCount = 2
+
+// added pictures: groundExtraFirst, then 100 numbers for every use by its first picture
+const groundExtraFirst = 1000
+const groundExtraStep = 100
 
 // the pieces of road, cmbtcity 69 on: 6 directions in two sets of 7, and the same for enchanted roads
 const roadLbx = "cmbtcity.lbx"
@@ -94,6 +110,10 @@ type BattleGround struct {
     Trees []int
     // the height of every cell, 0 or 1, nil without plateaus. see plateau.go
     Heights []int
+    // the folder of the pictures of the landscape in the replacement folder, and how many pictures
+    // it adds to a use, by the first picture of the use
+    Set string
+    Extras map[int]int
     EnchantedRoads bool
 }
 
@@ -182,7 +202,7 @@ func roughPatches(landscape CombatLandscape, ground ZoneGround) int {
     return 5
 }
 
-func makeBattleGround(width int, height int, landscape CombatLandscape, zone ZoneType) *BattleGround {
+func makeBattleGround(width int, height int, landscape CombatLandscape, plane data.Plane, zone ZoneType) *BattleGround {
     if landscape == CombatLandscapeWater {
         return nil
     }
@@ -201,6 +221,16 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, zone Zon
     ground.Group = make([]TerrainGroup, cells)
     ground.Picture = make([]int, cells)
     ground.Roads = make([]int, cells)
+
+    // what the replacement folder adds to the pictures of the ground
+    ground.Set = mod.EnvironmentSet(terrainSetLbx(landscape, plane))
+    ground.Extras = make(map[int]int)
+    for _, role := range mod.GroundRoles {
+        extras := mod.CountGroundExtras(ground.Set, role)
+        if extras > 0 {
+            ground.Extras[role.First] = min(extras, groundExtraStep)
+        }
+    }
     ground.Trees = make([]int, cells)
 
     // the original's grid gets its number of patches, the rest of the ground as many for its size
@@ -453,6 +483,29 @@ func (ground *BattleGround) choosePictures() {
     }
 }
 
+// one of the pictures of a use: the game's, from first on, and the added ones
+func (ground *BattleGround) variant(first int, count int) int {
+    pick := roll(count + ground.Extras[first])
+    if pick <= count {
+        return first + pick - 1
+    }
+    return groundExtraFirst + first * groundExtraStep + pick - count - 1
+}
+
+// the use and the number from 1 of an added picture
+func groundExtra(picture int) (mod.GroundRole, int, bool) {
+    if picture < groundExtraFirst {
+        return mod.GroundRole{}, 0, false
+    }
+    first := (picture - groundExtraFirst) / groundExtraStep
+    for _, role := range mod.GroundRoles {
+        if role.First == first {
+            return role, role.Count + (picture - groundExtraFirst) % groundExtraStep + 1, true
+        }
+    }
+    return mod.GroundRole{}, 0, false
+}
+
 func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
     is := func(dx int, dy int, group TerrainGroup) bool {
         return ground.GroupAt(cgx + dx, cgy + dy) == group
@@ -460,7 +513,7 @@ func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
 
     switch ground.GroupAt(cgx, cgy) {
         case TerrainDirt:
-            return groundDirtFirst - 1 + roll(4)
+            return ground.variant(groundDirtFirst, groundDirtCount)
 
         case TerrainRough:
             sides := 0
@@ -476,7 +529,7 @@ func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
             if is(-1, 0, TerrainRough) {
                 sides += 1
             }
-            return groundRoughFirst + roughPictures[sides]
+            return ground.variant(groundRoughFirst + roughPictures[sides], 1)
     }
 
     // grass: where dirt lies next to it, the edge of the dirt. two pictures of each
@@ -486,7 +539,7 @@ func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
     right := is(1, 0, TerrainDirt)
 
     edge := func(first int) int {
-        return first - 1 + roll(2)
+        return ground.variant(first, groundEdgeCount)
     }
 
     switch {
@@ -504,7 +557,7 @@ func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
         case is(-1, 1, TerrainDirt): return edge(14)
     }
 
-    return groundGrassFirst - 1 + roll(4)
+    return ground.variant(groundGrassFirst, groundGrassCount)
 }
 
 // the kind of ground and the road of every tile of the field, and its picture
