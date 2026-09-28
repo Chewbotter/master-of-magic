@@ -178,13 +178,16 @@ func effectSteps(pictures []*ebiten.Image, x int, y int, wait int, all bool) []P
 
 // an effect on a unit
 func (combat *CombatScreen) createEffect(target *ArmyUnit, pictures []*ebiten.Image, effect ProjectileEffect) *Projectile {
-    return newSpellProjectile(target, pictures, effectSteps(pictures, target.X, target.Y, 0, false), effect)
+    steps := effectSteps(pictures, target.X, target.Y, 0, false)
+    // it hits when it starts to show, see spelleffects.go
+    return combat.dress(newSpellProjectile(target, pictures, steps, effect), firstShownStep(steps))
 }
 
 // the effect of a spell that hits all units of a side, on one of them
 func (combat *CombatScreen) createEffectOfAll(target *ArmyUnit, pictures []*ebiten.Image, effect ProjectileEffect) *Projectile {
     wait := rand.N(spellAllDelayMax + 1)
-    return newSpellProjectile(target, pictures, effectSteps(pictures, target.X, target.Y, wait, true), effect)
+    steps := effectSteps(pictures, target.X, target.Y, wait, true)
+    return combat.dress(newSpellProjectile(target, pictures, steps, effect), firstShownStep(steps))
 }
 
 // an effect that lies on the ground of a tile, under the units
@@ -199,7 +202,7 @@ func (combat *CombatScreen) createGroundEffect(target *ArmyUnit, pictures []*ebi
 
     projectile := newSpellProjectile(target, pictures, steps, effect)
     projectile.Ground = true
-    return projectile
+    return combat.dress(projectile, firstShownStep(steps))
 }
 
 func (combat *CombatScreen) createBolt(kind BoltKind, target *ArmyUnit, pictures []*ebiten.Image, effect ProjectileEffect) *Projectile {
@@ -217,9 +220,12 @@ func (combat *CombatScreen) createBolt(kind BoltKind, target *ArmyUnit, pictures
             case BoltFireball: frame = step
             case BoltDoom: frame = step / doomBoltFrameSteps
             default:
-                frame = step % boltFlightFrames
+                // the last frame is where it hits, the ones before it go around in flight. the
+                // game has 3 and 1; the replacement folder can give more for the flight
+                flightFrames := max(1, len(pictures) - 1)
+                frame = step % flightFrames
                 if step == path.Steps - 1 {
-                    frame = boltHitFrame
+                    frame = len(pictures) - 1
                 }
         }
         frame = min(frame, len(pictures) - 1)
@@ -251,7 +257,13 @@ func (combat *CombatScreen) createBolt(kind BoltKind, target *ArmyUnit, pictures
         steps = nil
     }
 
-    return newSpellProjectile(target, pictures, steps, effect)
+    // it hits with its last step of flight, or when it shows at its target. see spelleffects.go
+    impactStep := min(boltFlightSteps, len(steps))
+    if kind == BoltFire || kind == BoltIce {
+        impactStep = max(0, len(steps) - 1)
+    }
+
+    return combat.dress(newSpellProjectile(target, pictures, steps, effect), impactStep)
 }
 
 func (combat *CombatScreen) createLightning(target *ArmyUnit, pictures []*ebiten.Image, effect ProjectileEffect) *Projectile {
@@ -268,7 +280,8 @@ func (combat *CombatScreen) createLightning(target *ArmyUnit, pictures []*ebiten
         steps = nil
     }
 
-    return newSpellProjectile(target, pictures, steps, effect)
+    // it hits with its first flash
+    return combat.dress(newSpellProjectile(target, pictures, steps, effect), firstShownStep(steps))
 }
 
 // the step a spell is at, or the number of its steps when it is over
@@ -331,6 +344,13 @@ func (projectile *Projectile) updateSteps(counter uint64) bool {
     }
 
     projectile.Step = projectile.stepAt(counter)
+
+    // it hits, see spelleffects.go
+    if !projectile.Impacted && projectile.OnImpact != nil && projectile.Step >= projectile.ImpactStep {
+        projectile.Impacted = true
+        projectile.OnImpact()
+    }
+
     return projectile.Step < len(projectile.Steps)
 }
 
@@ -344,8 +364,8 @@ func (combat *CombatScreen) drawSpell(screen *ebiten.Image, projectile *Projecti
         return
     }
 
-    // with its light, see spellglow.go
-    combat.drawSpellPicture(screen, projectile.Pictures[frame], x, y)
+    // with its light, see spelleffects.go
+    combat.drawSpellPicture(screen, projectile.Name, projectile.Pictures[frame], x, y)
 }
 
 // the spells that lie on the ground. drawn after the ground and before anything that stands on it

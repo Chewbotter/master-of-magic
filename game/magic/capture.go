@@ -132,7 +132,7 @@ func writeFrame(screen *ebiten.Image, path string) {
 }
 
 // frames before the capture in which effects of a battle can be started
-const CaptureEffectFrames = 100
+const CaptureEffectFrames = 250
 
 // frames between Later and the capture. a simulated drag gets room to finish and coast to a stop
 func (capture *frameCapture) laterFrames() int {

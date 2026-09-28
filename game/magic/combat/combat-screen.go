@@ -259,8 +259,8 @@ type CombatScreen struct {
     movingVortex *MagicVortex
     // the mark over the unit whose turn it is, see unitmarker.go
     chevron *ebiten.Image
-    // the halos of the frames of spells, see spellglow.go
-    spellHalos map[*ebiten.Image]*ebiten.Image
+    // what goes with the pictures of spells, see spelleffects.go
+    effects spellEffects
     // the cursor is over a cell the unit of the player can not go to or attack
     outOfReach bool
     claimedTiles map[image.Point]*ArmyUnit
@@ -471,6 +471,8 @@ func (combat *CombatScreen) syncCamera() {
     combat.Camera.clampLevel()
     combat.Coordinates = combat.Camera.Matrix()
     combat.Coordinates.Translate(combat.fieldShift, 0)
+    // the view shakes when a spell has hit, see spelleffects.go
+    combat.Coordinates.Translate(combat.shakeShift())
     combat.CameraScale = combat.Camera.Scale()
 }
 
@@ -1910,7 +1912,14 @@ func (combat *CombatScreen) doProjectiles(yield coroutine.YieldFunc) {
         return
     }
 
-    for combat.Model.UpdateProjectiles(combat.Counter) {
+    for {
+        more := combat.Model.UpdateProjectiles(combat.Counter)
+        // the battle stands still for a moment when a spell has hit, see spelleffects.go
+        combat.holdHit(yield)
+        if !more {
+            break
+        }
+
         combat.Counter += 1
         combat.ProcessInput()
         combat.UpdateDamageIndicators()
@@ -2367,6 +2376,9 @@ func (combat *CombatScreen) ProcessEvents(yield coroutine.YieldFunc) CombatUpdat
 }
 
 func (combat *CombatScreen) UpdateAnimations(){
+    // particles and what else goes with spells, see spelleffects.go
+    combat.updateSpellEffects()
+
     for _, unit := range combat.Model.MagicVortexes {
         if combat.Counter % 6 == 0 {
             unit.Animation.Next()
@@ -2977,7 +2989,7 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
     // set again below, see movearea.go
     combat.outOfReach = false
     combat.updateMoveAreaKey()
-    combat.updateSpellGlowKey()
+    combat.updateSpellEffectsKey()
 
     mouseX, mouseY := inputmanager.MousePosition()
     hudImage, _ := combat.ImageCache.GetImage("cmbtfx.lbx", 28, 0)
@@ -3846,6 +3858,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
     combat.drawTownGround(screen)
     // spells that lie on the ground, see spellanim.go
     combat.drawGroundSpells(screen)
+    // the light that runs over the ground where a spell has hit, see spelleffects.go
+    combat.drawGroundPulses(screen)
 
     drawExtraObject := func(x int, y int, extra TileTop) {
         if extra.Drawer != nil {
@@ -4125,6 +4139,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                 }
 
                 unitview.RenderCombatFigure(screen, unitImage, unitOptions, unit.VisibleFigures(), unit.LostUnits, &dying, use, combat.Counter, &combat.ImageCache, figure)
+                // a unit a spell has hit shows in one color for a moment, see spelleffects.go
+                combat.drawFigureFlash(screen, unit, unitImage, unitOptions, figure)
 
                 if warpCreature {
                     unitOptions.ColorScale = savedColor
@@ -4316,6 +4332,9 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             scale.DrawScaled(screen, frame, &options)
         }
     }
+
+    // what flies off spells, see particles.go
+    combat.drawParticles(screen)
 
     // the numbers that rise from a unit that is hurt, see damagenumbers.go
     combat.drawDamageNumbers(screen)

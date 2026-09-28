@@ -29,6 +29,7 @@ import (
     "path/filepath"
     "strings"
 
+    "github.com/kazzmir/master-of-magic/game/magic/combat"
     "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/lib/lbx"
@@ -391,8 +392,16 @@ spells/<name>/<frame>.png
     use their frames by number).
     Realm Nature, Sorcery, Chaos, Life, Death and Arcane are the pictures most spells on a unit
     show: one picture for all such spells of the realm.
-    In a battle the game adds light to these pictures and a halo around them. What is drawn bright
-    glows, black gives no light.
+    In a battle the game adds light to these pictures: what is drawn bright glows, black gives no
+    light. It also adds particles, and more where a spell hits. How much is in effects.txt.
+    Fire Bolt and Ice Bolt: the last frame is where it hits, all frames before it go around while
+    it flies. The game has 3 of those, more can be added: with 00 to 04 in flight the hit is 05.
+
+effects.txt
+    the values of what the game adds to the pictures of spells: light, particles, and where a spell
+    hits the color of the unit, the battle standing still, the view shaking, light on the ground.
+    The file says what each value is. Copied into the replacement folder it is read by the game,
+    again and again while it runs.
 
 cursors/<number>_<name>.png
     the cursors of the mouse, 16 by 16 pixels. A changed cursor has to keep that size.
@@ -447,6 +456,8 @@ func main() {
     }
 
     os.WriteFile(filepath.Join(*outPath, "README.txt"), []byte(readme), 0644)
+    // the values of the effects of spells, to be changed and put into the replacement folder
+    os.WriteFile(filepath.Join(*outPath, mod.EffectsFile), []byte(combat.EffectsTemplate()), 0644)
 
     fmt.Printf("units: %v, pictures of units: %v, pictures of archives: %v, cursors: %v, pictures of spells: %v\n", unitCount, unitPictures, archivePictures, cursorPictures, spellPictures)
     fmt.Printf("written to %v\n", *outPath)

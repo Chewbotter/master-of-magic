@@ -2299,6 +2299,13 @@ type Projectile struct {
     Start uint64
     // the step it is at
     Step int
+
+    // what goes with its pictures, see spelleffects.go: the name of its pictures, the step it
+    // hits at, and what is done then
+    Name string
+    ImpactStep int
+    Impacted bool
+    OnImpact func()
 }
 
 type CombatLogEvent struct {
