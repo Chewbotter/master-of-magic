@@ -4,4 +4,5 @@ package mainview
 const (
     MainScreenStateRandomBattle MainScreenState = 100 + iota
     MainScreenStateRandomCityBattle
+    MainScreenStateTestBattle
 )

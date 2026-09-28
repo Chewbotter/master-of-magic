@@ -50,6 +50,10 @@ type frameCapture struct {
     KillFigures int
     // multiplies the units of both armies of a random battle, 0 leaves the setting of the debug list
     ArmyScale int
+    // a test battle of this unit
+    UnitBattle string
+    // the list of units of the test battle, with these races open
+    UnitPicker string
     // units act in turn, as before they acted together
     InTurn bool
     // a random battle with the same armies on the same ground every time, and the places of all

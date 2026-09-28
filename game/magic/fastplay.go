@@ -53,6 +53,21 @@ type fastPlayEntry struct {
     // a setting: a click changes it and the start screen stays. its text replaces the label
     Change func()
     Text func() string
+    // the entry is not in the list while this says so
+    Hidden func() bool
+    // called before the state of the entry is returned
+    Pick func()
+}
+
+// the entries that are in the list now
+func shownFastPlayEntries() []fastPlayEntry {
+    var out []fastPlayEntry
+    for _, entry := range fastPlayEntries {
+        if entry.Hidden == nil || !entry.Hidden() {
+            out = append(out, entry)
+        }
+    }
+    return out
 }
 
 func (entry fastPlayEntry) text() string {
@@ -65,6 +80,26 @@ func (entry fastPlayEntry) text() string {
 var fastPlayEntries = []fastPlayEntry{
     {Label: "Random Battle", State: mainview.MainScreenStateRandomBattle},
     {Label: "Random City Battle", State: mainview.MainScreenStateRandomCityBattle},
+    {
+        // a battle of one kind of unit, picked from a list. see unitpicker.go
+        Label: "Test Battle...",
+        Change: func() {
+            unitPickerOpen = true
+        },
+    },
+    {
+        // the unit of the last test battle once more, for looking at a change of its pictures
+        State: mainview.MainScreenStateTestBattle,
+        Hidden: func() bool {
+            return testBattleLast == nil
+        },
+        Pick: func() {
+            testBattleUnit = testBattleLast
+        },
+        Text: func() string {
+            return fmt.Sprintf("Again: %v", testBattleLast.Name)
+        },
+    },
     {
         Change: func() {
             if randomBattleArmyScale == 1 {
@@ -139,18 +174,41 @@ func (game *MagicGame) updateFastPlay(menu *mainview.MainScreen) (mainview.MainS
         return 0, false
     }
 
+    if capture.UnitPicker != "" {
+        // development: the list of units, with races open
+        for _, race := range unitPickerRaces {
+            if capture.UnitPicker == "all" || strings.Contains(strings.ToLower(capture.UnitPicker), strings.ToLower(race.String())) {
+                unitPickerExpanded[race] = true
+            }
+        }
+        capture.UnitPicker = ""
+        unitPickerOpen = true
+    }
+
+    if unitPickerOpen {
+        // the list of units of the test battle takes the clicks, see unitpicker.go
+        if updateUnitPicker() {
+            return mainview.MainScreenStateTestBattle, true
+        }
+        return 0, false
+    }
+
+    entries := shownFastPlayEntries()
     cursor := fastPlayCursor()
-    for index, entry := range fastPlayEntries {
+    for index, entry := range entries {
         if cursor.In(fastPlayRow(index + 1, entry.text()).Inset(-1)) {
             fastPlayHover = index
         }
     }
 
     if fastPlayHover >= 0 && inputmanager.LeftClick() {
-        entry := fastPlayEntries[fastPlayHover]
+        entry := entries[fastPlayHover]
         if entry.Change != nil {
             entry.Change()
             return 0, false
+        }
+        if entry.Pick != nil {
+            entry.Pick()
         }
         return entry.State, true
     }
@@ -173,8 +231,13 @@ func (game *MagicGame) drawFastPlay(screen *ebiten.Image) {
         useFont.PrintOutlined(screen, float64(rect.Min.X) + offsetX, float64(rect.Min.Y) + offsetY, font.FontOptions{Scale: scale.ScaleAmount}, font.OutlineFull, text)
     }
 
+    if unitPickerOpen {
+        drawUnitPicker(screen)
+        return
+    }
+
     print(fastPlayFontHighlight, 0, "Debug")
-    for index, entry := range fastPlayEntries {
+    for index, entry := range shownFastPlayEntries() {
         use := fastPlayFont
         if index == fastPlayHover {
             use = fastPlayFontHighlight
@@ -287,7 +350,31 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
     zone := combat.ZoneType{Encounter: combat.ZoneLair}
     plane := data.PlaneArcanus
 
-    if cityBattle {
+    if testBattleUnit != nil {
+        // a test battle: one kind of unit against its own kind on open ground. see unitpicker.go
+        unit := *testBattleUnit
+        testBattleLast = testBattleUnit
+        testBattleUnit = nil
+
+        defenderBanner := data.BannerBlue
+        if banner == defenderBanner {
+            defenderBanner = data.BannerRed
+        }
+        attacker = playerlib.MakePlayer(setup.WizardCustom{Name: "Attackers", Banner: banner, Race: race}, true, 0, 0, nil, &playerlib.NoGlobalEnchantments{})
+        defender = playerlib.MakePlayer(setup.WizardCustom{Name: "Defenders", Banner: defenderBanner, Race: race}, false, 0, 0, nil, &playerlib.NoGlobalEnchantments{})
+
+        attackingArmy = &combat.Army{Player: attacker}
+        defendingArmy = &combat.Army{Player: defender}
+        for range TestBattleUnits * armyScale {
+            attackingArmy.AddUnit(units.MakeOverworldUnitFromUnit(unit, 1, 1, data.PlaneArcanus, attacker.Wizard.Banner, attacker.MakeExperienceInfo(), attacker.MakeUnitEnchantmentProvider()))
+            defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(unit, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
+        }
+
+        landscape = combat.CombatLandscapeGrass
+        zone = combat.ZoneType{}
+
+        log.Printf("Test battle: %v %v against %v of their kind", TestBattleUnits * armyScale, unitFullName(&unit), TestBattleUnits * armyScale)
+    } else if cityBattle {
         // a city of another race, held by its starting units
         cityRace := randomChoose(randomBattleRaces...)
         cityBanner := data.BannerBlue
