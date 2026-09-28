@@ -12,6 +12,7 @@ package main
 //   units/<race> <name>/<facing>_<frame>.png   the figure of every unit, 8 facings of 4 frames
 //   units/<race> <name>/_sheet.png             all of them on one picture, facings down, frames across
 //   archives/<file>/<entry>_<frame>.png        every picture of the archives battles draw from
+//   environment/<set>/<name>_<frame>.png       ground, trees, towns, walls, lairs, by name
 //   palette.png, palette.gpl                   the colors of the game
 //   README.txt
 //
@@ -283,6 +284,51 @@ func exportSpells(dataPath string, outPath string) int {
     return count
 }
 
+// the pictures of the places battles are fought in, in folders by set, with names. the same
+// pictures as in archives/, easier to find
+func exportEnvironment(dataPath string, outPath string) int {
+    count := 0
+    notes := make(map[string]*strings.Builder)
+    var sets []string
+
+    for _, picture := range mod.EnvironmentPictures {
+        archive, err := openArchive(dataPath, picture.Archive)
+        if err != nil {
+            log.Printf("%v", err)
+            continue
+        }
+
+        frames, err := readPictures(archive, picture.Entry)
+        if err != nil || len(frames) == 0 {
+            log.Printf("No pictures of %v/%v in %v entry %v", picture.Set, picture.Name, picture.Archive, picture.Entry)
+            continue
+        }
+
+        folder := filepath.Join(outPath, "environment", picture.Set)
+        for number, frame := range frames {
+            if writePng(filepath.Join(folder, mod.EnvironmentFrameFile(picture.Name, number)), frame) == nil {
+                count += 1
+            }
+        }
+
+        note, ok := notes[picture.Set]
+        if !ok {
+            note = &strings.Builder{}
+            notes[picture.Set] = note
+            sets = append(sets, picture.Set)
+            note.WriteString(fmt.Sprintf("%v\r\n\r\n", picture.Set))
+        }
+        bounds := frames[0].Bounds()
+        note.WriteString(fmt.Sprintf("%-20v %v frames, %v by %v, %v entry %v: %v\r\n", picture.Name, len(frames), bounds.Dx(), bounds.Dy(), picture.Archive, picture.Entry, picture.Note))
+    }
+
+    for _, set := range sets {
+        os.WriteFile(filepath.Join(outPath, "environment", set, "_source.txt"), []byte(notes[set].String()), 0644)
+    }
+
+    return count
+}
+
 // takes the pictures of the cursors as they are read
 type cursorKeeper struct {
     Pictures []*image.Paletted
@@ -388,6 +434,25 @@ archives/<file>/<entry>_<frame>.png
         chriver     rivers, the chaos node
         compix      the combat bar and its buttons
 
+environment/<set>/<name>_<frame>.png
+    the pictures of the places battles are fought in, by name. They are the same pictures as in
+    archives/, easier to find. _source.txt in each folder lists them with their sizes, where they
+    come from and where the game shows them.
+        Grass, Desert, Mountain, Tundra, and each on Myrror
+                    ground 00 to 31 the ground, one at random for every tile. 32 to 47 are raised
+                    ground the game does not use. tree 1 to 5, rock 1 to 5
+        Water, Water Myrror    the ground of a battle on the water
+        Town        roads, houses, huts, tree houses, fortress, outpost, clouds under a flying
+                    fortress
+        Lairs       cave, tower, ruins, keep, temple, the nodes
+        Walls       stone (frame 0 standing, 1 broken), fire, darkness, and fire and darkness
+                    while they rise. The numbers are the pieces around the town: 00 the far
+                    corner, 01 to 03 the far left side, 04 to 06 the far right side, 07 to 09 the
+                    near left side, 10 and 11 the near right side (11 the gate), 12 and 13 the
+                    left and right corners of fire and darkness
+        Other       mud, and pieces the game does not use
+    Keep the size of a changed picture: most are put in place by a fixed point in them.
+
 spells/<name>/<frame>.png
     the pictures of the spells of battles, in folders with their names. They are the same pictures
     as in archives/cmbtfx, specfx and cmbmagic, easier to find. _source.txt says which spells show
@@ -416,6 +481,12 @@ effects.txt
     hits the color of the unit, the battle standing still, the view shaking, light on the ground.
     The file says what each value is. Copied into the replacement folder it is read by the game,
     again and again while it runs.
+
+aseprite/
+    not written by this export: the Aseprite files made from these pictures. One file per race,
+    a folder per unit, a layer per facing. Spells <width>x<height>.aseprite: one file for each
+    size of the pictures of spells, a layer per spell. aseprite-export.bat writes what was changed
+    in them into the replacement folder.
 
 cursors/<number>_<name>.png
     the cursors of the mouse, 16 by 16 pixels. A changed cursor has to keep that size.
@@ -463,6 +534,7 @@ func main() {
     archivePictures := exportArchives(*dataPath, *outPath)
     cursorPictures := exportCursors(*dataPath, *outPath)
     spellPictures := exportSpells(*dataPath, *outPath)
+    environmentPictures := exportEnvironment(*dataPath, *outPath)
 
     err = exportPalette(*outPath)
     if err != nil {
@@ -473,6 +545,6 @@ func main() {
     // the values of the effects of spells, to be changed and put into the replacement folder
     os.WriteFile(filepath.Join(*outPath, mod.EffectsFile), []byte(combat.EffectsTemplate()), 0644)
 
-    fmt.Printf("units: %v, pictures of units: %v, pictures of archives: %v, cursors: %v, pictures of spells: %v\n", unitCount, unitPictures, archivePictures, cursorPictures, spellPictures)
+    fmt.Printf("units: %v, pictures of units: %v, pictures of archives: %v, cursors: %v, pictures of spells: %v, pictures of the environment: %v\n", unitCount, unitPictures, archivePictures, cursorPictures, spellPictures, environmentPictures)
     fmt.Printf("written to %v\n", *outPath)
 }

@@ -9,6 +9,7 @@ package mod
 //   archives/<file>/<entry>_<frame>.png          any picture of any archive, <entry> with 3 digits
 //   cursors/<number>_<name>.png                  a cursor of the mouse, see CursorNames
 //   spells/<name>/<frame>.png                    a spell of the battles, see spells.go
+//   environment/<set>/<name>_<frame>.png         the ground, walls, towns of battles, see environment.go
 //
 // A picture that is not there is the game's own. Every frame is a file of its own: the sheets the
 // export writes are for looking at and are not read.
@@ -249,6 +250,12 @@ func framePaths(archive string, entry int, frame int) []string {
     spell := spellFramePath(archive, entry, frame)
     if spell != "" {
         out = append(out, spell)
+    }
+
+    // the places of battles by name, see environment.go
+    environment := environmentFramePath(archive, entry, frame)
+    if environment != "" {
+        out = append(out, environment)
     }
 
     base := strings.TrimSuffix(strings.ToLower(archive), ".lbx")
