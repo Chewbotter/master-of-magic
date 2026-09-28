@@ -26,7 +26,9 @@ import (
 const StrikeSlide = true
 // false: only the unit that attacks lunges, the one that is attacked stands. on as a trial (user,
 // 2026-09-28): the unit that is attacked strikes back with the same frames and lunges the same way
-const DefenderSlides = true
+// TRIED AND TAKEN BACK (user, 2026-09-28): at the full distance and at half of it. the unit that
+// is attacked standing still looks best and is the easiest to read
+const DefenderSlides = false
 // how far the unit that is attacked lunges, as a part of how far the attacker does
 const defenderSlidePart = 0.5
 // how far a figure slides back on its wind up and forward at the end of its swing, in art pixels
