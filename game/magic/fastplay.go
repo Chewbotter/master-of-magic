@@ -107,6 +107,8 @@ var fastPlayEntries = []fastPlayEntry{
             } else {
                 randomBattleArmyScale = 1
             }
+            // kept for the next run of the game, see debugsaved.go
+            saveDebugSaved()
         },
         Text: func() string {
             return fmt.Sprintf("Army Size: x%v", randomBattleArmyScale)

@@ -1,7 +1,7 @@
 package main
 
 // What the debug options of the start screen remember between runs of the game: the unit of the
-// last test battle, so "Again" is there after a restart.
+// last test battle, so "Again" is there after a restart, and the army size.
 //
 // Kept in a file of its own beside the settings of the window, in the folder the game runs in.
 // Development runs (-corner, -capture) neither read nor write it, so they do not change what the
@@ -18,6 +18,8 @@ const DebugSavedFile = "debug.json"
 type debugSaved struct {
     // the unit of the last test battle, by its name with its race
     TestBattleUnit string `json:"test-battle-unit"`
+    // how many times the armies of the debug battles are multiplied
+    ArmyScale int `json:"army-scale"`
 }
 
 var debugSavedLoaded bool
@@ -50,6 +52,10 @@ func loadDebugSaved() {
         return
     }
 
+    if saved.ArmyScale == 1 || saved.ArmyScale == RandomBattleLargeArmies {
+        randomBattleArmyScale = saved.ArmyScale
+    }
+
     if saved.TestBattleUnit != "" && testBattleLast == nil {
         // a unit that is not there any more is no unit
         testBattleLast = findUnit(saved.TestBattleUnit)
@@ -62,6 +68,7 @@ func saveDebugSaved() {
     }
 
     var saved debugSaved
+    saved.ArmyScale = randomBattleArmyScale
     if testBattleLast != nil {
         saved.TestBattleUnit = unitFullName(testBattleLast)
     }
