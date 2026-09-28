@@ -20,7 +20,6 @@ import (
     "github.com/kazzmir/master-of-magic/lib/coroutine"
     "github.com/kazzmir/master-of-magic/lib/set"
     "github.com/kazzmir/master-of-magic/lib/functional"
-    globalMouse "github.com/kazzmir/master-of-magic/game/magic/mouse"
     fontslib "github.com/kazzmir/master-of-magic/game/magic/fonts"
     "github.com/kazzmir/master-of-magic/game/magic/audio"
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
@@ -2766,7 +2765,7 @@ func (combat *CombatScreen) UpdateMouseState() {
         case CombatMoveOk:
             combat.setCursor(combat.Mouse.Move, cursorHotMove)
         case CombatClickHud:
-            globalMouse.Mouse.SetImage(combat.Mouse.Normal)
+            combat.setPointer(combat.Mouse.Normal)
         case CombatMeleeAttackOk:
             // mouseOptions.GeoM.Translate(-1, -1)
             combat.setCursor(combat.Mouse.Attack, cursorHotAttack)
@@ -2775,13 +2774,13 @@ func (combat *CombatScreen) UpdateMouseState() {
         case CombatNotOk:
             if OutOfReachOutline && combat.outOfReach {
                 // the outline of the cell says it, see movearea.go
-                globalMouse.Mouse.SetImage(combat.Mouse.Normal)
+                combat.setPointer(combat.Mouse.Normal)
             } else {
                 combat.setCursor(combat.shortCross(), cursorHotCross)
             }
         case CombatCast:
             index := (combat.Counter / 8) % uint64(len(combat.Mouse.Cast))
-            globalMouse.Mouse.SetImage(combat.Mouse.Cast[index])
+            combat.setPointer(combat.Mouse.Cast[index])
     }
 }
 

@@ -72,6 +72,8 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
   of the blue outline and the red X.
 - Bolts of spells go on with every tick of the game in place of 10 pixels with every redraw of
   the original (`SmoothBolts` in `combat/spellanim.go`). Way, time and frames are the original's.
+- Cursors over the field are drawn on the art pixels of the field (`CursorOnFieldPixels`), the
+  hand with the wand is as large as the field is drawn there.
 - No boots on the tiles a unit would walk over (`ShowMovePath` in `combat/autotoggle.go`).
 - The AUTO button toggles auto and is lit while auto is on.
 - Space sets the player's army to auto and takes it off again (`combat/autotoggle.go`). Taken off
