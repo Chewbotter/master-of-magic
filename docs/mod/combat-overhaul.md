@@ -85,6 +85,11 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
   when the spell is over (`combat/spelllight.go`).
 - Corpses take on a color by what killed the figure: brown for fire, blue for ice, gray for
   lightning and other spells, red for a fight (`corpse-color` in the values of spells).
+- A battle that is won or lost is shown for a moment longer before its result comes up
+  (`combat/combatend.go`).
+- Spells that hurt do what they do when they hit, not when their pictures have played to their
+  end. The figures they kill are thrown away from where the spell hit, by how far the spell
+  throws, and lie facing where it came from.
 - Bolts of spells go on with every tick of the game in place of 10 pixels with every redraw of
   the original (`SmoothBolts` in `combat/spellanim.go`). Way, time and frames are the original's.
 - Cursors over the field are drawn on the art pixels of the field (`CursorOnFieldPixels`), the

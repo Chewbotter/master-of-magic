@@ -4,6 +4,8 @@ import (
     "image/color"
     "math"
     "testing"
+
+    "github.com/kazzmir/master-of-magic/game/magic/units"
 )
 
 // a light is all there in its middle, not there at its rim, and has only its steps
@@ -88,5 +90,58 @@ func TestCorpseTint(test *testing.T) {
     red, green, blue = corpseTintParts(color.RGBA{R: 200, G: 100, B: 50, A: 255}, 0)
     if red != 1 || green != 1 || blue != 1 {
         test.Errorf("none of it: %v %v %v", red, green, blue)
+    }
+}
+
+// a bolt keeps the field dark until it hits, a spell on a unit for the first half of its pictures
+func TestHoldsDark(test *testing.T) {
+    if !holdsDark(9, 10, 11) || holdsDark(10, 10, 11) {
+        test.Errorf("a bolt that hits at its step 10")
+    }
+    if !holdsDark(3, 0, 8) || holdsDark(4, 0, 8) {
+        test.Errorf("a spell on a unit of 8 steps")
+    }
+}
+
+// the dark lifts slowly at first, then faster, then slowly to its end
+func TestLiftPart(test *testing.T) {
+    if liftPart(0) != 0 || liftPart(1) != 1 || liftPart(2) != 1 || liftPart(-1) != 0 {
+        test.Errorf("the ends: %v %v", liftPart(0), liftPart(1))
+    }
+    if liftPart(0.1) >= 0.1 || liftPart(0.9) <= 0.9 || liftPart(0.5) != 0.5 {
+        test.Errorf("in between: %v %v %v", liftPart(0.1), liftPart(0.5), liftPart(0.9))
+    }
+}
+
+// a figure a spell has killed is thrown away from where the spell hit, further by a spell that
+// throws further, and lies facing where it came from
+func TestThrow(test *testing.T) {
+    near := deathCause{X: 100, Y: 100, Throw: 10}
+    far := deathCause{X: 100, Y: 100, Throw: 24}
+
+    x, y, distance := throwOf(near, 110, 100, 0.5, 0)
+    if x <= 0.99 || math.Abs(y) > 0.01 {
+        test.Errorf("to the right of it: thrown %v, %v", x, y)
+    }
+    if distance < 6 || distance > 10 {
+        test.Errorf("thrown %v by a spell that throws 10", distance)
+    }
+
+    _, _, further := throwOf(far, 110, 100, 0.5, 0)
+    if further <= distance {
+        test.Errorf("thrown %v and %v", distance, further)
+    }
+
+    x, y, _ = throwOf(near, 100, 95, 0.5, 0)
+    if math.Abs(x) > 0.01 || y >= 0 {
+        test.Errorf("above it: thrown %v, %v", x, y)
+    }
+
+    // thrown to the right it faces left, where the spell hit
+    if facing := facingToward(-1, 0); facing != units.FacingLeft {
+        test.Errorf("faces %v", facing)
+    }
+    if facing := facingToward(0.9, -0.45); facing != units.FacingUpRight {
+        test.Errorf("faces %v", facing)
     }
 }

@@ -3,14 +3,16 @@ package combat
 // The light of a spell. Not in the original (user, 2026-09-28).
 //
 // While a spell plays the battlefield gets dark, and the spell is what gives light:
-// - the field is darkened, all of it, when the spell starts
+// - the field is darkened, all of it, when the spell starts. the dark has a little of the color
+//   of the spell
 // - around the spell it is not: the spell lights the ground and the units near it
 // - the pictures of the spell, its particles and the numbers are drawn over the dark, as bright as
 //   they are
 // - the shadows of the units near the spell turn away from it and get harder, as if it was the
 //   spell that cast them
-// - when the spell is over all of it goes back to how it was. What the spell left on the ground,
-//   marks and corpses, stays
+// - when the spell hits the dark starts to lift, slowly at first. The light of the spell stays
+//   where it hit a little longer and goes out, and the shadows turn back. What the spell left on
+//   the ground, marks and corpses, stays
 //
 // The dark is a picture of art pixels lined up with the ground (as the shadows, see shadows.go)
 // that the lights cut holes into. A light falls off in steps toward its rim, and from step to step
@@ -29,9 +31,9 @@ import (
 // false: spells play in the light of day
 const SpellLight = true
 
-// seconds the field takes to get dark, and to get light again
+// seconds the field takes to get dark, and to get light again once the spell has hit
 const darkInTime = 0.15
-const darkOutTime = 0.45
+const darkOutTime = 0.7
 // the steps a light falls off in
 const lightBands = 5
 // the ground is seen from above at an angle: a light is this much as high as it is wide
@@ -44,6 +46,11 @@ const spellShadowStrength = 0.7
 const spellShadowLength = 0.9
 // a shadow that points to the side is not thinner than this, of the height of the figure
 const spellShadowThin = 0.12
+// seconds a shadow takes for most of its way to where it should be. longer: it turns more slowly,
+// to a spell and back
+const shadowEaseTime = 0.35
+// a shadow this near to how it always lies is left to lie so
+const shadowSettled = 0.004
 
 // the pattern of single pixels between two steps of a light, 4 by 4
 var lightPattern = [4][4]float64{
@@ -70,13 +77,24 @@ type spellGlow struct {
     Light spellLightSource
     Start uint64
     Ticks uint64
-    Dark float64
+}
+
+// how the shadow of a unit lies now
+type shadowState struct {
+    Lean float64
+    Length float64
 }
 
 type spellLighting struct {
-    // how far the field has gone dark, 0 to 1, and how dark it goes
+    // how far the field has gone dark, 0 to 1, how dark it goes, and the color of the dark
     Level float64
     Dark float64
+    Color [3]float32
+    // the dark lifts: since when, and from how dark
+    Lifting bool
+    LiftStart uint64
+    LiftFrom float64
+
     Lights []spellLightSource
     Glows []spellGlow
     // pictures of lights by their radius
@@ -84,6 +102,10 @@ type spellLighting struct {
     Layer *ebiten.Image
     // what the radius of the lights is changed by now, when they flicker
     Flicker float64
+
+    // the shadows of units that do not lie as always, and how dark the shadows are
+    Shadows map[*ArmyUnit]shadowState
+    ShadowStrength float64
 }
 
 // the pixels of a light of a radius: only how much they show counts, 4 numbers a pixel
@@ -101,8 +123,7 @@ func makeLightPixels(radius int) ([]byte, int, int) {
             }
 
             // all of it near the middle, less and less toward the rim
-            part := 1 - far
-            part = part * part * (3 - 2 * part)
+            part := easeInOut(1 - far)
 
             // in steps, from one step to the next in a pattern
             steps := part * lightBands
@@ -140,15 +161,21 @@ func (combat *CombatScreen) lightPicture(radius int) *ebiten.Image {
     return picture
 }
 
+// the step of a spell up to which it keeps the field dark: until it hits. a spell that hits when
+// it starts to show, as the ones on a unit, keeps it dark for the first half of its pictures
+func holdsDark(step int, impactStep int, steps int) bool {
+    return step < max(impactStep, steps / 2)
+}
+
 // the light a spell gives now, if it gives any
-func (combat *CombatScreen) lightOf(projectile *Projectile) (spellLightSource, float64, bool) {
+func (combat *CombatScreen) lightOf(projectile *Projectile) (spellLightSource, SpellValues, bool) {
     if !projectile.Scripted || !projectile.Started || len(projectile.Pictures) == 0 || projectile.Target == nil {
-        return spellLightSource{}, 0, false
+        return spellLightSource{}, SpellValues{}, false
     }
 
     values := combat.valuesOf(projectile.Name)
     if values.Dark <= 0 {
-        return spellLightSource{}, 0, false
+        return spellLightSource{}, values, false
     }
 
     light := spellLightSource{Radius: values.LightRadius, Strength: values.LightStrength, Reach: values.ShadowReach}
@@ -170,7 +197,7 @@ func (combat *CombatScreen) lightOf(projectile *Projectile) (spellLightSource, f
         }
     }
 
-    return light, values.Dark, true
+    return light, values, true
 }
 
 // a spell has hit: its light stays there for a while
@@ -191,8 +218,22 @@ func (combat *CombatScreen) addGlow(projectile *Projectile, values SpellValues) 
         },
         Start: combat.effects.Tick,
         Ticks: effectTicks(values.LightLinger),
-        Dark: values.Dark,
     })
+}
+
+// how far the dark has lifted by a part of its time, 0 to 1: slowly at first and at the end
+func liftPart(part float64) float64 {
+    return easeInOut(max(0, min(1, part)))
+}
+
+// the part of the way to where it should be something goes in one tick
+func easeStep(seconds float64) float64 {
+    ticks := seconds * float64(max(1, ebiten.TPS()))
+    if ticks <= 1 {
+        return 1
+    }
+    // most of the way in that time
+    return 1 - math.Pow(0.05, 1 / ticks)
 }
 
 // one tick of the light. goes on while the battle stands still
@@ -201,17 +242,27 @@ func (combat *CombatScreen) lightTick() {
     lighting := &effects.Lighting
 
     lighting.Lights = lighting.Lights[:0]
-    dark := 0.0
+    holds := false
 
     if SpellLight && SpellEffects {
         flicker := 0.0
+        dark := 0.0
         for _, projectile := range combat.Model.Projectiles {
-            light, darkness, ok := combat.lightOf(projectile)
+            light, values, ok := combat.lightOf(projectile)
             if !ok {
                 continue
             }
-            dark = max(dark, darkness)
-            flicker = max(flicker, combat.valuesOf(projectile.Name).LightFlicker)
+
+            if holdsDark(projectile.Step, projectile.ImpactStep, len(projectile.Steps)) {
+                holds = true
+                if values.Dark > dark {
+                    dark = values.Dark
+                    lighting.Dark = dark
+                    lighting.Color = colorParts(values.DarkColor.R, values.DarkColor.G, values.DarkColor.B)
+                }
+            }
+
+            flicker = max(flicker, values.LightFlicker)
             if light.Radius > 0 && light.Strength > 0 {
                 lighting.Lights = append(lighting.Lights, light)
             }
@@ -232,12 +283,11 @@ func (combat *CombatScreen) lightTick() {
             kept = append(kept, glow)
 
             // smaller and weaker until it is out
-            left := 1 - float64(effects.Tick - glow.Start) / float64(glow.Ticks)
+            left := 1 - liftPart(float64(effects.Tick - glow.Start) / float64(glow.Ticks))
             light := glow.Light
             light.Radius = max(1, light.Radius * (0.5 + 0.5 * left))
             light.Strength *= left
             lighting.Lights = append(lighting.Lights, light)
-            dark = max(dark, glow.Dark)
         }
         lighting.Glows = kept
     } else {
@@ -245,11 +295,85 @@ func (combat *CombatScreen) lightTick() {
     }
 
     ticksPerSecond := float64(max(1, ebiten.TPS()))
-    if dark > 0 {
-        lighting.Dark = dark
+    if holds {
+        lighting.Lifting = false
         lighting.Level = min(1, lighting.Level + 1 / (darkInTime * ticksPerSecond))
-    } else {
-        lighting.Level = max(0, lighting.Level - 1 / (darkOutTime * ticksPerSecond))
+    } else if lighting.Level > 0 {
+        if !lighting.Lifting {
+            lighting.Lifting = true
+            lighting.LiftStart = effects.Tick
+            lighting.LiftFrom = lighting.Level
+        }
+        gone := float64(effects.Tick - lighting.LiftStart) / (darkOutTime * ticksPerSecond)
+        lighting.Level = lighting.LiftFrom * (1 - liftPart(gone))
+    }
+
+    combat.shadowTick()
+}
+
+// the shadows go a part of their way to where they should lie
+func (combat *CombatScreen) shadowTick() {
+    lighting := &combat.effects.Lighting
+    step := easeStep(shadowEaseTime)
+
+    strongest := 0.0
+    for _, light := range lighting.Lights {
+        if light.Reach > 0 {
+            strongest = max(strongest, min(1, light.Strength))
+        }
+    }
+    strength := shadowStrength + (spellShadowStrength - shadowStrength) * strongest
+    if lighting.ShadowStrength == 0 {
+        lighting.ShadowStrength = shadowStrength
+    }
+    lighting.ShadowStrength += (strength - lighting.ShadowStrength) * step
+
+    if combat.Model == nil || combat.Model.AttackingArmy == nil || combat.Model.DefendingArmy == nil {
+        return
+    }
+
+    if len(lighting.Lights) == 0 && len(lighting.Shadows) == 0 {
+        return
+    }
+
+    if lighting.Shadows == nil {
+        lighting.Shadows = make(map[*ArmyUnit]shadowState)
+    }
+
+    alive := make(map[*ArmyUnit]bool)
+    for _, army := range []*Army{combat.Model.AttackingArmy, combat.Model.DefendingArmy} {
+        for _, unit := range army.units {
+            alive[unit] = true
+
+            x, y := float64(unit.X), float64(unit.Y)
+            if unit.Moving {
+                x, y = unit.MoveX, unit.MoveY
+            }
+            lean, length, part := shadowNear(lighting.Lights, 1, x, y)
+
+            state, ok := lighting.Shadows[unit]
+            if !ok {
+                if part <= 0 {
+                    continue
+                }
+                state = shadowState{Lean: shadowLean, Length: shadowLength}
+            }
+
+            state.Lean += (lean - state.Lean) * step
+            state.Length += (length - state.Length) * step
+
+            if part <= 0 && math.Abs(state.Lean - shadowLean) < shadowSettled && math.Abs(state.Length - shadowLength) < shadowSettled {
+                delete(lighting.Shadows, unit)
+                continue
+            }
+            lighting.Shadows[unit] = state
+        }
+    }
+
+    for unit := range lighting.Shadows {
+        if !alive[unit] {
+            delete(lighting.Shadows, unit)
+        }
     }
 }
 
@@ -293,7 +417,8 @@ func (combat *CombatScreen) drawSpellDark(screen *ebiten.Image) {
     layer.Clear()
     var fill ebiten.DrawImageOptions
     fill.GeoM.Scale(float64(width), float64(height))
-    fill.ColorScale.Scale(0, 0, 0, 1)
+    // black, with a little of the color of the spell
+    fill.ColorScale.Scale(lighting.Color[0], lighting.Color[1], lighting.Color[2], 1)
     fill.ColorScale.ScaleAlpha(float32(dark))
     layer.DrawImage(combat.effectPixel(), &fill)
 
@@ -323,14 +448,17 @@ func (combat *CombatScreen) drawSpellDark(screen *ebiten.Image) {
     screen.DrawImage(layer, &onto)
 }
 
-// how the shadow of a figure lies: lean and length as unitview.RenderCombatFigureShadow takes
-// them. x, y is where the unit is, in tiles. near a spell the shadow turns away from it
-func (combat *CombatScreen) shadowShape(x float64, y float64) (float64, float64) {
-    lean, length, _ := shadowNear(combat.effects.Lighting.Lights, combat.effects.Lighting.Level, x, y)
-    return lean, length
+// how the shadow of a figure of a unit lies: lean and length as
+// unitview.RenderCombatFigureShadow takes them. near a spell the shadow turns away from it
+func (combat *CombatScreen) shadowShape(unit *ArmyUnit) (float64, float64) {
+    state, ok := combat.effects.Lighting.Shadows[unit]
+    if !ok {
+        return shadowLean, shadowLength
+    }
+    return state.Lean, state.Length
 }
 
-// the same, and how much the light counts for it 0 to 1
+// how the shadow of a unit at a tile should lie, and how much the lights count for it 0 to 1
 func shadowNear(lights []spellLightSource, level float64, x float64, y float64) (float64, float64, float64) {
     if level <= 0 || len(lights) == 0 {
         return shadowLean, shadowLength, 0
@@ -352,7 +480,7 @@ func shadowNear(lights []spellLightSource, level float64, x float64, y float64) 
         awayX := unitX - light.X
         awayY := (unitY - light.Y) / lightSquash
         distance := math.Hypot(awayX, awayY)
-        weight := level * (1 - distance / light.Reach)
+        weight := level * min(1, light.Strength) * (1 - distance / light.Reach)
         if weight <= best {
             continue
         }
@@ -369,8 +497,9 @@ func shadowNear(lights []spellLightSource, level float64, x float64, y float64) 
         lean = awayX / distance * spellShadowLength
         length = awayY / distance * spellShadowLength * lightSquash
         if math.Abs(length) < spellShadowThin {
-            length = math.Copysign(spellShadowThin, length)
-            if length == 0 {
+            if length < 0 {
+                length = -spellShadowThin
+            } else {
                 length = spellShadowThin
             }
         }
@@ -386,9 +515,9 @@ func shadowNear(lights []spellLightSource, level float64, x float64, y float64) 
 
 // how dark the shadows are now
 func (combat *CombatScreen) shadowStrengthNow() float32 {
-    lighting := &combat.effects.Lighting
-    if len(lighting.Lights) == 0 {
+    strength := combat.effects.Lighting.ShadowStrength
+    if strength <= 0 {
         return shadowStrength
     }
-    return float32(shadowStrength + (spellShadowStrength - shadowStrength) * lighting.Level)
+    return float32(strength)
 }

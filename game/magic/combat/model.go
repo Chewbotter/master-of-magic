@@ -2306,6 +2306,8 @@ type Projectile struct {
     ImpactStep int
     Impacted bool
     OnImpact func()
+    // what it does to its target was done when it hit
+    EffectDone bool
 }
 
 type CombatLogEvent struct {
@@ -3388,7 +3390,8 @@ func (model *CombatModel) UpdateProjectiles(counter uint64) bool {
         if projectile.Scripted {
             // a spell in the original's style, see spellanim.go
             keep = projectile.updateSteps(counter)
-            if !keep && projectile.Target != nil && projectile.Effect != nil {
+            if !keep && projectile.Target != nil && projectile.Effect != nil && !projectile.EffectDone {
+                projectile.EffectDone = true
                 projectile.Effect(projectile.Target)
             }
         } else if projectile.Exploding {

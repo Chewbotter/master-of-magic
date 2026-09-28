@@ -340,6 +340,9 @@ func captureSpell(screen *combat.CombatScreen, model *combat.CombatModel, attack
         text := attackers.Player.GetWizard().Name + " has cast " + name
 
         switch name {
+            // that kill
+            case "fireballhard": model.AddProjectile(screen.CreateFireballProjectile(target, 60))
+            case "iceborthard", "icebolthard": model.AddProjectile(screen.CreateIceBoltProjectile(target, 60))
             case "firebolt": model.AddProjectile(screen.CreateFireBoltProjectile(target, 0))
             case "fireball": model.AddProjectile(screen.CreateFireballProjectile(target, 0))
             case "icebolt": model.AddProjectile(screen.CreateIceBoltProjectile(target, 0))

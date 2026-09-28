@@ -255,6 +255,8 @@ type CombatScreen struct {
     moveArea *moveAreaTiles
     moveShapes *moveAreaShapes
     moveLayer *ebiten.Image
+    // ticks the battle has been shown after its end, see combatend.go
+    endTicks int
     // the magic vortex the player is moving
     movingVortex *MagicVortex
     // the mark over the unit whose turn it is, see unitmarker.go
@@ -2979,6 +2981,10 @@ func (combat *CombatScreen) UpdateMagicVortexes(yield coroutine.YieldFunc, actio
 func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
     finalState := combat.Model.FinalState()
     if finalState != CombatStateRunning {
+        // a moment to see how the fight has ended, see combatend.go
+        if combat.holdEnd(finalState) {
+            return CombatStateRunning
+        }
         return finalState
     }
 
@@ -4087,7 +4093,7 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                         offsetX, offsetY = shadowFlyingX, shadowFlyingY
                     }
                     // away from a spell that gives light, see spelllight.go
-                    lean, length := combat.shadowShape(float64(unit.X), float64(unit.Y))
+                    lean, length := combat.shadowShape(unit)
                     unitview.RenderCombatFigureShadow(shadowTarget, unitImage, unitOptions, figureCount, figure, lean, length, offsetX, offsetY, combat.shadowMatrix())
                 }
                 return
@@ -4096,16 +4102,18 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             // a figure that was killed falls over and stays as a corpse, see figurefall.go
             if fallen && combat.figureJustLost(unit, figure, figureCount, figureLost) {
                 if !unit.IsInvisible() || isVisible(unit) {
-                    // as the picture it has now, in the colors of its banner
-                    plain, _ := combat.ImageCache.GetImagesTransform(unit.Unit.GetCombatLbxFile(), unit.Unit.GetCombatIndex(unit.Facing), banner.String(), units.MakeUpdateUnitColorsFunc(banner))
-                    if len(plain) > 0 {
-                        x, y := float64(unit.X), float64(unit.Y)
-                        if unit.Moving {
-                            x, y = unit.MoveX, unit.MoveY
-                        }
-                        x, y = combat.figurePosition(unit, figure, figureCount, x, y)
-                        combat.addCorpse(unit, plain, index, figure, figureCount, x, y)
+                    // as the picture it has now, in the colors of its banner. a spell can turn it
+                    // another way, see figurefall.go
+                    load := func(facing units.Facing) []*ebiten.Image {
+                        plain, _ := combat.ImageCache.GetImagesTransform(unit.Unit.GetCombatLbxFile(), unit.Unit.GetCombatIndex(facing), banner.String(), units.MakeUpdateUnitColorsFunc(banner))
+                        return plain
                     }
+                    x, y := float64(unit.X), float64(unit.Y)
+                    if unit.Moving {
+                        x, y = unit.MoveX, unit.MoveY
+                    }
+                    x, y = combat.figurePosition(unit, figure, figureCount, x, y)
+                    combat.addCorpse(unit, load, index, figure, figureCount, x, y)
                 }
             }
 

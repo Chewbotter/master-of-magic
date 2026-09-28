@@ -42,6 +42,20 @@ type deathCause struct {
     Tick uint64
     HasColor bool
     Color color.RGBA
+    // where it hit, on the original's screen, and how far it throws
+    X float64
+    Y float64
+    Throw float64
+}
+
+// what a unit was hit by a moment ago, if it was a spell
+func (combat *CombatScreen) deathCauseOf(unit *ArmyUnit) (deathCause, bool) {
+    effects := &combat.effects
+    cause, ok := effects.Causes[unit]
+    if ok && effects.Tick - cause.Tick <= effectTicks(deathCauseTime) {
+        return cause, true
+    }
+    return deathCause{}, false
 }
 
 // what a unit was hit by counts for the figures it loses for this long, in seconds
@@ -228,7 +242,18 @@ func firstShownStep(steps []ProjectileStep) int {
 
 // a spell hits
 func (combat *CombatScreen) spellHits(projectile *Projectile) {
-    if !SpellEffects || projectile.Target == nil {
+    if projectile.Target == nil {
+        return
+    }
+
+    // what it does to its target is done now, so the units answer to the hit and not to the end
+    // of its pictures. after the rest of this function: the figures it kills are thrown by it
+    if combat.valuesOf(projectile.Name).ResolveAtImpact && projectile.Effect != nil && !projectile.EffectDone {
+        projectile.EffectDone = true
+        defer projectile.Effect(projectile.Target)
+    }
+
+    if !SpellEffects {
         return
     }
 
@@ -246,7 +271,14 @@ func (combat *CombatScreen) spellHits(projectile *Projectile) {
     if effects.Causes == nil {
         effects.Causes = make(map[*ArmyUnit]deathCause)
     }
-    effects.Causes[target] = deathCause{Tick: effects.Tick, HasColor: values.HasCorpseColor, Color: values.CorpseColor}
+    effects.Causes[target] = deathCause{
+        Tick: effects.Tick,
+        HasColor: values.HasCorpseColor,
+        Color: values.CorpseColor,
+        X: float64(placeX),
+        Y: float64(placeY),
+        Throw: values.Throw,
+    }
 
     // its light stays for a while, see spelllight.go
     combat.addGlow(projectile, values)

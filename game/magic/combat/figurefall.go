@@ -142,10 +142,74 @@ func (combat *CombatScreen) figureJustLost(unit *ArmyUnit, figure int, count int
     return true
 }
 
-// x, y is where the unit of the figure is, in tiles
-func (combat *CombatScreen) addCorpse(unit *ArmyUnit, frames []*ebiten.Image, frame int, figure int, count int, x float64, y float64) {
+// the facing that looks the most the way of a direction on the screen
+func facingToward(x float64, y float64) units.Facing {
+    best := units.FacingDown
+    bestPart := math.Inf(-1)
+    for _, facing := range allFacings {
+        faceX, faceY := facingOnScreen(facing)
+        part := faceX * x + faceY * y
+        if part > bestPart {
+            bestPart = part
+            best = facing
+        }
+    }
+    return best
+}
+
+var allFacings = []units.Facing{
+    units.FacingUp, units.FacingUpRight, units.FacingRight, units.FacingDownRight,
+    units.FacingDown, units.FacingDownLeft, units.FacingLeft, units.FacingUpLeft,
+}
+
+// the ground is seen from above at an angle: what is up and down the screen is this much of what it is
+const groundSquash = 0.5
+// of how far a spell throws a figure is thrown at least this part
+const throwLeast = 0.6
+
+// which way and how far a figure a spell has killed is thrown: away from where the spell hit.
+// figureX, figureY is where the figure stands on the original's screen
+func throwOf(cause deathCause, figureX float64, figureY float64, chance float64, turn float64) (float64, float64, float64) {
+    awayX := figureX - cause.X
+    awayY := (figureY - cause.Y) / groundSquash
+    distance := math.Hypot(awayX, awayY)
+    if distance < 1 {
+        // where it hit: any way
+        awayX = math.Cos(turn * 2 * math.Pi)
+        awayY = math.Sin(turn * 2 * math.Pi)
+        distance = 1
+    }
+
+    far := cause.Throw * (throwLeast + (1 - throwLeast) * chance)
+    return awayX / distance, awayY / distance * groundSquash, far
+}
+
+// x, y is where the unit of the figure is, in tiles. load gives the pictures of the unit for a facing
+func (combat *CombatScreen) addCorpse(unit *ArmyUnit, load func(units.Facing) []*ebiten.Image, frame int, figure int, count int, x float64, y float64) {
     points := unitview.CombatPoints(count)
-    if len(frames) == 0 || figure < 0 || figure >= len(points) {
+    if figure < 0 || figure >= len(points) {
+        return
+    }
+
+    field := MakeBattlefieldMatrix()
+    screenX, screenY := field.Apply(x, y)
+
+    // away from what the unit faces, which is what hit it
+    facing := unit.Facing
+    faceX, faceY := facingOnScreen(facing)
+    pushX, pushY := -faceX, -faceY
+    push := figureFallPushMin + rand.Float64() * (figureFallPushMax - figureFallPushMin)
+
+    // a spell throws it away from where it hit, and it lies facing where that came from
+    cause, bySpell := combat.deathCauseOf(unit)
+    if bySpell && cause.Throw > 0 {
+        pushX, pushY, push = throwOf(cause, screenX + float64(points[figure].X), screenY + float64(points[figure].Y), rand.Float64(), rand.Float64())
+        facing = facingToward(-pushX, -pushY)
+        faceX, faceY = facingOnScreen(facing)
+    }
+
+    frames := load(facing)
+    if len(frames) == 0 {
         return
     }
 
@@ -155,7 +219,7 @@ func (combat *CombatScreen) addCorpse(unit *ArmyUnit, frames []*ebiten.Image, fr
     var dying *ebiten.Image
     var dead *ebiten.Image
     archive := unit.Unit.GetCombatLbxFile()
-    entry := unit.Unit.GetCombatIndex(unit.Facing)
+    entry := unit.Unit.GetCombatIndex(facing)
     if len(frames) > mod.FrameDead && mod.HasFrame(archive, entry, mod.FrameDead) {
         dead = frames[mod.FrameDead]
         dying = dead
@@ -163,13 +227,6 @@ func (combat *CombatScreen) addCorpse(unit *ArmyUnit, frames []*ebiten.Image, fr
             dying = frames[mod.FrameDying]
         }
     }
-
-    field := MakeBattlefieldMatrix()
-    screenX, screenY := field.Apply(x, y)
-
-    // away from what the unit faces, which is what hit it
-    faceX, faceY := facingOnScreen(unit.Facing)
-    push := figureFallPushMin + rand.Float64() * (figureFallPushMax - figureFallPushMin)
 
     angle := (figureFallAngleMin + rand.Float64() * (figureFallAngleMax - figureFallAngleMin)) * math.Pi / 180
     // backward: to the side it is pushed to. straight up or down it can be either side
@@ -187,8 +244,8 @@ func (combat *CombatScreen) addCorpse(unit *ArmyUnit, frames []*ebiten.Image, fr
         Dead: dead,
         X: screenX + float64(points[figure].X),
         Y: screenY + float64(points[figure].Y),
-        PushX: -faceX * push,
-        PushY: -faceY * push,
+        PushX: pushX * push,
+        PushY: pushY * push,
         Angle: angle,
         Start: combat.Counter,
         Delay: rand.Float64() * figureFallDelayMax,
