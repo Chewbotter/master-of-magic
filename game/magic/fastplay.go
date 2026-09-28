@@ -656,6 +656,16 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         }
     }
 
+    if capture.Leave > 0 {
+        // development: the battle is left as by Escape
+        capture.EachFrame = func(frame int) {
+            if frame == capture.Leave {
+                combatScreen.Leaving = true
+                log.Printf("leave: the battle is left at frame %v", frame)
+            }
+        }
+    }
+
     if capture.AutoToggle > 0 {
         // development: auto is toggled as by its key, and what that leaves is logged
         capture.EachFrame = func(frame int) {
@@ -695,6 +705,9 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         }
     }
 
+    // only debug battles can be left with Escape
+    combatScreen.EscapeLeaves = true
+
     loggedTurn := -1
     state := combat.CombatStateRunning
     for state == combat.CombatStateRunning {
@@ -709,6 +722,12 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
             log.Printf("places turn %v:%v", loggedTurn, places)
         }
         state = combatScreen.Update(yield)
+        if combatScreen.Leaving {
+            // Escape: back to the start screen, without the result of the battle. a tick later,
+            // so the start screen does not see the key
+            yield()
+            return
+        }
         if capture.DamageNumbers && len(combatScreen.DamageIndicators) == 0 {
             // development: numbers of one, two and three digits over both armies
             for index, unit := range append(attackingArmy.GetUnits(), defendingArmy.GetUnits()...) {

@@ -20,6 +20,11 @@ import (
 // the picture of the SPELL button in compix.lbx
 const spellButtonIndex = 1
 
+// leaves a battle that can be left this way: the debug battles of the start screen (user,
+// 2026-09-28). the game itself does not set CombatScreen.EscapeLeaves, a battle of a game can
+// not be left
+var LeaveKey = ebiten.KeyEscape
+
 // turns the key off
 const AutoToggle = true
 var AutoToggleKey = ebiten.KeySpace
@@ -70,7 +75,7 @@ func (combat *CombatScreen) autoButtonClicked() bool {
 // looks at the key. called wherever the clock of the battle moves, counts once per tick of the game.
 // withButton: the interface is not looked at now, so the click on the AUTO button is looked at here
 func (combat *CombatScreen) updateAutoToggle(withButton bool) {
-    if !AutoToggle {
+    if !AutoToggle && !combat.EscapeLeaves {
         return
     }
 
@@ -81,7 +86,12 @@ func (combat *CombatScreen) updateAutoToggle(withButton bool) {
     combat.autoToggleSeen = true
     combat.autoToggleTick = tick
 
-    pressed := inpututil.IsKeyJustPressed(AutoToggleKey)
+    // leaving a debug battle. not while a window is open over the battle, which Escape may close
+    if combat.EscapeLeaves && inpututil.IsKeyJustPressed(LeaveKey) && (combat.UI == nil || combat.UI.GetHighestLayerValue() == 0) {
+        combat.Leaving = true
+    }
+
+    pressed := AutoToggle && inpututil.IsKeyJustPressed(AutoToggleKey)
     if withButton && !combat.ButtonsDisabled && combat.autoButtonClicked() {
         pressed = true
     }

@@ -64,6 +64,8 @@ type frameCapture struct {
     SameBattle bool
     // the army of the player of a random battle is set to auto
     Auto bool
+    // the frame at which a debug battle is left as by Escape, 0 for never
+    Leave int
     // as if Tab was held in a battle
     Tab bool
     // logs the order WAIT goes through the units of the player in, and picks one as a click does
@@ -142,7 +144,7 @@ func (capture *frameCapture) laterFrames() int {
     if capture.Drag > 0 {
         return capture.Drag + CaptureCoastFrames
     }
-    if capture.Spell != "" || capture.KillFigures > 0 || capture.AutoToggle > 0 || capture.UnitOrder {
+    if capture.Spell != "" || capture.KillFigures > 0 || capture.AutoToggle > 0 || capture.UnitOrder || capture.Leave > 0 {
         // room for a spell to play and for figures to fall and lie
         return CaptureEffectFrames
     }

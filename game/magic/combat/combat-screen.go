@@ -266,6 +266,11 @@ type CombatScreen struct {
     moveLayer *ebiten.Image
     // ticks the battle has been shown after its end, see combatend.go
     endTicks int
+    // Escape leaves the battle. false in the game, set by the debug battles of the start screen.
+    // see autotoggle.go
+    EscapeLeaves bool
+    // Escape was pressed: the battle is to be left
+    Leaving bool
     // development: what the SPELL button does
     SpellAction func()
     // the magic vortex the player is moving

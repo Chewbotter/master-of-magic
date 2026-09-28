@@ -302,7 +302,8 @@ func (combat *CombatScreen) runTogether(yield coroutine.YieldFunc, units []*Army
             }
         }
 
-        if yield() != nil {
+        if yield() != nil || combat.Leaving {
+            // the battle ends or is left, see autotoggle.go
             stopAll()
             return
         }
