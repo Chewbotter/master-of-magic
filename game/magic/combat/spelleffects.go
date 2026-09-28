@@ -120,6 +120,8 @@ type spellEffects struct {
     Version int
 
     Flashes map[*ArmyUnit]unitFlash
+    // the rims of the pictures of figures by the side the light is on, see rimlight.go
+    Rims map[rimKey]*ebiten.Image
     // the pictures of figures in white, by their picture
     Masks map[*ebiten.Image]*ebiten.Image
     Pulses []groundPulse

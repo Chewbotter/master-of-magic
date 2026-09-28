@@ -4211,6 +4211,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                 unitview.RenderCombatFigure(screen, unitImage, unitOptions, unit.VisibleFigures(), unit.LostUnits, &dying, use, combat.Counter, &combat.ImageCache, figure)
                 // a unit a spell has hit shows in one color for a moment, see spelleffects.go
                 combat.drawFigureFlash(screen, unit, unitImage, unitOptions, figure)
+                // the rim that faces a spell is lit, see rimlight.go
+                combat.drawFigureRim(screen, unit, unitImage, unitOptions, figure, figureCount)
 
                 if warpCreature {
                     unitOptions.ColorScale = savedColor

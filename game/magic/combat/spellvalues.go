@@ -74,6 +74,8 @@ type SpellValues struct {
     LightFlicker float64
     LightLinger float64
     ShadowReach float64
+    // how white the rims of the figures in its light get on the side that faces it, 0 to 1
+    RimLight float64
 
     // the color the figures it kills take on as they lie, see figurefall.go. without one they
     // are gray
@@ -165,6 +167,7 @@ func plainValues() SpellValues {
         LightStrength: 1,
         LightLinger: 0.25,
         ShadowReach: 60,
+        RimLight: 0.9,
     }
 }
 
@@ -337,7 +340,7 @@ var valueNames = []string{
     "hit-stop", "shake", "shake-time",
     "pulse-radius", "pulse-time", "pulse-strength", "pulse-color",
     "decal", "decal-strength",
-    "dark", "light-radius", "light-strength", "light-flicker", "light-linger", "shadow-reach",
+    "dark", "light-radius", "light-strength", "light-flicker", "light-linger", "shadow-reach", "rim-light",
     "corpse-color",
     "dark-color", "resolve", "throw",
 }
@@ -385,6 +388,7 @@ func (values *SpellValues) text(name string) string {
         case "light-flicker": return number(values.LightFlicker)
         case "light-linger": return number(values.LightLinger)
         case "shadow-reach": return number(values.ShadowReach)
+        case "rim-light": return number(values.RimLight)
         case "corpse-color":
             if !values.HasCorpseColor {
                 return noColor
@@ -486,6 +490,7 @@ func (values *SpellValues) set(name string, text string) bool {
         case "light-flicker": values.LightFlicker = number
         case "light-linger": values.LightLinger = number
         case "shadow-reach": values.ShadowReach = number
+        case "rim-light": values.RimLight = number
         case "throw": values.Throw = number
         default:
             return false
@@ -567,6 +572,8 @@ const effectsTemplateHead = `# The effects of spells in battles.
 #   light-flicker   its radius changes by up to this many art pixels all the time. 0: steady
 #   light-linger    how long the light stays where the spell has hit, getting smaller
 #   shadow-reach    units this near to the spell cast their shadows away from it
+#   rim-light       the figures in the light of the spell have the rim that faces it in white,
+#                   this much 0 to 1. 0: not
 #
 #   dark-color      the dark has a little of this color. 000000: none
 #
