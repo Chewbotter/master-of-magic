@@ -2286,6 +2286,19 @@ type Projectile struct {
     TargetX float64
     TargetY float64
     Exploding bool
+
+    // a spell in the original's style: it goes through its steps and then does what it does. see
+    // spellanim.go
+    Scripted bool
+    Steps []ProjectileStep
+    Pictures []*ebiten.Image
+    // lies on the ground, under the units
+    Ground bool
+    Started bool
+    // the tick it started
+    Start uint64
+    // the step it is at
+    Step int
 }
 
 type CombatLogEvent struct {
@@ -3355,7 +3368,13 @@ func (model *CombatModel) UpdateProjectiles(counter uint64) bool {
     var projectilesOut []*Projectile
     for _, projectile := range model.Projectiles {
         keep := false
-        if projectile.Exploding {
+        if projectile.Scripted {
+            // a spell in the original's style, see spellanim.go
+            keep = projectile.updateSteps(counter)
+            if !keep && projectile.Target != nil && projectile.Effect != nil {
+                projectile.Effect(projectile.Target)
+            }
+        } else if projectile.Exploding {
             projectile.Exploding = true
             keep = true
             if counter % animationSpeed == 0 && !projectile.Explode.Next() {
@@ -4759,6 +4778,8 @@ type SpellSystem interface {
     CreateWraithFormProjectile(target *ArmyUnit) *Projectile
 
     PlaySound(spell spellbook.Spell)
+    // shows who has cast what while the spell plays, see spellanim.go
+    CastMessage(text string)
 }
 
 // how much extra resistance reduction should be applied
@@ -4773,6 +4794,15 @@ func getSpellSave(caster *ArmyUnit) int {
 
 // playerCasted is true if the player cast the spell, or false if a unit cast the spell
 func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitCaster *ArmyUnit, spell spellbook.Spell, castedCallback func(bool)){
+
+    // a spell that is cast is announced, see spellanim.go
+    announce := castedCallback
+    castedCallback = func(success bool){
+        if success {
+            spellSystem.CastMessage(castMessageText(army, unitCaster, spell))
+        }
+        announce(success)
+    }
 
     if model.CheckDispel(spell, army.Player) {
         if !army.IsAI() {

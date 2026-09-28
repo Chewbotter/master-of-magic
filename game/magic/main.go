@@ -1328,6 +1328,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&capture.RevealAll, "capture-reveal-all", false, "development: turn on the Reveal All debug option")
     flag.IntVar(&capture.KillFigures, "capture-kill-figures", 0, "development: the frame of a random battle at which every unit loses about half of its figures")
     flag.IntVar(&capture.ArmyScale, "capture-army-scale", 0, "development: multiplies the units of both armies of a random battle")
+    flag.StringVar(&capture.Spell, "capture-spell", "", "development: show a spell in a debug battle: firebolt, fireball, icebolt, doombolt, lightning, warplightning, confusion, bless, flamestrike, cracks, web, as name@frame")
     flag.StringVar(&capture.UnitBattle, "capture-unit-battle", "", "development: start a test battle of this unit, by its name with or without its race")
     flag.StringVar(&capture.UnitPicker, "capture-unit-picker", "", "development: open the list of units of the test battle with these races open, or all")
     flag.BoolVar(&capture.InTurn, "capture-in-turn", false, "development: units act in turn, not together")

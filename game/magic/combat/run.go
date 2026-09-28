@@ -471,6 +471,10 @@ func (system *ProxySpellSystem) PlaySound(spell spellbook.Spell) {
     // nothing
 }
 
+func (system *ProxySpellSystem) CastMessage(text string) {
+    // nothing
+}
+
 type FakeDamageIndicators struct {
 }
 

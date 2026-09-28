@@ -50,6 +50,9 @@ type frameCapture struct {
     KillFigures int
     // multiplies the units of both armies of a random battle, 0 leaves the setting of the debug list
     ArmyScale int
+    // a spell that is shown in a random battle, and the frame of the last frames before the capture
+    // it starts at: name@frame. see captureSpell in fastplay.go
+    Spell string
     // a test battle of this unit
     UnitBattle string
     // the list of units of the test battle, with these races open
@@ -120,10 +123,17 @@ func writeFrame(screen *ebiten.Image, path string) {
     log.Printf("captured frame to %v (%vx%v) at %.1f fps", path, bounds.Dx(), bounds.Dy(), ebiten.ActualFPS())
 }
 
+// frames before the capture in which effects of a battle can be started
+const CaptureEffectFrames = 100
+
 // frames between Later and the capture. a simulated drag gets room to finish and coast to a stop
 func (capture *frameCapture) laterFrames() int {
     if capture.Drag > 0 {
         return capture.Drag + CaptureCoastFrames
+    }
+    if capture.Spell != "" || capture.KillFigures > 0 {
+        // room for a spell to play and for figures to fall and lie
+        return CaptureEffectFrames
     }
     if capture.NextTurn || capture.Walk != "" || capture.Screen == "nextunit" || capture.Screen == "research" {
         return CaptureNextTurnFrames

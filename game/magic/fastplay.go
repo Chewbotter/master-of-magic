@@ -323,6 +323,46 @@ const DebugBattleSkillPower = 100000000
 // the rule of one spell a turn is off in debug battles, to try one spell after the other
 const DebugBattleManySpells = true
 
+// development: shows the picture of a spell on the first unit of the enemy, without what it does
+func captureSpell(screen *combat.CombatScreen, model *combat.CombatModel, attackers *combat.Army, defenders *combat.Army) {
+    name, frameText, _ := strings.Cut(capture.Spell, "@")
+    startFrame, err := strconv.Atoi(frameText)
+    if err != nil {
+        startFrame = 1
+    }
+
+    capture.EachFrame = func(frame int) {
+        if frame != startFrame || len(defenders.GetUnits()) == 0 {
+            return
+        }
+
+        target := defenders.GetUnits()[0]
+        text := attackers.Player.GetWizard().Name + " has cast " + name
+
+        switch name {
+            case "firebolt": model.AddProjectile(screen.CreateFireBoltProjectile(target, 0))
+            case "fireball": model.AddProjectile(screen.CreateFireballProjectile(target, 0))
+            case "icebolt": model.AddProjectile(screen.CreateIceBoltProjectile(target, 0))
+            case "doombolt": model.AddProjectile(screen.CreateDoomBoltProjectile(target))
+            case "lightning": model.AddProjectile(screen.CreateLightningBoltProjectile(target, 0))
+            case "warplightning": model.AddProjectile(screen.CreateWarpLightningProjectile(target))
+            case "confusion": model.AddProjectile(screen.CreateConfusionProjectile(target, 100))
+            case "bless": model.AddProjectile(screen.CreateBlessProjectile(target))
+            case "cracks": model.AddProjectile(screen.CreateCracksCallProjectile(target))
+            case "web": model.AddProjectile(screen.CreateWebProjectile(target))
+            case "flamestrike":
+                for _, unit := range defenders.GetUnits() {
+                    model.AddProjectile(screen.CreateFlameStrikeProjectile(unit))
+                }
+            default:
+                log.Printf("No spell named %v for a capture", name)
+                return
+        }
+
+        screen.CastMessage(text)
+    }
+}
+
 // keeps the player of a debug battle able to cast: mana and skill never run out
 func debugMagic(player *playerlib.Player, army *combat.Army) {
     player.Mana = DebugBattleMana
@@ -488,6 +528,10 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
     if capture.Auto {
         // development: the army of the player fights by itself
         attackingArmy.Auto = true
+    }
+
+    if capture.Spell != "" {
+        captureSpell(combatScreen, model, attackingArmy, defendingArmy)
     }
 
     if capture.KillFigures > 0 {

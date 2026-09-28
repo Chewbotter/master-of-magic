@@ -38,7 +38,7 @@ import (
 var battleArchives = []string{
     "cmbgrass.lbx", "cmbgrasc.lbx", "cmbdesrt.lbx", "cmbdesrc.lbx", "cmbmount.lbx", "cmbmounc.lbx",
     "cmbtundr.lbx", "cmbtundc.lbx", "cmbtcity.lbx", "citywall.lbx", "wallrise.lbx", "cmbtwall.lbx",
-    "cmbtfx.lbx", "cmbmagic.lbx", "chriver.lbx", "compix.lbx",
+    "cmbtfx.lbx", "cmbmagic.lbx", "chriver.lbx", "compix.lbx", "specfx.lbx", "resource.lbx",
 }
 
 var facingNames = mod.FacingNames

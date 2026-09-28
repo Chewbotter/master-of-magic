@@ -237,6 +237,10 @@ type CombatScreen struct {
     shadowStartY float64
     // where the figures of each unit are and how far out of step, see figurevariety.go
     figureStates map[*ArmyUnit]*unitFigures
+    // who has cast what, see spellanim.go
+    castMessage string
+    castMessageUntil uint64
+    castMessageStyle *font.StyledFont
     // units act together, see together.go
     together bool
     // how many units still act
@@ -587,78 +591,28 @@ const (
 /* needs a new name, but creates a projectile that is already at the target
  */
 func (combat *CombatScreen) createUnitProjectile(target *ArmyUnit, explodeImages []*ebiten.Image, position UnitPosition, effect ProjectileEffect) *Projectile {
-    // find where on the screen the unit is
-    matrix := projectileMatrix()
-
-    var geom1 ebiten.GeoM
-
-    useImage := explodeImages[0]
-
-    switch position {
-        case UnitPositionMiddle:
-            // geom1.Translate(14, 3)
-            geom1.Translate(-float64(useImage.Bounds().Dx()/2), -float64(useImage.Bounds().Dy()/2))
-        case UnitPositionUnder:
-            geom1.Translate(0, 9)
-            geom1.Translate(-float64(useImage.Bounds().Dx()/2), -float64(useImage.Bounds().Dy()))
+    // in the original's style, see spellanim.go
+    if position == UnitPositionUnder {
+        // on the ground, under the units
+        return combat.createGroundEffect(target, explodeImages, effect)
     }
 
-    geom1.Scale(projectileScale, projectileScale)
-    tx, ty := matrix.Apply(float64(target.X), float64(target.Y))
-    geom1.Translate(tx, ty)
-
-    screenX, screenY := geom1.Apply(float64(useImage.Bounds().Dx())/2, float64(useImage.Bounds().Dy())/2)
-
-    // log.Printf("Create fireball projectile at %v,%v -> %v,%v", x, y, screenX, screenY)
-
-    projectile := &Projectile{
-        X: screenX,
-        Y: screenY,
-        Target: target,
-        Speed: 0,
-        Angle: 0,
-        Effect: effect,
-        TargetX: screenX,
-        TargetY: screenY,
-        Animation: nil,
-        Explode: util.MakeAnimation(explodeImages, false),
-        // start in an exploding state because there is no other animation to show
-        Exploding: true,
-    }
-
-    return projectile
+    return combat.createEffect(target, explodeImages, effect)
 }
 
 func (combat *CombatScreen) CreateIceBoltProjectile(target *ArmyUnit, strength int) *Projectile {
     images, _ := combat.ImageCache.GetImages("cmbtfx.lbx", 11)
-
-    loopImages := images[0:3]
-    explodeImages := images[3:]
-
-    effect := combat.Model.CreateIceBoltProjectileEffect(strength, combat)
-
-    return combat.createSkyProjectile(target, loopImages, explodeImages, effect)
+    return combat.createBolt(BoltIce, target, images, combat.Model.CreateIceBoltProjectileEffect(strength, combat))
 }
 
 func (combat *CombatScreen) CreateFireBoltProjectile(target *ArmyUnit, strength int) *Projectile {
     images, _ := combat.ImageCache.GetImages("cmbtfx.lbx", 0)
-    loopImages := images[0:3]
-    explodeImages := images[3:]
-
-    effect := combat.Model.CreateFireBoltProjectileEffect(strength, combat)
-
-    return combat.createSkyProjectile(target, loopImages, explodeImages, effect)
+    return combat.createBolt(BoltFire, target, images, combat.Model.CreateFireBoltProjectileEffect(strength, combat))
 }
 
 func (combat *CombatScreen) CreateFireballProjectile(target *ArmyUnit, strength int) *Projectile {
     images, _ := combat.ImageCache.GetImages("cmbtfx.lbx", 23)
-
-    loopImages := images[0:11]
-    explodeImages := images[11:]
-
-    effect := combat.Model.CreateFireballProjectileEffect(strength, combat)
-
-    return combat.createSkyProjectile(target, loopImages, explodeImages, effect)
+    return combat.createBolt(BoltFireball, target, images, combat.Model.CreateFireballProjectileEffect(strength, combat))
 }
 
 func (combat *CombatScreen) CreateStarFiresProjectile(target *ArmyUnit) *Projectile {
@@ -690,73 +644,17 @@ func (combat *CombatScreen) CreatePsionicBlastProjectile(target *ArmyUnit, stren
 
 func (combat *CombatScreen) CreateDoomBoltProjectile(target *ArmyUnit) *Projectile {
     images, _ := combat.ImageCache.GetImages("cmbtfx.lbx", 5)
-    loopImages := images[0:3]
-    explodeImages := images[3:]
-
-    effect := combat.Model.CreateDoomBoltProjectileEffect(combat)
-
-    return combat.createVerticalSkyProjectile(target, loopImages, explodeImages, effect)
+    return combat.createBolt(BoltDoom, target, images, combat.Model.CreateDoomBoltProjectileEffect(combat))
 }
 
 func (combat *CombatScreen) CreateLightningBoltProjectile(target *ArmyUnit, strength int) *Projectile {
     images, _ := combat.ImageCache.GetImages("cmbtfx.lbx", 24)
-    // loopImages := images
-    explodeImages := images
-
-    matrix := projectileMatrix()
-    screenX, screenY := matrix.Apply(float64(target.X), float64(target.Y))
-
-    screenY -= float64(images[0].Bounds().Dy())/2
-    screenX += float64(images[0].Bounds().Dx())/2
-
-    effect := combat.Model.CreateLightningBoltProjectileEffect(strength, combat)
-
-    projectile := &Projectile{
-        X: screenX,
-        Y: screenY,
-        Target: target,
-        Speed: 0,
-        Angle: 0,
-        TargetX: screenX,
-        TargetY: screenY,
-        Animation: util.MakeAnimation(images, true),
-        Explode: util.MakeRepeatAnimation(explodeImages, 2),
-        Exploding: true,
-        Effect: effect,
-    }
-
-    return projectile
+    return combat.createLightning(target, images, combat.Model.CreateLightningBoltProjectileEffect(strength, combat))
 }
 
 func (combat *CombatScreen) CreateWarpLightningProjectile(target *ArmyUnit) *Projectile {
     images, _ := combat.ImageCache.GetImages("cmbtfx.lbx", 3)
-    // loopImages := images
-    explodeImages := images
-
-    matrix := projectileMatrix()
-    screenX, screenY := matrix.Apply(float64(target.X), float64(target.Y))
-    // screenY += 13
-    screenX += 3
-
-    // screenY -= float64(images[0].Bounds().Dy())
-
-    effect := combat.Model.CreateWarpLightningProjectileEffect(combat)
-
-    projectile := &Projectile{
-        X: screenX,
-        Y: screenY,
-        Target: target,
-        Speed: 0,
-        Angle: 0,
-        TargetX: screenX,
-        TargetY: screenY,
-        Animation: util.MakeAnimation(images, true),
-        Explode: util.MakeRepeatAnimation(explodeImages, 2),
-        Exploding: true,
-        Effect: effect,
-    }
-
-    return projectile
+    return combat.createEffect(target, images, combat.Model.CreateWarpLightningProjectileEffect(combat))
 }
 
 // player will never be nil, but unitCaster might be nil if the player is casting the spell
@@ -776,7 +674,8 @@ func (combat *CombatScreen) CreateFlameStrikeProjectile(target *ArmyUnit) *Proje
 
     effect := combat.Model.CreateFlameStrikeProjectileEffect(combat)
 
-    return combat.createUnitProjectile(target, explodeImages, UnitPositionMiddle, effect)
+    // every unit of the side gets it, each a little later or earlier. see spellanim.go
+    return combat.createEffectOfAll(target, explodeImages, effect)
 }
 
 func (combat *CombatScreen) CreateRecallHeroProjectile(target *ArmyUnit) *Projectile {
@@ -1079,7 +978,7 @@ func (combat *CombatScreen) CreateBlessProjectile(target *ArmyUnit) *Projectile 
 
 func (combat *CombatScreen) CreateWeaknessProjectile(target *ArmyUnit, reduceResistance int) *Projectile {
     // FIXME: verify
-    images, _ := combat.ImageCache.GetImages("specfx.lbx", 5)
+    images, _ := combat.ImageCache.GetImages("specfx.lbx", 4)
     explodeImages := images
 
     effect := combat.Model.CreateWeaknessProjectileEffect(reduceResistance)
@@ -1126,7 +1025,7 @@ func (combat *CombatScreen) CreateConfusionProjectile(target *ArmyUnit, reduceRe
 
 func (combat *CombatScreen) CreateBlackSleepProjectile(target *ArmyUnit, reduceResistance int) *Projectile {
     // FIXME: verify
-    images, _ := combat.ImageCache.GetImages("specfx.lbx", 5)
+    images, _ := combat.ImageCache.GetImages("specfx.lbx", 4)
     explodeImages := images
 
     effect := combat.Model.CreateBlackSleepProjectileEffect(reduceResistance)
@@ -1146,7 +1045,7 @@ func (combat *CombatScreen) CreateVertigoProjectile(target *ArmyUnit, reduceResi
 
 func (combat *CombatScreen) CreateShatterProjectile(target *ArmyUnit, reduceResistance int) *Projectile {
     // FIXME: verify
-    images, _ := combat.ImageCache.GetImages("resource.lbx", 79)
+    images, _ := combat.ImageCache.GetImages("specfx.lbx", 2)
     explodeImages := images
 
     effect := combat.Model.CreateShatterProjectileEffect(reduceResistance)
@@ -1156,7 +1055,7 @@ func (combat *CombatScreen) CreateShatterProjectile(target *ArmyUnit, reduceResi
 
 func (combat *CombatScreen) CreateWarpCreatureProjectile(target *ArmyUnit, reduceResistance int) *Projectile {
     // FIXME: verify
-    images, _ := combat.ImageCache.GetImages("resource.lbx", 81)
+    images, _ := combat.ImageCache.GetImages("specfx.lbx", 2)
     explodeImages := images
 
     effect := combat.Model.CreateWarpCreatureProjectileEffect(reduceResistance)
@@ -1171,7 +1070,8 @@ func (combat *CombatScreen) CreateHolyWordProjectile(target *ArmyUnit, reduceRes
 
     effect := combat.Model.CreateHolyWordProjectileEffect(combat, reduceResistance)
 
-    return combat.createUnitProjectile(target, explodeImages, UnitPositionMiddle, effect)
+    // every unit of the side gets it, each a little later or earlier. see spellanim.go
+    return combat.createEffectOfAll(target, explodeImages, effect)
 }
 
 func (combat *CombatScreen) CreateWebProjectile(target *ArmyUnit) *Projectile {
@@ -1184,16 +1084,17 @@ func (combat *CombatScreen) CreateWebProjectile(target *ArmyUnit) *Projectile {
 }
 
 func (combat *CombatScreen) CreateDeathSpellProjectile(target *ArmyUnit, reduceResistance int) *Projectile {
-    images, _ := combat.ImageCache.GetImages("specfx.lbx", 14)
+    images, _ := combat.ImageCache.GetImages("specfx.lbx", 13)
     explodeImages := images
 
     effect := combat.Model.CreateDeathSpellProjectileEffect(combat, reduceResistance)
 
-    return combat.createUnitProjectile(target, explodeImages, UnitPositionMiddle, effect)
+    // every unit of the side gets it, each a little later or earlier. see spellanim.go
+    return combat.createEffectOfAll(target, explodeImages, effect)
 }
 
 func (combat *CombatScreen) CreateWordOfDeathProjectile(target *ArmyUnit, reduceResistance int) *Projectile {
-    images, _ := combat.ImageCache.GetImages("specfx.lbx", 14)
+    images, _ := combat.ImageCache.GetImages("specfx.lbx", 13)
     explodeImages := images
 
     effect := combat.Model.CreateWordOfDeathProjectileEffect(combat, reduceResistance)
@@ -1249,14 +1150,14 @@ func (combat *CombatScreen) CreateCracksCallProjectile(target *ArmyUnit) *Projec
 func (combat *CombatScreen) CreateBanishProjectile(target *ArmyUnit, reduceResistance int) *Projectile {
     images, _ := combat.ImageCache.GetImages("cmbtfx.lbx", 19)
     explodeImages := images
-    return combat.createUnitProjectile(target, explodeImages, UnitPositionUnder, combat.Model.CreateBanishProjectileEffect(reduceResistance, combat))
+    return combat.createUnitProjectile(target, explodeImages, UnitPositionMiddle, combat.Model.CreateBanishProjectileEffect(reduceResistance, combat))
 }
 
 func (combat *CombatScreen) CreateMindStormProjectile(target *ArmyUnit) *Projectile {
     images, _ := combat.ImageCache.GetImages("cmbtfx.lbx", 21)
     explodeImages := images
 
-    return combat.createUnitProjectile(target, explodeImages, UnitPositionUnder, combat.Model.CreateMindStormProjectileEffect())
+    return combat.createUnitProjectile(target, explodeImages, UnitPositionMiddle, combat.Model.CreateMindStormProjectileEffect())
 }
 
 func (combat *CombatScreen) CreateDisruptProjectile(x int, y int) *Projectile {
@@ -1269,7 +1170,7 @@ func (combat *CombatScreen) CreateDisruptProjectile(x int, y int) *Projectile {
         Y: y,
     }
 
-    return combat.createUnitProjectile(&fakeTarget, explodeImages, UnitPositionUnder, combat.Model.CreateDisruptProjectileEffect(x, y))
+    return combat.createUnitProjectile(&fakeTarget, explodeImages, UnitPositionMiddle, combat.Model.CreateDisruptProjectileEffect(x, y))
 }
 
 func (combat *CombatScreen) CreateSummoningCircle(x int, y int) *Projectile {
@@ -2335,16 +2236,18 @@ func (combat *CombatScreen) doCastEnchantment(yield coroutine.YieldFunc, caster 
         combat.Drawer = oldDrawer
     }()
 
-    value := data.GetMagicColor(magic)
+    // the color of the realm, as far as the original goes to it. see spellanim.go
+    red, green, blue := castTintColor(magic)
+    value := color.RGBA{R: red, G: green, B: blue, A: 0xff}
 
     counter := 0
     counterMax := 90
 
-    maxAlpha := 150
+    maxAlpha := castTintMax
 
-    castDescription := fmt.Sprintf("%v cast %v", caster.GetWizard().Name, spellName)
-
-    text := combat.Fonts.EnchantmentFont.MeasureTextWidth(castDescription, 1)
+    // who has cast what, for as long as the color shows
+    combat.CastMessage(caster.GetWizard().Name + castMessageHas + spellName)
+    combat.castMessageUntil = combat.Counter + uint64(counterMax)
 
     interpolate := func (counter int) uint8 {
         if counter < counterMax / 2 {
@@ -2362,15 +2265,6 @@ func (combat *CombatScreen) doCastEnchantment(yield coroutine.YieldFunc, caster 
             vector.FillRect(screen, 0, 0, float32(screen.Bounds().Dx()), float32(screen.Bounds().Dy()), util.PremultiplyAlpha(value), false)
             return
         }
-
-        x1 := float64(data.ScreenWidth / 2) - text / 2 - float64(1)
-        x2 := float64(data.ScreenWidth / 2) + text / 2 + float64(1)
-        y := 4
-
-        vector.FillRect(screen, float32(scale.Scale(x1)), float32(scale.Scale(y)), float32(scale.Scale(x2 - x1)), float32(scale.Scale(combat.Fonts.EnchantmentFont.Height() + 1)), color.RGBA{R: 0, G: 0, B: 0x0, A: 120}, false)
-        combat.Fonts.EnchantmentFont.PrintOptions(screen, float64(data.ScreenWidth / 2), float64((y + 1)), font.FontOptions{Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, castDescription)
-
-        vector.StrokeRect(screen, float32(scale.Scale(x1)), float32(scale.Scale(y)), float32(scale.Scale(x2 - x1)), float32(scale.Scale(combat.Fonts.EnchantmentFont.Height() + 1)), float32(scale.Scale(1)), color.RGBA{R: 0xff, G: 0xff, B: 0x0, A: 0xff}, false)
 
         if combat.pass == drawPassInterface {
             // the field has its tint already: only the combat bar
@@ -2391,21 +2285,9 @@ func (combat *CombatScreen) doCastEnchantment(yield coroutine.YieldFunc, caster 
 }
 
 func (combat *CombatScreen) ShowSummon(yield coroutine.YieldFunc, unit *ArmyUnit) {
-    for unit.Height < 0 {
-        // so that the summoning circle displays
-        combat.Model.UpdateProjectiles(combat.Counter)
-        combat.Counter += 1
-
-        if combat.Counter % 3 == 0 {
-            unit.SetHeight(unit.Height + 1)
-        }
-
-        if yield() != nil {
-            return
-        }
-    }
+    // the original's timing, see summon.go
+    combat.showSummon(yield, unit)
 }
-
 func (combat *CombatScreen) ProcessEvents(yield coroutine.YieldFunc) CombatUpdates {
 
     var updates CombatUpdates
@@ -3917,6 +3799,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
     // the roads of a town, or the clouds a flying fortress stands on. see scenerydraw.go
     combat.drawTownGround(screen)
+    // spells that lie on the ground, see spellanim.go
+    combat.drawGroundSpells(screen)
 
     drawExtraObject := func(x int, y int, extra TileTop) {
         if extra.Drawer != nil {
@@ -4354,6 +4238,14 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
     projectileOnScreen := originalScreenMatrix(combat.GetCameraMatrix())
     for _, projectile := range combat.Model.Projectiles {
+        if projectile.Scripted {
+            // a spell in the original's style, see spellanim.go
+            if !projectile.Ground {
+                combat.drawSpell(screen, projectile)
+            }
+            continue
+        }
+
         var frame *ebiten.Image
         if projectile.Exploding {
             frame = projectile.Explode.Frame()
@@ -4380,6 +4272,9 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
     }
 
     combat.UI.Draw(combat.UI, screen)
+
+    // who has cast what, see spellanim.go
+    combat.drawCastMessage(screen)
 
     if combat.Model.HighlightedUnit != nil && isVisible(combat.Model.HighlightedUnit) {
         combat.ShowUnitInfo(screen, combat.Model.HighlightedUnit)

@@ -48,6 +48,23 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 8 | Projectiles keep positions of the field, so they stay on their way while the camera moves or zooms | `combat/projectilespace.go` |
 | 8 | Cursor pictures of the field are drawn as large as the tiles, so they shrink when zoomed out | `combat/cursor.go` |
 | 8 | Damage numbers in the original's smallest font, in a loose cluster around the unit. One that would touch another moves away the shorter way. Each fades as one picture | `combat/damagenumbers.go` |
+| 9 | Spells: bolts fly the original's paths, effects play once on their target at the original's place and pace, Lightning Bolt comes from the top of the screen, Cracks Call and the summoning circle lie on the ground | `combat/spellanim.go` |
+| 9 | The message "X has cast Y" at the top of the screen while a spell plays | `combat/spellanim.go` |
+| 9 | Spells on all units of a side start on each unit a little later or earlier | `combat/spellanim.go` |
+| 9 | Pictures: Weakness and Black Sleep use the death effect, Shatter and Warp Creature the chaos effect, Word of Death and Death Spell picture 13 | `combat/combat-screen.go` |
+| 9 | Spells on the whole battlefield: the screen goes 40 of 100 to the color of the realm, life and arcane white, death black | `combat/spellanim.go` |
+| 9 | A summoned unit: the circle alone first, then the unit rises and gets solid | `combat/summon.go` |
+
+## Spells: what was not done in batch 9
+- Dispel Magic and Dispel Magic True share one function in our code and both show CMBTFX 26. The
+  original shows SPECFX 13 for the plain one.
+- How long the color of a spell on the whole battlefield takes. The original steps its palette 41
+  times without a wait of its own, so the time depends on the machine. Ours keeps 1.5 seconds.
+- Call Chaos, Raise Dead and Animate Dead, Magic Vortex, Earth to Mud, the walls rising.
+- Teleport and tunneling (Battle_Unit_Teleport, Battle_Unit_Tunnel): ours fade and sink at their own pace.
+- Missiles of units (arrows, rocks, magic) are not spells and were not touched (Make_Missiles).
+- The marks of curses over a unit (RESOURCE 76 to 82) were not checked.
+- Sounds were not checked.
 
 ## Different from the original on purpose (user requests)
 - A figure that attacks steps back and then forward: back on 3, held on 4 and forward on 5 and 6
@@ -112,7 +129,7 @@ Found while reading the reference. Not started unless noted.
 - Mouse cursor pictures per action (doc/Combat/MoM-CombatScreen-Mouse.md). ON PURPOSE different:
   the original picks the cell 4 right and 4 below the corner of every cursor picture. Ours picks at
   the mouse position and centers the pictures there, which stays exact when zoomed out.
-- Projectiles and spell effects (Make_Missiles and the spell animation code).
+- Missiles of units (Make_Missiles). Spells: see batch 9 and what was not done in it.
 - A window wider than 16 to 9 can still show black past the last row at the farthest zoom level.
   The rows fade to black, so there is no cut edge.
 - The unit information box and the spell announcement stay in the middle 320 columns.
