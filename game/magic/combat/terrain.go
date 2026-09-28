@@ -211,6 +211,8 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, zone Zon
     if PlateauGround {
         // the rough ground becomes plateaus and small hills, see plateau.go
         ground.makePlateaus(zone, rough * (beyond + 1))
+        // the original's rough pictures as short mounds, see plateau.go
+        ground.makeMounds(rough * (beyond + 1))
     }
     ground.scatterPatches(TerrainDirt, dirtPatches, dirtSpan, dirtBase, true)
     ground.scatterPatches(TerrainDirt, dirtPatches * beyond, dirtSpan, dirtBase, false)

@@ -328,8 +328,8 @@ func exportEnvironment(dataPath string, outPath string) int {
 
     // the slopes of plateaus: not in the original, the first set the game makes (combat/plateau.go)
     slopes := filepath.Join(outPath, "environment", "Slopes")
-    for piece, name := range combat.SlopePieceNames() {
-        if writePng(filepath.Join(slopes, mod.EnvironmentFrameFile(name, 0)), combat.SlopePicture(piece)) == nil {
+    for name, picture := range combat.SlopePictures() {
+        if writePng(filepath.Join(slopes, mod.EnvironmentFrameFile(name, 0)), picture) == nil {
             count += 1
         }
     }
@@ -340,11 +340,17 @@ func exportEnvironment(dataPath string, outPath string) int {
 
 const slopesNote = "Slopes\r\n\r\n" +
     "The slopes of hills and plateaus. Not pictures of the original game: a first set made by this game.\r\n" +
-    "A raised cell shows the pieces of its edges where the next cell is lower (edge NE, SE, SW, NW),\r\n" +
-    "and an inner corner where the cell beyond a corner is lower but the two edges beside it are not\r\n" +
-    "(inner N top, E right, S bottom, W left). They lie over the ground of the raised cell, top left\r\n" +
-    "corner where the ground picture's is. Any size, any colors; see-through pixels darken or lighten\r\n" +
-    "the ground under them. Changed ones go to mod\\environment\\Slopes with the same names.\r\n"
+    "\r\n" +
+    "edge NE, SE, SW, NW    along an edge of a raised cell where the next cell is lower. SE and SW\r\n" +
+    "                       face the viewer: their face hangs below the tile, over the lower ground\r\n" +
+    "outer N 1, 2, ...      a corner cut away where both edges beside it drop: N top, E right, S bottom,\r\n" +
+    "                       W left. Each such corner takes one of them by chance, or stays square.\r\n" +
+    "                       Any number from 1 on, without a gap\r\n" +
+    "inner N, E, S, W       where the cell beyond a corner is lower but the two edges beside it are not\r\n" +
+    "\r\n" +
+    "Every picture is 46 by 40 pixels: the ground picture of the tile (30 by 16) lies 8 right of and 4\r\n" +
+    "below its top left corner, the room below is for the faces. Any colors; see-through pixels darken\r\n" +
+    "or lighten the ground under them. Changed ones go to mod\\environment\\Slopes with the same names.\r\n"
 
 // takes the pictures of the cursors as they are read
 type cursorKeeper struct {

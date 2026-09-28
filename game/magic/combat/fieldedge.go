@@ -110,7 +110,6 @@ func (combat *CombatScreen) drawFieldBorder(screen *ebiten.Image, animationIndex
             scale.DrawScaled(screen, pictures[animationIndex % uint64(len(pictures))], &options)
             options.ColorScale.Reset()
             options.ColorScale.Scale(brightness, brightness, brightness, 1)
-            combat.drawSlopes(screen, x, y, &options)
             combat.drawRoad(screen, x, y, &options)
         }
     }

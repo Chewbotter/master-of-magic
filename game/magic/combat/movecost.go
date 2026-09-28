@@ -49,8 +49,9 @@ func (model *CombatModel) cellMoveHalves(x int, y int, flying bool) int {
         return moveHalvesRoad
     }
 
+    // with plateaus rough ground is mounds for the look only, see plateau.go
     halves := moveHalvesGround
-    if tile.Ground == TerrainRough {
+    if tile.Ground == TerrainRough && !PlateauGround {
         halves = moveHalvesRough
     }
 

@@ -221,8 +221,8 @@ type CombatScreen struct {
     Landscape CombatLandscape
     // picks the pictures of the ground around the field, see fieldedge.go
     borderSeed uint32
-    // the pictures of the slopes of plateaus, see plateau.go
-    slopeCache []*ebiten.Image
+    // the pictures of the slopes of plateaus, see slopes.go
+    slopeCache *slopePieceSet
     // the field fills the width of the window, see widefield.go
     wideField bool
     pass drawPass
@@ -3867,8 +3867,7 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         scale.DrawScaled(screen, image, &options)
         options.ColorScale.Reset()
 
-        // slopes and roads, see plateau.go and terraindraw.go
-        combat.drawSlopes(screen, x, y, &options)
+        // roads, see terraindraw.go
         combat.drawRoad(screen, x, y, &options)
 
         if combat.Model.Tiles[y][x].Mud {
@@ -3880,6 +3879,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         // vector.DrawFilledCircle(screen, float32(tx), float32(ty), 2, color.RGBA{R: 0xff, G: 0, B: 0, A: 0xff}, false)
     }
 
+    // the slopes of plateaus over all of the ground, see slopes.go
+    combat.drawSlopes(screen)
     // the roads of a town, or the clouds a flying fortress stands on. see scenerydraw.go
     combat.drawTownGround(screen)
     // the stains of blood, see blood.go
