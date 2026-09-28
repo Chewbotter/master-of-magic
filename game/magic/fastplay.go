@@ -353,6 +353,12 @@ func captureSpell(screen *combat.CombatScreen, model *combat.CombatModel, attack
             case "bless": model.AddProjectile(screen.CreateBlessProjectile(target))
             case "cracks": model.AddProjectile(screen.CreateCracksCallProjectile(target))
             case "web": model.AddProjectile(screen.CreateWebProjectile(target))
+            case "book":
+                // the spellbook, as the SPELL button opens it
+                if screen.SpellAction != nil {
+                    screen.SpellAction()
+                }
+                return
             case "target":
                 // the panel that asks for the target of a spell
                 screen.Events <- &combat.CombatEventSelectUnit{

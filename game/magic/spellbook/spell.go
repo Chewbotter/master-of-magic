@@ -1779,13 +1779,60 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
 
             flipOptions := options
 
-            if flipping {
-                options.GeoM.Translate(15, 5)
-                renderPage(screen, options, spellPages[showPageLeft], Spell{})
+            if CaptureFlip >= 0 && len(spellPages) > 2 {
+                // development: the turn of the first page, held at one of its pictures
+                flipping = true
+                bookFlipReverse = false
+                bookFlipIndex = ui.Counter - uint64(CaptureFlip) * bookFlipSpeed
+                if bookFlipIndex == 0 {
+                    bookFlipIndex = 1
+                }
+                first := min(CaptureFlipPage, (len(spellPages) - 3) / 2) * 2
+                showPageLeft = first
+                showPageRight = first + 3
+                pageSideLeft = first + 1
+                pageSideRight = first + 2
+            }
 
-                if showPageRight < len(spellPages) {
+            if flipping {
+                // the page the leaf comes down on is still the old one where the leaf does not
+                // cover it, and was the new one at once when the turn was over: its last row, under
+                // the curl of the leaf, came up out of nothing. it goes over into the new one while
+                // the leaf comes down. see pageturn.go
+                turned := pageTurnPart(ui.Counter - bookFlipIndex, bookFlipSpeed * uint64(len(bookFlip)))
+                if CaptureFlip >= 0 {
+                    turned = pageTurnPart(uint64(CaptureFlip) * bookFlipSpeed + bookFlipSpeed / 2, bookFlipSpeed * uint64(len(bookFlip)))
+                }
+                comesUp := pageComesUp(turned)
+
+                // draws a page, going over into the one that takes its place
+                drawPage := func(at ebiten.DrawImageOptions, page int, next int, part float32) {
+                    if part > 0 && next >= 0 && next < len(spellPages) {
+                        old := at
+                        old.ColorScale.ScaleAlpha(1 - part)
+                        if page >= 0 && page < len(spellPages) {
+                            renderPage(screen, old, spellPages[page], Spell{})
+                        }
+                        at.ColorScale.ScaleAlpha(part)
+                        renderPage(screen, at, spellPages[next], Spell{})
+                        return
+                    }
+
+                    if page >= 0 && page < len(spellPages) {
+                        renderPage(screen, at, spellPages[page], Spell{})
+                    }
+                }
+
+                options.GeoM.Translate(15, 5)
+                if bookFlipReverse {
+                    // the leaf comes down on the right
+                    drawPage(options, showPageLeft, -1, 0)
                     options.GeoM.Translate(134, 0)
-                    renderPage(screen, options, spellPages[showPageRight], Spell{})
+                    drawPage(options, showPageRight, pageSideLeft, comesUp)
+                } else {
+                    drawPage(options, showPageLeft, pageSideRight, comesUp)
+                    options.GeoM.Translate(134, 0)
+                    drawPage(options, showPageRight, -1, 0)
                 }
 
                 if bookFlipIndex > 0 && (ui.Counter - bookFlipIndex) / bookFlipSpeed < uint64(len(bookFlip)) {

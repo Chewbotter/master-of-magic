@@ -1337,6 +1337,8 @@ func loadGameConfig() GameConfig {
     flag.IntVar(&capture.MoveArea, "capture-move-area", -1, "development: the look of the move area of a battle: 0 off, 1 fill, 2 edge, 3 fill and edge, 4 dots")
     flag.BoolVar(&capture.UnitOrder, "capture-unit-order", false, "development: logs the order WAIT goes through the units of the player of a random battle in, and picks a unit as a click does")
     flag.BoolVar(&capture.Tab, "capture-tab", false, "development: a battle is shown as if Tab was held")
+    flag.IntVar(&spellbook.CaptureFlip, "capture-flip", -1, "development: the spellbook for casting shows the turn of its first page, held at this picture of the turn")
+    flag.IntVar(&spellbook.CaptureFlipPage, "capture-flip-page", 0, "development: which turn of a page -capture-flip shows, 0 the first")
     flag.BoolVar(&capture.Auto, "capture-auto", false, "development: the army of the player of a random battle is set to auto")
     flag.BoolVar(&capture.DamageNumbers, "capture-damage-numbers", false, "development: keep damage numbers over the units of a random battle")
     flag.StringVar(&capture.MouseAt, "capture-mouse-at", "", "development: the game sees the mouse at x,y screen pixels of the picture")

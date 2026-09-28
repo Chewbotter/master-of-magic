@@ -15,6 +15,12 @@ const SpellInfoTextSize = font.TextSizeCompact
 // screen set it for as long as they run (user, 2026-09-28)
 var FullPowerWithoutAsking bool
 
+// development: the spellbook for casting shows the turn of its first page, held at this picture
+// of the turn. below 0: not
+var CaptureFlip = -1
+// the turn of which page: 0 the first, 1 the one after it
+var CaptureFlipPage = 0
+
 // development: the name of a spell whose info the research spellbook opens by itself, once
 var CaptureSpellInfo string
 // the Research Cost and Casting cost lines under each spell name

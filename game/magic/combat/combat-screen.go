@@ -257,6 +257,8 @@ type CombatScreen struct {
     moveLayer *ebiten.Image
     // ticks the battle has been shown after its end, see combatend.go
     endTicks int
+    // development: what the SPELL button does
+    SpellAction func()
     // the magic vortex the player is moving
     movingVortex *MagicVortex
     // the mark over the unit whose turn it is, see unitmarker.go
@@ -1570,6 +1572,10 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
         buttonDisabled, _ := combat.ImageCache.GetImage("compix.lbx", buttonDisabledIndex, 0)
         rect := image.Rect(0, 0, buttons[0].Bounds().Dx(), buttons[0].Bounds().Dy()).Add(image.Point{int(buttonX) + buttons[0].Bounds().Dx() * x, int(buttonY) + buttons[0].Bounds().Dy() * y})
         index := 0
+        if lbxIndex == spellButtonIndex {
+            // development: what the SPELL button does, for a capture
+            combat.SpellAction = action
+        }
         var options colorm.DrawImageOptions
         options.GeoM.Translate(float64(rect.Min.X), float64(rect.Min.Y))
         options.GeoM = scale.ScaleGeom(options.GeoM)

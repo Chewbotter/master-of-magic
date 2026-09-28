@@ -17,6 +17,9 @@ import (
     "github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
+// the picture of the SPELL button in compix.lbx
+const spellButtonIndex = 1
+
 // turns the key off
 const AutoToggle = true
 var AutoToggleKey = ebiten.KeySpace
