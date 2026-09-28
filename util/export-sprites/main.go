@@ -341,8 +341,7 @@ cursors/<number>_<name>.png
     the cursors of the mouse, 16 by 16 pixels. A changed cursor has to keep that size.
         00_normal   the pointer
         01_magic    the pointer over the world map while a spell is aimed
-        02_cross    the red X. The game shortens the arms of its own X in battles; an X from the
-                    replacement folder is shown as it is drawn
+        02_cross    the red X
         03_arrow    a shot
         04_attack   a strike
         05_wait     the hourglass

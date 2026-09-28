@@ -32,6 +32,9 @@ var cursorHotCross = image.Pt(7, 7)
 
 // the red X: its arms are this many art pixels shorter than the original's 7
 const crossShorten = 3
+// false: the X is the picture of the game as it is, or the one of the replacement folder. the user
+// draws the X themselves (2026-09-27)
+const CrossShortened = false
 // the middle of the X, which stays as it is
 const crossMiddleLeft = 5
 const crossMiddleRight = 9
@@ -68,7 +71,7 @@ func (combat *CombatScreen) shortCross() *ebiten.Image {
         return nil
     }
 
-    if mod.HasCursor(mod.CursorCross) {
+    if !CrossShortened || mod.HasCursor(mod.CursorCross) {
         // drawn by the user: as it is
         combat.shortCrossPicture = source
         return source
