@@ -87,6 +87,11 @@ func moveTicksPerCell() float64 {
 }
 
 // the frame of its picture a unit shows
+// the wind up of the swing is drawn on frame 4 (user, 2026-09-27). it shows this many times as long
+// as the other frames of a long strike. one rule for all units, to be looked at again
+const strikeWindUpFrame = 4
+const strikeWindUpHold = 2
+
 // the frames of the long strike of the figure of the unit, as it faces: the strike frame and the
 // frames after it that the replacement folder has, up to the first that is missing. nothing if the
 // first of them is missing: the figure strikes as the original does
@@ -102,7 +107,15 @@ func longStrikeFrames(unit *ArmyUnit) []int {
         if frames == nil {
             frames = append(frames, mod.FrameStrike)
         }
-        frames = append(frames, frame)
+
+        // a frame that shows longer is in the list more than once
+        hold := 1
+        if frame == strikeWindUpFrame {
+            hold = strikeWindUpHold
+        }
+        for range hold {
+            frames = append(frames, frame)
+        }
     }
 
     return frames
