@@ -439,12 +439,16 @@ environment/<set>/<name>_<frame>.png
     archives/, easier to find. _source.txt in each folder lists them with their sizes, where they
     come from and where the game shows them.
         Grass, Desert, Mountain, Tundra, and each on Myrror
-                    ground 00 to 03 grass, 04 to 07 dirt, 08 to 31 grass with the edge of
-                    dirt next to it, 32 to 47 raised ground (rough) by which sides go on as
-                    rough. _source.txt says which is which. tree 1 to 5, rock 1 to 5
+                    grass 1 to 4, dirt 1 to 4, grass with dirt next to it (dirt edge,
+                    dirt edges, dirt corner), raised ground (rough), tree 1 to 5, rock 1 to 5.
+                    The directions are the ones of the tile on the screen: its edges NE (upper
+                    right), SE, SW, NW and its corners N (top), E, S (bottom), W. "dirt edge SE"
+                    is grass with dirt beyond its lower right edge, "rough NE SW" raised ground
+                    that goes on across its upper right and lower left edges
         Water, Water Myrror    the ground of a battle on the water
         Town        roads, houses, huts, tree houses, fortress, outpost, clouds under a flying
-                    fortress, the pieces of the roads that lead out of the field
+                    fortress, the pieces of the roads that lead out of the field ("road NE SW 1"
+                    joins the upper right and lower left edges, 1 and 2 are two sets)
         Lairs       cave, tower, ruins, keep, temple, the nodes
         Walls       stone (frame 0 standing, 1 broken), fire, darkness, and fire and darkness
                     while they rise. The numbers are the pieces around the town: 00 the far

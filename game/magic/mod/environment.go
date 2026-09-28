@@ -43,10 +43,8 @@ var environmentLandscapes = []struct {
     {Set: "Tundra Myrror", Archive: "cmbtundc.lbx"},
 }
 
-// pictures of a landscape: ground 00 to 31 is the flat ground, 32 to 47 the raised ground, as
-// combat/terrain.go picks them. then five trees and five rocks
-const environmentGround = 32
-const environmentRaisedGround = 16
+// pictures of a landscape: 48 of the ground, named by what combat/terrain.go uses them for (see
+// groundNames), then five trees and five rocks
 const environmentTrees = 48
 const environmentRocks = 53
 const environmentScenery = 5
@@ -76,11 +74,8 @@ func makeEnvironmentPictures() []EnvironmentPicture {
     }
 
     for _, landscape := range environmentLandscapes {
-        for index := range environmentGround {
-            add(landscape.Set, fmt.Sprintf("ground %02d", index), landscape.Archive, index, groundNote(index))
-        }
-        for index := range environmentRaisedGround {
-            add(landscape.Set, fmt.Sprintf("ground %02d", environmentGround + index), landscape.Archive, environmentGround + index, roughNotes[index])
+        for index, ground := range groundNames {
+            add(landscape.Set, ground.Name, landscape.Archive, index, ground.Note)
         }
         addRow(landscape.Set, "tree", landscape.Archive, environmentTrees, environmentScenery, false, "a tree, one of these at random")
         addRow(landscape.Set, "rock", landscape.Archive, environmentRocks, environmentScenery, false, "a rock, one of these at random")
@@ -99,8 +94,10 @@ func makeEnvironmentPictures() []EnvironmentPicture {
     add("Town", "fortress", "cmbtcity.lbx", 17, "the fortress of a town")
     add("Town", "outpost", "cmbtcity.lbx", 18, "an outpost")
     add("Town", "clouds", "cmbtcity.lbx", 113, "the ground of a town with a flying fortress")
-    addRow("Town", "road", "cmbtcity.lbx", 69, 14, true, "pieces of the roads that lead out of the field. 00 to 05 one set, 07 to 12 the other, 06 and 13 not used")
-    addRow("Town", "enchanted road", "cmbtcity.lbx", 83, 14, true, "the same for enchanted roads")
+    for index, piece := range roadNames {
+        add("Town", piece.Name, "cmbtcity.lbx", 69 + index, piece.Note)
+        add("Town", "enchanted " + piece.Name, "cmbtcity.lbx", 83 + index, piece.Note + ", enchanted")
+    }
 
     add("Other", "mud", "cmbtcity.lbx", 118, "on a tile that was turned to mud")
     addRow("Other", "river", "cmbtcity.lbx", 103, 6, true, "pieces of river, not used by the game")
@@ -130,50 +127,83 @@ func makeEnvironmentPictures() []EnvironmentPicture {
     return out
 }
 
-// the flat ground by number, as Set_Terrain_Tile_Types of the original picks it. the sides are the
-// ones of the diamond on the screen: the grid's up is its upper right edge, right its lower right,
-// down its lower left, left its upper left
-func groundNote(index int) string {
-    switch {
-        case index < 4: return "grass, one of these at random"
-        case index < 8: return "dirt, one of these at random"
-    }
-
-    edges := []string{
-        "grass with dirt beyond its bottom corner",
-        "grass with dirt beyond its lower left edge",
-        "grass with dirt beyond its lower left and lower right edges",
-        "grass with dirt beyond its left corner",
-        "grass with dirt beyond its lower left and upper left edges",
-        "grass with dirt beyond its upper left edge",
-        "grass with dirt beyond its top corner",
-        "grass with dirt beyond its upper right and upper left edges",
-        "grass with dirt beyond its upper right edge",
-        "grass with dirt beyond its right corner",
-        "grass with dirt beyond its upper right and lower right edges",
-        "grass with dirt beyond its lower right edge",
-    }
-    return edges[(index - 8) / 2] + ", one of two"
+type environmentName struct {
+    Name string
+    Note string
 }
 
-// the raised ground (rough) by the edges it goes on across, the sides as in groundNote
-var roughNotes = []string{
-    "rough, goes on across its lower left edge",
-    "rough, goes on across its upper right and lower left edges",
-    "rough, goes on across its lower right edge",
-    "rough, goes on across its upper left and lower right edges",
-    "rough, goes on across all edges",
-    "rough, goes on across its upper right edge",
-    "rough, goes on across its upper left edge",
-    "rough, goes on across its lower left and lower right edges",
-    "rough, goes on across its lower left, upper left and lower right edges",
-    "rough, goes on across its lower left and upper left edges",
-    "rough, goes on across its upper right, lower left and lower right edges",
-    "rough, goes on across its upper right, lower left and upper left edges",
-    "rough, goes on across its upper right and lower right edges",
-    "rough, goes on across its upper right, upper left and lower right edges",
-    "rough, goes on across its upper right and upper left edges",
-    "rough on its own",
+// The 48 pictures of the ground of a landscape by number, named by what the original's
+// Set_Terrain_Tile_Types picks them for. The directions are the ones of the diamond on the screen:
+// its edges NE, SE, SW, NW and its corners N (top), E, S (bottom), W. In the grid of the battle, up
+// is the NE edge, right the SE edge, down the SW edge, left the NW edge.
+var groundNames = []environmentName{
+    {"grass 1", "grass, one of 1 to 4 at random"},
+    {"grass 2", "grass, one of 1 to 4 at random"},
+    {"grass 3", "grass, one of 1 to 4 at random"},
+    {"grass 4", "grass, one of 1 to 4 at random"},
+    {"dirt 1", "dirt, one of 1 to 4 at random"},
+    {"dirt 2", "dirt, one of 1 to 4 at random"},
+    {"dirt 3", "dirt, one of 1 to 4 at random"},
+    {"dirt 4", "dirt, one of 1 to 4 at random"},
+    {"dirt corner S 1", "grass with dirt beyond its bottom corner, one of two"},
+    {"dirt corner S 2", "grass with dirt beyond its bottom corner, one of two"},
+    {"dirt edge SW 1", "grass with dirt beyond its SW edge, one of two"},
+    {"dirt edge SW 2", "grass with dirt beyond its SW edge, one of two"},
+    {"dirt edges SE SW 1", "grass with dirt beyond its SE and SW edges, one of two"},
+    {"dirt edges SE SW 2", "grass with dirt beyond its SE and SW edges, one of two"},
+    {"dirt corner W 1", "grass with dirt beyond its left corner, one of two"},
+    {"dirt corner W 2", "grass with dirt beyond its left corner, one of two"},
+    {"dirt edges SW NW 1", "grass with dirt beyond its SW and NW edges, one of two"},
+    {"dirt edges SW NW 2", "grass with dirt beyond its SW and NW edges, one of two"},
+    {"dirt edge NW 1", "grass with dirt beyond its NW edge, one of two"},
+    {"dirt edge NW 2", "grass with dirt beyond its NW edge, one of two"},
+    {"dirt corner N 1", "grass with dirt beyond its top corner, one of two"},
+    {"dirt corner N 2", "grass with dirt beyond its top corner, one of two"},
+    {"dirt edges NE NW 1", "grass with dirt beyond its NE and NW edges, one of two"},
+    {"dirt edges NE NW 2", "grass with dirt beyond its NE and NW edges, one of two"},
+    {"dirt edge NE 1", "grass with dirt beyond its NE edge, one of two"},
+    {"dirt edge NE 2", "grass with dirt beyond its NE edge, one of two"},
+    {"dirt corner E 1", "grass with dirt beyond its right corner, one of two"},
+    {"dirt corner E 2", "grass with dirt beyond its right corner, one of two"},
+    {"dirt edges NE SE 1", "grass with dirt beyond its NE and SE edges, one of two"},
+    {"dirt edges NE SE 2", "grass with dirt beyond its NE and SE edges, one of two"},
+    {"dirt edge SE 1", "grass with dirt beyond its SE edge, one of two"},
+    {"dirt edge SE 2", "grass with dirt beyond its SE edge, one of two"},
+    {"rough SW", "raised ground, goes on across its SW edge"},
+    {"rough NE SW", "raised ground, goes on across its NE and SW edges"},
+    {"rough SE", "raised ground, goes on across its SE edge"},
+    {"rough SE NW", "raised ground, goes on across its SE and NW edges"},
+    {"rough all", "raised ground, goes on across all edges"},
+    {"rough NE", "raised ground, goes on across its NE edge"},
+    {"rough NW", "raised ground, goes on across its NW edge"},
+    {"rough SE SW", "raised ground, goes on across its SE and SW edges"},
+    {"rough SE SW NW", "raised ground, goes on across its SE, SW and NW edges"},
+    {"rough SW NW", "raised ground, goes on across its SW and NW edges"},
+    {"rough NE SE SW", "raised ground, goes on across its NE, SE and SW edges"},
+    {"rough NE SW NW", "raised ground, goes on across its NE, SW and NW edges"},
+    {"rough NE SE", "raised ground, goes on across its NE and SE edges"},
+    {"rough NE SE NW", "raised ground, goes on across its NE, SE and NW edges"},
+    {"rough NE NW", "raised ground, goes on across its NE and NW edges"},
+    {"rough single", "raised ground on its own"},
+}
+
+// the pieces of road, cmbtcity 69 on: which two edges of the diamond a piece joins, in two sets of
+// pictures (combat/terrain.go roadPictures)
+var roadNames = []environmentName{
+    {"road NW SE 1", "a road across the tile, first set"},
+    {"road NE SW 1", "a road along the tile, first set"},
+    {"road NE NW 1", "a road bending, first set"},
+    {"road NE SE 1", "a road bending, first set"},
+    {"road SE SW 1", "a road bending, first set"},
+    {"road SW NW 1", "a road bending, first set"},
+    {"road unused 1", "not used by the game"},
+    {"road NW SE 2", "a road across the tile, second set"},
+    {"road NE SW 2", "a road along the tile, second set"},
+    {"road NE NW 2", "a road bending, second set"},
+    {"road NE SE 2", "a road bending, second set"},
+    {"road SE SW 2", "a road bending, second set"},
+    {"road SW NW 2", "a road bending, second set"},
+    {"road unused 2", "not used by the game"},
 }
 
 // by archive and entry: the picture
