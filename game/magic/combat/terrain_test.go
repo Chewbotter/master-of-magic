@@ -381,9 +381,14 @@ func TestProps(test *testing.T) {
     }
 }
 
-// with the pictures spread, a tile hardly ever has the picture of a tile next to it, and the more
-// pictures there are the farther the same ones are apart
+// with the pictures spread, an added picture is never next to itself, and all pictures are used
 func TestPicturesAreSpread(test *testing.T) {
+    // added pictures as often as the game's, to look at the spread alone
+    weight := AddedGroundWeight
+    AddedGroundWeight = 1
+    defer func() { AddedGroundWeight = weight }()
+
+    // how many of the tiles next to an added picture show the same one
     same := func(extras int, spread bool) float64 {
         SpreadPictures = spread
         defer func() { SpreadPictures = true }()
@@ -395,13 +400,17 @@ func TestPicturesAreSpread(test *testing.T) {
         pairs, equal := 0, 0
         for cgy := 1; cgy < 29; cgy++ {
             for cgx := 1; cgx < 29; cgx++ {
+                picture := ground.Picture[ground.index(cgx, cgy)]
+                if picture < groundExtraFirst {
+                    continue
+                }
                 for dy := -1; dy <= 1; dy++ {
                     for dx := -1; dx <= 1; dx++ {
                         if dx == 0 && dy == 0 {
                             continue
                         }
                         pairs += 1
-                        if ground.Picture[ground.index(cgx, cgy)] == ground.Picture[ground.index(cgx + dx, cgy + dy)] {
+                        if ground.Picture[ground.index(cgx + dx, cgy + dy)] == picture {
                             equal += 1
                         }
                     }
@@ -411,18 +420,18 @@ func TestPicturesAreSpread(test *testing.T) {
         return float64(equal) / float64(pairs)
     }
 
-    // 8 pictures by chance: one pair in 8 is the same. spread: next to none
+    // 4 of the game and 4 added by chance: one in 8 beside an added picture is the same
     if share := same(4, false); share < 0.08 || share > 0.18 {
         test.Fatalf("by chance: %v", share)
     }
-    if share := same(4, true); share > 0.02 {
-        test.Fatalf("spread, 8 pictures: %v", share)
+    if share := same(4, true); share != 0 {
+        test.Fatalf("spread, 4 added: %v", share)
     }
-    if share := same(12, true); share > 0.005 {
-        test.Fatalf("spread, 16 pictures: %v", share)
+    if share := same(12, true); share != 0 {
+        test.Fatalf("spread, 12 added: %v", share)
     }
 
-    // all pictures are used about as often
+    // all pictures are used
     ground := testGround(30, 30)
     ground.Extras = map[int]int{groundGrassFirst: 4}
     ground.choosePictures()
@@ -434,7 +443,7 @@ func TestPicturesAreSpread(test *testing.T) {
         test.Fatalf("pictures used: %v", counts)
     }
     for picture, count := range counts {
-        if count < 70 || count > 160 {
+        if count < 50 {
             test.Fatalf("picture %v is used %v times of 900: %v", picture, count, counts)
         }
     }
@@ -450,6 +459,71 @@ func TestPictureBag(test *testing.T) {
         }
         if len(seen) != 16 {
             test.Fatalf("%v of 16 pictures in a round", len(seen))
+        }
+    }
+}
+
+// added pictures of the ground show as often as AddedGroundWeight has it
+func TestAddedGroundWeight(test *testing.T) {
+    weight := AddedGroundWeight
+    defer func() { AddedGroundWeight = weight }()
+
+    // how much of the ground is added pictures, with 4 of the game and 4 added
+    share := func() float64 {
+        added, all := 0, 0
+        for range 5 {
+            ground := testGround(30, 30)
+            ground.Extras = map[int]int{groundGrassFirst: 4}
+            ground.choosePictures()
+            for _, picture := range ground.Picture {
+                all += 1
+                if picture >= groundExtraFirst {
+                    added += 1
+                }
+            }
+        }
+        return float64(added) / float64(all)
+    }
+
+    // half as often each: 4 halves of 6, a third. a little less, because an added picture that
+    // would lie beside itself gives way to one of the game
+    AddedGroundWeight = 0.5
+    half := share()
+    if half < 0.26 || half > 0.35 {
+        test.Fatalf("at 0.5: %v of the ground is added pictures, want about a third", half)
+    }
+    AddedGroundWeight = 1
+    full := share()
+    if full < 0.36 || full > 0.52 {
+        test.Fatalf("at 1: %v, want up to half", full)
+    }
+    test.Logf("added pictures of the ground: %.3f at weight 0.5, %.3f at weight 1", half, full)
+    if full <= half {
+        test.Fatalf("at 1 %v, at 0.5 %v", full, half)
+    }
+    AddedGroundWeight = 0
+    if got := share(); got != 0 {
+        test.Fatalf("at 0: %v, want none", got)
+    }
+
+    // the same added picture is next to itself next to never
+    AddedGroundWeight = 0.5
+    ground := testGround(30, 30)
+    ground.Extras = map[int]int{groundGrassFirst: 4}
+    ground.choosePictures()
+    for cgy := 1; cgy < 29; cgy++ {
+        for cgx := 1; cgx < 29; cgx++ {
+            picture := ground.Picture[ground.index(cgx, cgy)]
+            if picture < groundExtraFirst {
+                continue
+            }
+            for dy := -1; dy <= 1; dy++ {
+                for dx := -1; dx <= 1; dx++ {
+                    if (dx != 0 || dy != 0) && ground.Picture[ground.index(cgx + dx, cgy + dy)] == picture {
+                        test.Fatalf("added picture %v is beside itself at %v, %v", picture, cgx, cgy)
+                    }
+                }
+            }
         }
     }
 }
