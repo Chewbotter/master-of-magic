@@ -67,6 +67,8 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 - Sounds were not checked.
 
 ## Different from the original on purpose (user requests)
+- Debug battles cast spells that can take more power at full power and do not ask
+  (`spellbook.FullPowerWithoutAsking`, set in `fastplay.go` only).
 - Where the unit of the player can go shows on the ground, F6 goes through the looks
   (`combat/movearea.go`). Over a cell out of reach: a black outline and the plain cursor in place
   of the blue outline and the red X.

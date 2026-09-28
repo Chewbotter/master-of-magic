@@ -350,6 +350,16 @@ func captureSpell(screen *combat.CombatScreen, model *combat.CombatModel, attack
             case "bless": model.AddProjectile(screen.CreateBlessProjectile(target))
             case "cracks": model.AddProjectile(screen.CreateCracksCallProjectile(target))
             case "web": model.AddProjectile(screen.CreateWebProjectile(target))
+            case "target":
+                // the panel that asks for the target of a spell
+                screen.Events <- &combat.CombatEventSelectUnit{
+                    Selecter: combat.TeamAttacker,
+                    Spell: spellbook.Spell{Name: "Star Fires"},
+                    SelectTeam: combat.TeamDefender,
+                    CanTarget: func(unit *combat.ArmyUnit) bool { return true },
+                    SelectTarget: func(unit *combat.ArmyUnit) {},
+                }
+                return
             case "flamestrike":
                 for _, unit := range defenders.GetUnits() {
                     model.AddProjectile(screen.CreateFlameStrikeProjectile(unit))
@@ -492,6 +502,11 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
 
     // on auto the army of the player fights without spells: they are for the player to try
     attackingArmy.NoSpellsOnAuto = true
+    // full power without the window that asks, for as long as the debug battle runs
+    spellbook.FullPowerWithoutAsking = true
+    defer func() {
+        spellbook.FullPowerWithoutAsking = false
+    }()
 
     // for trying spells: the player knows every spell and does not run out of mana, see debugMagic
     attacker.KnownSpells.AddAllSpells(allSpells)

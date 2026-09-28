@@ -1734,7 +1734,11 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 spell.OverrideCost = 0
             }
 
-            if extraStrength > 0 {
+            if extraStrength > 0 && FullPowerWithoutAsking {
+                // debug battles: all the power there is, and no question. see textsize.go
+                spell.OverrideCost = spell.Cost(overland) + extraStrength
+                shutdownFinal()
+            } else if extraStrength > 0 {
                 powerGroup = makeAdditionalPowerElements(cache, &imageCache, extraStrength, func(amount int){
                     // modifiers to the cost will be applied later
                     spell.OverrideCost = spell.Cost(overland) + amount

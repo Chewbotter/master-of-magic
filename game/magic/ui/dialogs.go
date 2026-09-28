@@ -2,6 +2,7 @@ package ui
 
 import (
     "log"
+    "math"
     "image"
 
     "github.com/kazzmir/master-of-magic/lib/lbx"
@@ -119,6 +120,10 @@ func MakeHelpElementSized(container UIContainer, cache *lbx.LbxCache, imageCache
         bottom += moreWrapped.TotalHeight
     }
 
+    // the scroll is cut and its lower end put under it at whole art pixels. smaller text has
+    // heights between them, which left a broken row of pixels where the two meet
+    bottom = math.Ceil(bottom)
+
     // only draw as much of the top scroll as there are lines of text
     topImage := helpTop.SubImage(image.Rect(0, 0, helpTop.Bounds().Dx(), int(bottom))).(*ebiten.Image)
     helpBottom, err := imageCache.GetImage("help.lbx", 1, 0)
@@ -126,7 +131,7 @@ func MakeHelpElementSized(container UIContainer, cache *lbx.LbxCache, imageCache
         return nil
     }
 
-    infoY := (float64(data.ScreenHeight) - bottom - float64(helpBottom.Bounds().Dy())) / 2
+    infoY := math.Floor((float64(data.ScreenHeight) - bottom - float64(helpBottom.Bounds().Dy())) / 2)
 
     infoElement := &UIElement{
         // Rect: image.Rect(infoX, infoY, infoX + infoWidth, infoY + infoHeight),

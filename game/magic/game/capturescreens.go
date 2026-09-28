@@ -74,7 +74,7 @@ func (game *Game) CaptureOpenScreen(name string) bool {
             if player == nil {
                 return false
             }
-            spellbook.CaptureSpellInfo = "Fire Elemental"
+            spellbook.CaptureSpellInfo = "Star Fires"
             event = &GameEventInvokeRoutine{
                 Routine: func(yield coroutine.YieldFunc) {
                     game.ResearchNewSpell(yield, player)

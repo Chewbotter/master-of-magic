@@ -2047,13 +2047,6 @@ func (combat *CombatScreen) doSelectTile(yield coroutine.YieldFunc, selecter Tea
 
     quit := false
 
-    x := 250
-    if selecter == TeamDefender {
-        x = 3
-    }
-
-    y := 168
-
     var elements []*uilib.UIElement
 
     removeElements := func(){
@@ -2064,12 +2057,13 @@ func (combat *CombatScreen) doSelectTile(yield coroutine.YieldFunc, selecter Tea
 
     selectElement := &uilib.UIElement{
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
-            combat.Fonts.WhiteFont.PrintWrap(screen, float64(x), float64(y), float64(75), font.FontOptions{Scale: scale.ScaleAmount}, fmt.Sprintf("Select a target for a %v spell.", spell.Name))
+            // the panel of the original, see targethint.go
+            combat.drawTargetHint(screen, selecter, spell.Name)
         },
     }
 
     cancelImages, _ := combat.ImageCache.GetImages("compix.lbx", 22)
-    cancelRect := image.Rect(0, 0, cancelImages[0].Bounds().Dx(), cancelImages[0].Bounds().Dy()).Add(image.Point{(x + 15), (y + 15)})
+    cancelRect := image.Rect(0, 0, cancelImages[0].Bounds().Dx(), cancelImages[0].Bounds().Dy()).Add(combat.targetCancelPlace(selecter))
     cancelIndex := 0
     cancelElement := &uilib.UIElement{
         Rect: cancelRect,
@@ -2146,13 +2140,6 @@ func (combat *CombatScreen) doSelectUnit(yield coroutine.YieldFunc, selecter Tea
 
     hudY := data.ScreenHeight - hudImage.Bounds().Dy()
 
-    x := 250
-    if selecter == TeamDefender {
-        x = 3
-    }
-
-    y := 168
-
     var elements []*uilib.UIElement
 
     removeElements := func(){
@@ -2163,14 +2150,15 @@ func (combat *CombatScreen) doSelectUnit(yield coroutine.YieldFunc, selecter Tea
 
     selectElement := &uilib.UIElement{
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
-            combat.Fonts.WhiteFont.PrintWrap(screen, float64(x), float64(y), float64(75), font.FontOptions{Scale: scale.ScaleAmount}, fmt.Sprintf("Select a target for a %v spell.", spell.Name))
+            // the panel of the original, see targethint.go
+            combat.drawTargetHint(screen, selecter, spell.Name)
         },
     }
 
     quit := false
 
     cancelImages, _ := combat.ImageCache.GetImages("compix.lbx", 22)
-    cancelRect := image.Rect(0, 0, cancelImages[0].Bounds().Dx(), cancelImages[0].Bounds().Dy()).Add(image.Point{(x + 15), (y + 15)})
+    cancelRect := image.Rect(0, 0, cancelImages[0].Bounds().Dx(), cancelImages[0].Bounds().Dy()).Add(combat.targetCancelPlace(selecter))
     cancelIndex := 0
     cancelElement := &uilib.UIElement{
         Rect: cancelRect,
