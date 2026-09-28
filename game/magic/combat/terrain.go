@@ -92,7 +92,7 @@ const groundExtraStep = 100
 //
 // Tried before and taken back: every tile picking among all pictures with the least used nearby
 // first, which set the added ones out evenly over the field and looked uniform.
-var AddedGroundShare = 0.15
+var AddedGroundShare = 0.075
 const addedRepeatReach = 2
 
 // trees, rocks, houses, props and large pieces show every picture once before any comes again
