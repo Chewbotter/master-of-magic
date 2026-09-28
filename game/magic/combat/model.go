@@ -587,6 +587,10 @@ type ArmyUnit struct {
 
     Attacking bool
     Defending bool
+    // its swing: the tick of the battle it started at, and how many redraws of the original
+    // later than that it starts, for the unit that is attacked. see strikeswing.go
+    SwingStart uint64
+    SwingDelay float64
 
     MoveX float64
     MoveY float64

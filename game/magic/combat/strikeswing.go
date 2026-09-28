@@ -20,11 +20,18 @@ package combat
 //
 // The unit that is attacked shows the same frames in the same steps, half a swing later, and does
 // not move (see DefenderSlides in figureslide.go).
+//
+// AN ATTACK IS ONE SWING (user, 2026-09-28). The swing starts when the attack does, and the
+// attack lasts until the unit that attacks and the one that is attacked have both done theirs.
+// The blow is struck when the figures of the attacker are furthest forward. Before its swing
+// starts and after it is over a figure stands.
 
 import (
     "math"
 
     "github.com/kazzmir/master-of-magic/game/magic/mod"
+
+    "github.com/hajimehoshi/ebiten/v2"
 )
 
 // how long the steps take, in frames of a strike (attackTicksPerFrame redraws of the original each)
@@ -97,17 +104,28 @@ func swingTime(steps []swingStep) float64 {
     return total
 }
 
-// the frame a figure shows and where it is at a time of its swing, in frames of a strike. the
-// swing goes around
+// the time of a swing at which the figure gets furthest forward: when its blow lands
+func swingLands(steps []swingStep) float64 {
+    time := 0.0
+    for _, step := range steps {
+        time += step.Time
+        if step.Rush {
+            return time
+        }
+    }
+    return time
+}
+
+// the frame a figure shows and where it is at a time of its swing, in frames of a strike. before
+// the swing and after it the figure stands, in the frame the swing starts with
 func swingAt(steps []swingStep, time float64) (int, float64) {
     total := swingTime(steps)
     if len(steps) == 0 || total <= 0 {
         return figureStandFrame, 0
     }
 
-    time = math.Mod(time, total)
-    if time < 0 {
-        time += total
+    if time < 0 || time >= total {
+        return steps[0].Frame, 0
     }
 
     for _, step := range steps {
@@ -145,21 +163,49 @@ func extraStrikeFrames(unit *ArmyUnit) []int {
     return frames
 }
 
-// the frame a figure of a unit that strikes shows and how far it has lunged, by the clock of the
-// battle in redraws of the original
+// the frame a figure of a unit that strikes shows and how far it has lunged. ticks is the redraws
+// of the original since the swing of the unit started
 func unitSwing(unit *ArmyUnit, ticks float64) (int, float64) {
     steps := swingSteps(extraStrikeFrames(unit))
-    time := ticks / attackTicksPerFrame
 
     defends := unit.Defending && !unit.Attacking
     if defends {
-        // half a swing later
-        time += swingTime(steps) / 2
+        ticks -= unit.SwingDelay
     }
 
-    frame, place := swingAt(steps, time)
+    frame, place := swingAt(steps, ticks / attackTicksPerFrame)
     if defends && !DefenderSlides {
         place = 0
     }
     return frame, place
+}
+
+// the redraws of the original a swing of a unit takes
+func swingRedraws(unit *ArmyUnit) float64 {
+    return swingTime(swingSteps(extraStrikeFrames(unit))) * attackTicksPerFrame
+}
+
+// the ticks of the battle for a number of redraws of the original
+func redrawTicks(redraws float64) int {
+    return int(math.Ceil(redraws * float64(max(1, ebiten.TPS())) / OriginalTicksPerSecond))
+}
+
+// starts the swings of an attack. defender can be nil, for an attack on a wall. returns how many
+// ticks of the battle the attack lasts, and the tick of it the blow is struck at
+func (combat *CombatScreen) startSwing(attacker *ArmyUnit, defender *ArmyUnit) (int, int) {
+    attacker.SwingStart = combat.Counter
+    attacker.SwingDelay = 0
+
+    // the figures of a unit are out of step by up to this, see figurevariety.go
+    lasts := swingRedraws(attacker) + figurePhaseMax
+    lands := swingLands(swingSteps(extraStrikeFrames(attacker))) * attackTicksPerFrame + figurePhaseMax / 2
+
+    if defender != nil {
+        defender.SwingStart = combat.Counter
+        // half a swing of the attacker later
+        defender.SwingDelay = swingRedraws(attacker) / 2
+        lasts = max(lasts, defender.SwingDelay + swingRedraws(defender) + figurePhaseMax)
+    }
+
+    return redrawTicks(lasts), redrawTicks(lands)
 }

@@ -2706,15 +2706,17 @@ func (combat *CombatScreen) doMeleeWall(yield coroutine.YieldFunc, attacker *Arm
         sound.Play()
     }
 
-    for i := range 60 {
+    // an attack is one swing, and the blow is struck where the swing lands. see strikeswing.go
+    lasts, lands := combat.startSwing(attacker, nil)
+
+    for i := range lasts {
         // the clock of the battle, see together.go
         combat.actionTick()
         if !combat.together {
             combat.ProcessEvents(yield) // ignore return
         }
 
-        // delay the actual melee computation to give time for the sound to play
-        if i == 20 {
+        if i == lands {
             combat.Model.meleeAttackWall(attacker, x, y)
             combat.settleIfDone(attacker)
         }
@@ -2744,7 +2746,10 @@ func (combat *CombatScreen) doMelee(yield coroutine.YieldFunc, attacker *ArmyUni
 
     combat.Model.AddLogEvent(fmt.Sprintf("%v attacks %v", attacker.Unit.GetName(), defender.Unit.GetName()))
 
-    for i := range 60 {
+    // an attack is one swing, and the blow is struck where the swing lands. see strikeswing.go
+    lasts, lands := combat.startSwing(attacker, defender)
+
+    for i := range lasts {
         // the clock of the battle, see together.go
         combat.actionTick()
         if !combat.together {
@@ -2757,7 +2762,7 @@ func (combat *CombatScreen) doMelee(yield coroutine.YieldFunc, attacker *ArmyUni
             return
         }
 
-        if i == 20 {
+        if i == lands {
             attackerDamage, defenderDamage := combat.Model.meleeAttack(attacker, defender)
 
             combat.AddDamageIndicator(defender, attackerDamage)

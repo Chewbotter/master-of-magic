@@ -74,12 +74,16 @@ func (combat *CombatScreen) originalTickAhead(phase float64) uint64 {
     return uint64(float64(combat.Counter) * OriginalTicksPerSecond / tps + phase)
 }
 
-// the clock of a swing: the redraws of the original with the part of one that has gone by, for a
-// figure whose frames are out of step by a phase. the frame and the place of a figure are taken
-// from the same clock, so they go together
-func (combat *CombatScreen) swingTicks(phase float64) float64 {
+// the clock of a swing: the redraws of the original since the swing of the unit started, with the
+// part of one that has gone by, for a figure that is behind its unit by a phase. the frame and
+// the place of a figure are taken from the same clock, so they go together
+func (combat *CombatScreen) swingTicks(unit *ArmyUnit, phase float64) float64 {
     tps := float64(max(1, ebiten.TPS()))
-    return float64(combat.Counter) * OriginalTicksPerSecond / tps + phase
+    since := 0.0
+    if combat.Counter > unit.SwingStart {
+        since = float64(combat.Counter - unit.SwingStart)
+    }
+    return since * OriginalTicksPerSecond / tps - phase
 }
 
 // the original's redraw counter, from our ticks
@@ -116,7 +120,7 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase fl
 
     if unit.Attacking || unit.Defending {
         // the steps of its swing, see strikeswing.go
-        frame, _ = unitSwing(unit, combat.swingTicks(phase))
+        frame, _ = unitSwing(unit, combat.swingTicks(unit, phase))
     }
 
     if frameCount <= 0 {

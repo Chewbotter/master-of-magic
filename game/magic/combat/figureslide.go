@@ -52,7 +52,7 @@ func (combat *CombatScreen) strikeSlide(unit *ArmyUnit, phase float64) (float64,
     }
 
     // the steps of its swing, see strikeswing.go
-    _, distance := unitSwing(unit, combat.swingTicks(phase))
+    _, distance := unitSwing(unit, combat.swingTicks(unit, phase))
     if distance == 0 {
         return 0, 0
     }

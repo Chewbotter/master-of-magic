@@ -68,10 +68,29 @@ func TestSwingWithThreeFrames(test *testing.T) {
         test.Errorf("it stays forward for %v, the rush takes %v", steps[4].Time, steps[3].Time)
     }
 
-    // the swing goes around: at its end it is where it started
+    // after the swing and before it the figure stands
     frame, place := swingAt(steps, swingTime(steps))
     if frame != 3 || place != 0 {
         test.Errorf("after the swing: frame %v at %v", frame, place)
+    }
+    frame, place = swingAt(steps, swingTime(steps) * 3)
+    if frame != 3 || place != 0 {
+        test.Errorf("long after the swing: frame %v at %v", frame, place)
+    }
+    frame, place = swingAt(steps, -1)
+    if frame != 3 || place != 0 {
+        test.Errorf("before the swing: frame %v at %v", frame, place)
+    }
+
+    // the blow lands when the figure gets furthest forward
+    lands := swingLands(steps)
+    frame, place = swingAt(steps, lands)
+    if frame != 5 || place != forward {
+        test.Errorf("when the blow lands: frame %v at %v", frame, place)
+    }
+    frame, _ = swingAt(steps, lands - 0.01)
+    if frame != 4 {
+        test.Errorf("just before the blow lands: frame %v", frame)
     }
     _, place = swingAt(steps, swingTime(steps) - 0.0001)
     if math.Abs(place) > 0.01 {
