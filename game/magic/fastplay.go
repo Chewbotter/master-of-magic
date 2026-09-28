@@ -315,6 +315,23 @@ func makeRandomCity() randomCity {
     return city
 }
 
+// the mana and the casting skill the player has in a debug battle, filled up again all the time.
+// as large as the combat bar has room for
+const DebugBattleMana = 9999
+// enough for the casting skill to be above the mana
+const DebugBattleSkillPower = 100000000
+// the rule of one spell a turn is off in debug battles, to try one spell after the other
+const DebugBattleManySpells = true
+
+// keeps the player of a debug battle able to cast: mana and skill never run out
+func debugMagic(player *playerlib.Player, army *combat.Army) {
+    player.Mana = DebugBattleMana
+    army.ManaPool = DebugBattleMana
+    if DebugBattleManySpells {
+        army.Casted = false
+    }
+}
+
 // a cave held by monsters, or a city held by a garrison
 func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool) {
     allSpells, err := spellbook.ReadSpellsFromCache(game.Cache)
@@ -433,6 +450,11 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         log.Printf("Random battle: %v army attacks a cave with %v %v, landscape %v", race, count, monster.Name, landscape)
     }
 
+    // for trying spells: the player knows every spell and does not run out of mana, see debugMagic
+    attacker.KnownSpells.AddAllSpells(allSpells)
+    attacker.Mana = DebugBattleMana
+    attacker.CastingSkillPower = DebugBattleSkillPower
+
     events := make(chan combat.CombatEvent, 1000)
     model := combat.MakeCombatModel(allSpells, defendingArmy, attackingArmy, landscape, plane, zone, data.MagicNone, 0, 0, events)
     combatScreen := combat.MakeCombatScreen(game.Cache, defendingArmy, attackingArmy, optional.Of[combat.ArmyPlayer](attacker), landscape, plane, zone, model)
@@ -479,6 +501,7 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
     loggedTurn := -1
     state := combat.CombatStateRunning
     for state == combat.CombatStateRunning {
+        debugMagic(attacker, attackingArmy)
         if capture.SameBattle && model.CurrentTurn != loggedTurn {
             // development: where everybody stands at the start of the turn
             loggedTurn = model.CurrentTurn
