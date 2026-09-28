@@ -40,6 +40,17 @@ const damageRiseTicks = 5
 // the last ticks of its life the number fades out over
 const damageFadeTicks = 10
 
+// false: the numbers are as large at every zoom
+const DamageNumbersZoom = true
+
+// screen pixels per art pixel of a number
+func DamagePixel(cameraScale float64) float64 {
+    if !DamageNumbersZoom {
+        return scale.ScaleAmount
+    }
+    return math.Max(1, math.Round(cameraScale * scale.ScaleAmount))
+}
+
 func makeDamageFont(lbxFonts []*font.LbxFont, palette color.Palette) *font.StyledFont {
     if len(lbxFonts) <= damageFontIndex {
         return nil
@@ -56,18 +67,18 @@ func makeDamageFont(lbxFonts []*font.LbxFont, palette color.Palette) *font.Style
 
 // the picture of a number. a number is drawn from many layers, the letters and the copies that make
 // its border, so it is put together once and fades as one picture
-func (combat *CombatScreen) damagePicture(text string) *ebiten.Image {
-    key := fmt.Sprintf("%v@%v", text, scale.ScaleAmount)
+func (combat *CombatScreen) damagePicture(text string, pixel float64) *ebiten.Image {
+    key := fmt.Sprintf("%v@%v", text, pixel)
     if picture, ok := combat.damagePictures[key]; ok {
         return picture
     }
 
     styled := combat.Fonts.Hud.Damage
-    width := scale.Scale(styled.Width(text) + damagePictureMargin * 2)
-    height := scale.Scale(styled.Height() + damagePictureMargin * 2)
+    width := int(float64(styled.Width(text) + damagePictureMargin * 2) * pixel)
+    height := int(float64(styled.Height() + damagePictureMargin * 2) * pixel)
 
     picture := ebiten.NewImage(width, height)
-    styled.Print(picture, damagePictureMargin, damagePictureMargin, font.FontOptions{Scale: scale.ScaleAmount}, text)
+    styled.Print(picture, damagePictureMargin, damagePictureMargin, font.FontOptions{Scale: pixel}, text)
 
     if combat.damagePictures == nil {
         combat.damagePictures = make(map[string]*ebiten.Image)
@@ -83,7 +94,10 @@ func (combat *CombatScreen) drawDamageNumbers(screen *ebiten.Image) {
     }
 
     matrix := combat.GetCameraMatrix()
-    gap := damageGap * scale.ScaleAmount
+    // the numbers are as large as the field is drawn, and so is everything about where they are
+    // (user, 2026-09-27). screen pixels per art pixel of the field, whole so the letters are sharp
+    pixel := DamagePixel(combat.CameraScale)
+    gap := damageGap * pixel
 
     type placed struct {
         // the middle and half the size, in screen pixels
@@ -94,18 +108,18 @@ func (combat *CombatScreen) drawDamageNumbers(screen *ebiten.Image) {
 
     for index, indicator := range combat.DamageIndicators {
         text := fmt.Sprintf("%d", indicator.Damage)
-        picture := combat.damagePicture(text)
+        picture := combat.damagePicture(text, pixel)
 
         x, y := matrix.Apply(float64(indicator.X), float64(indicator.Y))
-        x += float64(indicator.Offset)
-        y += damageStartY * combat.CameraScale + float64(indicator.OffsetY)
-        y -= float64(indicator.Count) / damageRiseTicks
+        // from the middle of the tile, in art pixels of the field
+        fromX := float64(indicator.Offset)
+        fromY := damageStartY + float64(indicator.OffsetY) - float64(indicator.Count) / damageRiseTicks
 
         place := placed{
-            X: x * scale.ScaleAmount,
-            Y: y * scale.ScaleAmount,
-            HalfWidth: scale.Scale(float64(hud.Damage.Width(text))) / 2,
-            HalfHeight: scale.Scale(float64(hud.Damage.Height())) / 2,
+            X: x * scale.ScaleAmount + fromX * pixel,
+            Y: y * scale.ScaleAmount + fromY * pixel,
+            HalfWidth: float64(hud.Damage.Width(text)) * pixel / 2,
+            HalfHeight: float64(hud.Damage.Height()) * pixel / 2,
         }
 
         for range damagePlaceTries {
