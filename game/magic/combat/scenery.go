@@ -54,16 +54,42 @@ type sceneryPool struct {
     First int
     Count int
     Extras int
+    // the pictures that are left before all have been used, see pictureBag. nil picks by chance
+    // alone
+    bag *pictureBag
+}
+
+// Pictures in an order by chance, every one once before any comes again (SpreadPictures in
+// terrain.go): what is placed one after the other, as the trees of a patch, shows different
+// pictures as long as there are any
+type pictureBag struct {
+    left []int
+}
+
+func (bag *pictureBag) next(total int) int {
+    if len(bag.left) == 0 {
+        bag.left = rand.Perm(total)
+    }
+    pick := bag.left[len(bag.left) - 1]
+    bag.left = bag.left[:len(bag.left) - 1]
+    return pick
 }
 
 func makeSceneryPool(set string, name string, lbx string, first int, count int) sceneryPool {
-    return sceneryPool{Set: set, Name: name, Lbx: lbx, First: first, Count: count, Extras: mod.CountExtras(set, name, count)}
+    pool := sceneryPool{Set: set, Name: name, Lbx: lbx, First: first, Count: count, Extras: mod.CountExtras(set, name, count)}
+    if SpreadPictures {
+        pool.bag = &pictureBag{}
+    }
+    return pool
 }
 
-// a piece with one of the pictures, each as likely as the others
+// a piece with one of the pictures, each as often as the others
 func (pool sceneryPool) piece(kind SceneryKind, screenX int, screenY int) SceneryPiece {
     piece := SceneryPiece{Kind: kind, ScreenX: screenX, ScreenY: screenY, Lbx: pool.Lbx, Index: pool.First}
     pick := rand.N(pool.Count + pool.Extras)
+    if pool.bag != nil {
+        pick = pool.bag.next(pool.Count + pool.Extras)
+    }
     if pick < pool.Count {
         piece.Index = pool.First + pick
     } else {

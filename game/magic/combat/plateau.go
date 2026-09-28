@@ -27,6 +27,14 @@ const plateauDropNeighbors = 2
 // small hills of a single cell, for every patch of rough ground this many
 const plateauSingleHillsPerPatch = 0.5
 
+// Where the edge of a plateau runs across the grid, its cells stand as a staircase on the screen and
+// are cut in half to one straight line (slopes.go). A long one looks drawn with a ruler (user,
+// 2026-09-28: "a long diagonal slope line ... is the only bad looking generation"). No more cells
+// than this stand in such a row: a longer row is broken, by a cell of it that is lowered or by the
+// low cell before it that is raised
+const slopeRunMax = 2
+const slopeRunPasses = 8
+
 // mounds of the original's rough pictures, for every patch of rough ground this many, each 1 to
 // moundSpan steps long
 const moundsPerPatch = 0.6
@@ -104,6 +112,8 @@ func (ground *BattleGround) makePlateaus(zone ZoneType, patches int) {
         ground.Heights = next
     }
 
+    ground.breakLongRuns(zone)
+
     // small hills of one cell, on their own
     singles := int(math.Round(float64(patches) * plateauSingleHillsPerPatch))
     for range singles {
@@ -122,6 +132,60 @@ func (ground *BattleGround) makePlateaus(zone ZoneType, patches int) {
             if plateauKeepsOut(zone, cgx, cgy) {
                 ground.setHeight(cgx, cgy, 0)
             }
+        }
+    }
+}
+
+// the cells that stand in a row from a cell on, all with the two edges beside a corner dropping
+func (ground *BattleGround) slopeRun(cgx int, cgy int, corner int) int {
+    step := slopeCorners[(corner + 1) % 4]
+    length := 0
+    for ground.isCornerCell(cgx + step.X * length, cgy + step.Y * length, corner) {
+        length += 1
+    }
+    return length
+}
+
+// breaks the rows that are longer than slopeRunMax
+func (ground *BattleGround) breakLongRuns(zone ZoneType) {
+    lastX := ground.MinX + ground.Width
+    lastY := ground.MinY + ground.Height
+
+    for range slopeRunPasses {
+        changed := false
+
+        for corner := range slopeCorners {
+            step := slopeCorners[(corner + 1) % 4]
+            _, after := slopeCornerEdges(corner)
+
+            for cgy := ground.MinY; cgy < lastY; cgy++ {
+                for cgx := ground.MinX; cgx < lastX; cgx++ {
+                    // from the first cell of a row on
+                    if ground.isCornerCell(cgx - step.X, cgy - step.Y, corner) {
+                        continue
+                    }
+                    length := ground.slopeRun(cgx, cgy, corner)
+
+                    for at := slopeRunMax; at < length; at += slopeRunMax + 1 {
+                        cellX := cgx + step.X * at
+                        cellY := cgy + step.Y * at
+                        // the low cell between this cell of the row and the one before it
+                        lowX := cellX - step.X + slopeSides[after].X
+                        lowY := cellY - step.Y + slopeSides[after].Y
+
+                        if roll(2) == 1 && ground.contains(lowX, lowY) && !plateauKeepsOut(zone, lowX, lowY) {
+                            ground.setHeight(lowX, lowY, 1)
+                        } else {
+                            ground.setHeight(cellX, cellY, 0)
+                        }
+                        changed = true
+                    }
+                }
+            }
+        }
+
+        if !changed {
+            break
         }
     }
 }

@@ -164,3 +164,37 @@ func TestPlateaus(test *testing.T) {
         test.Fatalf("across the top: %v", across)
     }
 }
+
+// a long staircase is broken: no more than slopeRunMax cells stand in a row
+func TestLongRunsAreBroken(test *testing.T) {
+    longest := func(ground *BattleGround) int {
+        most := 0
+        for corner := range slopeCorners {
+            for cgy := range ground.Height {
+                for cgx := range ground.Width {
+                    most = max(most, ground.slopeRun(cgx, cgy, corner))
+                }
+            }
+        }
+        return most
+    }
+
+    for range 20 {
+        ground := outlineGround(24, func(cgx int, cgy int) bool { return cgx + cgy <= 22 && cgx >= 1 && cgy >= 1 })
+        if longest(ground) < 10 {
+            test.Fatalf("the staircase is %v long", longest(ground))
+        }
+        ground.breakLongRuns(ZoneType{})
+        if longest(ground) > slopeRunMax {
+            test.Fatalf("a row of %v is left", longest(ground))
+        }
+    }
+
+    // and on battlefields
+    for range 10 {
+        ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeMountain, 0, ZoneType{})
+        if longest(ground) > slopeRunMax {
+            test.Fatalf("a row of %v on a battlefield", longest(ground))
+        }
+    }
+}

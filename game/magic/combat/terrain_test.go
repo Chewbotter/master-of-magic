@@ -380,3 +380,76 @@ func TestProps(test *testing.T) {
         test.Fatalf("standing: %v, %v", x, y)
     }
 }
+
+// with the pictures spread, a tile hardly ever has the picture of a tile next to it, and the more
+// pictures there are the farther the same ones are apart
+func TestPicturesAreSpread(test *testing.T) {
+    same := func(extras int, spread bool) float64 {
+        SpreadPictures = spread
+        defer func() { SpreadPictures = true }()
+
+        ground := testGround(30, 30)
+        ground.Extras = map[int]int{groundGrassFirst: extras}
+        ground.choosePictures()
+
+        pairs, equal := 0, 0
+        for cgy := 1; cgy < 29; cgy++ {
+            for cgx := 1; cgx < 29; cgx++ {
+                for dy := -1; dy <= 1; dy++ {
+                    for dx := -1; dx <= 1; dx++ {
+                        if dx == 0 && dy == 0 {
+                            continue
+                        }
+                        pairs += 1
+                        if ground.Picture[ground.index(cgx, cgy)] == ground.Picture[ground.index(cgx + dx, cgy + dy)] {
+                            equal += 1
+                        }
+                    }
+                }
+            }
+        }
+        return float64(equal) / float64(pairs)
+    }
+
+    // 8 pictures by chance: one pair in 8 is the same. spread: next to none
+    if share := same(4, false); share < 0.08 || share > 0.18 {
+        test.Fatalf("by chance: %v", share)
+    }
+    if share := same(4, true); share > 0.02 {
+        test.Fatalf("spread, 8 pictures: %v", share)
+    }
+    if share := same(12, true); share > 0.005 {
+        test.Fatalf("spread, 16 pictures: %v", share)
+    }
+
+    // all pictures are used about as often
+    ground := testGround(30, 30)
+    ground.Extras = map[int]int{groundGrassFirst: 4}
+    ground.choosePictures()
+    counts := make(map[int]int)
+    for _, picture := range ground.Picture {
+        counts[picture] += 1
+    }
+    if len(counts) != 8 {
+        test.Fatalf("pictures used: %v", counts)
+    }
+    for picture, count := range counts {
+        if count < 70 || count > 160 {
+            test.Fatalf("picture %v is used %v times of 900: %v", picture, count, counts)
+        }
+    }
+}
+
+// a bag gives every picture once before any comes again
+func TestPictureBag(test *testing.T) {
+    var bag pictureBag
+    for range 5 {
+        seen := make(map[int]bool)
+        for range 16 {
+            seen[bag.next(16)] = true
+        }
+        if len(seen) != 16 {
+            test.Fatalf("%v of 16 pictures in a round", len(seen))
+        }
+    }
+}

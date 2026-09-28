@@ -109,6 +109,9 @@ func (ground *BattleGround) placeLarge(zone ZoneType, pictures int) {
         return
     }
 
+    // every picture once before any comes again, see pictureBag
+    var bag pictureBag
+
     count := int(math.Round(float64(ground.Width * ground.Height) * largeShare / 4))
     for range count {
         for range largeTries {
@@ -126,7 +129,11 @@ func (ground *BattleGround) placeLarge(zone ZoneType, pictures int) {
             for _, cell := range largeCells(cgx, cgy) {
                 ground.Covered[ground.index(cell.X, cell.Y)] = true
             }
-            ground.Large = append(ground.Large, LargePiece{Cgx: cgx, Cgy: cgy, Number: roll(pictures)})
+            number := roll(pictures)
+            if SpreadPictures {
+                number = bag.next(pictures) + 1
+            }
+            ground.Large = append(ground.Large, LargePiece{Cgx: cgx, Cgy: cgy, Number: number})
             break
         }
     }

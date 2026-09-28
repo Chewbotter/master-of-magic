@@ -24,6 +24,9 @@ package combat
 // river to follow.
 
 import (
+    "math/rand/v2"
+    "slices"
+
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/mod"
 )
@@ -77,6 +80,13 @@ const groundEdgeCount = 2
 const groundExtraFirst = 1000
 const groundExtraStep = 100
 
+// SPREAD (user, 2026-09-28: "the more variations I add, the fewer repeats we see"). Picking by
+// chance for every tile on its own puts the same picture next to itself often, however many there
+// are. With this, a tile takes one of the pictures that the tiles around it, this many cells far,
+// use the least, the nearer ones counting more. false picks by chance alone, as the original does
+var SpreadPictures = true
+const groundSpreadReach = 2
+
 // the pieces of road, cmbtcity 69 on: 6 directions in two sets of 7, and the same for enchanted roads
 const roadLbx = "cmbtcity.lbx"
 const roadFirstPicture = 69
@@ -117,6 +127,8 @@ type BattleGround struct {
     // the large pieces, and the cells that lie under one. see large.go
     Large []LargePiece
     Covered []bool
+    // the cells that have their picture, while the pictures are chosen
+    chosen []bool
     EnchantedRoads bool
 }
 
@@ -481,21 +493,64 @@ var roughPictures = [16]int{15, 6, 0, 9, 2, 3, 7, 8, 5, 14, 1, 11, 12, 13, 10, 4
 
 // Set_Terrain_Tile_Types
 func (ground *BattleGround) choosePictures() {
+    ground.chosen = make([]bool, ground.Width * ground.Height)
     for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
         for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
             ground.Picture[ground.index(cgx, cgy)] = ground.pictureOf(cgx, cgy)
+            ground.chosen[ground.index(cgx, cgy)] = true
         }
     }
+    ground.chosen = nil
 }
 
-// one of the pictures of a use: the game's, from first on, and the added ones
-func (ground *BattleGround) variant(first int, count int) int {
-    pick := roll(count + ground.Extras[first])
-    if pick <= count {
-        return first + pick - 1
+// which of the pictures of a use a picture is, from 0, the game's first. -1 if it is none of them
+func groundVariant(picture int, first int, count int) int {
+    if picture >= first && picture < first + count {
+        return picture - first
     }
-    return groundExtraFirst + first * groundExtraStep + pick - count - 1
+    if picture >= groundExtraFirst && (picture - groundExtraFirst) / groundExtraStep == first {
+        return count + (picture - groundExtraFirst) % groundExtraStep
+    }
+    return -1
 }
+
+// one of the pictures of a use for a cell: the game's, from first on, and the added ones
+func (ground *BattleGround) variant(cgx int, cgy int, first int, count int) int {
+    total := count + ground.Extras[first]
+    pick := rand.N(total)
+
+    if SpreadPictures && total > 1 && ground.chosen != nil {
+        // how much the cells around use each of the pictures
+        uses := make([]int, total)
+        for dy := -groundSpreadReach; dy <= groundSpreadReach; dy++ {
+            for dx := -groundSpreadReach; dx <= groundSpreadReach; dx++ {
+                if !ground.contains(cgx + dx, cgy + dy) || !ground.chosen[ground.index(cgx + dx, cgy + dy)] {
+                    continue
+                }
+                used := groundVariant(ground.Picture[ground.index(cgx + dx, cgy + dy)], first, count)
+                if used >= 0 && used < total {
+                    uses[used] += groundSpreadReach + 1 - max(abs(dx), abs(dy))
+                }
+            }
+        }
+
+        // one of the least used, by chance
+        least := slices.Min(uses)
+        var free []int
+        for number, use := range uses {
+            if use == least {
+                free = append(free, number)
+            }
+        }
+        pick = free[rand.N(len(free))]
+    }
+
+    if pick < count {
+        return first + pick
+    }
+    return groundExtraFirst + first * groundExtraStep + pick - count
+}
+
 
 // the use and the number from 1 of an added picture
 func groundExtra(picture int) (mod.GroundRole, int, bool) {
@@ -518,7 +573,7 @@ func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
 
     switch ground.GroupAt(cgx, cgy) {
         case TerrainDirt:
-            return ground.variant(groundDirtFirst, groundDirtCount)
+            return ground.variant(cgx, cgy, groundDirtFirst, groundDirtCount)
 
         case TerrainRough:
             sides := 0
@@ -534,7 +589,7 @@ func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
             if is(-1, 0, TerrainRough) {
                 sides += 1
             }
-            return ground.variant(groundRoughFirst + roughPictures[sides], 1)
+            return ground.variant(cgx, cgy, groundRoughFirst + roughPictures[sides], 1)
     }
 
     // grass: where dirt lies next to it, the edge of the dirt. two pictures of each
@@ -544,7 +599,7 @@ func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
     right := is(1, 0, TerrainDirt)
 
     edge := func(first int) int {
-        return ground.variant(first, groundEdgeCount)
+        return ground.variant(cgx, cgy, first, groundEdgeCount)
     }
 
     switch {
@@ -562,7 +617,7 @@ func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
         case is(-1, 1, TerrainDirt): return edge(14)
     }
 
-    return ground.variant(groundGrassFirst, groundGrassCount)
+    return ground.variant(cgx, cgy, groundGrassFirst, groundGrassCount)
 }
 
 // the kind of ground and the road of every tile of the field, and its picture
