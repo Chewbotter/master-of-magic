@@ -89,9 +89,19 @@ func HasContentOffset() bool {
 
 // position of the cursor as the screen on top understands it
 func CursorPosition() (int, int) {
+    if FixedCursor {
+        // development: the mouse of a capture, see -capture-mouse-at
+        return FixedCursorX, FixedCursorY
+    }
+
     x, y := ebiten.CursorPosition()
     return x - ContentOffsetX(), y - ContentOffsetY()
 }
+
+// development: the interface sees the mouse at this place of the picture of the game
+var FixedCursor bool
+var FixedCursorX int
+var FixedCursorY int
 
 // same adjustment for a touch position
 func AdjustPosition(x int, y int) (int, int) {

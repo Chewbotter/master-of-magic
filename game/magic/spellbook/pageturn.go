@@ -126,8 +126,11 @@ func leafLight(angle float64, back bool) float64 {
     return 1 - shade * pageTurnShade
 }
 
-// the strips of a leaf of a width that has turned by a part of 0, on the right, to 1, on the left
-func leafStrips(width int, turned float64) []leafStrip {
+// the strips of a leaf of a width that has turned by a part of 0, on the right, to 1, on the left.
+// mirror: the leaf is turned back, from 0 on the left to 1 on the right, and does what a leaf
+// that is turned forward does seen in a mirror. without it a leaf that is turned back would run
+// the turn forward backward, which is not how a leaf goes over (user, 2026-09-28)
+func leafStrips(width int, turned float64, mirror bool) []leafStrip {
     turned = max(0, min(1, turned))
 
     type found struct {
@@ -156,6 +159,11 @@ func leafStrips(width int, turned float64) []leafStrip {
         height = max(0, height)
 
         column := int(math.Floor(across))
+        if mirror {
+            column = int(math.Floor(-across))
+            // seen in a mirror the leaf stands the other way
+            angle = math.Pi - angle
+        }
         index := column + width
         if index < 0 || index >= len(columns) {
             continue
@@ -202,12 +210,13 @@ func leafStrips(width int, turned float64) []leafStrip {
     return out
 }
 
-// draws a leaf that has turned by a part of 0, on the right, to 1, on the left. front is the page
+// draws a leaf that has turned by a part of 0, on the right, to 1, on the left, or with mirror
+// from 0 on the left to 1 on the right. front is the page
 // it shows while it lies on the right, back the one it shows when it lies on the left, both as
 // large as a page at the size of the screen. pixel is a picture of one white pixel
-func drawLeaf(screen *ebiten.Image, leaf pageLeaf, front *ebiten.Image, back *ebiten.Image, turned float64, alpha float32, pixel *ebiten.Image) {
+func drawLeaf(screen *ebiten.Image, leaf pageLeaf, front *ebiten.Image, back *ebiten.Image, turned float64, mirror bool, alpha float32, pixel *ebiten.Image) {
     size := scale.ScaleAmount
-    strips := leafStrips(leaf.Width, turned)
+    strips := leafStrips(leaf.Width, turned, mirror)
 
     place := func(strip leafStrip) float64 {
         if strip.Column >= 0 {

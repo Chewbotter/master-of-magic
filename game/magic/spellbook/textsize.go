@@ -19,6 +19,8 @@ var FullPowerWithoutAsking bool
 // of the turn, of captureFlipSteps (of the 4 pictures of the old turn). below 0: not
 var CaptureFlip = -1
 const captureFlipSteps = 10.0
+// the turn that is held is one back, from the left to the right
+var CaptureFlipBack bool
 // the turn of which page: 0 the first, 1 the one after it
 var CaptureFlipPage = 0
 

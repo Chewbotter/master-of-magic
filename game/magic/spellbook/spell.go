@@ -869,15 +869,13 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
             if ProceduralPageTurn && CaptureFlip >= 0 && len(halfPages) > 2 {
                 // development: the turn of the first page, held at one of its steps
                 leaf := researchLeaf()
-                drawLeaf(screen, leaf, getResearchLeafFace(1, true), getResearchLeafFace(2, false), float64(CaptureFlip) / captureFlipSteps, getAlpha(), researchPixel)
+                drawLeaf(screen, leaf, getResearchLeafFace(1, true), getResearchLeafFace(2, false), float64(CaptureFlip) / captureFlipSteps, CaptureFlipBack, getAlpha(), researchPixel)
             } else if ProceduralPageTurn && flipping && bookFlipIndex > 0 {
                 // the leaf is made by the game, see pageturn.go. it shows flipLeftSide while it is
                 // on the right and flipRightSide on the left
+                // turned back it goes from the left to the right, as in a mirror
                 turned := easeTurn(pageTurnPart(animationIndex - bookFlipIndex, PageTurnTicks))
-                if bookFlipReverse {
-                    turned = 1 - turned
-                }
-                drawLeaf(screen, researchLeaf(), getResearchLeafFace(flipLeftSide, true), getResearchLeafFace(flipRightSide, false), turned, getAlpha(), researchPixel)
+                drawLeaf(screen, researchLeaf(), getResearchLeafFace(flipLeftSide, true), getResearchLeafFace(flipRightSide, false), turned, bookFlipReverse, getAlpha(), researchPixel)
             } else if !ProceduralPageTurn && bookFlipIndex > 0 && (animationIndex - bookFlipIndex) / bookFlipSpeed < uint64(len(bookFlip)) {
                 index := (animationIndex - bookFlipIndex) / bookFlipSpeed
                 if bookFlipReverse {
@@ -1891,9 +1889,10 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 }
 
                 // the leaf shows pageSideLeft while it is on the right and pageSideRight on the
-                // left. turning back it goes the other way
-                if bookFlipReverse {
-                    turned = 1 - turned
+                // left. turned back it goes from the left to the right, as in a mirror
+                back := bookFlipReverse
+                if CaptureFlip >= 0 {
+                    back = CaptureFlipBack
                 }
 
                 leaf := pageLeaf{
@@ -1903,7 +1902,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                     Width: castBookRightPage.Dx(),
                     Height: castBookRightPage.Dy(),
                 }
-                drawLeaf(screen, leaf, getLeafFace(pageSideLeft, true), getLeafFace(pageSideRight, false), turned, getAlpha(), whitePixel)
+                drawLeaf(screen, leaf, getLeafFace(pageSideLeft, true), getLeafFace(pageSideRight, false), turned, back, getAlpha(), whitePixel)
             } else if flipping {
                 // the page the leaf comes down on is still the old one where the leaf does not
                 // cover it, and was the new one at once when the turn was over: its last row, under
@@ -1994,15 +1993,62 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         },
     })
 
+    // the ribbon with the X that closes the book. it is a part of the picture of the book, which
+    // has no pictures of it for the mouse over it or pressed: it is drawn over itself lighter, or
+    // darker and one art pixel lower (user, 2026-09-28). see bookplaces.go
     cancelRect := image.Rect(0, 0, 18, 25).Add(image.Pt(170, 170))
+    cancelOver := false
+    cancelPressed := false
+    var cancelRibbon *ebiten.Image
+    var cancelWhite *ebiten.Image
     elements = append(elements, &uilib.UIElement{
         Rect: cancelRect,
         Layer: 1,
+        // over the picture of the book
+        Order: 1,
+        Inside: func(this *uilib.UIElement, x int, y int){
+            cancelOver = true
+        },
+        NotInside: func(this *uilib.UIElement){
+            cancelOver = false
+            cancelPressed = false
+        },
         LeftClick: func(this *uilib.UIElement){
-            shutdown(Spell{}, false)
+            cancelPressed = true
+        },
+        LeftClickRelease: func(this *uilib.UIElement){
+            if cancelPressed {
+                cancelPressed = false
+                shutdown(Spell{}, false)
+            }
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
-            // vector.StrokeRect(screen, float32(cancelRect.Min.X), float32(cancelRect.Min.Y), float32(cancelRect.Dx()), float32(cancelRect.Dy()), 1, color.RGBA{R: 255, G: 255, B: 255, A: 255}, false)
+            if !cancelOver && !cancelPressed {
+                return
+            }
+
+            if cancelRibbon == nil {
+                // the ribbon without what is around it in the picture of the book
+                book, _ := imageCache.GetImage("spells.lbx", 0, 0)
+                cancelRibbon, cancelWhite = ribbonShapes(book.SubImage(castBookRibbon).(*ebiten.Image))
+            }
+            ribbon := cancelRibbon
+
+            var options ebiten.DrawImageOptions
+            options.GeoM.Translate(float64(castBookX + castBookRibbon.Min.X), float64(castBookY + castBookRibbon.Min.Y))
+            options.ColorScale.ScaleAlpha(getAlpha())
+
+            if cancelPressed {
+                options.GeoM.Translate(0, ribbonPressedDown)
+                options.ColorScale.Scale(ribbonPressedShade, ribbonPressedShade, ribbonPressedShade, 1)
+                scale.DrawScaled(screen, ribbon, &options)
+                return
+            }
+
+            // lighter: white over it, in its shape. its red is as red as it gets, light that is
+            // added to it does not show
+            options.ColorScale.ScaleAlpha(ribbonOverLight)
+            scale.DrawScaled(screen, cancelWhite, &options)
         },
     })
 
@@ -2102,15 +2148,26 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
     }
 
     var filterButtons []*uilib.UIElement
-    filterX := 130
+    // in a row over the book, its middle over the spine. see bookplaces.go
+    filterWidth := 0
+    for _, filter := range filters {
+        if hasMagic.Contains(filter.Magic) {
+            pic, _ := imageCache.GetImage("spells.lbx", filter.LbxIndex, 0)
+            if filterWidth > 0 {
+                filterWidth += realmFilterGap
+            }
+            filterWidth += pic.Bounds().Dx()
+        }
+    }
+    filterX := realmFilterMiddle - filterWidth / 2
     for _, filter := range filters {
         if !hasMagic.Contains(filter.Magic) {
             continue
         }
         // filter spells by their realm
         pic, _ := imageCache.GetImage("spells.lbx", filter.LbxIndex, 0)
-        rect := util.ImageRect(filterX, 10, pic)
-        filterX += pic.Bounds().Dx() + 3
+        rect := util.ImageRect(filterX, realmFilterY, pic)
+        filterX += pic.Bounds().Dx() + realmFilterGap
         selected := false
         filterButtons = append(filterButtons, &uilib.UIElement{
             Rect: rect,
@@ -2147,9 +2204,13 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                     options.ColorScale.SetB(1.2)
                 }
 
-                vector.FillRect(screen, scale.Scale(float32(rect.Min.X-1)), scale.Scale(float32(rect.Min.Y-1)), scale.Scale(float32(rect.Dx()+2)), scale.Scale(float32(rect.Dy()+2)), color.RGBA{R: 32, G: 32, B: 32, A: 128}, true)
+                // a dark field, and around the one that is picked a border of one art pixel
+                field := rect.Inset(-1)
+                fillArtRect(screen, whitePixel, field, color.RGBA{R: 32, G: 32, B: 32, A: 255}, realmFilterField * getAlpha())
                 if selected {
-                    vector.StrokeRect(screen, scale.Scale(float32(rect.Min.X-1)), scale.Scale(float32(rect.Min.Y-1)), scale.Scale(float32(rect.Dx()+2)), scale.Scale(float32(rect.Dy()+2)), 1, color.RGBA{R: 255, G: 255, B: 255, A: 255}, false)
+                    for _, side := range borderRects(field.Inset(-realmFilterBorder), realmFilterBorder) {
+                        fillArtRect(screen, whitePixel, side, color.RGBA{R: 255, G: 255, B: 255, A: 255}, getAlpha())
+                    }
                 }
 
                 options.GeoM.Translate(float64(rect.Min.X), float64(rect.Min.Y))

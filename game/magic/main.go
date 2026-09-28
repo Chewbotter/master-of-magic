@@ -1078,6 +1078,10 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
         // development: the game sees the mouse at a fixed position
         fmt.Sscanf(capture.MouseAt, "%d,%d", &inputmanager.FixedMouseX, &inputmanager.FixedMouseY)
         inputmanager.FixedMouse = true
+        // the interface reads the mouse by itself
+        display.FixedCursor = true
+        display.FixedCursorX = inputmanager.FixedMouseX
+        display.FixedCursorY = inputmanager.FixedMouseY
     }
 
     if capture.RandomBattle {
@@ -1339,6 +1343,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&capture.Tab, "capture-tab", false, "development: a battle is shown as if Tab was held")
     flag.IntVar(&spellbook.CaptureFlip, "capture-flip", -1, "development: the spellbook for casting shows the turn of its first page, held at this picture of the turn")
     flag.IntVar(&spellbook.CaptureFlipPage, "capture-flip-page", 0, "development: which turn of a page -capture-flip shows, 0 the first")
+    flag.BoolVar(&spellbook.CaptureFlipBack, "capture-flip-back", false, "development: the turn -capture-flip holds is one back")
     flag.BoolVar(&capture.Auto, "capture-auto", false, "development: the army of the player of a random battle is set to auto")
     flag.BoolVar(&capture.DamageNumbers, "capture-damage-numbers", false, "development: keep damage numbers over the units of a random battle")
     flag.StringVar(&capture.MouseAt, "capture-mouse-at", "", "development: the game sees the mouse at x,y screen pixels of the picture")
@@ -1351,8 +1356,8 @@ func loadGameConfig() GameConfig {
     flag.IntVar(&capture.BattlePanY, "capture-battle-pan-y", 0, "development: move the battlefield down by this many screen pixels")
     flag.BoolVar(&capture.RandomBattle, "capture-random-battle", false, "development: start a random battle instead of the start screen")
     flag.StringVar(&capture.CityBattle, "capture-city-battle", "", "development: start a random battle for a city. a list of: walls, fortress, fire, darkness, outpost, myrror, size=N, or random")
-    flag.BoolVar(&capture.NextTurn, "capture-next-turn", false, "development: press Next Turn, and trace the widescreen layout while the turn runs")
     flag.StringVar(&capture.BattleGround, "capture-battle-ground", "", "development: the ground of a random battle. a list of: grass, desert, mountain, tundra, forest, hills, roads, road=N, enchanted")
+    flag.BoolVar(&capture.NextTurn, "capture-next-turn", false, "development: press Next Turn, and trace the widescreen layout while the turn runs")
     flag.Float64Var(&capture.CameraX, "capture-camera-x", -1, "development: put the camera at this column before the capture, fractions allowed")
     flag.IntVar(&capture.DragSpeed, "capture-drag-speed", 1, "development: screen pixels the simulated drag moves each frame")
     flag.IntVar(&capture.Drag, "capture-drag", 0, "development: simulate a slow drag of this many frames and log the view")

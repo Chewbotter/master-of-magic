@@ -21,7 +21,7 @@ func TestPageComesUp(test *testing.T) {
 func TestLeafLiesFlat(test *testing.T) {
     width := 130
 
-    start := leafStrips(width, 0)
+    start := leafStrips(width, 0, false)
     if len(start) != width {
         test.Fatalf("%v strips at the start", len(start))
     }
@@ -31,7 +31,7 @@ func TestLeafLiesFlat(test *testing.T) {
         }
     }
 
-    end := leafStrips(width, 1)
+    end := leafStrips(width, 1, false)
     if len(end) != width {
         test.Fatalf("%v strips at the end", len(end))
     }
@@ -45,6 +45,48 @@ func TestLeafLiesFlat(test *testing.T) {
     }
 }
 
+// a leaf that is turned back is the one that is turned forward in a mirror
+func TestLeafMirrored(test *testing.T) {
+    width := 130
+
+    // before it is turned back it lies on the left, after it on the right
+    start := leafStrips(width, 0, true)
+    end := leafStrips(width, 1, false)
+    if len(start) != width || len(end) != width {
+        test.Fatalf("%v and %v strips", len(start), len(end))
+    }
+    for index := range start {
+        if start[index] != end[index] {
+            test.Fatalf("strip %v: %+v before it is turned back, %+v after it was turned forward", index, start[index], end[index])
+        }
+    }
+
+    done := leafStrips(width, 1, true)
+    flat := leafStrips(width, 0, false)
+    for index := range done {
+        if done[index] != flat[index] {
+            test.Fatalf("strip %v: %+v after it was turned back, %+v before it is turned forward", index, done[index], flat[index])
+        }
+    }
+
+    for step := 1; step < 20; step++ {
+        turned := float64(step) / 20
+        forward := leafStrips(width, turned, false)
+        backward := leafStrips(width, turned, true)
+        if len(forward) != len(backward) {
+            test.Fatalf("%v and %v strips at %v", len(forward), len(backward), turned)
+        }
+
+        // the same strips, from the other end
+        for index, strip := range forward {
+            other := backward[len(backward) - 1 - index]
+            if other.Column != -1 - strip.Column || other.Source != strip.Source || other.Back == strip.Back || other.Lift != strip.Lift {
+                test.Fatalf("at %v strip %+v is %+v in the mirror", turned, strip, other)
+            }
+        }
+    }
+}
+
 // in between the leaf is lifted, not wider than a page, and has no two strips in one column
 func TestLeafTurns(test *testing.T) {
     width := 130
@@ -52,7 +94,7 @@ func TestLeafTurns(test *testing.T) {
     highest := 0
     for step := 1; step < 40; step++ {
         turned := float64(step) / 40
-        strips := leafStrips(width, turned)
+        strips := leafStrips(width, turned, step % 2 == 0)
         if len(strips) == 0 {
             test.Fatalf("no leaf at %v", turned)
         }
@@ -93,18 +135,32 @@ func TestLeafTurns(test *testing.T) {
     }
 
     // early in the turn the leaf is still on the right, late on the left
-    early := leafStrips(width, 0.1)
+    early := leafStrips(width, 0.1, false)
     for _, strip := range early {
         if strip.Column < 0 {
             test.Errorf("on the left early in the turn: %+v", strip)
             break
         }
     }
-    late := leafStrips(width, 0.9)
+    late := leafStrips(width, 0.9, false)
     for _, strip := range late {
         if strip.Column >= 0 {
             test.Errorf("on the right late in the turn: %+v", strip)
             break
+        }
+    }
+}
+
+// the ribbon is red with a yellow X, what is around it in the picture of the book is brown
+func TestRibbonColor(test *testing.T) {
+    for _, each := range [][3]byte{{255, 0, 0}, {200, 20, 20}, {130, 10, 10}, {250, 170, 40}} {
+        if !ribbonColor(each[0], each[1], each[2]) {
+            test.Errorf("%v is a color of the ribbon", each)
+        }
+    }
+    for _, each := range [][3]byte{{130, 90, 45}, {90, 60, 30}, {60, 40, 20}, {0, 0, 0}, {200, 200, 200}} {
+        if ribbonColor(each[0], each[1], each[2]) {
+            test.Errorf("%v is no color of the ribbon", each)
         }
     }
 }
