@@ -247,6 +247,10 @@ type CombatScreen struct {
     togetherRunning int
     // the units whose turn has done all it does to the battle
     settledUnits map[*ArmyUnit]bool
+    // auto on a key, see autotoggle.go
+    heldUnits map[*ArmyUnit]bool
+    autoToggleSeen bool
+    autoToggleTick int64
     claimedTiles map[image.Point]*ArmyUnit
     // the pictures of damage numbers, see damagenumbers.go
     damagePictures map[string]*ebiten.Image
@@ -2963,6 +2967,8 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
     hudY := (data.ScreenHeight - hudImage.Bounds().Dy())
 
     combat.ProcessInput()
+    // auto on a key, see autotoggle.go
+    combat.updateAutoToggle()
 
     updates := combat.ProcessEvents(yield)
 

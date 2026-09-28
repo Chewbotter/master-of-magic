@@ -27,7 +27,7 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 2 | Figure positions for units of 1 to 8 figures, were "copied from case 8" guesses for 2 to 7 | `unitview/combat.go` |
 | 2 | Figure pictures anchored by their feet at 13, 23 | `unitview/combat.go` |
 | 2 | Cave, tower, temple, keep, ruins, node pictures on the original's cell (6, 11) with its anchor | `combat/model.go`, `combat/battlefield.go` |
-| 3 | Camera: whole pixel zoom levels, smooth panning with the middle mouse button (Modern controls) and the arrow keys, release glide. Space returns to the original view | `combat/camera.go` |
+| 3 | Camera: whole pixel zoom levels, smooth panning with the middle mouse button (Modern controls) and the arrow keys, release glide. Home returns to the original view (space until it became auto) | `combat/camera.go` |
 | 4 | Deployment: melee units in front, ranged behind, wall corners and the structure's place skipped | `combat/deploy.go` |
 | 4 | Figure frames: standing is frame 1, walking 1 2 1 0, flying units cycle 0 1 2, strikes alternate 1 and 3, all at 18.2 steps a second | `combat/animation.go` |
 | 4 | A step to the next cell takes 8 of the original's ticks, straight or diagonal (now 10 on purpose, see below) | `combat/animation.go` |
@@ -67,6 +67,8 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 - Sounds were not checked.
 
 ## Different from the original on purpose (user requests)
+- Space sets the player's army to auto and takes it off again (`combat/autotoggle.go`). Taken off
+  while units act: units that started their turn finish it, the others keep theirs for the player.
 - A figure that attacks steps back and then forward: back on 3, held on 4 and forward on 5 and 6
   with a long strike, back on 1 and forward on 3 with the frames of the game. The figures that are left of a unit slide to their new places in the tile
   when others were lost. `combat/figureslide.go`, `StrikeSlide` and `RegroupSlide` turn them off.

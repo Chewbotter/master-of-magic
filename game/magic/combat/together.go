@@ -24,6 +24,8 @@ package combat
 // the picture of a unit that walks where it stood. Wall of fire hurts a unit when it decides to
 // walk through, not when its picture gets there.
 //
+// The army of the player can be taken off auto while its units act, see autotoggle.go.
+//
 // One unit of the player set to auto on its own, confused units and webbed units act in turn as before.
 
 import (
@@ -98,6 +100,7 @@ func (combat *CombatScreen) actionTick() {
     combat.UpdateAnimations()
     combat.UpdateDamageIndicators()
     combat.ProcessInput()
+    combat.updateAutoToggle()
 }
 
 // the unit steps to a tile: nobody else may. false if the tile is taken
@@ -182,6 +185,11 @@ func (combat *CombatScreen) unitRoutine(unit *ArmyUnit, before *ArmyUnit, startD
         }
         pause(startDelay)
 
+        // the army was taken off auto before this unit started: it keeps its turn. see autotoggle.go
+        if stopped || !combat.startsTogether(unit) {
+            return nil
+        }
+
         acted := false
         actions := &togetherActions{
             CombatActions: &CombatActions{
@@ -244,9 +252,13 @@ func (combat *CombatScreen) runTogether(yield coroutine.YieldFunc, units []*Army
         combat.together = false
         combat.claimedTiles = nil
         combat.settledUnits = nil
+        combat.heldUnits = nil
     }()
 
     combat.settledUnits = make(map[*ArmyUnit]bool)
+    // units that did not start because their army was taken off auto, see autotoggle.go
+    held := make(map[*ArmyUnit]bool)
+    combat.heldUnits = held
 
     var routines []*coroutine.Coroutine
     var before *ArmyUnit
@@ -271,6 +283,7 @@ func (combat *CombatScreen) runTogether(yield coroutine.YieldFunc, units []*Army
         combat.UpdateAnimations()
         combat.UpdateDamageIndicators()
         combat.ProcessInput()
+        combat.updateAutoToggle()
         combat.ProcessEvents(yield)
         model.UpdateProjectiles(combat.Counter)
 
@@ -296,7 +309,9 @@ func (combat *CombatScreen) runTogether(yield coroutine.YieldFunc, units []*Army
     }
 
     for _, unit := range units {
-        unit.LastTurn = model.CurrentTurn
+        if !held[unit] {
+            unit.LastTurn = model.CurrentTurn
+        }
     }
 
     if model.FinalState() == CombatStateRunning {

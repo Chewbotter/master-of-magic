@@ -534,6 +534,34 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         captureSpell(combatScreen, model, attackingArmy, defendingArmy)
     }
 
+    if capture.AutoToggle > 0 {
+        // development: auto is toggled as by its key, and what that leaves is logged
+        capture.EachFrame = func(frame int) {
+            describe := func(when string) {
+                waiting := 0
+                for _, unit := range attackingArmy.GetUnits() {
+                    if unit.LastTurn < model.CurrentTurn && unit.GetHealth() > 0 {
+                        waiting += 1
+                    }
+                }
+                selected := "none"
+                if model.SelectedUnit != nil {
+                    selected = fmt.Sprintf("%v at %v,%v of team %v, computer %v", model.SelectedUnit.Unit.GetName(), model.SelectedUnit.X, model.SelectedUnit.Y, model.SelectedUnit.Team, model.IsAIControlled(model.SelectedUnit))
+                }
+                log.Printf("auto %v: frame %v turn %v auto %v, units of the player with their turn left %v of %v, selected %v", when, frame, model.CurrentTurn, attackingArmy.Auto, waiting, len(attackingArmy.GetUnits()), selected)
+            }
+
+            if frame == capture.AutoToggle {
+                describe("before")
+                combatScreen.ToggleAuto()
+                describe("toggled")
+            }
+            if frame > capture.AutoToggle && frame % 10 == 0 {
+                describe("after")
+            }
+        }
+    }
+
     if capture.KillFigures > 0 {
         // development: figures fall. by drawn frames, the battle does not come back here on every tick
         capture.EachFrame = func(frame int) {

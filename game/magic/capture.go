@@ -64,6 +64,8 @@ type frameCapture struct {
     SameBattle bool
     // the army of the player of a random battle is set to auto
     Auto bool
+    // the frame at which auto is toggled as by its key, 0 for never
+    AutoToggle int
     // keep damage numbers over the units of a random battle
     DamageNumbers bool
     // x,y in screen pixels: the game sees the mouse there
@@ -131,7 +133,7 @@ func (capture *frameCapture) laterFrames() int {
     if capture.Drag > 0 {
         return capture.Drag + CaptureCoastFrames
     }
-    if capture.Spell != "" || capture.KillFigures > 0 {
+    if capture.Spell != "" || capture.KillFigures > 0 || capture.AutoToggle > 0 {
         // room for a spell to play and for figures to fall and lie
         return CaptureEffectFrames
     }

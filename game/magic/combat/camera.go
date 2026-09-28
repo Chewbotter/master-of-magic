@@ -141,6 +141,9 @@ func (battle *BattleCamera) moveBy(deltaX float64, deltaY float64) {
     battle.clampToField()
 }
 
+// returns to the view the battle starts with
+var BattleCameraResetKey = ebiten.KeyHome
+
 // one tick of input. inBattlefield says whether the cursor is over the battlefield, where a drag can start
 func (battle *BattleCamera) Update(keys []ebiten.Key, inBattlefield bool) {
     battle.clampLevel()
@@ -152,7 +155,8 @@ func (battle *BattleCamera) Update(keys []ebiten.Key, inBattlefield bool) {
             case ebiten.KeyUp: battle.moveBy(0, step)
             case ebiten.KeyLeft: battle.moveBy(step, 0)
             case ebiten.KeyRight: battle.moveBy(-step, 0)
-            case ebiten.KeySpace: battle.reset()
+            // space was here first, it is auto now (autotoggle.go)
+            case BattleCameraResetKey: battle.reset()
         }
     }
 

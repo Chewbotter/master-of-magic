@@ -1333,6 +1333,7 @@ func loadGameConfig() GameConfig {
     flag.StringVar(&capture.UnitPicker, "capture-unit-picker", "", "development: open the list of units of the test battle with these races open, or all")
     flag.BoolVar(&capture.InTurn, "capture-in-turn", false, "development: units act in turn, not together")
     flag.BoolVar(&capture.SameBattle, "capture-same-battle", false, "development: a random battle with the same armies every time, and the places of all units in the log every turn")
+    flag.IntVar(&capture.AutoToggle, "capture-auto-toggle", 0, "development: the frame of a random battle at which auto is toggled as by its key, counted from 100 frames before the capture")
     flag.BoolVar(&capture.Auto, "capture-auto", false, "development: the army of the player of a random battle is set to auto")
     flag.BoolVar(&capture.DamageNumbers, "capture-damage-numbers", false, "development: keep damage numbers over the units of a random battle")
     flag.StringVar(&capture.MouseAt, "capture-mouse-at", "", "development: the game sees the mouse at x,y screen pixels of the picture")
