@@ -3031,6 +3031,11 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
                 newState = CombatMeleeAttackOk
             }
 
+            // a unit of the player that a click picks, see unitorder.go
+            if newState == CombatNotOk && combat.Model.CanPick(who) {
+                newState = CombatClickHud
+            }
+
             combat.MouseState = newState
         }
 
@@ -3088,6 +3093,11 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
             selectTileX = combat.Model.SelectedUnit.X + dx
             selectTileY = combat.Model.SelectedUnit.Y + dy
         }
+    }
+
+    // a click on a unit of the player picks it, see unitorder.go
+    if leftClick && combat.MouseState == CombatClickHud && combat.Model.Pick(combat.Model.GetUnit(selectTileX, selectTileY)) {
+        leftClick = false
     }
 
     combatActions := &CombatActions{

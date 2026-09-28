@@ -538,6 +538,30 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         captureSpell(combatScreen, model, attackingArmy, defendingArmy)
     }
 
+    if capture.UnitOrder {
+        // development: the order of the units of the player, and a click on one of them
+        capture.EachFrame = func(frame int) {
+            if frame != 1 || model.SelectedUnit == nil || model.SelectedUnit.Team != combat.TeamAttacker {
+                return
+            }
+
+            order := ""
+            for range len(attackingArmy.GetUnits()) + 2 {
+                order += fmt.Sprintf(" %v,%v", model.SelectedUnit.X, model.SelectedUnit.Y)
+                model.NextUnit()
+            }
+            log.Printf("unit order: wait goes through%v", order)
+
+            units := attackingArmy.GetUnits()
+            pick := units[len(units) / 2]
+            picked := model.Pick(pick)
+            log.Printf("unit order: click on %v,%v picks it %v, selected %v,%v", pick.X, pick.Y, picked, model.SelectedUnit.X, model.SelectedUnit.Y)
+            model.NextUnit()
+            log.Printf("unit order: then wait goes to %v,%v", model.SelectedUnit.X, model.SelectedUnit.Y)
+            log.Printf("unit order: a click on the selected unit picks it %v, on an enemy %v", model.CanPick(model.SelectedUnit), model.CanPick(defendingArmy.GetUnits()[0]))
+        }
+    }
+
     if capture.AutoToggle > 0 {
         // development: auto is toggled as by its key, and what that leaves is logged
         capture.EachFrame = func(frame int) {

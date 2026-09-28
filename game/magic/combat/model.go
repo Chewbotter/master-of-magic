@@ -2330,6 +2330,8 @@ type CombatModel struct {
 
     TurnAttacker int
     TurnDefender int
+    // the order the units of the player are gone through, see unitorder.go
+    order unitOrder
 
     Cleanups []func()
 
@@ -2592,6 +2594,14 @@ func computeMoves(x1 int, y1 int, x2 int, y2 int) fraction.Fraction {
  * the unit's LastTurn is less than the current turn
  */
 func (model *CombatModel) ChooseNextUnit(team Team) *ArmyUnit {
+
+    // the units of a player by their places, see unitorder.go
+    if CalendarOrder {
+        army := model.GetArmyForTeam(team)
+        if army != nil && !army.IsAI() {
+            return model.chooseNextInOrder(army, team)
+        }
+    }
 
     switch team {
         case TeamAttacker:
