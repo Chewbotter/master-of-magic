@@ -35,48 +35,48 @@ func TestLightPixels(test *testing.T) {
     }
 }
 
-// the shadow of a unit lies away from the light, and as always far from it or without one
-func TestShadowNear(test *testing.T) {
+// the shadow a spell gives a unit lies away from the light, and there is none far from it
+func TestSpellShadow(test *testing.T) {
     field := MakeBattlefieldMatrix()
     unitX, unitY := field.Apply(10, 10)
 
-    lean, length, part := shadowNear(nil, 1, 10, 10)
-    if lean != shadowLean || length != shadowLength || part != 0 {
-        test.Errorf("without a light: %v %v %v", lean, length, part)
+    _, _, part := spellShadow(nil, 10, 10)
+    if part != 0 {
+        test.Errorf("without a light: %v", part)
     }
 
     // the light to the left of the unit: the shadow goes to the right
     left := []spellLightSource{{X: unitX - 20, Y: unitY, Radius: 60, Strength: 1, Reach: 100}}
-    lean, length, part = shadowNear(left, 1, 10, 10)
-    if part <= 0 || lean <= 0 || math.Abs(length) > spellShadowThin + 0.2 {
+    lean, length, part := spellShadow(left, 10, 10)
+    if part <= 0 || lean <= 0 || math.Abs(length) > spellShadowThin + 0.01 {
         test.Errorf("light to the left: lean %v length %v part %v", lean, length, part)
     }
 
     // the light to the right: to the left
     right := []spellLightSource{{X: unitX + 20, Y: unitY, Radius: 60, Strength: 1, Reach: 100}}
-    lean, _, _ = shadowNear(right, 1, 10, 10)
+    lean, _, _ = spellShadow(right, 10, 10)
     if lean >= 0 {
         test.Errorf("light to the right: lean %v", lean)
     }
 
     // the light below the unit on the screen: the shadow goes up
     below := []spellLightSource{{X: unitX, Y: unitY + 15, Radius: 60, Strength: 1, Reach: 100}}
-    _, length, _ = shadowNear(below, 1, 10, 10)
+    _, length, _ = spellShadow(below, 10, 10)
     if length >= 0 {
         test.Errorf("light below: length %v", length)
     }
 
-    // far from the light
-    far := []spellLightSource{{X: unitX - 300, Y: unitY, Radius: 60, Strength: 1, Reach: 100}}
-    lean, length, part = shadowNear(far, 1, 10, 10)
-    if lean != shadowLean || length != shadowLength || part != 0 {
-        test.Errorf("far from the light: %v %v %v", lean, length, part)
+    // near the rim of the reach the shadow is shorter, beyond it there is none
+    rim := []spellLightSource{{X: unitX - 90, Y: unitY, Radius: 60, Strength: 1, Reach: 100}}
+    short, _, part := spellShadow(rim, 10, 10)
+    if part <= 0 || short <= 0 || short >= spellShadowLength * 0.5 {
+        test.Errorf("near the rim: lean %v part %v", short, part)
     }
 
-    // the field is not dark yet
-    lean, length, _ = shadowNear(left, 0, 10, 10)
-    if lean != shadowLean || length != shadowLength {
-        test.Errorf("before the field is dark: %v %v", lean, length)
+    far := []spellLightSource{{X: unitX - 300, Y: unitY, Radius: 60, Strength: 1, Reach: 100}}
+    _, _, part = spellShadow(far, 10, 10)
+    if part != 0 {
+        test.Errorf("far from the light: %v", part)
     }
 }
 

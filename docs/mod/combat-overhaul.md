@@ -81,7 +81,7 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
   `util/decals/make.py`, replaced by `mod/spells/<name>/decal_NN.png`). The halo was tried and taken out: it made the
   pictures look blurred.
 - The light of a spell: the field gets dark while a spell plays, the spell lights what is near
-  it, the shadows of the units near it turn away from it and get harder, and all of it goes back
+  it, the shadows of the day go out and the units near the spell get shadows that lie away from it, and all of it goes back
   when the spell is over (`combat/spelllight.go`).
 - Corpses take on a color by what killed the figure: brown for fire, blue for ice, gray for
   lightning and other spells, red for a fight (`corpse-color` in the values of spells).

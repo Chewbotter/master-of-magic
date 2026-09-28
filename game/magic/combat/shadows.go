@@ -72,12 +72,11 @@ func (combat *CombatScreen) shadowMatrix() ebiten.GeoM {
     return matrix
 }
 
-// puts the shadows on the ground
-func (combat *CombatScreen) drawShadowPicture(screen *ebiten.Image) {
+// puts the shadows on the ground, this much of them 0 to 1
+func (combat *CombatScreen) drawShadowPicture(screen *ebiten.Image, strength float32) {
     var options ebiten.DrawImageOptions
     options.GeoM.Scale(combat.shadowPixel, combat.shadowPixel)
     options.GeoM.Translate(combat.shadowStartX, combat.shadowStartY)
-    // harder near a spell that gives light, see spelllight.go
-    options.ColorScale.ScaleAlpha(combat.shadowStrengthNow())
+    options.ColorScale.ScaleAlpha(strength)
     screen.DrawImage(combat.shadowLayer, &options)
 }

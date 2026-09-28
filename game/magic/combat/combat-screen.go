@@ -4000,6 +4000,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
     // while set, figures draw their shadows on this picture and nothing else, see shadows.go
     var shadowTarget *ebiten.Image
+    // the shadows that are drawn are the ones a spell casts, see spelllight.go
+    spellShadows := false
 
     // draws one figure of a unit, and what is shown over the whole unit if overlays is set
     renderUnit := func(unit *ArmyUnit, figure int, overlays bool) {
@@ -4092,9 +4094,15 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                     if unit.IsFlying() {
                         offsetX, offsetY = shadowFlyingX, shadowFlyingY
                     }
-                    // away from a spell that gives light, see spelllight.go
-                    lean, length := combat.shadowShape(unit)
-                    unitview.RenderCombatFigureShadow(shadowTarget, unitImage, unitOptions, figureCount, figure, lean, length, offsetX, offsetY, combat.shadowMatrix())
+                    lean, length := shadowLean, shadowLength
+                    has := true
+                    if spellShadows {
+                        // away from a spell that gives light, see spelllight.go
+                        lean, length, has = combat.spellShadowShape(unit)
+                    }
+                    if has {
+                        unitview.RenderCombatFigureShadow(shadowTarget, unitImage, unitOptions, figureCount, figure, lean, length, offsetX, offsetY, combat.shadowMatrix())
+                    }
                 }
                 return
             }
@@ -4241,14 +4249,25 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
     if FigureShadows {
         // the shadows of all figures go on the ground before anything that stands on it
-        shadowTarget = combat.shadowPicture(screen)
-        for _, drawable := range allDrawables[:unitDrawablesFrom] {
-            if drawable.Layer == layerFigure {
-                drawable.Render()
+        // while a spell gives light the shadows of the day are out and the ones the spell casts
+        // are there, see spelllight.go
+        dayStrength, spellStrength := combat.shadowStrengths()
+        for _, pass := range []struct{Spell bool; Strength float32}{{false, dayStrength}, {true, spellStrength}} {
+            if pass.Strength <= 0 {
+                continue
             }
+
+            spellShadows = pass.Spell
+            shadowTarget = combat.shadowPicture(screen)
+            for _, drawable := range allDrawables[:unitDrawablesFrom] {
+                if drawable.Layer == layerFigure {
+                    drawable.Render()
+                }
+            }
+            shadowTarget = nil
+            combat.drawShadowPicture(screen, pass.Strength)
         }
-        shadowTarget = nil
-        combat.drawShadowPicture(screen)
+        spellShadows = false
     }
 
     sortFieldDrawables(allDrawables)
