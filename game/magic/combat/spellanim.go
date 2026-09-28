@@ -28,6 +28,7 @@ package combat
 //   bug of the original. large pictures are placed like large pictures here
 
 import (
+    "math"
     "fmt"
     "image/color"
     "math/rand/v2"
@@ -50,7 +51,15 @@ type ProjectileStep struct {
     Frame int
     // redraws of the original the step shows
     Ticks int
+    // how far the picture goes while the step shows, for a bolt in flight. see SmoothBolts
+    GlideX int
+    GlideY int
 }
+
+// a bolt in flight goes on with every tick of the game, by whole art pixels, in place of 10 pixels
+// with every redraw of the original. its way, its time and its frames are the same. not in the
+// original (user, 2026-09-27)
+const SmoothBolts = true
 
 const spellFrameNone = -1
 
@@ -225,6 +234,19 @@ func (combat *CombatScreen) createBolt(kind BoltKind, target *ArmyUnit, pictures
         }
     }
 
+    // in flight a step ends where the next starts, the last one as far on as the ones before it
+    for index := range steps {
+        if index >= boltFlightSteps {
+            break
+        }
+        steps[index].GlideX = path.StepX
+        steps[index].GlideY = path.StepY
+        if index + 1 < len(steps) {
+            steps[index].GlideX = steps[index + 1].X - steps[index].X
+            steps[index].GlideY = steps[index + 1].Y - steps[index].Y
+        }
+    }
+
     if len(pictures) == 0 {
         steps = nil
     }
@@ -266,6 +288,41 @@ func (projectile *Projectile) stepAt(counter uint64) int {
     return len(projectile.Steps)
 }
 
+// where the picture of the spell is now, and its frame. false when there is nothing to show
+func (projectile *Projectile) placeAt(counter uint64) (int, int, int, bool) {
+    if !projectile.Started || counter < projectile.Start {
+        return 0, 0, 0, false
+    }
+
+    ticks := float64(counter - projectile.Start) * OriginalTicksPerSecond / float64(max(1, ebiten.TPS()))
+    // the step is the one of whole redraws, as stepAt has it
+    whole := math.Floor(ticks)
+    part := ticks - whole
+
+    for _, step := range projectile.Steps {
+        if whole >= float64(step.Ticks) {
+            whole -= float64(step.Ticks)
+            continue
+        }
+
+        if step.Frame < 0 || step.Frame >= len(projectile.Pictures) {
+            return 0, 0, 0, false
+        }
+
+        x := float64(step.X)
+        y := float64(step.Y)
+        if SmoothBolts && step.Ticks > 0 {
+            gone := (whole + part) / float64(step.Ticks)
+            x += float64(step.GlideX) * gone
+            y += float64(step.GlideY) * gone
+        }
+
+        return int(math.Round(x)), int(math.Round(y)), step.Frame, true
+    }
+
+    return 0, 0, 0, false
+}
+
 // one tick of a spell with steps. false when it is over
 func (projectile *Projectile) updateSteps(counter uint64) bool {
     if !projectile.Started {
@@ -282,12 +339,12 @@ func (combat *CombatScreen) drawSpell(screen *ebiten.Image, projectile *Projecti
         return
     }
 
-    step := projectile.Steps[projectile.Step]
-    if step.Frame < 0 || step.Frame >= len(projectile.Pictures) {
+    x, y, frame, ok := projectile.placeAt(combat.Counter)
+    if !ok {
         return
     }
 
-    combat.drawOnField(screen, projectile.Pictures[step.Frame], step.X, step.Y)
+    combat.drawOnField(screen, projectile.Pictures[frame], x, y)
 }
 
 // the spells that lie on the ground. drawn after the ground and before anything that stands on it

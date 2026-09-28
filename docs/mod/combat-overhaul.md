@@ -70,6 +70,8 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 - Where the unit of the player can go shows on the ground, F6 goes through the looks
   (`combat/movearea.go`). Over a cell out of reach: a black outline and the plain cursor in place
   of the blue outline and the red X.
+- Bolts of spells go on with every tick of the game in place of 10 pixels with every redraw of
+  the original (`SmoothBolts` in `combat/spellanim.go`). Way, time and frames are the original's.
 - No boots on the tiles a unit would walk over (`ShowMovePath` in `combat/autotoggle.go`).
 - The AUTO button toggles auto and is lit while auto is on.
 - Space sets the player's army to auto and takes it off again (`combat/autotoggle.go`). Taken off

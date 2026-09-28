@@ -47,6 +47,49 @@ func TestFireBoltPath(test *testing.T) {
     }
 }
 
+// a bolt goes on between the redraws of the original, by whole pixels, and is where the original
+// has it at every redraw
+func TestBoltGlides(test *testing.T) {
+    combat := &CombatScreen{}
+    x, y := CellToTile(10, 12)
+    target := &ArmyUnit{X: x, Y: y}
+
+    bolt := combat.createBolt(BoltFire, target, testPictures(4, 28, 30), nil)
+    bolt.Started = true
+    bolt.Start = 100
+
+    tps := uint64(ebiten.TPS())
+    places := make(map[int]bool)
+    lastX := 0
+    for tick := uint64(0); tick * 182 < tps * 110; tick++ {
+        placeX, placeY, _, ok := bolt.placeAt(bolt.Start + tick)
+        if !ok {
+            test.Fatalf("nothing to show at tick %v", tick)
+        }
+        if tick > 0 && (placeX > lastX || lastX - placeX > 5) {
+            test.Errorf("tick %v: from %v to %v", tick, lastX, placeX)
+        }
+        lastX = placeX
+        places[placeX] = true
+
+        // 10 across for 6 down all the way
+        fromStartX := bolt.Steps[0].X - placeX
+        fromStartY := placeY - bolt.Steps[0].Y
+        if fromStartX * 6 - fromStartY * 10 > 10 || fromStartY * 10 - fromStartX * 6 > 10 {
+            test.Errorf("tick %v: %v across and %v down is off the way", tick, fromStartX, fromStartY)
+        }
+    }
+
+    if len(places) < 30 {
+        test.Errorf("the bolt was at %v places only", len(places))
+    }
+
+    hitX := 126 - 16
+    if lastX < hitX || lastX > hitX + 4 {
+        test.Errorf("the bolt ends at %v, it hits at %v", lastX, hitX)
+    }
+}
+
 // Fireball: 11 redraws of flight with a frame each, then 5 frames where it hits, 2 redraws each
 func TestFireballPath(test *testing.T) {
     combat := &CombatScreen{}
