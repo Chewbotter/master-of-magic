@@ -344,7 +344,8 @@ func (combat *CombatScreen) drawSpell(screen *ebiten.Image, projectile *Projecti
         return
     }
 
-    combat.drawOnField(screen, projectile.Pictures[frame], x, y)
+    // with its light, see spellglow.go
+    combat.drawSpellPicture(screen, projectile.Pictures[frame], x, y)
 }
 
 // the spells that lie on the ground. drawn after the ground and before anything that stands on it

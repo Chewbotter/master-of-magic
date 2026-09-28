@@ -8,6 +8,7 @@ package mod
 //   units/<race> <name>/<facing>_<frame>.png     the figures of a unit
 //   archives/<file>/<entry>_<frame>.png          any picture of any archive, <entry> with 3 digits
 //   cursors/<number>_<name>.png                  a cursor of the mouse, see CursorNames
+//   spells/<name>/<frame>.png                    a spell of the battles, see spells.go
 //
 // A picture that is not there is the game's own. Every frame is a file of its own: the sheets the
 // export writes are for looking at and are not read.
@@ -242,6 +243,12 @@ func framePaths(archive string, entry int, frame int) []string {
     unit, ok := unitEntries[entryKey(archive, entry)]
     if ok {
         out = append(out, filepath.Join(folder, unitsFolder, unit.Folder, fmt.Sprintf("%v_%v.png", unit.Facing, frame)))
+    }
+
+    // a spell by its name, see spells.go
+    spell := spellFramePath(archive, entry, frame)
+    if spell != "" {
+        out = append(out, spell)
     }
 
     base := strings.TrimSuffix(strings.ToLower(archive), ".lbx")

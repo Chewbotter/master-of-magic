@@ -232,6 +232,51 @@ func readPictures(archive *lbx.LbxFile, entry int) (frames []*image.Paletted, er
     return archive.ReadImages(entry)
 }
 
+// the pictures of the spells of battles, in folders with their names. the same pictures as in
+// archives/, easier to find
+func exportSpells(dataPath string, outPath string) int {
+    count := 0
+    archives := make(map[string]*lbx.LbxFile)
+
+    for _, spell := range mod.SpellPictures {
+        archive, ok := archives[spell.Archive]
+        if !ok {
+            opened, err := openArchive(dataPath, spell.Archive)
+            if err != nil {
+                log.Printf("%v", err)
+                continue
+            }
+            archive = opened
+            archives[spell.Archive] = archive
+        }
+
+        frames, err := readPictures(archive, spell.Entry)
+        if err != nil {
+            log.Printf("No pictures of %v in %v entry %v", spell.Name, spell.Archive, spell.Entry)
+            continue
+        }
+
+        folder := filepath.Join(outPath, "spells", spell.Name)
+        for frame, picture := range frames {
+            if writePng(filepath.Join(folder, mod.SpellFrameFile(frame)), picture) == nil {
+                count += 1
+            }
+        }
+
+        writePng(filepath.Join(folder, "_sheet.png"), makeSheet([][]*image.Paletted{frames}))
+
+        width, height := 0, 0
+        if len(frames) > 0 {
+            width = frames[0].Bounds().Dx()
+            height = frames[0].Bounds().Dy()
+        }
+        text := fmt.Sprintf("%v\r\n\r\nShown by: %v\r\nFrames: %v, %v by %v pixels\r\nFrom: %v entry %v\r\n", spell.Name, spell.Note, len(frames), width, height, spell.Archive, spell.Entry)
+        os.WriteFile(filepath.Join(folder, "_source.txt"), []byte(text), 0644)
+    }
+
+    return count
+}
+
 // takes the pictures of the cursors as they are read
 type cursorKeeper struct {
     Pictures []*image.Paletted
@@ -337,6 +382,18 @@ archives/<file>/<entry>_<frame>.png
         chriver     rivers, the chaos node
         compix      the combat bar and its buttons
 
+spells/<name>/<frame>.png
+    the pictures of the spells of battles, in folders with their names. They are the same pictures
+    as in archives/cmbtfx, specfx and cmbmagic, easier to find. _source.txt says which spells show
+    the picture and where it comes from, _sheet.png shows all frames in a row.
+    A changed frame has to keep the size of the picture. Frames can be added after the last one
+    for the spells that play all their frames once (not for the bolts and the lightning, which
+    use their frames by number).
+    Realm Nature, Sorcery, Chaos, Life, Death and Arcane are the pictures most spells on a unit
+    show: one picture for all such spells of the realm.
+    In a battle the game adds light to these pictures and a halo around them. What is drawn bright
+    glows, black gives no light.
+
 cursors/<number>_<name>.png
     the cursors of the mouse, 16 by 16 pixels. A changed cursor has to keep that size.
         00_normal   the pointer
@@ -382,6 +439,7 @@ func main() {
     unitCount, unitPictures := exportUnits(*dataPath, *outPath)
     archivePictures := exportArchives(*dataPath, *outPath)
     cursorPictures := exportCursors(*dataPath, *outPath)
+    spellPictures := exportSpells(*dataPath, *outPath)
 
     err = exportPalette(*outPath)
     if err != nil {
@@ -390,6 +448,6 @@ func main() {
 
     os.WriteFile(filepath.Join(*outPath, "README.txt"), []byte(readme), 0644)
 
-    fmt.Printf("units: %v, pictures of units: %v, pictures of archives: %v, cursors: %v\n", unitCount, unitPictures, archivePictures, cursorPictures)
+    fmt.Printf("units: %v, pictures of units: %v, pictures of archives: %v, cursors: %v, pictures of spells: %v\n", unitCount, unitPictures, archivePictures, cursorPictures, spellPictures)
     fmt.Printf("written to %v\n", *outPath)
 }

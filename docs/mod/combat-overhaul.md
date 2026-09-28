@@ -70,6 +70,8 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 - Where the unit of the player can go shows on the ground, F6 goes through the looks
   (`combat/movearea.go`). Over a cell out of reach: a black outline and the plain cursor in place
   of the blue outline and the red X.
+- Spells give light: their picture is added to itself, and a halo of art pixels in steps of
+  brightness is added around it (`combat/spellglow.go`, F7 turns it off and on).
 - Bolts of spells go on with every tick of the game in place of 10 pixels with every redraw of
   the original (`SmoothBolts` in `combat/spellanim.go`). Way, time and frames are the original's.
 - Cursors over the field are drawn on the art pixels of the field (`CursorOnFieldPixels`), the

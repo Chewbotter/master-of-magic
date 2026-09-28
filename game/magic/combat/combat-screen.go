@@ -255,6 +255,8 @@ type CombatScreen struct {
     moveArea *moveAreaTiles
     moveShapes *moveAreaShapes
     moveLayer *ebiten.Image
+    // the halos of the frames of spells, see spellglow.go
+    spellHalos map[*ebiten.Image]*ebiten.Image
     // the cursor is over a cell the unit of the player can not go to or attack
     outOfReach bool
     claimedTiles map[image.Point]*ArmyUnit
@@ -2969,6 +2971,7 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
     // set again below, see movearea.go
     combat.outOfReach = false
     combat.updateMoveAreaKey()
+    combat.updateSpellGlowKey()
 
     mouseX, mouseY := inputmanager.MousePosition()
     hudImage, _ := combat.ImageCache.GetImage("cmbtfx.lbx", 28, 0)
