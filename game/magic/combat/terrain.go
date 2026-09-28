@@ -280,7 +280,7 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     ground.mergeDirt()
     ground.choosePictures()
     // pieces of 2 by 2 tiles, see large.go
-    ground.placeLarge(zone, largeGameCount + mod.CountExtras(ground.Set, largeName, largeGameCount))
+    ground.placeLarge(width, height, zone, largeGameCount + mod.CountExtras(ground.Set, largeName, largeGameCount))
 
     return ground
 }

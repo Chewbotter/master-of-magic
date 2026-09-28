@@ -226,11 +226,21 @@ func TestLargePieces(test *testing.T) {
             test.Fatalf("no large pieces on grass")
         }
 
+        // every picture once at most
+        if len(ground.Large) > largeGameCount {
+            test.Fatalf("%v large pieces of %v pictures", len(ground.Large), largeGameCount)
+        }
+        numbers := make(map[int]bool)
+
         seen := make(map[image.Point]bool)
         for _, piece := range ground.Large {
             if piece.Number < 1 || piece.Number > largeGameCount {
                 test.Fatalf("picture %v of %v", piece.Number, largeGameCount)
             }
+            if numbers[piece.Number] {
+                test.Fatalf("picture %v twice", piece.Number)
+            }
+            numbers[piece.Number] = true
             for _, cell := range largeCells(piece.Cgx, piece.Cgy) {
                 if seen[cell] {
                     test.Fatalf("two large pieces on %v", cell)
@@ -242,6 +252,9 @@ func TestLargePieces(test *testing.T) {
                 }
                 if plateauKeepsOut(zone, cell.X, cell.Y) {
                     test.Fatalf("a large piece in the town at %v", cell)
+                }
+                if x, y := CellToTile(cell.X, cell.Y); x < 0 || y < 0 || x >= BattlefieldWidth || y >= BattlefieldHeight {
+                    test.Fatalf("a large piece beyond the field at tile %v, %v", x, y)
                 }
                 if picture := ground.Picture[ground.index(cell.X, cell.Y)]; picture > 3 {
                     test.Fatalf("a large piece on picture %v at %v", picture, cell)
@@ -487,5 +500,24 @@ func TestAddedGroundIsSprinkled(test *testing.T) {
     AddedGroundShare = 1
     if got := added(make(40)); got < 0.95 {
         test.Fatalf("at 1 with 40 pictures: %v", got)
+    }
+}
+
+// with many pictures of large pieces no more than the share of the field, each a different one
+func TestLargePiecesOnceEach(test *testing.T) {
+    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, ZoneType{})
+    ground.Large = nil
+    ground.placeLarge(BattlefieldWidth, BattlefieldHeight, ZoneType{}, 40)
+
+    most := int(float64(BattlefieldWidth * BattlefieldHeight) * largeShare / 4)
+    if len(ground.Large) == 0 || len(ground.Large) > most {
+        test.Fatalf("%v large pieces, at most %v", len(ground.Large), most)
+    }
+    numbers := make(map[int]bool)
+    for _, piece := range ground.Large {
+        if numbers[piece.Number] || piece.Number < 1 || piece.Number > 40 {
+            test.Fatalf("picture %v", piece.Number)
+        }
+        numbers[piece.Number] = true
     }
 }

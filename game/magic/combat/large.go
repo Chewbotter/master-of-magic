@@ -4,10 +4,13 @@ package combat
 // cluster of rocks, a bare patch of dirt, a hill with a larger footprint (user, 2026-09-28). Not in
 // the original.
 //
-// A battlefield has a few of them, far fewer than tiles (largeShare). They lie on open grass only:
-// all four cells plain grass of one height, without a road, outside of the town and the lair, and
-// no two on the same cell. Trees and rocks keep off them. They are for the look only and cost what
-// the ground costs.
+// A battlefield has a few of them, far fewer than tiles (largeShare), and EVERY PICTURE ONCE AT
+// MOST (user, 2026-09-28: "a hard limit of one per map ... one of each individual large image, not
+// 1 large image total"): with three pictures there are up to three large pieces, each a different
+// one. They lie on the field itself, not on the ground around it, where they would hardly be seen.
+// They lie on open grass only: all four cells plain grass of one height, without a road, outside
+// of the town and the lair, and no two on the same cell. Trees and rocks keep off them. They are
+// for the look only and cost what the ground costs.
 //
 // A large piece is drawn OVER the ground of its four tiles, which is drawn as always. So its
 // picture can cover them whole, or be see-through around what it shows.
@@ -28,6 +31,7 @@ import (
     "image"
     "image/color"
     "math"
+    "math/rand/v2"
 
     "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
@@ -38,7 +42,7 @@ import (
 // turns them off
 var LargeGround = true
 
-// how much of the ground large pieces cover, 0 to 1
+// how much of the field large pieces cover at most, 0 to 1. no more pieces than there are pictures
 const largeShare = 0.04
 // places that are tried for every piece before it is given up
 const largeTries = 30
@@ -102,25 +106,32 @@ func (ground *BattleGround) largeAllowed(zone ZoneType, cgx int, cgy int) bool {
     return true
 }
 
-// puts the large pieces on the ground. pictures is how many there are to pick from
-func (ground *BattleGround) placeLarge(zone ZoneType, pictures int) {
+// puts the large pieces on a field of width by height tiles. pictures is how many there are: every
+// one of them is used once at most
+func (ground *BattleGround) placeLarge(width int, height int, zone ZoneType, pictures int) {
     ground.Covered = make([]bool, ground.Width * ground.Height)
     if !LargeGround || pictures <= 0 {
         return
     }
 
-    // every picture once before any comes again, see pictureBag
-    var bag pictureBag
+    onField := func(cgx int, cgy int) bool {
+        x, y := CellToTile(cgx, cgy)
+        return x >= 0 && y >= 0 && x < width && y < height
+    }
 
-    count := int(math.Round(float64(ground.Width * ground.Height) * largeShare / 4))
-    for range count {
+    count := int(math.Round(float64(width * height) * largeShare / 4))
+    // the pictures in an order by chance, each once
+    for _, picture := range rand.Perm(pictures) {
+        if len(ground.Large) >= count {
+            break
+        }
+
         for range largeTries {
-            cgx := ground.MinX + roll(ground.Width) - 1
-            cgy := ground.MinY + roll(ground.Height) - 1
+            cgx, cgy := TileToCell(rand.N(width), rand.N(height))
 
             free := true
             for _, cell := range largeCells(cgx, cgy) {
-                free = free && ground.largeAllowed(zone, cell.X, cell.Y)
+                free = free && onField(cell.X, cell.Y) && ground.largeAllowed(zone, cell.X, cell.Y)
             }
             if !free {
                 continue
@@ -129,11 +140,7 @@ func (ground *BattleGround) placeLarge(zone ZoneType, pictures int) {
             for _, cell := range largeCells(cgx, cgy) {
                 ground.Covered[ground.index(cell.X, cell.Y)] = true
             }
-            number := roll(pictures)
-            if SpreadPictures {
-                number = bag.next(pictures) + 1
-            }
-            ground.Large = append(ground.Large, LargePiece{Cgx: cgx, Cgy: cgy, Number: number})
+            ground.Large = append(ground.Large, LargePiece{Cgx: cgx, Cgy: cgy, Number: picture + 1})
             break
         }
     }
