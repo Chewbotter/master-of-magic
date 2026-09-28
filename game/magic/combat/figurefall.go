@@ -51,6 +51,9 @@ const corpseTurnedSize = 72
 // once it lies
 const corpseBrightness = 0.65
 const corpseSaturation = 0.3
+// how far the black of a corpse is lifted to gray, of 1: its outline is dark gray, not black, which
+// sets it apart from the figures that stand (user, 2026-09-27)
+const corpseBlackLift = 0.17
 const corpseDarkenTime = 0.5
 
 // the way a unit faces on the screen, across and down
@@ -239,6 +242,10 @@ func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawabl
 
                 var colors colorm.ColorM
                 colors.ChangeHSV(0, saturation, float64(brightness))
+                // lifts the dark end: black becomes gray, the bright colors hardly change
+                lift := corpseBlackLift * darkened * float64(fieldBrightness(int(x), int(y)))
+                colors.Scale(1 - lift, 1 - lift, 1 - lift, 1)
+                colors.Translate(lift, lift, lift, 0)
                 colorm.DrawImage(screen, picture, colors, &options)
             },
         })
