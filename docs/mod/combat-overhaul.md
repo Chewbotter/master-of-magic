@@ -67,6 +67,8 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 - Sounds were not checked.
 
 ## Different from the original on purpose (user requests)
+- No boots on the tiles a unit would walk over (`ShowMovePath` in `combat/autotoggle.go`).
+- The AUTO button toggles auto and is lit while auto is on.
 - Space sets the player's army to auto and takes it off again (`combat/autotoggle.go`). Taken off
   while units act: units that started their turn finish it, the others keep theirs for the player.
 - A figure that attacks steps back and then forward: back on 3, held on 4 and forward on 5 and 6

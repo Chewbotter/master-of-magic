@@ -1739,15 +1739,15 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
             return
         }
 
-        if combat.Model.AttackingArmy.Player == player {
-            combat.Model.AttackingArmy.Auto = true
-        } else {
-            combat.Model.DefendingArmy.Auto = true
-        }
+        // on and off, as the key. see autotoggle.go
+        combat.ToggleAuto()
     }, func(color *colorm.ColorM){
         if combat.ExtraControl {
             color.Translate(0, 0, 0.9, 0)
             color.Scale(0.9, 0.9, 1, 1)
+        } else if combat.autoIsOn() {
+            // lit while the army fights by itself
+            lightAutoButton(color)
         }
     }))
 
@@ -3876,7 +3876,9 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             var path pathfinding.Path
             ok := false
 
-            if combat.Model.SelectedUnit.Moving {
+            if !ShowMovePath {
+                // no boots on the way of the unit (user, 2026-09-27)
+            } else if combat.Model.SelectedUnit.Moving {
                 path = combat.Model.SelectedUnit.CurrentPath
                 ok = true
             } else {

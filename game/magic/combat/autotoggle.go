@@ -8,12 +8,35 @@ package combat
 
 import (
     "github.com/hajimehoshi/ebiten/v2"
+    "github.com/hajimehoshi/ebiten/v2/colorm"
     "github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 // turns the key off
 const AutoToggle = true
 var AutoToggleKey = ebiten.KeySpace
+
+// the boots on the tiles a unit would walk over to the cursor, as the original shows them. off:
+// the user found them clutter (2026-09-27). the cursor still says whether the unit can go there
+const ShowMovePath = false
+
+// the AUTO button while auto is on: its gold made brighter. parts of 1 for red, green, blue
+const autoLitScaleRed = 1.25
+const autoLitScaleGreen = 1.2
+const autoLitScaleBlue = 0.9
+const autoLitAddRed = 0.12
+const autoLitAddGreen = 0.1
+const autoLitAddBlue = 0.0
+
+func lightAutoButton(color *colorm.ColorM) {
+    color.Scale(autoLitScaleRed, autoLitScaleGreen, autoLitScaleBlue, 1)
+    color.Translate(autoLitAddRed, autoLitAddGreen, autoLitAddBlue, 0)
+}
+
+func (combat *CombatScreen) autoIsOn() bool {
+    army := combat.Model.humanArmy()
+    return army != nil && army.Auto
+}
 
 // the army a player at the keyboard leads, or nil
 func (model *CombatModel) humanArmy() *Army {
