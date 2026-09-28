@@ -4076,6 +4076,14 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             options.GeoM.Translate(tx, ty)
             */
 
+            // the lunge of a strike, and figures that close ranks. see figureslide.go
+            if figure >= 0 && figure < unit.VisibleFigures() {
+                lungeX, lungeY := combat.strikeSlide(unit, combat.figurePhase(unit, figure, figureCount))
+                regroupX, regroupY := combat.regroupSlide(unit, figure, figureCount)
+                tx += (lungeX + regroupX) * combat.CameraScale
+                ty += (lungeY + regroupY) * combat.CameraScale
+            }
+
             unitOptions.GeoM.Scale(combat.CameraScale, combat.CameraScale)
             unitOptions.GeoM.Translate(tx, ty)
             // unitOptions.GeoM.Translate(float64(tile0.Bounds().Dx()/2) * combat.CameraScale, 0)

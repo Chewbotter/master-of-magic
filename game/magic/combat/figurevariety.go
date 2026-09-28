@@ -38,6 +38,12 @@ type figureState struct {
     Y float64
     // the figure was lost and has become a corpse, see figurefall.go
     Fallen bool
+    // where the figure is in its tile while it slides to its place, in art pixels from the middle
+    // of the tile. see figureslide.go
+    Placed bool
+    PlaceX float64
+    PlaceY float64
+    PlaceCounter uint64
 }
 
 type unitFigures struct {
