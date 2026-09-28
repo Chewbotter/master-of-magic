@@ -30,14 +30,8 @@ local FEET_Y = 23
 local FRAME_TIME = 0.11
 local FEET_COLOR = Color{ r = 255, g = 0, b = 255, a = 255 }
 
--- names and frames of the tags, frames counted from 1 as Aseprite does
-local TAGS = {
-  { name = "walk", from = 1, to = 3 },
-  { name = "strike", from = 4, to = 4 },
-  { name = "long strike", from = 4, to = 7 },
-  { name = "dying", from = 8, to = 8 },
-  { name = "dead", from = 9, to = 9 },
-}
+-- NO TAGS (user, 2026-09-27): with so few frames they make the timeline hard to scrub. what the
+-- frames are for: 0, 1, 2 walk, 3 strike, 4, 5, 6 longer strike, 7 dying, 8 dead
 
 local function readRace(unitFolder)
   local file = io.open(app.fs.joinPath(unitFolder, "_source.txt"), "r")
@@ -91,11 +85,6 @@ local function makeFile(race, units, palette)
   end
   for _, frame in ipairs(sprite.frames) do
     frame.duration = FRAME_TIME
-  end
-
-  for _, tag in ipairs(TAGS) do
-    local made = sprite:newTag(tag.from, tag.to)
-    made.name = tag.name
   end
 
   local firstLayer = sprite.layers[1]
