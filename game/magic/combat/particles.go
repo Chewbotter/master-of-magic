@@ -41,10 +41,22 @@ type particle struct {
     // below this it bounces, if it has a ground
     HasGround bool
     Ground float64
+    // it does not bounce: where it comes down it leaves a stain of this color and is gone
+    Stains bool
+    Stain color.RGBA
+}
+
+// where a particle has come down and left a stain
+type landing struct {
+    X int
+    Y int
+    Color color.RGBA
 }
 
 type particleSystem struct {
     Particles []particle
+    // the particles that have come down since this was last emptied
+    Landed []landing
 }
 
 func (system *particleSystem) add(each particle) {
@@ -71,6 +83,11 @@ func (system *particleSystem) step(seconds float64) {
         each.SpeedY += each.Gravity * seconds
         each.X += each.SpeedX * seconds
         each.Y += each.SpeedY * seconds
+
+        if each.HasGround && each.Stains && each.Y > each.Ground && each.SpeedY > 0 {
+            system.Landed = append(system.Landed, landing{X: int(math.Floor(each.X)), Y: int(math.Floor(each.Ground)), Color: each.Stain})
+            continue
+        }
 
         if each.HasGround && each.Y > each.Ground && each.SpeedY > 0 {
             each.Y = each.Ground

@@ -2771,6 +2771,9 @@ func (combat *CombatScreen) AddDamageIndicator(unit *ArmyUnit, damage int) {
     }
 
     combat.DamageIndicators = append(combat.DamageIndicators, indicator)
+
+    // a unit that is hurt in a fight or by a missile bleeds, see blood.go
+    combat.bleed(unit, damage)
 }
 
 func (combat *CombatScreen) UpdateMouseState() {
@@ -3871,6 +3874,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
     // the roads of a town, or the clouds a flying fortress stands on. see scenerydraw.go
     combat.drawTownGround(screen)
+    // the stains of blood, see blood.go
+    combat.drawStains(screen)
     // the marks spells have left on the ground, see decals.go
     combat.drawDecals(screen)
     // spells that lie on the ground, see spellanim.go

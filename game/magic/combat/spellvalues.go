@@ -602,5 +602,7 @@ func EffectsTemplate() string {
         out.WriteString("\n")
     }
 
+    out.WriteString(bloodTemplate())
+
     return strings.ReplaceAll(out.String(), "\n", "\r\n")
 }

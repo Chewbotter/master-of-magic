@@ -143,6 +143,10 @@ type spellEffects struct {
     // what a unit was last hit by, for the color of its corpses. see figurefall.go
     Causes map[*ArmyUnit]deathCause
 
+    // the stains of blood on the ground, see blood.go
+    Stains bloodStains
+    StainStrength float64
+
     // the marks on the ground and their pictures, see decals.go
     Decals []decal
     DecalPictures map[string][]*ebiten.Image
@@ -424,6 +428,12 @@ func (combat *CombatScreen) updateSpellEffects() {
     }
 
     effects.Particles.step(seconds)
+
+    // drops of blood that have come down, see blood.go
+    for _, each := range effects.Particles.Landed {
+        combat.stain(each.X, each.Y, each.Color)
+    }
+    effects.Particles.Landed = effects.Particles.Landed[:0]
 }
 
 // art pixels around the middle of a bolt its particles start in
