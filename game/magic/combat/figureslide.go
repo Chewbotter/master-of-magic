@@ -2,9 +2,13 @@ package combat
 
 // Figures that slide. Not in the original.
 //
-// The lunge of a strike: a figure that attacks with a long strike (frames of the replacement folder,
-// see game/magic/mod) slides back while it winds up on frame 4, and forward through the rest of the
-// swing, toward what it faces.
+// The lunge of a strike: a figure that attacks steps back and then forward, toward what it faces
+// (user, 2026-09-27).
+// - with frames of a long strike (4, 5, 6 of the replacement folder, see game/magic/mod): it steps
+//   back on 3, holds on 4, and moves forward on 5 and 6
+// - with 4 and nothing after it there is no frame to move forward on: it steps back on 4 and
+//   forward on 3
+// - with the frames of the game only: it steps back on 1 and forward on 3
 //
 // Closing ranks: when figures of a unit were lost and the ones that are left take their new places
 // in the tile, they slide there.
@@ -22,26 +26,48 @@ import (
 const StrikeSlide = true
 // how far a figure slides back on its wind up and forward at the end of its swing, in art pixels
 // from where it stands
-const strikeSlideBack = 3.0
-const strikeSlideForward = 4.0
+const strikeSlideBack = 2.0
+const strikeSlideForward = 2.0
 
 // turns closing ranks off: the figures are at their new places at once
 const RegroupSlide = true
 // art pixels a second a figure slides to its new place in the tile
 const regroupSpeed = 30.0
 
-// where a figure is from where it stands while it shows a frame of a long strike, in art pixels
-// toward what it faces. the swing goes forward from the wind up to its last frame
-func strikeSlideAt(frame int) float64 {
-    switch {
-        case frame == strikeWindUpFrame: return -strikeSlideBack
-        case frame > strikeWindUpFrame && frame <= mod.FrameStrikeLast:
-            // frame 5 is half of the way, frame 6 all of it
-            part := float64(frame - strikeWindUpFrame) / float64(mod.FrameStrikeLast - strikeWindUpFrame)
-            return strikeSlideForward * part
+// where the figure is at the end of each frame of its swing, in art pixels toward what it faces from
+// where it stands. frames are the frames of the swing in their order, a frame that shows longer
+// more than once
+func strikeSlideEnds(frames []int) []float64 {
+    // the frames the figure moves forward on, 5 and 6
+    forward := 0
+    for _, frame := range frames {
+        if frame > strikeWindUpFrame {
+            forward += 1
+        }
     }
-    // the strike frame itself: where the figure stands
-    return 0
+
+    ends := make([]float64, len(frames))
+    done := 0
+
+    for index, frame := range frames {
+        switch {
+            case frame > strikeWindUpFrame:
+                // forward, by the same part on each of these frames
+                done += 1
+                ends[index] = -strikeSlideBack + (strikeSlideBack + strikeSlideForward) * float64(done) / float64(forward)
+            case forward > 0:
+                // 3 steps back, 4 holds there
+                ends[index] = -strikeSlideBack
+            case frame == mod.FrameStrike:
+                // nothing to move forward on but the strike frame
+                ends[index] = strikeSlideForward
+            default:
+                // the standing frame of the game, or the wind up without anything after it
+                ends[index] = -strikeSlideBack
+        }
+    }
+
+    return ends
 }
 
 func easeInOut(part float64) float64 {
@@ -56,7 +82,8 @@ func (combat *CombatScreen) strikeSlide(unit *ArmyUnit, phase float64) (float64,
 
     frames := longStrikeFrames(unit)
     if len(frames) == 0 {
-        return 0, 0
+        // the strike of the game, as figureFrame shows it
+        frames = figureAttackFrames
     }
 
     // where in the swing the figure is, with the part of the frame that has gone by
@@ -68,8 +95,10 @@ func (combat *CombatScreen) strikeSlide(unit *ArmyUnit, phase float64) (float64,
     index := int(place)
     part := place - float64(index)
 
-    from := strikeSlideAt(frames[index])
-    to := strikeSlideAt(frames[(index + 1) % len(frames)])
+    // through a frame the figure goes from where the frame before it ended to where this one ends
+    ends := strikeSlideEnds(frames)
+    from := ends[(index + len(ends) - 1) % len(ends)]
+    to := ends[index]
     distance := from + (to - from) * easeInOut(part)
 
     faceX, faceY := facingOnScreen(unit.Facing)

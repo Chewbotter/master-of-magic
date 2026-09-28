@@ -4,18 +4,29 @@ import (
     "testing"
 )
 
-// back on the wind up, forward through the rest of the swing, at its place on the strike frame
-func TestStrikeSlideByFrame(test *testing.T) {
-    if strikeSlideAt(3) != 0 {
-        test.Errorf("frame 3: %v, should be where the figure stands", strikeSlideAt(3))
+func slideEnds(test *testing.T, name string, frames []int, want []float64) {
+    got := strikeSlideEnds(frames)
+    if len(got) != len(want) {
+        test.Fatalf("%v: %v places for %v frames", name, len(got), len(want))
     }
-    if strikeSlideAt(4) >= 0 {
-        test.Errorf("frame 4: %v, should be back", strikeSlideAt(4))
+    for index := range want {
+        if got[index] != want[index] {
+            test.Errorf("%v: frame %v ends at %v, should be %v. all: %v", name, frames[index], got[index], want[index], got)
+        }
     }
-    if !(strikeSlideAt(5) > 0 && strikeSlideAt(6) > strikeSlideAt(5)) {
-        test.Errorf("frames 5 and 6: %v and %v, should go forward", strikeSlideAt(5), strikeSlideAt(6))
-    }
-    if strikeSlideAt(6) != strikeSlideForward {
-        test.Errorf("frame 6: %v, should be all of the way forward", strikeSlideAt(6))
-    }
+}
+
+// where the figure is at the end of each frame of its swing
+func TestStrikeSlide(test *testing.T) {
+    back := -strikeSlideBack
+    forward := strikeSlideForward
+    middle := (back + forward) / 2
+
+    // back on 3, hold on 4, forward on 5 and 6
+    slideEnds(test, "3 4 4 5 6", []int{3, 4, 4, 5, 6}, []float64{back, back, back, middle, forward})
+    slideEnds(test, "3 4 4 5", []int{3, 4, 4, 5}, []float64{back, back, back, forward})
+    // nothing after the wind up: back on 4, forward on 3
+    slideEnds(test, "3 4 4", []int{3, 4, 4}, []float64{forward, back, back})
+    // the frames of the game: back on 1, forward on 3
+    slideEnds(test, "3 1", figureAttackFrames, []float64{forward, back})
 }
