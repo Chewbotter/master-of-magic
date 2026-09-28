@@ -13,6 +13,7 @@ func testGround(width int, height int) *BattleGround {
         Group: make([]TerrainGroup, width * height),
         Picture: make([]int, width * height),
         Roads: make([]int, width * height),
+        Trees: make([]int, width * height),
     }
 }
 

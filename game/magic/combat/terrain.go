@@ -90,6 +90,8 @@ type BattleGround struct {
     Picture []int
     // the bits of the road of every cell, 0 without one
     Roads []int
+    // the trees that stand in every cell, see movecost.go
+    Trees []int
     EnchantedRoads bool
 }
 
@@ -134,6 +136,19 @@ func (ground *BattleGround) PictureOfTile(x int, y int) int {
 func (ground *BattleGround) RoadOfTile(x int, y int) int {
     cgx, cgy := TileToCell(x, y)
     return ground.RoadAt(cgx, cgy)
+}
+
+func (ground *BattleGround) addTree(cgx int, cgy int) {
+    if ground != nil && ground.contains(cgx, cgy) {
+        ground.Trees[ground.index(cgx, cgy)] += 1
+    }
+}
+
+func (ground *BattleGround) TreesAt(cgx int, cgy int) int {
+    if !ground.contains(cgx, cgy) {
+        return 0
+    }
+    return ground.Trees[ground.index(cgx, cgy)]
 }
 
 // trees and rocks stand on grass without a road only
@@ -184,6 +199,7 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, zone Zon
     ground.Group = make([]TerrainGroup, cells)
     ground.Picture = make([]int, cells)
     ground.Roads = make([]int, cells)
+    ground.Trees = make([]int, cells)
 
     // the original's grid gets its number of patches, the rest of the ground as many for its size
     beyond := max(0, cells / (OriginalGridWidth * OriginalGridHeight) - 1)

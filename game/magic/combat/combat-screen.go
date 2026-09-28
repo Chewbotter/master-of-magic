@@ -3996,7 +3996,7 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
                     scale.DrawScaled(screen, movementImage, &options)
 
-                    moves = moves.Subtract(pathCost(image.Pt(lastX, lastY), image.Pt(tileX, tileY)))
+                    moves = moves.Subtract(combat.Model.StepCost(image.Pt(lastX, lastY), image.Pt(tileX, tileY), combat.Model.SelectedUnit.IsFlying()))
                 }
             }
         }

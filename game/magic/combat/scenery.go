@@ -288,6 +288,8 @@ func scatterTrees(count int, lbx string, zone ZoneType, area sceneryArea, ground
                     Lbx: lbx,
                     Index: sceneryTreeIndex + rand.N(sceneryPictures),
                 })
+                // a tree makes its cell harder to go through, see movecost.go
+                ground.addTree(cgx, cgy)
                 placed += 1
             } else {
                 tries += 1

@@ -1480,7 +1480,7 @@ func (unit *ArmyUnit) CanFollowPath(path pathfinding.Path, infiniteMovement bool
     for i := 1; i < len(path); i++ {
         if !infiniteMovement {
             if movesLeft.GreaterThan(fraction.FromInt(0)) {
-                movesLeft = movesLeft.Subtract(pathCost(path[i-1], path[i]))
+                movesLeft = movesLeft.Subtract(unit.stepCost(path[i-1], path[i]))
             } else {
                 return false
             }
@@ -2842,27 +2842,8 @@ func (model *CombatModel) computePath(x1 int, y1 int, x2 int, y2 int, canTravers
             return pathfinding.Infinity
         }
 
-        xDiff := int(math.Abs(float64(x1 - x2)))
-        yDiff := int(math.Abs(float64(y1 - y2)))
-
-        if xDiff == 0 && yDiff == 1 {
-            return 1
-        }
-
-        if xDiff == 1 && yDiff == 0 {
-            return 1
-        }
-
-        if xDiff == 1 && yDiff == 1 {
-            return 1.5
-        }
-
-        if xDiff == 0 && yDiff == 0 {
-            return 0
-        }
-
-        // shouldn't ever really get here
-        return float64(xDiff + yDiff)
+        // the ground and the step, see movecost.go
+        return model.StepCost(image.Pt(x1, y1), image.Pt(x2, y2), isFlying).ToFloat()
     }
 
     neighbors := func(cx int, cy int) []image.Point {
@@ -2909,7 +2890,7 @@ func (model *CombatModel) computePath(x1 int, y1 int, x2 int, y2 int, canTravers
         return out
     }
 
-    return pathfinding.FindPath(image.Pt(x1, y1), image.Pt(x2, y2), 50, tileCost, neighbors, pathfinding.PointEqual)
+    return pathfinding.FindPath(image.Pt(x1, y1), image.Pt(x2, y2), maxPathCost, tileCost, neighbors, pathfinding.PointEqual)
 }
 
 /* return a valid path that the given unit can take to reach tile position x, y
@@ -3180,7 +3161,8 @@ func (model *CombatModel) CreateEarthToMud(centerX int, centerY int){
 
     for x := centerX - 2; x <= centerX + 2; x++ {
         for y := centerY - 2; y <= centerY + 2; y++ {
-            if x >= 0 && x < len(model.Tiles[0]) && y >= 0 && y < len(model.Tiles) {
+            // rough ground gets no mud, as in the original (Apply_Earth_To_Mud)
+            if x >= 0 && x < len(model.Tiles[0]) && y >= 0 && y < len(model.Tiles) && model.Tiles[y][x].Ground != TerrainRough {
                 model.Tiles[y][x].Mud = true
             }
         }
@@ -7068,7 +7050,7 @@ func (model *CombatModel) MoveUnit(mover *ArmyUnit, targetX int, targetY int) bo
     // tile where the unit came from is now empty
     model.setTileUnit(mover.X, mover.Y, nil)
 
-    mover.MovesLeft = mover.MovesLeft.Subtract(pathCost(image.Pt(mover.X, mover.Y), image.Pt(targetX, targetY)))
+    mover.MovesLeft = mover.MovesLeft.Subtract(model.StepCost(image.Pt(mover.X, mover.Y), image.Pt(targetX, targetY), mover.IsFlying()))
     if mover.MovesLeft.LessThan(fraction.FromInt(0)) {
         mover.MovesLeft = fraction.FromInt(0)
     }

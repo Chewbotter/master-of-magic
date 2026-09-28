@@ -57,6 +57,7 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 10 | Ground: every cell is grass, rough or dirt. Rough and dirt come in wandering patches (counts per landscape), rough never next to dirt, on a road or in a town or lair, grass between dirt becomes dirt. Pictures by the kinds of the neighbors: grass shows the edge of dirt next to it, rough is autotiled by its four sides. Made over the field and its border in the original's grid, the original's counts on its grid and as many for the size beyond | `combat/terrain.go` |
 | 10 | Forest and hills from the world map: forest (and nature nodes) 30 to 60 trees and few rough patches, hills 20 rough patches. Trees and rocks only on grass without a road | `combat/terrain.go`, `combat/scenery.go`, `game/battleground.go` |
 | 10 | Roads: when the battle's tile of the world map has a road, roads run from the middle (from the town's sides in a town) toward each neighbor with a road, wandering as the original's, to the edge of the border. Road pieces by neighbors, two sets of pictures, enchanted roads golden | `combat/terrain.go`, `combat/terraindraw.go` |
+| 10 | Movement costs of the ground, in halves of a move: grass and dirt 2, rough 4, a road 1, each tree in the cell 1 more up to 4, mud 12, a diagonal step 1 more. Flying units 2 everywhere. Earth to Mud leaves rough alone. A step is allowed with any movement left before it (was already so) | `combat/movecost.go` |
 
 ## Spells: what was not done in batch 9
 - Dispel Magic and Dispel Magic True share one function in our code and both show CMBTFX 26. The
@@ -163,10 +164,6 @@ Found while reading the reference. Not started unless noted.
 - Missiles, vortexes and curse pictures are not part of the draw order yet: drawn after everything.
 
 ### Battlefield
-- Movement costs of the ground (batch 10 made the ground, not its rules). In the original, in
-  halves of a move: grass and dirt 2, rough 4, a road 1, a tree adds 1 to its cell, mud 12
-  (Set_Movement_Cost_Maps). Ours: every cell costs 1, a diagonal step 1.5. `Tile.Ground` and
-  `Tile.Road` hold what the costs need.
 - The original makes the same battlefield every time at the same place of the world map: it seeds
   its random numbers with the place (wx * wy * (wp + 5) + 10039). Ours makes a new one every battle.
 - Rivers: not in the original either. It has the code (Carve_River_Terrain) but never passes it a
