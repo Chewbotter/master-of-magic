@@ -5,8 +5,12 @@
 -- replacement folder is the list of what was changed. A frame the game does not have (4 to 8) is
 -- written when there is anything in it.
 --
--- Nothing is ever deleted. A file of the replacement folder whose frame is the game's own again is
--- named at the end, to be taken out by hand.
+-- THE REPLACEMENT FOLDER MIRRORS THE FILES (user, 2026-09-27). For every unit of a file that is
+-- exported, the pictures of the unit in the replacement folder are the frames that are changed in
+-- the file and no others. A picture of such a unit that is not one of them, because its frame was
+-- put back or emptied, or because it was put there by hand, is taken out. It is not deleted: it is
+-- moved to _removed in the replacement folder, where the last one taken out of each name is kept.
+-- Units that are in no exported file, and everything under archives, are left alone.
 --
 -- In Aseprite: File > Scripts, with the file of a race open.
 -- Without a window, for every file of a folder:
@@ -20,9 +24,29 @@ local FACINGS = { up = true, upright = true, right = true, downright = true, dow
 local WIDTH = 28
 local HEIGHT = 30
 
+local REMOVED = "_removed"
+-- frames are looked for up to this number, as the game does
+local MAX_FRAMES = 16
+
 local written = 0
 local same = 0
-local stale = {}
+local removed = {}
+
+-- moves a picture of the replacement folder that is no changed frame of the file out of the way
+local function takeOut(unitName, name)
+  local from = app.fs.joinPath(modFolder, "units", unitName, name)
+  local folder = app.fs.joinPath(modFolder, REMOVED, "units", unitName)
+  local to = app.fs.joinPath(folder, name)
+
+  app.fs.makeAllDirectories(folder)
+  os.remove(to)
+  local ok = os.rename(from, to)
+  if ok then
+    table.insert(removed, from)
+  else
+    table.insert(removed, from .. "  (COULD NOT BE MOVED)")
+  end
+end
 
 -- the picture of a layer at a frame, as large as the picture of a figure. nil if there is nothing
 local function framePicture(sprite, layer, frame)
@@ -82,6 +106,9 @@ local function samePixels(picture, own)
 end
 
 local function exportUnit(sprite, group)
+  -- the names of the pictures the unit has in the replacement folder after this
+  local kept = {}
+
   for _, layer in ipairs(group.layers) do
     if layer.isImage and FACINGS[layer.name] then
       for frameNumber = 1, #sprite.frames do
@@ -105,14 +132,20 @@ local function exportUnit(sprite, group)
           app.fs.makeAllDirectories(app.fs.joinPath(modFolder, "units", group.name))
           picture:saveAs{ filename = target, palette = sprite.palettes[1] }
           written = written + 1
-        else
-          if picture then
-            same = same + 1
-          end
-          if app.fs.isFile(target) then
-            table.insert(stale, target)
-          end
+          kept[name] = true
+        elseif picture then
+          same = same + 1
         end
+      end
+    end
+  end
+
+  -- the mirror: what the unit has in the replacement folder and is no changed frame of the file
+  for facing, _ in pairs(FACINGS) do
+    for frame = 0, MAX_FRAMES - 1 do
+      local name = facing .. "_" .. frame .. ".png"
+      if not kept[name] and app.fs.isFile(app.fs.joinPath(modFolder, "units", group.name, name)) then
+        takeOut(group.name, name)
       end
     end
   end
@@ -153,9 +186,10 @@ else
 end
 
 local report = string.format("%d pictures written to %s, %d are the game's own and left out", written, modFolder, same)
-if #stale > 0 then
-  report = report .. string.format("\n%d files of the replacement folder are the game's own again. take them out by hand:", #stale)
-  for _, path in ipairs(stale) do
+if #removed > 0 then
+  table.sort(removed)
+  report = report .. string.format("\n%d pictures are no changed frame any more and were moved to %s:", #removed, app.fs.joinPath(modFolder, REMOVED))
+  for _, path in ipairs(removed) do
     report = report .. "\n  " .. path
   end
 end
