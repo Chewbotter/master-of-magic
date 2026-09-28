@@ -15,8 +15,10 @@ package combat
 
 import (
     "image"
+    "image/color"
     "log"
     "math"
+    "strings"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/mod"
@@ -34,6 +36,40 @@ var SpellEffectsKey = ebiten.KeyF7
 const pulseBands = 3
 // the ring of light is this many tiles wide
 const pulseWidth = 1.2
+
+// what has hit a unit
+type deathCause struct {
+    Tick uint64
+    HasColor bool
+    Color color.RGBA
+}
+
+// what a unit was hit by counts for the figures it loses for this long, in seconds
+const deathCauseTime = 4.0
+
+// the color the figures a unit loses now take on as they lie, if any
+func (combat *CombatScreen) corpseColor(unit *ArmyUnit) (color.RGBA, bool) {
+    effects := &combat.effects
+
+    cause, ok := effects.Causes[unit]
+    if ok && effects.Tick - cause.Tick <= effectTicks(deathCauseTime) {
+        return cause.Color, cause.HasColor
+    }
+
+    // killed in a fight
+    file, _ := mod.Effects()
+    text, given := file[combatPart]["corpse-color"]
+    if given {
+        if strings.ToLower(strings.TrimSpace(text)) == noColor {
+            return color.RGBA{}, false
+        }
+        value, ok := parseColor(text)
+        if ok {
+            return value, true
+        }
+    }
+    return combatCorpseColor, true
+}
 
 // a unit that shows in one color
 type unitFlash struct {
@@ -87,6 +123,11 @@ type spellEffects struct {
     Owed map[*Projectile]float64
 
     Pixel *ebiten.Image
+
+    // the light of spells, see spelllight.go
+    Lighting spellLighting
+    // what a unit was last hit by, for the color of its corpses. see figurefall.go
+    Causes map[*ArmyUnit]deathCause
 
     // the marks on the ground and their pictures, see decals.go
     Decals []decal
@@ -201,6 +242,15 @@ func (combat *CombatScreen) spellHits(projectile *Projectile) {
         effects.Particles.emitBurst(float64(placeX), float64(placeY), values.ImpactHeight, values.BurstCount, values.BurstSpeed, values.BurstLift, values.BurstGravity, values.BurstLife, values.BurstColors)
     }
 
+    // the figures it kills, see figurefall.go
+    if effects.Causes == nil {
+        effects.Causes = make(map[*ArmyUnit]deathCause)
+    }
+    effects.Causes[target] = deathCause{Tick: effects.Tick, HasColor: values.HasCorpseColor, Color: values.CorpseColor}
+
+    // its light stays for a while, see spelllight.go
+    combat.addGlow(projectile, values)
+
     // the mark it leaves on the ground, see decals.go
     if values.Decal != DecalNone {
         combat.addDecal(projectile.Name, values, target.X, target.Y)
@@ -266,6 +316,8 @@ func (combat *CombatScreen) effectsTick() {
             delete(effects.Flashes, unit)
         }
     }
+
+    combat.lightTick()
 
     kept := effects.Pulses[:0]
     for _, pulse := range effects.Pulses {

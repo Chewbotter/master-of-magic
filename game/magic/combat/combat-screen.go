@@ -4086,7 +4086,9 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                     if unit.IsFlying() {
                         offsetX, offsetY = shadowFlyingX, shadowFlyingY
                     }
-                    unitview.RenderCombatFigureShadow(shadowTarget, unitImage, unitOptions, figureCount, figure, shadowLean, shadowLength, offsetX, offsetY, combat.shadowMatrix())
+                    // away from a spell that gives light, see spelllight.go
+                    lean, length := combat.shadowShape(float64(unit.X), float64(unit.Y))
+                    unitview.RenderCombatFigureShadow(shadowTarget, unitImage, unitOptions, figureCount, figure, lean, length, offsetX, offsetY, combat.shadowMatrix())
                 }
                 return
             }
@@ -4308,6 +4310,10 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             combat.ShowExtraHighlight(screen, combat.ExtraHighlightedUnit, getTilePoints)
         }
     }
+
+    // the field is dark while a spell plays. the spell itself, its particles and the numbers are
+    // drawn over the dark. see spelllight.go
+    combat.drawSpellDark(screen)
 
     projectileOnScreen := originalScreenMatrix(combat.GetCameraMatrix())
     for _, projectile := range combat.Model.Projectiles {

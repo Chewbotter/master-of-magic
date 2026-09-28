@@ -63,7 +63,31 @@ type SpellValues struct {
     // go before the kind, see decals.go
     Decal string
     DecalStrength float64
+
+    // the light of the spell, see spelllight.go: how dark the field gets while it plays 0 to 1,
+    // how far its light goes in art pixels, how much of the dark it takes away in its middle 0 to
+    // 1, by how many art pixels its light flickers, how long it stays where the spell has hit in
+    // seconds, how far from it the shadows of units turn away from it in art pixels
+    Dark float64
+    LightRadius float64
+    LightStrength float64
+    LightFlicker float64
+    LightLinger float64
+    ShadowReach float64
+
+    // the color the figures it kills take on as they lie, see figurefall.go. without one they
+    // are gray
+    HasCorpseColor bool
+    CorpseColor color.RGBA
 }
+
+// the figures that are killed in a fight, by no spell, take this color on: blood
+var combatCorpseColor = color.RGBA{R: 0xa0, G: 0x28, B: 0x28, A: 0xff}
+// the part of the file of values that is about the fight and no spell
+const combatPart = "combat"
+
+var burnedColor = color.RGBA{R: 0x8a, G: 0x58, B: 0x2c, A: 0xff}
+var frozenColor = color.RGBA{R: 0x50, G: 0x88, B: 0xd0, A: 0xff}
 
 func colors(text string) []color.RGBA {
     var out []color.RGBA
@@ -122,6 +146,11 @@ func plainValues() SpellValues {
         PulseColor: white,
         Decal: DecalNone,
         DecalStrength: 0.85,
+        Dark: 0.3,
+        LightRadius: 45,
+        LightStrength: 1,
+        LightLinger: 0.25,
+        ShadowReach: 60,
     }
 }
 
@@ -148,6 +177,11 @@ func boltValues(ramp []color.RGBA, light color.RGBA) SpellValues {
     values.PulseStrength = 0.3
     values.PulseColor = light
     values.Decal = "scorch"
+    values.Dark = 0.55
+    values.LightRadius = 75
+    values.LightFlicker = 2
+    values.LightLinger = 0.6
+    values.ShadowReach = 110
     return values
 }
 
@@ -155,6 +189,22 @@ func boltValues(ramp []color.RGBA, light color.RGBA) SpellValues {
 func hurtValues() SpellValues {
     values := plainValues()
     values.FlashTime = 0.1
+    values.Dark = 0.4
+    values.LightRadius = 55
+    values.LightLinger = 0.4
+    values.ShadowReach = 80
+    return values
+}
+
+func burns(values SpellValues) SpellValues {
+    values.HasCorpseColor = true
+    values.CorpseColor = burnedColor
+    return values
+}
+
+func freezes(values SpellValues) SpellValues {
+    values.HasCorpseColor = true
+    values.CorpseColor = frozenColor
     return values
 }
 
@@ -162,7 +212,7 @@ func hurtValues() SpellValues {
 func gameValues(name string) SpellValues {
     switch name {
         case "Fire Bolt":
-            return boltValues(fireColors, color.RGBA{R: 0xff, G: 0x90, B: 0x20, A: 0xff})
+            return burns(boltValues(fireColors, color.RGBA{R: 0xff, G: 0x90, B: 0x20, A: 0xff}))
         case "Fireball":
             values := boltValues(fireColors, color.RGBA{R: 0xff, G: 0x90, B: 0x20, A: 0xff})
             values.TrailRate = 110
@@ -175,20 +225,22 @@ func gameValues(name string) SpellValues {
             values.PulseRadius = 3
             values.PulseStrength = 0.4
             values.Decal = "crater"
-            return values
+            values.LightRadius = 95
+            values.ShadowReach = 130
+            return burns(values)
         case "Ice Bolt":
             values := boltValues(iceColors, color.RGBA{R: 0x70, G: 0xd0, B: 0xff, A: 0xff})
             // what comes off it sinks
             values.TrailGravity = 25
             values.Decal = "frost"
-            return values
+            return freezes(values)
         case "Doom Bolt":
             values := boltValues(doomColors, color.RGBA{R: 0xff, G: 0x50, B: 0x30, A: 0xff})
             values.BurstCount = 70
             values.Shake = 3
             values.PulseRadius = 3
             values.Decal = "crater"
-            return values
+            return burns(values)
         case "Lightning Bolt":
             values := boltValues(lightningColors, color.RGBA{R: 0xc0, G: 0xd8, B: 0xff, A: 0xff})
             // it does not fly in
@@ -222,7 +274,7 @@ func gameValues(name string) SpellValues {
             values.Shake = 1
             values.ShakeTime = 0.2
             values.Decal = "scorch"
-            return values
+            return burns(values)
         case "Star Fires", "Dispel Evil":
             values := hurtValues()
             values.BurstCount = 20
@@ -258,7 +310,11 @@ var valueNames = []string{
     "hit-stop", "shake", "shake-time",
     "pulse-radius", "pulse-time", "pulse-strength", "pulse-color",
     "decal", "decal-strength",
+    "dark", "light-radius", "light-strength", "light-flicker", "light-linger", "shadow-reach",
+    "corpse-color",
 }
+
+const noColor = "none"
 
 // a value as the file has it
 func (values *SpellValues) text(name string) string {
@@ -292,6 +348,17 @@ func (values *SpellValues) text(name string) string {
         case "pulse-color": return colorText(values.PulseColor)
         case "decal": return values.Decal
         case "decal-strength": return number(values.DecalStrength)
+        case "dark": return number(values.Dark)
+        case "light-radius": return number(values.LightRadius)
+        case "light-strength": return number(values.LightStrength)
+        case "light-flicker": return number(values.LightFlicker)
+        case "light-linger": return number(values.LightLinger)
+        case "shadow-reach": return number(values.ShadowReach)
+        case "corpse-color":
+            if !values.HasCorpseColor {
+                return noColor
+            }
+            return colorText(values.CorpseColor)
     }
     return ""
 }
@@ -317,6 +384,16 @@ func (values *SpellValues) set(name string, text string) bool {
         case "pulse-color":
             if colorOk {
                 values.PulseColor = oneColor
+            }
+            return colorOk
+        case "corpse-color":
+            if strings.ToLower(strings.TrimSpace(text)) == noColor {
+                values.HasCorpseColor = false
+                return true
+            }
+            if colorOk {
+                values.HasCorpseColor = true
+                values.CorpseColor = oneColor
             }
             return colorOk
         case "decal":
@@ -353,6 +430,12 @@ func (values *SpellValues) set(name string, text string) bool {
         case "pulse-time": values.PulseTime = number
         case "pulse-strength": values.PulseStrength = number
         case "decal-strength": values.DecalStrength = number
+        case "dark": values.Dark = number
+        case "light-radius": values.LightRadius = number
+        case "light-strength": values.LightStrength = number
+        case "light-flicker": values.LightFlicker = number
+        case "light-linger": values.LightLinger = number
+        case "shadow-reach": values.ShadowReach = number
         default:
             return false
     }
@@ -425,17 +508,33 @@ const effectsTemplateHead = `# The effects of spells in battles.
 #                   size; they are used in place of these, whatever is named here but none
 #   decal-strength  how much of the mark shows, 0 to 1
 #
+#   the light of the spell:
+#   dark            how dark the battlefield gets while the spell plays, 0 to 1. 0: not at all,
+#                   and then the spell gives no light and turns no shadows
+#   light-radius    how far the light of the spell goes, in art pixels across
+#   light-strength  how much of the dark it takes away in its middle, 0 to 1
+#   light-flicker   its radius changes by up to this many art pixels all the time. 0: steady
+#   light-linger    how long the light stays where the spell has hit, getting smaller
+#   shadow-reach    units this near to the spell cast their shadows away from it
+#
+#   corpse-color    the color the figures it kills take on as they lie, or none for gray
+#
+# [combat] is no spell: corpse-color there is for the figures that are killed in a fight.
+#
 # F7 in a battle turns all of this off and on.
 
 [default]
 # emissive = 0.25
+
+[combat]
+corpse-color = COMBATCOLOR
 
 `
 
 // a file with the values of the game for every spell, to be changed
 func EffectsTemplate() string {
     var out strings.Builder
-    out.WriteString(effectsTemplateHead)
+    out.WriteString(strings.ReplaceAll(effectsTemplateHead, "COMBATCOLOR", colorText(combatCorpseColor)))
 
     for _, spell := range mod.SpellPictures {
         values := gameValues(spell.Name)

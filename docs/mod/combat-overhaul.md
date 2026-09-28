@@ -80,6 +80,11 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
   the battle (`combat/decals.go`; first pictures in `combat/decals/`, made by
   `util/decals/make.py`, replaced by `mod/spells/<name>/decal_NN.png`). The halo was tried and taken out: it made the
   pictures look blurred.
+- The light of a spell: the field gets dark while a spell plays, the spell lights what is near
+  it, the shadows of the units near it turn away from it and get harder, and all of it goes back
+  when the spell is over (`combat/spelllight.go`).
+- Corpses take on a color by what killed the figure: brown for fire, blue for ice, gray for
+  lightning and other spells, red for a fight (`corpse-color` in the values of spells).
 - Bolts of spells go on with every tick of the game in place of 10 pixels with every redraw of
   the original (`SmoothBolts` in `combat/spellanim.go`). Way, time and frames are the original's.
 - Cursors over the field are drawn on the art pixels of the field (`CursorOnFieldPixels`), the

@@ -18,6 +18,7 @@ package combat
 // it shows 8 at once. It is still pushed back, darkens and loses its color.
 
 import (
+    "image/color"
     "math"
     "math/rand/v2"
 
@@ -99,6 +100,21 @@ type corpse struct {
     Start uint64
     // seconds
     Delay float64
+    // the color it takes on as it lies, by what killed it
+    HasTint bool
+    Tint color.RGBA
+}
+
+// how much of the color of what killed it a corpse takes on, 0 to 1
+const corpseTintStrength = 0.45
+
+// what the colors of a corpse are multiplied by to take on a color by a part of 0 to 1
+func corpseTintParts(tint color.RGBA, part float64) (float64, float64, float64) {
+    most := float64(max(tint.R, tint.G, tint.B, 1))
+    mix := func(value uint8) float64 {
+        return 1 - part + part * float64(value) / most
+    }
+    return mix(tint.R), mix(tint.G), mix(tint.B)
 }
 
 // true the first time it is called for a figure that was lost: the figure is to become a corpse
@@ -161,7 +177,11 @@ func (combat *CombatScreen) addCorpse(unit *ArmyUnit, frames []*ebiten.Image, fr
         angle = -angle
     }
 
+    tint, hasTint := combat.corpseColor(unit)
+
     combat.corpses = append(combat.corpses, corpse{
+        HasTint: hasTint,
+        Tint: tint,
         Picture: picture,
         Dying: dying,
         Dead: dead,
@@ -246,6 +266,11 @@ func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawabl
                 lift := corpseBlackLift * darkened * float64(fieldBrightness(int(x), int(y)))
                 colors.Scale(1 - lift, 1 - lift, 1 - lift, 1)
                 colors.Translate(lift, lift, lift, 0)
+                if body.HasTint {
+                    // toward the color of what killed it, as bright as it was
+                    red, green, blue := corpseTintParts(body.Tint, corpseTintStrength * darkened)
+                    colors.Scale(red, green, blue, 1)
+                }
                 colorm.DrawImage(screen, picture, colors, &options)
             },
         })

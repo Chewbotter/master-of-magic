@@ -77,6 +77,7 @@ func (combat *CombatScreen) drawShadowPicture(screen *ebiten.Image) {
     var options ebiten.DrawImageOptions
     options.GeoM.Scale(combat.shadowPixel, combat.shadowPixel)
     options.GeoM.Translate(combat.shadowStartX, combat.shadowStartY)
-    options.ColorScale.ScaleAlpha(shadowStrength)
+    // harder near a spell that gives light, see spelllight.go
+    options.ColorScale.ScaleAlpha(combat.shadowStrengthNow())
     screen.DrawImage(combat.shadowLayer, &options)
 }
