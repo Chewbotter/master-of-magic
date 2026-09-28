@@ -450,6 +450,9 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         log.Printf("Random battle: %v army attacks a cave with %v %v, landscape %v", race, count, monster.Name, landscape)
     }
 
+    // on auto the army of the player fights without spells: they are for the player to try
+    attackingArmy.NoSpellsOnAuto = true
+
     // for trying spells: the player knows every spell and does not run out of mana, see debugMagic
     attacker.KnownSpells.AddAllSpells(allSpells)
     attacker.Mana = DebugBattleMana

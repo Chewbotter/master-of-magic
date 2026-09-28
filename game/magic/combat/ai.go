@@ -34,7 +34,7 @@ func doAI(model *CombatModel, spellSystem SpellSystem, aiActions AIUnitActionsIn
     }
 
     // for now, disallow confused enemies from casting spells
-    if !isConfused && aiUnit.CanCast() && rand.N(100) < 20 {
+    if !isConfused && army.autoCastsSpells() && aiUnit.CanCast() && rand.N(100) < 20 {
         for spell, charges := range aiUnit.SpellCharges {
             if charges > 0 {
                 casted := false

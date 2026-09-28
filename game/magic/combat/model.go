@@ -2030,6 +2030,9 @@ type Army struct {
     KilledUnits []*ArmyUnit
     RegeneratedUnits []*ArmyUnit
     Auto bool
+    // while the army is on auto nobody of it casts spells: not its wizard, not its units. false
+    // unless somebody sets it, and only the debug battles of the start screen do. see autoCastsSpells
+    NoSpellsOnAuto bool
     Fled bool
     Casted bool
     RecalledUnits []*ArmyUnit
@@ -5966,7 +5969,17 @@ func (model *CombatModel) shouldAICastSpell(army *Army, spell spellbook.Spell) b
     return true
 }
 
+// false for an army that is on auto and was told not to cast spells then. an army the computer
+// plays is never on auto, so this is always true for it
+func (army *Army) autoCastsSpells() bool {
+    return !(army.Auto && army.NoSpellsOnAuto)
+}
+
 func (model *CombatModel) doAiCast(spellSystem SpellSystem, army *Army) bool {
+    if !army.autoCastsSpells() {
+        return false
+    }
+
     if army.Casted {
         return false
     }
