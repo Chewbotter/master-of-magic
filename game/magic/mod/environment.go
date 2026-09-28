@@ -12,9 +12,6 @@ package mod
 
 import (
     "fmt"
-    "image"
-    "image/png"
-    "os"
     "path/filepath"
 )
 
@@ -231,34 +228,4 @@ func environmentFramePath(archive string, entry int, frame int) string {
         return ""
     }
     return filepath.Join(folder, environmentFolder, picture.Set, EnvironmentFrameFile(picture.Name, frame))
-}
-
-// a picture of the environment the original has none of, as the slopes of hills (combat/plateau.go):
-// environment/<set>/<name>_0.png as it is, any size and any colors. nil if it is not there
-func ReadEnvironmentExtra(set string, name string) image.Image {
-    if folder == "" {
-        return nil
-    }
-
-    path := filepath.Join(folder, environmentFolder, set, EnvironmentFrameFile(name, 0))
-    // the files of the folder are looked up anew, the cache of a battle keeps the pictures
-    delete(folderLists, filepath.Dir(path))
-    if !hasFile(path) {
-        return nil
-    }
-
-    file, err := os.Open(path)
-    if err != nil {
-        return nil
-    }
-    defer file.Close()
-
-    picture, err := png.Decode(file)
-    if err != nil {
-        reportOnce(fmt.Sprintf("Replacement picture %v can not be read: %v", path, err))
-        return nil
-    }
-
-    reportOnce(fmt.Sprintf("Replacement picture %v", path))
-    return picture
 }

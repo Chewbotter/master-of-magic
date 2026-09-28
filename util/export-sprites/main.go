@@ -326,34 +326,8 @@ func exportEnvironment(dataPath string, outPath string) int {
         os.WriteFile(filepath.Join(outPath, "environment", set, "_source.txt"), []byte(notes[set].String()), 0644)
     }
 
-    // the slopes of plateaus: not in the original, the first set the game makes (combat/plateau.go)
-    slopes := filepath.Join(outPath, "environment", "Slopes")
-    for name, picture := range combat.SlopePictures() {
-        if writePng(filepath.Join(slopes, mod.EnvironmentFrameFile(name, 0)), picture) == nil {
-            count += 1
-        }
-    }
-    os.WriteFile(filepath.Join(slopes, "_source.txt"), []byte(slopesNote), 0644)
-
     return count
 }
-
-const slopesNote = "Slopes\r\n\r\n" +
-    "The slopes of hills and plateaus. Not pictures of the original game: a first set made by this game.\r\n" +
-    "\r\n" +
-    "edge NE, SE, SW, NW    along an edge of a raised cell where the next cell is lower. SE and SW\r\n" +
-    "                       face the viewer: their face hangs below the tile, over the lower ground\r\n" +
-    "outer N 1, 2, ...      a corner cut away where both edges beside it drop: N top, E right, S bottom,\r\n" +
-    "                       W left. Each such corner takes one of them by chance, or stays square.\r\n" +
-    "                       Any number from 1 on, without a gap\r\n" +
-    "inner N, E, S, W       where the cell beyond a corner is lower but the two edges beside it are not\r\n" +
-    "diagonal N, E, S, W    where exactly the two edges beside a corner drop: the cell is cut in half\r\n" +
-    "                       from corner to corner and the slope hangs from that line. Along a staircase\r\n" +
-    "                       of tiles these make one straight line\r\n" +
-    "\r\n" +
-    "Every picture is 46 by 40 pixels: the ground picture of the tile (30 by 16) lies 8 right of and 4\r\n" +
-    "below its top left corner, the room below is for the faces. Any colors; see-through pixels darken\r\n" +
-    "or lighten the ground under them. Changed ones go to mod\\environment\\Slopes with the same names.\r\n"
 
 // takes the pictures of the cursors as they are read
 type cursorKeeper struct {
@@ -482,8 +456,6 @@ environment/<set>/<name>_<frame>.png
                     near left side, 10 and 11 the near right side (11 the gate), 12 and 13 the
                     left and right corners of fire and darkness
         Other       mud, and pieces the game does not use
-        Slopes      the slopes of hills and plateaus, made by this game, not the original's.
-                    Full color and see-through allowed, _source.txt says how they are laid
     Keep the size of a changed picture: most are put in place by a fixed point in them.
 
 spells/<name>/<frame>.png

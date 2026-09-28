@@ -221,8 +221,11 @@ type CombatScreen struct {
     Landscape CombatLandscape
     // picks the pictures of the ground around the field, see fieldedge.go
     borderSeed uint32
-    // the pictures of the slopes of plateaus, see slopes.go
-    slopeCache *slopePieceSet
+    // the shading of the plateaus and where it lies on the original's screen, see slopes.go
+    slopeShading *ebiten.Image
+    slopesMade bool
+    slopeX int
+    slopeY int
     // the field fills the width of the window, see widefield.go
     wideField bool
     pass drawPass
@@ -3860,12 +3863,7 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         options.GeoM.Translate(TerrainOffsetX, TerrainOffsetY)
         options.GeoM.Scale(combat.CameraScale, combat.CameraScale)
         options.GeoM.Translate(tx, ty)
-        // the top of a plateau is lighter, see plateau.go
-        brightness := combat.groundBrightness(x, y)
-        options.ColorScale.Reset()
-        options.ColorScale.Scale(brightness, brightness, brightness, 1)
         scale.DrawScaled(screen, image, &options)
-        options.ColorScale.Reset()
 
         // roads, see terraindraw.go
         combat.drawRoad(screen, x, y, &options)

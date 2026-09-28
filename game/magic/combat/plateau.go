@@ -4,8 +4,8 @@ package combat
 // wanders in lines one cell wide and its pictures show ridges, which on grass land often reads as
 // snaking mounds. Here the same patches become raised ground of one height: small hills of one cell,
 // and patches grown and smoothed into plateaus that cover larger areas. The top of a plateau is the
-// usual ground, drawn a little lighter; slopes lie along its edges (slopes.go). Only going up or
-// down a slope costs more (movecost.go), the top is ground as any other.
+// usual ground, drawn a little lighter; slopes lie along its outline, which is rounded (slopes.go).
+// Only going up or down a slope costs more (movecost.go), the top is ground as any other.
 //
 // The pictures of the original's rough ground still show, as mounds of one to three cells that
 // never run on in lines (makeMounds). They are for the look only and cost what the ground costs.
@@ -31,9 +31,6 @@ const plateauSingleHillsPerPatch = 0.5
 // moundSpan steps long
 const moundsPerPatch = 0.6
 const moundSpan = 2
-
-// the top of a plateau is drawn this much brighter
-const plateauTopBrightness = 1.15
 
 func (ground *BattleGround) HeightAt(cgx int, cgy int) int {
     if ground == nil || !ground.contains(cgx, cgy) || ground.Heights == nil {

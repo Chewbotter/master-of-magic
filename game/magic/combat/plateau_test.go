@@ -2,7 +2,6 @@ package combat
 
 import (
     "image"
-    "slices"
     "testing"
 
     "github.com/kazzmir/master-of-magic/lib/fraction"
@@ -10,69 +9,104 @@ import (
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
 )
 
-// a hill of one cell has a slope on all four edges and four outer corners; a cell inside a plateau
-// has none, a notch in a plateau shows an inner corner, the end of a ridge two outer corners
-func TestSlopeParts(test *testing.T) {
-    ground := testGround(7, 7)
-    ground.Heights = make([]int, 49)
-
-    ground.setHeight(3, 3, 1)
-    edges, outer, inner := ground.slopeParts(3, 3)
-    if !slices.Equal(edges, []int{0, 1, 2, 3}) || !slices.Equal(outer, []int{0, 1, 2, 3}) || len(inner) != 0 {
-        test.Fatalf("single hill: %v %v %v", edges, outer, inner)
-    }
-
-    for cgy := 2; cgy <= 4; cgy++ {
-        for cgx := 2; cgx <= 4; cgx++ {
-            ground.setHeight(cgx, cgy, 1)
+func outlineGround(size int, raised func(cgx int, cgy int) bool) *BattleGround {
+    ground := testGround(size, size)
+    ground.Heights = make([]int, size * size)
+    for cgy := range size {
+        for cgx := range size {
+            if raised(cgx, cgy) {
+                ground.setHeight(cgx, cgy, 1)
+            }
         }
     }
-    edges, outer, inner = ground.slopeParts(3, 3)
-    if len(edges) != 0 || len(outer) != 0 || len(inner) != 0 {
-        test.Fatalf("inside a plateau: %v %v %v", edges, outer, inner)
+    return ground
+}
+
+// the corners of the outline: a hill of one cell is rounded on all sides, the corner of a plateau is
+// cut along an arc, a staircase in half, an inward corner is filled in
+func TestOutlineCorners(test *testing.T) {
+    // a hill of one cell
+    ground := outlineGround(9, func(cgx int, cgy int) bool { return cgx == 4 && cgy == 4 })
+    outline := makePlateauOutline(ground)
+    for corner, cut := range outline.corners[ground.index(4, 4)] {
+        if cut <= 0 || cut > 0.5 {
+            test.Fatalf("single hill, corner %v: %v", corner, cut)
+        }
+    }
+    if !outline.topAt(4.5, 4.5) || outline.topAt(4.02, 4.02) || outline.topAt(4.98, 4.98) {
+        test.Fatalf("single hill: middle %v, corners %v %v", outline.topAt(4.5, 4.5), outline.topAt(4.02, 4.02), outline.topAt(4.98, 4.98))
     }
 
-    // the cell beyond the S corner of the middle (+x, +y of the grid) is low: an inner corner S
-    ground.setHeight(4, 4, 0)
-    edges, outer, inner = ground.slopeParts(3, 3)
-    if len(edges) != 0 || len(outer) != 0 || !slices.Equal(inner, []int{2}) {
-        test.Fatalf("notch at the S corner: %v %v %v", edges, outer, inner)
+    // a plateau of 3 by 3: its corners are arcs, its sides and its middle are whole
+    ground = outlineGround(9, func(cgx int, cgy int) bool { return cgx >= 3 && cgx <= 5 && cgy >= 3 && cgy <= 5 })
+    outline = makePlateauOutline(ground)
+    south := outline.corners[ground.index(5, 5)]
+    if south[2] < 0.75 || south[0] != 0 || south[1] != 0 || south[3] != 0 {
+        test.Fatalf("corner of a plateau: %v", south)
+    }
+    if outline.corners[ground.index(4, 5)] != [4]float64{} || outline.corners[ground.index(4, 4)] != [4]float64{} {
+        test.Fatalf("side %v, middle %v", outline.corners[ground.index(4, 5)], outline.corners[ground.index(4, 4)])
+    }
+    if outline.topAt(5.97, 5.97) || !outline.topAt(5.3, 5.3) {
+        test.Fatalf("corner of a plateau: tip %v, inside %v", outline.topAt(5.97, 5.97), outline.topAt(5.3, 5.3))
     }
 
-    // the lower right cell of the plateau: edges SE and SW drop, so it is cut in half at its S corner
-    edges, outer, _ = ground.slopeParts(4, 3)
-    if !slices.Equal(edges, []int{1, 2}) || !slices.Equal(outer, []int{2}) || slopeDiagonal(edges) != 2 {
-        test.Fatalf("corner cell: %v %v %v", edges, outer, slopeDiagonal(edges))
+    // a staircase: every step is cut in half
+    ground = outlineGround(12, func(cgx int, cgy int) bool { return cgx + cgy <= 10 && cgx >= 1 && cgy >= 1 })
+    outline = makePlateauOutline(ground)
+    for _, cgx := range []int{4, 5, 6} {
+        cuts := outline.corners[ground.index(cgx, 10 - cgx)]
+        if cuts[2] != slopeCutDiagonal {
+            test.Fatalf("step %v: %v", cgx, cuts)
+        }
     }
-    // one edge, or two across from each other, are no diagonal
-    if slopeDiagonal([]int{1}) != -1 || slopeDiagonal([]int{0, 2}) != -1 || slopeDiagonal([]int{3, 0}) != 0 {
-        test.Fatalf("diagonals: %v %v %v", slopeDiagonal([]int{1}), slopeDiagonal([]int{0, 2}), slopeDiagonal([]int{3, 0}))
+    if outline.topAt(5.8, 5.8) || !outline.topAt(5.2, 5.2) {
+        test.Fatalf("step: lower half %v, upper half %v", outline.topAt(5.8, 5.8), outline.topAt(5.2, 5.2))
+    }
+
+    // an inward corner: the low cell is filled in at the corner toward the plateau
+    ground = outlineGround(12, func(cgx int, cgy int) bool { return cgx >= 1 && cgy >= 1 && cgx <= 9 && cgy <= 9 && (cgx <= 4 || cgy <= 4) })
+    outline = makePlateauOutline(ground)
+    fills := outline.corners[ground.index(5, 5)]
+    if fills[0] != slopeFillRadius || fills[1] != 0 || fills[2] != 0 || fills[3] != 0 {
+        test.Fatalf("inward corner: %v", fills)
+    }
+    if !outline.topAt(5.03, 5.03) || outline.topAt(5.5, 5.5) {
+        test.Fatalf("inward corner: at the corner %v, middle %v", outline.topAt(5.03, 5.03), outline.topAt(5.5, 5.5))
     }
 }
 
-// the faces toward the viewer hang below the tile; the far edges stay inside it
-func TestSlopeFacesHangBelow(test *testing.T) {
-    below := func(picture image.Image) bool {
-        bounds := picture.Bounds()
-        for y := slopeCanvasTop + slopeTileHeight; y < bounds.Dy(); y++ {
-            for x := range bounds.Dx() {
-                _, _, _, alpha := picture.At(x, y).RGBA()
-                if alpha > 0 {
-                    return true
-                }
-            }
-        }
-        return false
+// the shading: light on top, the slope toward the viewer below the hill, the shorter one above it,
+// nothing far from it
+func TestSlopeShading(test *testing.T) {
+    ground := outlineGround(9, func(cgx int, cgy int) bool { return cgx == 4 && cgy == 4 })
+    shading, left, top := makeSlopeShading(ground)
+    if shading == nil {
+        test.Fatalf("no shading")
     }
 
-    if !below(slopeEdgePicture(1)) || !below(slopeEdgePicture(2)) {
-        test.Fatalf("no face below the edges SE and SW")
+    centerX, centerY := cellCenterScreen(4, 4)
+    at := func(dx int, dy int) (uint32, uint32) {
+        red, _, _, alpha := shading.At(centerX - left + dx, centerY - top + dy).RGBA()
+        return red, alpha
     }
-    if below(slopeEdgePicture(0)) || below(slopeEdgePicture(3)) {
-        test.Fatalf("a face below the far edges")
+
+    if red, alpha := at(0, 0); alpha == 0 || red == 0 {
+        test.Fatalf("the top is not lighter: %v %v", red, alpha)
     }
-    if len(SlopePictures()) != 12 + 4 * len(slopeCuts) {
-        test.Fatalf("%v pictures", len(SlopePictures()))
+    if red, alpha := at(0, CellStepY + 2); alpha == 0 || red != 0 {
+        test.Fatalf("no slope below the hill: %v %v", red, alpha)
+    }
+    if red, alpha := at(0, -CellStepY - 1); alpha == 0 || red != 0 {
+        test.Fatalf("no slope above the hill: %v %v", red, alpha)
+    }
+    if _, alpha := at(0, CellStepY + slopeFaceDepth + 2); alpha != 0 {
+        test.Fatalf("shading far below the hill: %v", alpha)
+    }
+
+    // no plateaus, no picture
+    if shading, _, _ := makeSlopeShading(outlineGround(9, func(cgx int, cgy int) bool { return false })); shading != nil {
+        test.Fatalf("shading without plateaus")
     }
 }
 
