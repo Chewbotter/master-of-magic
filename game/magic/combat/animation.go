@@ -38,10 +38,10 @@ const figureIdleFrames = 3
 // a strike alternates between the pose and the strike frame. the defender is one step out of phase
 var figureAttackFrames = []int{3, 1}
 var figureDefendFrames = []int{1, 3}
-// with the frames 4, 5 and 6 of the replacement folder a strike goes through these and around, and
-// does not show the standing frame. the defender is half of it behind. see game/magic/mod
-var figureLongStrikeFrames = []int{3, 4, 5, 6}
-const figureLongStrikeBehind = 2
+// with frames of the replacement folder after the strike frame, 4, 5 and 6, a strike goes through
+// the strike frame and the ones that are there and around, and does not show the standing frame:
+// 3 4, or 3 4 5, or 3 4 5 6. not every unit needs all of them (user, 2026-09-27). the defender is
+// half of the way around behind. see game/magic/mod
 
 // units that animate while standing although they do not fly
 var alwaysAnimated = map[string]bool{
@@ -87,9 +87,25 @@ func moveTicksPerCell() float64 {
 }
 
 // the frame of its picture a unit shows
-// true if the figure of the unit, as it faces, has the frames of the long strike
-func longStrike(unit *ArmyUnit) bool {
-    return mod.HasFrames(unit.Unit.GetCombatLbxFile(), unit.Unit.GetCombatIndex(unit.Facing), mod.FrameStrike + 1, mod.FrameStrikeLast)
+// the frames of the long strike of the figure of the unit, as it faces: the strike frame and the
+// frames after it that the replacement folder has, up to the first that is missing. nothing if the
+// first of them is missing: the figure strikes as the original does
+func longStrikeFrames(unit *ArmyUnit) []int {
+    archive := unit.Unit.GetCombatLbxFile()
+    entry := unit.Unit.GetCombatIndex(unit.Facing)
+
+    var frames []int
+    for frame := mod.FrameStrike + 1; frame <= mod.FrameStrikeLast; frame++ {
+        if !mod.HasFrame(archive, entry, frame) {
+            break
+        }
+        if frames == nil {
+            frames = append(frames, mod.FrameStrike)
+        }
+        frames = append(frames, frame)
+    }
+
+    return frames
 }
 
 func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase float64) int {
@@ -112,11 +128,11 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase fl
     if unit.Attacking || unit.Defending {
         step := tick / attackTicksPerFrame
 
-        if longStrike(unit) {
+        if long := longStrikeFrames(unit); len(long) > 0 {
             if unit.Defending && !unit.Attacking {
-                step += figureLongStrikeBehind
+                step += uint64(len(long) / 2)
             }
-            frame = figureLongStrikeFrames[step % uint64(len(figureLongStrikeFrames))]
+            frame = long[step % uint64(len(long))]
         } else if unit.Attacking {
             frame = figureAttackFrames[step % uint64(len(figureAttackFrames))]
         } else {

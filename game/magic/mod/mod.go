@@ -13,7 +13,8 @@ package mod
 //
 // NEW FRAMES (user, 2026-09-27). The figures of the game have the frames 0 to 3. The replacement
 // folder can give a figure more, per facing:
-//   4, 5, 6   more frames of the strike: the figure strikes through 3, 4, 5, 6 and around
+//   4, 5, 6   more frames of the strike: the figure strikes through 3 and the ones that are
+//             there and around. 4 alone gives 3 4, 4 and 5 give 3 4 5
 //   7, 8      death: 7 on the way down, 8 lying, where the figure stays
 // A figure can have some of them and not others. HasFrame says which are there.
 //
