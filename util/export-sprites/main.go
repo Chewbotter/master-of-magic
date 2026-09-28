@@ -322,6 +322,39 @@ func exportEnvironment(dataPath string, outPath string) int {
         note.WriteString(fmt.Sprintf("%-20v %v frames, %v by %v, %v entry %v: %v\r\n", picture.Name, len(frames), bounds.Dx(), bounds.Dy(), picture.Archive, picture.Entry, picture.Note))
     }
 
+    // the large pieces of 2 by 2 tiles (combat/large.go): the one the game makes of the dirt of
+    // every landscape, and the four tiles as grass to paint a new one over
+    for _, picture := range mod.EnvironmentPictures {
+        if picture.Entry != 0 || notes[picture.Set] == nil || !strings.HasPrefix(picture.Name, "grass") {
+            continue
+        }
+        archive, err := openArchive(dataPath, picture.Archive)
+        if err != nil {
+            continue
+        }
+        tiles := func(index int) *image.Paletted {
+            frames, err := readPictures(archive, index)
+            if err != nil || len(frames) == 0 {
+                return nil
+            }
+            return frames[0]
+        }
+
+        folder := filepath.Join(outPath, "environment", picture.Set)
+        largeNotes := []string{"a cluster of rocks", "a bare patch of dirt"}
+        for index, large := range combat.MakeLargePieces(tiles) {
+            name := mod.NumberedName(combat.LargeName(), index + 1)
+            if large != nil && writePng(filepath.Join(folder, mod.EnvironmentFrameFile(name, 0)), large) == nil {
+                count += 1
+                notes[picture.Set].WriteString(fmt.Sprintf("%-20v 1 frames, %v by %v, made by this game, not the original's: %v over 2 by 2 tiles\r\n", name, large.Bounds().Dx(), large.Bounds().Dy(), largeNotes[index]))
+            }
+        }
+        template := combat.MakeLargeTemplate(tiles)
+        if template != nil {
+            writePng(filepath.Join(folder, "_large template.png"), template)
+        }
+    }
+
     for _, set := range sets {
         os.WriteFile(filepath.Join(outPath, "environment", set, "_source.txt"), []byte(notes[set].String()), 0644)
     }
@@ -447,7 +480,10 @@ environment/<set>/<name>_<frame>.png
                     that goes on across its upper right and lower left edges.
                     Pictures of the ground, trees, rocks and houses can be added in the
                     replacement folder, their names counting on: grass 5, dirt edge SE 3,
-                    rough NE SW 2, tree 6, rock 6, house 6. Its README says how
+                    rough NE SW 2, tree 6, rock 6, house 6. Its README says how.
+                    large 1 and 2 are pieces of 2 by 2 tiles this game makes of the rocks and
+                    the dirt of the landscape, not pictures of the original. _large template
+                    shows the four tiles to paint a new one over
         Water, Water Myrror    the ground of a battle on the water
         Town        roads, houses, huts, tree houses, fortress, outpost, clouds under a flying
                     fortress, the pieces of the roads that lead out of the field ("road NE SW 1"

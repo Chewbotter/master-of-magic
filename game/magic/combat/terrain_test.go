@@ -1,6 +1,8 @@
 package combat
 
 import (
+    "image"
+    "image/color"
     "testing"
 
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
@@ -210,5 +212,131 @@ func TestSceneryPool(test *testing.T) {
     }
     if x, y := rock.anchor(12, 13); x != 6 || y != 12 {
         test.Fatalf("rock: %v, %v", x, y)
+    }
+}
+
+// large pieces lie on open grass, never two on a cell, and trees keep off them
+func TestLargePieces(test *testing.T) {
+    zone := ZoneType{City: &citylib.City{}}
+    zone.Ground.Roads = [9]bool{true, true, true, true, true, true, true, true, true}
+
+    for range 10 {
+        ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, zone)
+        if len(ground.Large) == 0 {
+            test.Fatalf("no large pieces on grass")
+        }
+
+        seen := make(map[image.Point]bool)
+        for _, piece := range ground.Large {
+            if piece.Number < 1 || piece.Number > largeGameCount {
+                test.Fatalf("picture %v of %v", piece.Number, largeGameCount)
+            }
+            for _, cell := range largeCells(piece.Cgx, piece.Cgy) {
+                if seen[cell] {
+                    test.Fatalf("two large pieces on %v", cell)
+                }
+                seen[cell] = true
+
+                if ground.GroupAt(cell.X, cell.Y) != TerrainGrass || ground.RoadAt(cell.X, cell.Y) != 0 || ground.HeightAt(cell.X, cell.Y) != 0 {
+                    test.Fatalf("a large piece on %v: group %v, road %v, height %v", cell, ground.GroupAt(cell.X, cell.Y), ground.RoadAt(cell.X, cell.Y), ground.HeightAt(cell.X, cell.Y))
+                }
+                if plateauKeepsOut(zone, cell.X, cell.Y) {
+                    test.Fatalf("a large piece in the town at %v", cell)
+                }
+                if picture := ground.Picture[ground.index(cell.X, cell.Y)]; picture > 3 {
+                    test.Fatalf("a large piece on picture %v at %v", picture, cell)
+                }
+                if ground.sceneryAllowed(cell.X, cell.Y) {
+                    test.Fatalf("trees can stand on the large piece at %v", cell)
+                }
+            }
+        }
+    }
+}
+
+// the patch of dirt the game makes: dirt in the middle, see-through at the corners and beyond the
+// four tiles
+func TestDirtPatch(test *testing.T) {
+    palette := make(color.Palette, 256)
+    for index := range palette {
+        palette[index] = color.RGBA{R: uint8(index), A: 255}
+    }
+    palette[0] = color.RGBA{}
+
+    // a tile filled whole, to see what the patch takes of it
+    asked := make(map[int]bool)
+    patch := MakeDirtPatch(func(index int) *image.Paletted {
+        asked[index] = true
+        tile := image.NewPaletted(image.Rect(0, 0, largeTileWidth, largeTileHeight), palette)
+        for y := range largeTileHeight {
+            for x := range largeTileWidth {
+                tile.SetColorIndex(x, y, uint8(index))
+            }
+        }
+        return tile
+    })
+
+    if patch == nil || patch.Bounds().Dx() != largeWidth || patch.Bounds().Dy() != largeHeight {
+        test.Fatalf("the patch: %v", patch)
+    }
+    for index := groundDirtFirst; index < groundDirtFirst + groundDirtCount; index++ {
+        if !asked[index] {
+            test.Fatalf("dirt %v was not used", index)
+        }
+    }
+    if len(asked) != groundDirtCount {
+        test.Fatalf("pictures used: %v", asked)
+    }
+    if patch.ColorIndexAt(largeWidth / 2, largeHeight / 2) == 0 {
+        test.Fatalf("no dirt in the middle")
+    }
+    for _, corner := range []image.Point{{0, 0}, {largeWidth - 1, 0}, {0, largeHeight - 1}, {largeWidth - 1, largeHeight - 1}, {largeWidth / 2, 1}, {2, largeHeight / 2}} {
+        if patch.ColorIndexAt(corner.X, corner.Y) != 0 {
+            test.Fatalf("dirt at %v", corner)
+        }
+    }
+
+    if MakeDirtPatch(func(index int) *image.Paletted { return nil }) != nil {
+        test.Fatalf("a patch without tiles")
+    }
+}
+
+// the cluster of rocks the game makes: all five rocks, inside of the picture, taller than the four
+// tiles for the rocks at the top
+func TestRockCluster(test *testing.T) {
+    palette := make(color.Palette, 256)
+    for index := range palette {
+        palette[index] = color.RGBA{R: uint8(index), A: 255}
+    }
+    palette[0] = color.RGBA{}
+
+    asked := make(map[int]bool)
+    cluster := MakeRockCluster(func(index int) *image.Paletted {
+        asked[index] = true
+        rock := image.NewPaletted(image.Rect(0, 0, 12, 13), palette)
+        for y := 6; y < 13; y++ {
+            for x := 1; x < 11; x++ {
+                rock.SetColorIndex(x, y, uint8(index))
+            }
+        }
+        return rock
+    })
+
+    if cluster == nil || cluster.Bounds().Dx() != largeWidth || cluster.Bounds().Dy() != largeHeight + rockClusterAbove {
+        test.Fatalf("the cluster: %v", cluster)
+    }
+    if len(asked) != sceneryPictures || !asked[sceneryRockIndex] || !asked[sceneryRockIndex + sceneryPictures - 1] {
+        test.Fatalf("rocks used: %v", asked)
+    }
+
+    seen := make(map[uint8]bool)
+    for _, value := range cluster.Pix {
+        seen[value] = true
+    }
+    if len(seen) != sceneryPictures + 1 || !seen[0] {
+        test.Fatalf("rocks in the picture: %v", seen)
+    }
+    if len(MakeLargePieces(func(index int) *image.Paletted { return nil })) != largeGameCount {
+        test.Fatalf("the game makes %v large pieces", largeGameCount)
     }
 }

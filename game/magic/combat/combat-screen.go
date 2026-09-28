@@ -221,6 +221,8 @@ type CombatScreen struct {
     Landscape CombatLandscape
     // picks the pictures of the ground around the field, see fieldedge.go
     borderSeed uint32
+    // the large pieces the game makes, see large.go
+    largeMade [][]*ebiten.Image
     // the pictures the replacement folder adds to the ground, trees, rocks and houses, see terraindraw.go
     addedCache map[string][]*ebiten.Image
     // the shading of the plateaus and where it lies on the original's screen, see slopes.go
@@ -3873,13 +3875,27 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         // roads, see terraindraw.go
         combat.drawRoad(screen, x, y, &options)
 
-        if combat.Model.Tiles[y][x].Mud {
-            mudTiles, _ := combat.ImageCache.GetImages("cmbtcity.lbx", 118)
-            index := animationIndex % uint64(len(mudTiles))
-            scale.DrawScaled(screen, mudTiles[index], &options)
-        }
-
         // vector.DrawFilledCircle(screen, float32(tx), float32(ty), 2, color.RGBA{R: 0xff, G: 0, B: 0, A: 0xff}, false)
+    }
+
+    // pieces of 2 by 2 tiles over the ground, see large.go
+    combat.drawLargePieces(screen, animationIndex)
+
+    // mud lies over all of the ground
+    for _, point := range combat.TopDownOrder {
+        if !combat.Model.Tiles[point.Y][point.X].Mud {
+            continue
+        }
+        mudTiles, _ := combat.ImageCache.GetImages("cmbtcity.lbx", 118)
+        if len(mudTiles) == 0 {
+            break
+        }
+        tx, ty := tilePosition(float64(point.X), float64(point.Y))
+        options.GeoM.Reset()
+        options.GeoM.Translate(TerrainOffsetX, TerrainOffsetY)
+        options.GeoM.Scale(combat.CameraScale, combat.CameraScale)
+        options.GeoM.Translate(tx, ty)
+        scale.DrawScaled(screen, mudTiles[animationIndex % uint64(len(mudTiles))], &options)
     }
 
     // the slopes of plateaus over all of the ground, see slopes.go

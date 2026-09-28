@@ -114,6 +114,9 @@ type BattleGround struct {
     // it adds to a use, by the first picture of the use
     Set string
     Extras map[int]int
+    // the large pieces, and the cells that lie under one. see large.go
+    Large []LargePiece
+    Covered []bool
     EnchantedRoads bool
 }
 
@@ -173,7 +176,7 @@ func (ground *BattleGround) TreesAt(cgx int, cgy int) int {
     return ground.Trees[ground.index(cgx, cgy)]
 }
 
-// trees and rocks stand on grass without a road only
+// trees and rocks stand on grass without a road only, and not on a large piece
 func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if ground == nil {
         return true
@@ -181,7 +184,7 @@ func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if !ground.contains(cgx, cgy) {
         return false
     }
-    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0
+    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy)
 }
 
 func insideOriginalGrid(cgx int, cgy int) bool {
@@ -251,6 +254,8 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     ground.removeRough(zone)
     ground.mergeDirt()
     ground.choosePictures()
+    // pieces of 2 by 2 tiles, see large.go
+    ground.placeLarge(zone, largeGameCount + mod.CountExtras(ground.Set, largeName, largeGameCount))
 
     return ground
 }
