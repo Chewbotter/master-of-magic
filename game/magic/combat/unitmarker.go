@@ -22,8 +22,9 @@ const UnitChevron = true
 const chevronWidth = 11
 const chevronThick = 2
 const chevronStep = 4
-// its tip is this far over the middle of the tile of the unit, over the heads of its figures
-const chevronAbove = 24
+// its tip is this far over the middle of the tile of the unit. low, over the figures and not over
+// their heads: in a crowd a mark further up could mean the unit behind (user, 2026-09-28)
+const chevronAbove = 10
 // it goes this far up and down, and once up and down takes this many seconds
 const chevronBounce = 1.5
 const chevronBounceTime = 0.9
