@@ -66,8 +66,8 @@ func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawab
             Order: DrawOrder(piece.ScreenX, piece.ScreenY),
             Layer: layer,
             Render: func() {
-                pictures, err := combat.ImageCache.GetImages(piece.Lbx, piece.Index)
-                if err != nil || len(pictures) == 0 {
+                pictures := combat.sceneryPictures(piece)
+                if len(pictures) == 0 {
                     return
                 }
                 picture := pictures[0]

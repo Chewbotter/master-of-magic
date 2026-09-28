@@ -221,8 +221,8 @@ type CombatScreen struct {
     Landscape CombatLandscape
     // picks the pictures of the ground around the field, see fieldedge.go
     borderSeed uint32
-    // the pictures of the ground the replacement folder adds, see terraindraw.go
-    groundExtras map[int][]*ebiten.Image
+    // the pictures the replacement folder adds to the ground, trees, rocks and houses, see terraindraw.go
+    addedCache map[string][]*ebiten.Image
     // the shading of the plateaus and where it lies on the original's screen, see slopes.go
     slopeShading *ebiten.Image
     slopesMade bool

@@ -15,6 +15,7 @@ import (
     "math/rand/v2"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
 
     "github.com/hajimehoshi/ebiten/v2"
 )
@@ -35,6 +36,39 @@ type SceneryPiece struct {
     ScreenY int
     Lbx string
     Index int
+    // a picture the replacement folder adds: its folder, its name and its number from 1. 0 for a
+    // picture of the game
+    Set string
+    Name string
+    Number int
+}
+
+// the pictures of a use, the game's and the ones the replacement folder adds (mod/environment.go)
+type sceneryPool struct {
+    Set string
+    Name string
+    Lbx string
+    First int
+    Count int
+    Extras int
+}
+
+func makeSceneryPool(set string, name string, lbx string, first int, count int) sceneryPool {
+    return sceneryPool{Set: set, Name: name, Lbx: lbx, First: first, Count: count, Extras: mod.CountExtras(set, name, count)}
+}
+
+// a piece with one of the pictures, each as likely as the others
+func (pool sceneryPool) piece(kind SceneryKind, screenX int, screenY int) SceneryPiece {
+    piece := SceneryPiece{Kind: kind, ScreenX: screenX, ScreenY: screenY, Lbx: pool.Lbx, Index: pool.First}
+    pick := rand.N(pool.Count + pool.Extras)
+    if pick < pool.Count {
+        piece.Index = pool.First + pick
+    } else {
+        piece.Set = pool.Set
+        piece.Name = pool.Name
+        piece.Number = pick + 1
+    }
+    return piece
 }
 
 // the original's view of the battlefield: scenery only stands where its screen shows the field
@@ -46,11 +80,11 @@ const sceneryTreeIndex = 48
 const sceneryRockIndex = 53
 const sceneryPictures = 5
 
-// the point of the picture that is put on the position
-const treeAnchorX = 8
-const treeAnchorY = 13
-const rockAnchorX = 6
-const rockAnchorY = 12
+// the point of the picture that is put on the position: the middle of its width, this far above
+// its bottom edge. for the pictures of the game that is 8, 13 of a tree and 6, 12 of a rock, as the
+// original has them; added pictures can have any size
+const treeAnchorBelow = 5
+const rockAnchorBelow = 1
 // houses: the middle of the picture, this far above its bottom
 const houseAnchorBelow = 14
 // houses stand this far below the top corner of their cell
@@ -251,7 +285,7 @@ func (area sceneryArea) contains(cgx int, cgy int) bool {
     return cgx >= area.MinX && cgx <= area.MaxX && cgy >= area.MinY && cgy <= area.MaxY
 }
 
-func scatterTrees(count int, lbx string, zone ZoneType, area sceneryArea, ground *BattleGround) []SceneryPiece {
+func scatterTrees(count int, pool sceneryPool, zone ZoneType, area sceneryArea, ground *BattleGround) []SceneryPiece {
     var out []SceneryPiece
 
     if count <= 0 {
@@ -281,13 +315,7 @@ func scatterTrees(count int, lbx string, zone ZoneType, area sceneryArea, ground
             screenX, screenY := cellScreen(cgx, cgy, roll(treeSubcellMax), roll(treeSubcellMax))
 
             if area.contains(cgx, cgy) && !sceneryCellTaken(zone, cgx, cgy, false) && ground.sceneryAllowed(cgx, cgy) && area.Accept(screenX, screenY) {
-                out = append(out, SceneryPiece{
-                    Kind: SceneryTree,
-                    ScreenX: screenX - sceneryShiftX,
-                    ScreenY: screenY,
-                    Lbx: lbx,
-                    Index: sceneryTreeIndex + rand.N(sceneryPictures),
-                })
+                out = append(out, pool.piece(SceneryTree, screenX - sceneryShiftX, screenY))
                 // a tree makes its cell harder to go through, see movecost.go
                 ground.addTree(cgx, cgy)
                 placed += 1
@@ -304,7 +332,7 @@ func scatterTrees(count int, lbx string, zone ZoneType, area sceneryArea, ground
     return out
 }
 
-func scatterRocks(count int, lbx string, zone ZoneType, area sceneryArea, ground *BattleGround) []SceneryPiece {
+func scatterRocks(count int, pool sceneryPool, zone ZoneType, area sceneryArea, ground *BattleGround) []SceneryPiece {
     var out []SceneryPiece
 
     tries := 0
@@ -319,17 +347,15 @@ func scatterRocks(count int, lbx string, zone ZoneType, area sceneryArea, ground
             continue
         }
 
-        out = append(out, SceneryPiece{
-            Kind: SceneryRock,
-            ScreenX: screenX - sceneryShiftX,
-            ScreenY: screenY,
-            Lbx: lbx,
-            Index: sceneryRockIndex + rand.N(sceneryPictures),
-        })
+        out = append(out, pool.piece(SceneryRock, screenX - sceneryShiftX, screenY))
     }
 
     return out
 }
+
+// the folder and the names of the houses in the replacement folder, by style
+const houseSet = "Town"
+var houseNames = []string{"house", "hut", "tree house"}
 
 // the pictures of houses come in three styles of five
 func houseStyle(race data.Race) int {
@@ -357,6 +383,7 @@ func makeHouses(zone ZoneType) []SceneryPiece {
     fortress := city.HasFortress()
     walled := city.HasWall()
     style := houseStyle(city.Race)
+    housePool := makeSceneryPool(houseSet, houseNames[style], houseLbx, houseIndex + style * housePictures, housePictures)
 
     if fortress {
         out = append(out, SceneryPiece{Kind: SceneryStructure, ScreenX: lairX, ScreenY: lairY, Lbx: houseLbx, Index: fortressIndex})
@@ -377,13 +404,7 @@ func makeHouses(zone ZoneType) []SceneryPiece {
 
     add := func(column int, row int) {
         screenX, screenY := cellScreen(townCellMinX + column, townCellMinY + row, 0, 0)
-        out = append(out, SceneryPiece{
-            Kind: SceneryHouse,
-            ScreenX: screenX,
-            ScreenY: screenY + houseShiftY,
-            Lbx: houseLbx,
-            Index: houseIndex + style * housePictures + rand.N(housePictures),
-        })
+        out = append(out, housePool.piece(SceneryHouse, screenX, screenY + houseShiftY))
     }
 
     houses := city.Citizens()
@@ -432,13 +453,17 @@ func makeScenery(width int, height int, landscape CombatLandscape, plane data.Pl
 
     lbx := terrainSetLbx(landscape, plane)
 
+    set := mod.EnvironmentSet(lbx)
+    treePool := makeSceneryPool(set, "tree", lbx, sceneryTreeIndex, sceneryPictures)
+    rockPool := makeSceneryPool(set, "rock", lbx, sceneryRockIndex, sceneryPictures)
+
     trees := treeCount(landscape, zone.Ground)
-    out = append(out, scatterTrees(trees, lbx, zone, originalArea(), ground)...)
-    out = append(out, scatterTrees(trees * sceneryBeyondScreen(width, height), lbx, zone, beyondArea(width, height), ground)...)
+    out = append(out, scatterTrees(trees, treePool, zone, originalArea(), ground)...)
+    out = append(out, scatterTrees(trees * sceneryBeyondScreen(width, height), treePool, zone, beyondArea(width, height), ground)...)
 
     rocks := rockCount(landscape, zone.Ground)
-    out = append(out, scatterRocks(rocks, lbx, zone, originalArea(), ground)...)
-    out = append(out, scatterRocks(rocks * sceneryBeyondScreen(width, height), lbx, zone, beyondArea(width, height), ground)...)
+    out = append(out, scatterRocks(rocks, rockPool, zone, originalArea(), ground)...)
+    out = append(out, scatterRocks(rocks * sceneryBeyondScreen(width, height), rockPool, zone, beyondArea(width, height), ground)...)
 
     return out
 }
@@ -446,8 +471,8 @@ func makeScenery(width int, height int, landscape CombatLandscape, plane data.Pl
 // the point of its picture that is put on the position of a piece
 func (piece *SceneryPiece) anchor(width int, height int) (int, int) {
     switch piece.Kind {
-        case SceneryTree: return treeAnchorX, treeAnchorY
-        case SceneryRock: return rockAnchorX, rockAnchorY
+        case SceneryTree: return width / 2, height - treeAnchorBelow
+        case SceneryRock: return width / 2, height - rockAnchorBelow
         case SceneryHouse: return width / 2, height - houseAnchorBelow
         case SceneryStructure: return structureAnchorX, height - structureAnchorBelow
     }

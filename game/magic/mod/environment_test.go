@@ -78,7 +78,7 @@ func TestGroundExtrasAreCounted(test *testing.T) {
     if err := os.MkdirAll(directory, 0755); err != nil {
         test.Fatal(err)
     }
-    for _, name := range []string{"grass 5_0.png", "grass 6_0.png", "grass 8_0.png", "rough single 2_0.png"} {
+    for _, name := range []string{"grass 5_0.png", "grass 6_0.png", "grass 8_0.png", "rough single 2_0.png", "tree 6_0.png", "tree 7_0.png", "tree 8_0.png"} {
         if err := os.WriteFile(filepath.Join(directory, name), []byte{}, 0644); err != nil {
             test.Fatal(err)
         }
@@ -86,7 +86,13 @@ func TestGroundExtrasAreCounted(test *testing.T) {
 
     counts := make(map[string]int)
     for _, role := range GroundRoles {
-        counts[role.Name] = CountGroundExtras("Grass", role)
+        counts[role.Name] = CountExtras("Grass", role.Name, role.Count)
+    }
+    if trees := CountExtras("Grass", "tree", 5); trees != 3 {
+        test.Fatalf("trees: %v", trees)
+    }
+    if rocks := CountExtras("Grass", "rock", 5); rocks != 0 {
+        test.Fatalf("rocks: %v", rocks)
     }
     if counts["grass"] != 2 || counts["rough single"] != 1 || counts["dirt"] != 0 {
         test.Fatalf("grass %v, rough single %v, dirt %v", counts["grass"], counts["rough single"], counts["dirt"])

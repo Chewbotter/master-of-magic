@@ -226,7 +226,7 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     ground.Set = mod.EnvironmentSet(terrainSetLbx(landscape, plane))
     ground.Extras = make(map[int]int)
     for _, role := range mod.GroundRoles {
-        extras := mod.CountGroundExtras(ground.Set, role)
+        extras := mod.CountExtras(ground.Set, role.Name, role.Count)
         if extras > 0 {
             ground.Extras[role.First] = min(extras, groundExtraStep)
         }

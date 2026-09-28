@@ -180,3 +180,35 @@ func TestAddedPicturesArePicked(test *testing.T) {
         test.Fatalf("the added rough: %+v %v", role, number)
     }
 }
+
+// trees, rocks and houses: with pictures added, all are picked, and the anchors of the pictures of
+// the game are the original's
+func TestSceneryPool(test *testing.T) {
+    pool := sceneryPool{Set: "Grass", Name: "tree", Lbx: "cmbgrass.lbx", First: sceneryTreeIndex, Count: sceneryPictures, Extras: 2}
+
+    game := make(map[int]bool)
+    added := make(map[int]bool)
+    for range 400 {
+        piece := pool.piece(SceneryTree, 10, 20)
+        if piece.Number > 0 {
+            added[piece.Number] = true
+            if piece.Set != "Grass" || piece.Name != "tree" {
+                test.Fatalf("an added tree of %v/%v", piece.Set, piece.Name)
+            }
+        } else {
+            game[piece.Index] = true
+        }
+    }
+    if len(game) != 5 || !game[48] || !game[52] || len(added) != 2 || !added[6] || !added[7] {
+        test.Fatalf("the game's %v, added %v", game, added)
+    }
+
+    tree := SceneryPiece{Kind: SceneryTree}
+    rock := SceneryPiece{Kind: SceneryRock}
+    if x, y := tree.anchor(16, 18); x != 8 || y != 13 {
+        test.Fatalf("tree: %v, %v", x, y)
+    }
+    if x, y := rock.anchor(12, 13); x != 6 || y != 12 {
+        test.Fatalf("rock: %v, %v", x, y)
+    }
+}

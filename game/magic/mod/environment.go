@@ -235,17 +235,20 @@ func environmentFramePath(archive string, entry int, frame int) string {
     return filepath.Join(folder, environmentFolder, picture.Set, EnvironmentFrameFile(picture.Name, frame))
 }
 
-// MORE PICTURES OF THE GROUND (user, 2026-09-28). The ground of a landscape has a few pictures for
-// every use: 4 of grass, 2 of grass with dirt beyond its SE edge, 1 of each piece of raised ground.
-// The replacement folder can add to them. The names go on counting where the game's end:
+// MORE PICTURES (user, 2026-09-28). The game has a few pictures for every use and picks one of them
+// by chance: 4 of grass, 2 of grass with dirt beyond its SE edge, 1 of each piece of raised ground,
+// 5 trees, 5 rocks, 5 houses of each kind. The replacement folder can add to them. The names go on
+// counting where the game's end:
 //
 //   environment/Grass/grass 5_0.png, grass 6_0.png, ...
 //   environment/Grass/dirt edge SE 3_0.png, ...
 //   environment/Grass/rough NE SW 2_0.png, ...
+//   environment/Grass/tree 6_0.png, rock 6_0.png, ...
+//   environment/Town/house 6_0.png, hut 6_0.png, tree house 6_0.png, ...
 //
 // They end with the first number that is not there. The battle picks among all of them, the
-// game's and the added ones (combat/terrain.go). Added pictures are shown as they are painted,
-// with frames _0, _1 and on as the others.
+// game's and the added ones (combat/terrain.go, combat/scenery.go). Added pictures are shown as
+// they are painted.
 
 // a use of pictures of the ground: its name, its first picture in the archive of a landscape, and
 // how many the game has
@@ -280,7 +283,7 @@ func makeGroundRoles() []GroundRole {
 }
 
 // the most pictures that can be added to a use
-const maxGroundExtras = 99
+const maxExtras = 99
 
 // the folder of the pictures of a landscape, by its archive. nothing if the archive is none
 func EnvironmentSet(archive string) string {
@@ -292,13 +295,13 @@ func EnvironmentSet(archive string) string {
     return ""
 }
 
-// the name of a picture of a use, by its number from 1
-func GroundPictureName(role GroundRole, number int) string {
-    return fmt.Sprintf("%v %v", role.Name, number)
+// the name of one of the pictures of a use, by its number from 1: "grass 5", "tree 6"
+func NumberedName(name string, number int) string {
+    return fmt.Sprintf("%v %v", name, number)
 }
 
-// how many pictures the replacement folder adds to a use of the ground of a landscape
-func CountGroundExtras(set string, role GroundRole) int {
+// how many pictures the replacement folder adds to a use the game has count pictures of
+func CountExtras(set string, name string, count int) int {
     if folder == "" || set == "" {
         return 0
     }
@@ -307,27 +310,26 @@ func CountGroundExtras(set string, role GroundRole) int {
     // the files of the folder are looked up anew
     delete(folderLists, directory)
 
-    count := 0
-    for count < maxGroundExtras {
-        name := GroundPictureName(role, role.Count + count + 1)
-        if !hasFile(filepath.Join(directory, EnvironmentFrameFile(name, 0))) {
+    extras := 0
+    for extras < maxExtras {
+        file := EnvironmentFrameFile(NumberedName(name, count + extras + 1), 0)
+        if !hasFile(filepath.Join(directory, file)) {
             break
         }
-        count += 1
+        extras += 1
     }
-    return count
+    return extras
 }
 
-// the frames of an added picture of the ground, as they are
-func ReadGroundExtra(set string, role GroundRole, number int) []image.Image {
+// the frames of an added picture, as they are
+func ReadExtra(set string, name string, number int) []image.Image {
     if folder == "" || set == "" {
         return nil
     }
 
     var out []image.Image
-    name := GroundPictureName(role, number)
     for frame := 0; frame < maxFrames; frame++ {
-        path := filepath.Join(folder, environmentFolder, set, EnvironmentFrameFile(name, frame))
+        path := filepath.Join(folder, environmentFolder, set, EnvironmentFrameFile(NumberedName(name, number), frame))
         if !hasFile(path) {
             break
         }
