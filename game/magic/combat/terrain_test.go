@@ -381,74 +381,6 @@ func TestProps(test *testing.T) {
     }
 }
 
-// with the pictures spread, an added picture is never next to itself, and all pictures are used
-func TestPicturesAreSpread(test *testing.T) {
-    // added pictures as often as the game's, to look at the spread alone
-    weight := AddedGroundWeight
-    AddedGroundWeight = 1
-    defer func() { AddedGroundWeight = weight }()
-
-    // how many of the tiles next to an added picture show the same one
-    same := func(extras int, spread bool) float64 {
-        SpreadPictures = spread
-        defer func() { SpreadPictures = true }()
-
-        ground := testGround(30, 30)
-        ground.Extras = map[int]int{groundGrassFirst: extras}
-        ground.choosePictures()
-
-        pairs, equal := 0, 0
-        for cgy := 1; cgy < 29; cgy++ {
-            for cgx := 1; cgx < 29; cgx++ {
-                picture := ground.Picture[ground.index(cgx, cgy)]
-                if picture < groundExtraFirst {
-                    continue
-                }
-                for dy := -1; dy <= 1; dy++ {
-                    for dx := -1; dx <= 1; dx++ {
-                        if dx == 0 && dy == 0 {
-                            continue
-                        }
-                        pairs += 1
-                        if ground.Picture[ground.index(cgx + dx, cgy + dy)] == picture {
-                            equal += 1
-                        }
-                    }
-                }
-            }
-        }
-        return float64(equal) / float64(pairs)
-    }
-
-    // 4 of the game and 4 added by chance: one in 8 beside an added picture is the same
-    if share := same(4, false); share < 0.08 || share > 0.18 {
-        test.Fatalf("by chance: %v", share)
-    }
-    if share := same(4, true); share != 0 {
-        test.Fatalf("spread, 4 added: %v", share)
-    }
-    if share := same(12, true); share != 0 {
-        test.Fatalf("spread, 12 added: %v", share)
-    }
-
-    // all pictures are used
-    ground := testGround(30, 30)
-    ground.Extras = map[int]int{groundGrassFirst: 4}
-    ground.choosePictures()
-    counts := make(map[int]int)
-    for _, picture := range ground.Picture {
-        counts[picture] += 1
-    }
-    if len(counts) != 8 {
-        test.Fatalf("pictures used: %v", counts)
-    }
-    for picture, count := range counts {
-        if count < 50 {
-            test.Fatalf("picture %v is used %v times of 900: %v", picture, count, counts)
-        }
-    }
-}
-
 // a bag gives every picture once before any comes again
 func TestPictureBag(test *testing.T) {
     var bag pictureBag
@@ -463,67 +395,97 @@ func TestPictureBag(test *testing.T) {
     }
 }
 
-// added pictures of the ground show as often as AddedGroundWeight has it
-func TestAddedGroundWeight(test *testing.T) {
-    weight := AddedGroundWeight
-    defer func() { AddedGroundWeight = weight }()
+// added pictures of the ground are sprinkled in: AddedGroundShare of the tiles, however many
+// pictures there are, the same one never within addedRepeatReach of itself, and the game's by
+// chance
+func TestAddedGroundIsSprinkled(test *testing.T) {
+    share := AddedGroundShare
+    defer func() { AddedGroundShare = share }()
 
-    // how much of the ground is added pictures, with 4 of the game and 4 added
-    share := func() float64 {
-        added, all := 0, 0
-        for range 5 {
-            ground := testGround(30, 30)
-            ground.Extras = map[int]int{groundGrassFirst: 4}
-            ground.choosePictures()
-            for _, picture := range ground.Picture {
-                all += 1
-                if picture >= groundExtraFirst {
-                    added += 1
-                }
+    make := func(extras int) *BattleGround {
+        ground := testGround(40, 40)
+        ground.Extras = map[int]int{groundGrassFirst: extras}
+        ground.choosePictures()
+        return ground
+    }
+    added := func(ground *BattleGround) float64 {
+        count := 0
+        for _, picture := range ground.Picture {
+            if picture >= groundExtraFirst {
+                count += 1
             }
         }
-        return float64(added) / float64(all)
+        return float64(count) / float64(len(ground.Picture))
     }
 
-    // half as often each: 4 halves of 6, a third. a little less, because an added picture that
-    // would lie beside itself gives way to one of the game
-    AddedGroundWeight = 0.5
-    half := share()
-    if half < 0.26 || half > 0.35 {
-        test.Fatalf("at 0.5: %v of the ground is added pictures, want about a third", half)
-    }
-    AddedGroundWeight = 1
-    full := share()
-    if full < 0.36 || full > 0.52 {
-        test.Fatalf("at 1: %v, want up to half", full)
-    }
-    test.Logf("added pictures of the ground: %.3f at weight 0.5, %.3f at weight 1", half, full)
-    if full <= half {
-        test.Fatalf("at 1 %v, at 0.5 %v", full, half)
-    }
-    AddedGroundWeight = 0
-    if got := share(); got != 0 {
-        test.Fatalf("at 0: %v, want none", got)
-    }
+    AddedGroundShare = 0.15
+    for _, extras := range []int{4, 12, 40} {
+        ground := make(extras)
 
-    // the same added picture is next to itself next to never
-    AddedGroundWeight = 0.5
-    ground := testGround(30, 30)
-    ground.Extras = map[int]int{groundGrassFirst: 4}
-    ground.choosePictures()
-    for cgy := 1; cgy < 29; cgy++ {
-        for cgx := 1; cgx < 29; cgx++ {
-            picture := ground.Picture[ground.index(cgx, cgy)]
-            if picture < groundExtraFirst {
-                continue
-            }
-            for dy := -1; dy <= 1; dy++ {
-                for dx := -1; dx <= 1; dx++ {
-                    if (dx != 0 || dy != 0) && ground.Picture[ground.index(cgx + dx, cgy + dy)] == picture {
-                        test.Fatalf("added picture %v is beside itself at %v, %v", picture, cgx, cgy)
+        // about the share, whatever the number of pictures. a little less with few, which give
+        // way where all of them are near
+        got := added(ground)
+        if got < 0.09 || got > 0.19 {
+            test.Fatalf("%v added pictures: %v of the ground, want about %v", extras, got, AddedGroundShare)
+        }
+        test.Logf("%v added pictures: %.3f of the ground shows one", extras, got)
+
+        // the same added picture is never within reach of itself
+        for cgy := 0; cgy < 40; cgy++ {
+            for cgx := 0; cgx < 40; cgx++ {
+                picture := ground.Picture[ground.index(cgx, cgy)]
+                if picture < groundExtraFirst {
+                    continue
+                }
+                for dy := -addedRepeatReach; dy <= addedRepeatReach; dy++ {
+                    for dx := -addedRepeatReach; dx <= addedRepeatReach; dx++ {
+                        if (dx != 0 || dy != 0) && ground.contains(cgx + dx, cgy + dy) && ground.Picture[ground.index(cgx + dx, cgy + dy)] == picture {
+                            test.Fatalf("added picture %v at %v, %v and again %v, %v from it", picture, cgx, cgy, dx, dy)
+                        }
                     }
                 }
             }
         }
+    }
+
+    // different added pictures do lie side by side: they are not set out evenly
+    ground := make(12)
+    beside := 0
+    for cgy := 0; cgy < 40; cgy++ {
+        for cgx := 0; cgx < 39; cgx++ {
+            if ground.Picture[ground.index(cgx, cgy)] >= groundExtraFirst && ground.Picture[ground.index(cgx + 1, cgy)] >= groundExtraFirst {
+                beside += 1
+            }
+        }
+    }
+    if beside == 0 {
+        test.Fatalf("no two added pictures side by side")
+    }
+
+    // the game's pictures by chance: all four, and the same ones side by side
+    counts := map[int]int{}
+    repeats := 0
+    for cgy := 0; cgy < 40; cgy++ {
+        for cgx := 0; cgx < 39; cgx++ {
+            picture := ground.Picture[ground.index(cgx, cgy)]
+            if picture < groundExtraFirst {
+                counts[picture] += 1
+                if ground.Picture[ground.index(cgx + 1, cgy)] == picture {
+                    repeats += 1
+                }
+            }
+        }
+    }
+    if len(counts) != groundGrassCount || repeats < 100 {
+        test.Fatalf("the game's pictures: %v, %v side by side", counts, repeats)
+    }
+
+    AddedGroundShare = 0
+    if got := added(make(4)); got != 0 {
+        test.Fatalf("at 0: %v", got)
+    }
+    AddedGroundShare = 1
+    if got := added(make(40)); got < 0.95 {
+        test.Fatalf("at 1 with 40 pictures: %v", got)
     }
 }

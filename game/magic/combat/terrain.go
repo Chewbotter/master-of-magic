@@ -25,7 +25,6 @@ package combat
 
 import (
     "math/rand/v2"
-    "slices"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/mod"
@@ -80,18 +79,26 @@ const groundEdgeCount = 2
 const groundExtraFirst = 1000
 const groundExtraStep = 100
 
-// SPREAD (user, 2026-09-28: "the more variations I add, the fewer repeats we see"). Picking by
-// chance for every tile on its own puts the same picture next to itself often, however many there
-// are. With this, a tile takes one of the pictures that the tiles around it, this many cells far,
-// use the least, the nearer ones counting more. false picks by chance alone, as the original does
-var SpreadPictures = true
-const groundSpreadReach = 2
+// ADDED GROUND IS SPRINKLED IN (user, 2026-09-28). The tiles of the game are plain, they make up
+// most of the ground and repeat as they like, picked by chance as the original picks them. The
+// added ones have features of their own and are sprinkled in among them: AddedGroundShare of the
+// tiles of a use show an added picture, whichever tiles chance picks, so they lie in loose groups
+// here and far apart there. How many added pictures there are does not change how many tiles show
+// one, only how many different ones are seen.
+//
+// One rule besides chance: the same added picture does not show twice within addedRepeatReach
+// cells, so a picture with a stick in it is not seen six times in a row. Different added pictures
+// can lie side by side. A tile that finds all added pictures that near shows one of the game.
+//
+// Tried before and taken back: every tile picking among all pictures with the least used nearby
+// first, which set the added ones out evenly over the field and looked uniform.
+var AddedGroundShare = 0.15
+const addedRepeatReach = 2
 
-// HOW OFTEN ADDED GROUND SHOWS (user, 2026-09-28). The tiles of the game are plain and can repeat,
-// the added ones have features of their own and should be the fewer. An added picture of the
-// ground shows this many times as often as one of the game's of the same use: 0.5 is half as
-// often, 1 as often, 0 never
-var AddedGroundWeight = 0.5
+// trees, rocks, houses, props and large pieces show every picture once before any comes again
+// (pictureBag in scenery.go). false picks them by chance alone, and takes the rule of
+// addedRepeatReach from the ground
+var SpreadPictures = true
 
 // the pieces of road, cmbtcity 69 on: 6 directions in two sets of 7, and the same for enchanted roads
 const roadLbx = "cmbtcity.lbx"
@@ -520,74 +527,44 @@ func groundVariant(picture int, first int, count int) int {
     return -1
 }
 
-// how much the cells around a cell use each of the pictures from..to of a use, the nearer ones
-// counting more: a cell next to it groundSpreadReach, one at the end of the reach 1
-func (ground *BattleGround) usesAround(cgx int, cgy int, first int, count int, from int, to int) []int {
-    uses := make([]int, to - from)
-    for dy := -groundSpreadReach; dy <= groundSpreadReach; dy++ {
-        for dx := -groundSpreadReach; dx <= groundSpreadReach; dx++ {
-            if !ground.contains(cgx + dx, cgy + dy) || !ground.chosen[ground.index(cgx + dx, cgy + dy)] {
-                continue
-            }
-            used := groundVariant(ground.Picture[ground.index(cgx + dx, cgy + dy)], first, count)
-            if used >= from && used < to {
-                uses[used - from] += groundSpreadReach + 1 - max(abs(dx), abs(dy))
+// the added pictures of a use that no cell within addedRepeatReach of a cell shows, as numbers
+// from 0 among the added ones
+func (ground *BattleGround) addedFree(cgx int, cgy int, first int, count int, extras int) []int {
+    near := make([]bool, extras)
+    if SpreadPictures && ground.chosen != nil {
+        for dy := -addedRepeatReach; dy <= addedRepeatReach; dy++ {
+            for dx := -addedRepeatReach; dx <= addedRepeatReach; dx++ {
+                if !ground.contains(cgx + dx, cgy + dy) || !ground.chosen[ground.index(cgx + dx, cgy + dy)] {
+                    continue
+                }
+                used := groundVariant(ground.Picture[ground.index(cgx + dx, cgy + dy)], first, count)
+                if used >= count && used < count + extras {
+                    near[used - count] = true
+                }
             }
         }
     }
-    return uses
-}
 
-// one of the pictures from..to that are used the least, by chance, and how much it is used
-func leastUsed(uses []int, from int) (int, int) {
-    least := slices.Min(uses)
     var free []int
-    for number, use := range uses {
-        if use == least {
-            free = append(free, from + number)
+    for number, taken := range near {
+        if !taken {
+            free = append(free, number)
         }
     }
-    return free[rand.N(len(free))], least
+    return free
 }
 
-// one of the pictures of a use for a cell: the game's, from first on, and the added ones
+// one of the pictures of a use for a cell: mostly the game's, from first on, by chance. now and
+// then an added one
 func (ground *BattleGround) variant(cgx int, cgy int, first int, count int) int {
     extras := ground.Extras[first]
-
-    // one of the game's or an added one: by chance, the added ones as AddedGroundWeight has it
-    added := false
-    addedShare := float64(extras) * AddedGroundWeight
-    if extras > 0 && rand.Float64() * (float64(count) + addedShare) < addedShare {
-        added = true
-    }
-
-    spread := SpreadPictures && ground.chosen != nil
-    pick := rand.N(count)
-
-    if added {
-        pick = count + rand.N(extras)
-        if spread {
-            // an added picture has features of its own: never beside itself. if all of them are
-            // that near, a picture of the game
-            var use int
-            pick, use = leastUsed(ground.usesAround(cgx, cgy, first, count, count, count + extras), count)
-            if use >= groundSpreadReach {
-                added = false
-            }
+    if extras > 0 && rand.Float64() < AddedGroundShare {
+        free := ground.addedFree(cgx, cgy, first, count, extras)
+        if len(free) > 0 {
+            return groundExtraFirst + first * groundExtraStep + free[rand.N(len(free))]
         }
     }
-
-    if !added {
-        pick = rand.N(count)
-        if spread && count > 1 {
-            pick, _ = leastUsed(ground.usesAround(cgx, cgy, first, count, 0, count), 0)
-        }
-    }
-
-    if pick < count {
-        return first + pick
-    }
-    return groundExtraFirst + first * groundExtraStep + pick - count
+    return first + rand.N(count)
 }
 
 // the use and the number from 1 of an added picture
