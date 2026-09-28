@@ -1408,6 +1408,7 @@ func setupReplacementPictures() {
     }
 
     util.ReplacePictures = mod.Replace
+    mouselib.ReplaceCursor = mod.ReplaceCursor
 }
 
 func main() {

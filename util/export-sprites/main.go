@@ -32,6 +32,7 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/lib/lbx"
+    "github.com/kazzmir/master-of-magic/lib/mouse"
 )
 
 // the archives battles draw from, besides the figures of the units
@@ -231,6 +232,48 @@ func readPictures(archive *lbx.LbxFile, entry int) (frames []*image.Paletted, er
     return archive.ReadImages(entry)
 }
 
+// takes the pictures of the cursors as they are read
+type cursorKeeper struct {
+    Pictures []*image.Paletted
+}
+
+func (keeper *cursorKeeper) ApplyScale(picture image.Image) image.Image {
+    paletted, ok := picture.(*image.Paletted)
+    if ok {
+        keeper.Pictures = append(keeper.Pictures, paletted)
+    }
+    return picture
+}
+
+// the cursors of the mouse. they are not pictures of an archive as the others are
+func exportCursors(dataPath string, outPath string) int {
+    archive, err := openArchive(dataPath, "fonts.lbx")
+    if err != nil {
+        log.Printf("%v", err)
+        return 0
+    }
+
+    var keeper cursorKeeper
+    _, err = mouse.ReadMouseImages(archive, &keeper, mouse.CursorEntry)
+    if err != nil {
+        log.Printf("Unable to read the cursors: %v", err)
+        return 0
+    }
+
+    count := 0
+    for index, picture := range keeper.Pictures {
+        name := mod.CursorFile(index)
+        if name == "" {
+            continue
+        }
+        if writePng(filepath.Join(outPath, "cursors", name), picture) == nil {
+            count += 1
+        }
+    }
+
+    return count
+}
+
 func exportPalette(outPath string) error {
     palette := lbx.GetDefaultPalette()
 
@@ -294,6 +337,23 @@ archives/<file>/<entry>_<frame>.png
         chriver     rivers, the chaos node
         compix      the combat bar and its buttons
 
+cursors/<number>_<name>.png
+    the cursors of the mouse, 16 by 16 pixels. A changed cursor has to keep that size.
+        00_normal   the pointer
+        01_magic    the pointer over the world map while a spell is aimed
+        02_cross    the red X. The game shortens the arms of its own X in battles; an X from the
+                    replacement folder is shown as it is drawn
+        03_arrow    a shot
+        04_attack   a strike
+        05_wait     the hourglass
+        06_move     the boot
+        08_cast0 to 12_cast4   aiming a spell in a battle, 5 frames
+        07, 13, 14, 15         not used by the game
+    The point of a cursor that counts as the place of the mouse is fixed in the game. In battles:
+    the boot 5 across and 3 down, the strike and the X 7 across and 7 down, the shot 1 across and
+    1 down. Everywhere
+    else the upper left corner.
+
 COLORS
     The png files are in indexed color: every pixel is the number of a color of the game's palette
     of 256. The game needs those numbers. Keep a changed picture in indexed color with the same
@@ -322,6 +382,7 @@ func main() {
 
     unitCount, unitPictures := exportUnits(*dataPath, *outPath)
     archivePictures := exportArchives(*dataPath, *outPath)
+    cursorPictures := exportCursors(*dataPath, *outPath)
 
     err = exportPalette(*outPath)
     if err != nil {
@@ -330,6 +391,6 @@ func main() {
 
     os.WriteFile(filepath.Join(*outPath, "README.txt"), []byte(readme), 0644)
 
-    fmt.Printf("units: %v, pictures of units: %v, pictures of archives: %v\n", unitCount, unitPictures, archivePictures)
+    fmt.Printf("units: %v, pictures of units: %v, pictures of archives: %v, cursors: %v\n", unitCount, unitPictures, archivePictures, cursorPictures)
     fmt.Printf("written to %v\n", *outPath)
 }

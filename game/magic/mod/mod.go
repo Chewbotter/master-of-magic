@@ -7,6 +7,7 @@ package mod
 //
 //   units/<race> <name>/<facing>_<frame>.png     the figures of a unit
 //   archives/<file>/<entry>_<frame>.png          any picture of any archive, <entry> with 3 digits
+//   cursors/<number>_<name>.png                  a cursor of the mouse, see CursorNames
 //
 // A picture that is not there is the game's own. Every frame is a file of its own: the sheets the
 // export writes are for looking at and are not read.
@@ -42,6 +43,56 @@ var DefaultFolders = []string{"mod", "../mod"}
 
 const unitsFolder = "units"
 const archivesFolder = "archives"
+const cursorsFolder = "cursors"
+
+// the cursors of the game in the order it keeps them, as the files are named. the export writes
+// the same names
+var CursorNames = []string{
+    "00_normal", "01_magic", "02_cross", "03_arrow", "04_attack", "05_wait", "06_move", "07",
+    "08_cast0", "09_cast1", "10_cast2", "11_cast3", "12_cast4", "13", "14", "15",
+}
+
+const CursorCross = 2
+
+// the cursors that came from the replacement folder
+var replacedCursors = make(map[int]bool)
+
+func CursorFile(index int) string {
+    if index < 0 || index >= len(CursorNames) {
+        return ""
+    }
+    return CursorNames[index] + ".png"
+}
+
+// true if the cursor came from the replacement folder
+func HasCursor(index int) bool {
+    return replacedCursors[index]
+}
+
+// the picture of a cursor, the one of the replacement folder if there is one. a cursor has to keep
+// its size
+func ReplaceCursor(index int, picture *image.Paletted) *image.Paletted {
+    delete(replacedCursors, index)
+
+    name := CursorFile(index)
+    if folder == "" || name == "" || picture == nil {
+        return picture
+    }
+
+    path := filepath.Join(folder, cursorsFolder, name)
+    replacement := readFrame([]string{path}, picture.Palette)
+    if replacement == nil {
+        return picture
+    }
+
+    if replacement.Bounds().Dx() != picture.Bounds().Dx() || replacement.Bounds().Dy() != picture.Bounds().Dy() {
+        reportOnce(fmt.Sprintf("Replacement cursor %v is %v by %v, it has to be %v by %v. The cursor of the game is used", path, replacement.Bounds().Dx(), replacement.Bounds().Dy(), picture.Bounds().Dx(), picture.Bounds().Dy()))
+        return picture
+    }
+
+    replacedCursors[index] = true
+    return replacement
+}
 
 // pixels less solid than this, of 255, are see-through
 const solidFrom = 128
