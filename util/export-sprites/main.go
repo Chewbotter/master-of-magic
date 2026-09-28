@@ -347,6 +347,9 @@ const slopesNote = "Slopes\r\n\r\n" +
     "                       W left. Each such corner takes one of them by chance, or stays square.\r\n" +
     "                       Any number from 1 on, without a gap\r\n" +
     "inner N, E, S, W       where the cell beyond a corner is lower but the two edges beside it are not\r\n" +
+    "diagonal N, E, S, W    where exactly the two edges beside a corner drop: the cell is cut in half\r\n" +
+    "                       from corner to corner and the slope hangs from that line. Along a staircase\r\n" +
+    "                       of tiles these make one straight line\r\n" +
     "\r\n" +
     "Every picture is 46 by 40 pixels: the ground picture of the tile (30 by 16) lies 8 right of and 4\r\n" +
     "below its top left corner, the room below is for the faces. Any colors; see-through pixels darken\r\n" +

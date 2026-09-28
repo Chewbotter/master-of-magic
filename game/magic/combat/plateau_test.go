@@ -39,10 +39,14 @@ func TestSlopeParts(test *testing.T) {
         test.Fatalf("notch at the S corner: %v %v %v", edges, outer, inner)
     }
 
-    // the lower right cell of the plateau: edges SE and SW drop, a cut can go on its S corner
+    // the lower right cell of the plateau: edges SE and SW drop, so it is cut in half at its S corner
     edges, outer, _ = ground.slopeParts(4, 3)
-    if !slices.Equal(edges, []int{1, 2}) || !slices.Equal(outer, []int{2}) {
-        test.Fatalf("corner cell: %v %v", edges, outer)
+    if !slices.Equal(edges, []int{1, 2}) || !slices.Equal(outer, []int{2}) || slopeDiagonal(edges) != 2 {
+        test.Fatalf("corner cell: %v %v %v", edges, outer, slopeDiagonal(edges))
+    }
+    // one edge, or two across from each other, are no diagonal
+    if slopeDiagonal([]int{1}) != -1 || slopeDiagonal([]int{0, 2}) != -1 || slopeDiagonal([]int{3, 0}) != 0 {
+        test.Fatalf("diagonals: %v %v %v", slopeDiagonal([]int{1}), slopeDiagonal([]int{0, 2}), slopeDiagonal([]int{3, 0}))
     }
 }
 
@@ -67,7 +71,7 @@ func TestSlopeFacesHangBelow(test *testing.T) {
     if below(slopeEdgePicture(0)) || below(slopeEdgePicture(3)) {
         test.Fatalf("a face below the far edges")
     }
-    if len(SlopePictures()) != 8 + 4 * len(slopeCuts) {
+    if len(SlopePictures()) != 12 + 4 * len(slopeCuts) {
         test.Fatalf("%v pictures", len(SlopePictures()))
     }
 }

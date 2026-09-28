@@ -4,9 +4,16 @@ package combat
 //
 // Nothing is raised on the screen: slopes are pictures laid over the ground, like the marks of
 // spells. Along an edge of a raised cell where the next cell is lower lies a piece of slope. On the
-// edges toward the viewer (SE and SW) its face hangs down below the edge, over the lower ground, so
-// the plateau looks taller than a tile would let it (slopeFaceDepth); the far edges (NE and NW) show
-// a light rim. Where two edges of a cell drop, its corner is cut in one of several shapes, or left
+// edges toward the viewer (SE and SW) it hangs down below the edge, over the lower ground, so the
+// plateau looks taller than a tile would let it (slopeFaceDepth); on the far edges (NE and NW) it
+// rises a little above the edge, as seen from above (slopeFarDepth). A slope is shaded light at its
+// top edge, bending over to a dark crease near its foot (slopeProfile).
+//
+// Where exactly two edges of a cell that meet at a corner drop, the cell is cut in half from corner
+// to corner and the slope hangs from that line (diagonal N, E, S, W; user, 2026-09-28: "diagonal
+// shapes would go a long way"). Along a plateau whose outline runs across the grid, which on the
+// screen is a staircase of tiles, every step is cut the same way, so the steps make one straight
+// line. It is only the look: the whole cell is still raised. Where two edges of a cell drop, its corner is cut in one of several shapes, or left
 // square, so the corners of plateaus do not all look alike. Where the cell beyond a corner is lower
 // but the two edges beside it are not, an inner corner fills the notch.
 //
@@ -16,6 +23,7 @@ package combat
 //   environment/Slopes/edge NE_0.png ... edge NW_0.png
 //   environment/Slopes/inner N_0.png ... inner W_0.png
 //   environment/Slopes/outer N 1_0.png, outer N 2_0.png, ...   from 1 on, as many as there are
+//   environment/Slopes/diagonal N_0.png ... diagonal W_0.png
 //
 // Every picture is slopeCanvasWidth by slopeCanvasHeight, the ground picture of the tile lying
 // slopeCanvasLeft right of and slopeCanvasTop below its top left corner, so a face can hang below
@@ -42,24 +50,28 @@ const slopeCanvasHeight = 40
 const slopeCanvasLeft = 8
 const slopeCanvasTop = 4
 
-// the ground picture of a tile and the points of its diamond, in its own pixels
-const slopeTileWidth = 30
+// the ground picture of a tile is 30 by 16, but tiles lie 32 apart: the diamond of a cell is 32
+// wide, its left corner one pixel left of the picture. slopes follow the diamond, so the slopes of
+// cells side by side meet without a gap
 const slopeTileHeight = 16
+const slopeDiamondCenterX = 15
+const slopeDiamondHalfWidth = CellStepX
+const slopeDiamondHalfHeight = CellStepY
 
-// how far the face of a slope toward the viewer hangs below the edge, in art pixels. the taller,
-// the higher a plateau looks
-const slopeFaceDepth = 12
-// how dark the faces are at their darkest, 0 to 1. SE is turned away from the light more than SW
-const slopeDarkSE = 0.62
-const slopeDarkSW = 0.45
-// the last part of a face, 0 to 1 of its depth, fades into the ground
-const slopeFaceFoot = 0.2
-// a thin light line on the edge above a face, in cells from the edge, and how light
-const slopeLipNear = 0.07
-const slopeLipLightNear = 0.3
-// the light rim of the far edges
-const slopeLipFar = 0.3
-const slopeLightFar = 0.22
+// the slope toward the viewer (SE and SW edges) reaches this far below the edge, the one away from
+// the viewer (NE and NW) this far above it, in art pixels. the taller, the higher a plateau looks
+const slopeFaceDepth = 6
+const slopeFarDepth = 3
+// how dark each slope is at its foot, 0 to 1. SE is turned away from the light more than SW
+const slopeDarkSE = 0.55
+const slopeDarkSW = 0.42
+const slopeDarkFar = 0.3
+// the shading of a slope runs from light at the top edge to its darkest at the crease, this far
+// down the slope (0 to 1), and fades into the ground below it
+const slopeCrease = 0.8
+const slopeTopShade = 0.1
+// a line of light on the top edge, how light
+const slopeLipLight = 0.18
 // the notch of an inner corner, in cells from the corner
 const slopeInnerReach = 0.35
 
@@ -88,6 +100,7 @@ const slopesSet = "Slopes"
 var slopeEdgeNames = []string{"edge NE", "edge SE", "edge SW", "edge NW"}
 var slopeInnerNames = []string{"inner N", "inner E", "inner S", "inner W"}
 var slopeCornerNames = []string{"N", "E", "S", "W"}
+var slopeDiagonalNames = []string{"diagonal N", "diagonal E", "diagonal S", "diagonal W"}
 
 func slopeOuterName(corner int, number int) string {
     return fmt.Sprintf("outer %v %v", slopeCornerNames[corner], number)
@@ -102,6 +115,9 @@ func SlopePictures() map[string]image.Image {
     for corner, name := range slopeInnerNames {
         out[name] = slopeInnerPicture(corner)
     }
+    for corner, name := range slopeDiagonalNames {
+        out[name] = slopeDiagonalPicture(corner)
+    }
     for corner := range slopeCornerNames {
         for number, cut := range slopeCuts {
             out[slopeOuterName(corner, number + 1)] = slopeOuterPicture(corner, cut)
@@ -110,13 +126,17 @@ func SlopePictures() map[string]image.Image {
     return out
 }
 
+// the middle of a pixel of a picture of slope, in the pixels of the tile's ground picture
+func slopeTilePoint(x int, y int) (float64, float64) {
+    return float64(x - slopeCanvasLeft) + 0.5, float64(y - slopeCanvasTop) + 0.5
+}
+
 // a point of a picture of slope in the cells of the grid: u runs from the NW edge (0) to the SE edge
-// (1), v from the NE edge (0) to the SW edge (1). inside is false beyond the tile
+// (1), v from the NE edge (0) to the SW edge (1). inside is false beyond the diamond
 func slopeCell(x int, y int) (float64, float64, bool) {
-    tileX := float64(x - slopeCanvasLeft) + 0.5
-    tileY := float64(y - slopeCanvasTop) + 0.5
-    a := (tileX - slopeTileWidth / 2) / (slopeTileWidth / 2)
-    b := (tileY - slopeTileHeight / 2) / (slopeTileHeight / 2)
+    tileX, tileY := slopeTilePoint(x, y)
+    a := (tileX - slopeDiamondCenterX) / slopeDiamondHalfWidth
+    b := (tileY - slopeDiamondHalfHeight) / slopeDiamondHalfHeight
     u := (a + b + 1) / 2
     v := (b - a + 1) / 2
     return u, v, math.Abs(a) + math.Abs(b) <= 1
@@ -139,65 +159,74 @@ func newSlopeCanvas() *image.NRGBA {
     return image.NewNRGBA(image.Rect(0, 0, slopeCanvasWidth, slopeCanvasHeight))
 }
 
-// the piece along an edge: a face hanging below it toward the viewer, a light rim away from it
+// how dark a slope is at a point, 0 at its top edge to 1 at its foot: light at the top, rounding
+// over to the darkest at the crease, then fading into the ground
+func slopeProfile(t float64) float64 {
+    if t <= 0 || t >= 1 {
+        return 0
+    }
+    if t <= slopeCrease {
+        s := t / slopeCrease
+        // smooth, so the slope looks bent, not flat
+        s = s * s * (3 - 2 * s)
+        return slopeTopShade + (1 - slopeTopShade) * s
+    }
+    return (1 - t) / (1 - slopeCrease)
+}
+
+// the y of an edge of the diamond at a column, and whether the column lies under it. the columns of
+// an edge are half open, so the edges of cells side by side do not overlap
+func slopeEdgeY(side int, tileX float64) (float64, bool) {
+    left := float64(slopeDiamondCenterX - slopeDiamondHalfWidth)
+    right := float64(slopeDiamondCenterX + slopeDiamondHalfWidth)
+    middle := float64(slopeDiamondCenterX)
+    rise := float64(slopeDiamondHalfHeight) / float64(slopeDiamondHalfWidth)
+    switch side {
+        case 0: return slopeDiamondHalfHeight - (right - tileX) * rise, tileX >= middle && tileX < right
+        case 1: return slopeDiamondHalfHeight + (right - tileX) * rise, tileX >= middle && tileX < right
+        case 2: return slopeDiamondHalfHeight + (tileX - left) * rise, tileX >= left && tileX < middle
+    }
+    return slopeDiamondHalfHeight - (tileX - left) * rise, tileX >= left && tileX < middle
+}
+
+// the piece along an edge: toward the viewer the slope hangs below the edge, away from the viewer
+// it rises above it, shorter, as seen from above
 func slopeEdgePicture(side int) image.Image {
     out := newSlopeCanvas()
+    near := side == 1 || side == 2
+
+    depth := float64(slopeFarDepth)
+    dark := slopeDarkFar
+    switch side {
+        case 1:
+            depth, dark = slopeFaceDepth, slopeDarkSE
+        case 2:
+            depth, dark = slopeFaceDepth, slopeDarkSW
+    }
 
     for y := range slopeCanvasHeight {
         for x := range slopeCanvasWidth {
-            u, v, inside := slopeCell(x, y)
-            distance := slopeEdgeDistances(u, v)[side]
-
-            if inside {
-                switch side {
-                    case 0, 3:
-                        if distance < slopeLipFar {
-                            out.SetNRGBA(x, y, slopeShade(false, slopeLightFar * (1 - distance / slopeLipFar)))
-                        }
-                    case 1, 2:
-                        if distance < slopeLipNear {
-                            out.SetNRGBA(x, y, slopeShade(false, slopeLipLightNear))
-                        }
-                }
+            tileX, tileY := slopeTilePoint(x, y)
+            edgeY, under := slopeEdgeY(side, tileX)
+            if !under {
                 continue
             }
 
-            if side != 1 && side != 2 {
-                continue
+            // how far beyond the edge, outward from the cell: down for the near edges, up for the far
+            beyond := tileY - edgeY
+            if !near {
+                beyond = edgeY - tileY
             }
 
-            // the face: straight below the edge, down to slopeFaceDepth
-            tileX := float64(x - slopeCanvasLeft) + 0.5
-            tileY := float64(y - slopeCanvasTop) + 0.5
-            var edgeY float64
-            switch side {
-                case 1:
-                    if tileX < slopeTileWidth / 2 || tileX > slopeTileWidth {
-                        continue
+            switch {
+                case beyond > 0:
+                    if shade := dark * slopeProfile(beyond / depth); shade > 0 {
+                        out.SetNRGBA(x, y, slopeShade(true, shade))
                     }
-                    edgeY = slopeTileHeight / 2 + (slopeTileWidth - tileX) * slopeTileHeight / slopeTileWidth
-                case 2:
-                    if tileX < 0 || tileX > slopeTileWidth / 2 {
-                        continue
-                    }
-                    edgeY = slopeTileHeight / 2 + tileX * slopeTileHeight / slopeTileWidth
+                case beyond > -1:
+                    // the top edge itself
+                    out.SetNRGBA(x, y, slopeShade(false, slopeLipLight))
             }
-
-            depth := (tileY - edgeY) / slopeFaceDepth
-            if depth <= 0 || depth > 1 {
-                continue
-            }
-
-            dark := slopeDarkSE
-            if side == 2 {
-                dark = slopeDarkSW
-            }
-            // a little darker toward the foot, and fading into the ground at the end
-            amount := dark * (0.8 + 0.2 * depth)
-            if depth > 1 - slopeFaceFoot {
-                amount *= (1 - depth) / slopeFaceFoot
-            }
-            out.SetNRGBA(x, y, slopeShade(true, amount))
         }
     }
 
@@ -205,14 +234,13 @@ func slopeEdgePicture(side int) image.Image {
 }
 
 // how a corner looks where it drops: N away from the viewer, S toward it
-func slopeCornerShade(corner int) (bool, float64) {
+func slopeCornerShade(corner int) float64 {
     switch corner {
-        // the top corner: cut away it is lower ground, not lifted
-        case 0: return true, 1 - 1 / plateauTopBrightness
-        case 1: return true, slopeDarkSE * 0.8
-        case 2: return true, (slopeDarkSE + slopeDarkSW) / 2
+        case 0: return slopeDarkFar
+        case 1: return (slopeDarkSE + slopeDarkFar) / 2
+        case 2: return (slopeDarkSE + slopeDarkSW) / 2
     }
-    return true, slopeDarkSW * 0.8
+    return (slopeDarkSW + slopeDarkFar) / 2
 }
 
 // the two edges beside a corner, as indexes of slopeEdgeDistances: N lies between NW and NE
@@ -220,14 +248,11 @@ func slopeCornerEdges(corner int) (int, int) {
     return (corner + 3) % 4, corner
 }
 
-// the notch of an inner corner
+// the notch of an inner corner: a short slope bending around it
 func slopeInnerPicture(corner int) image.Image {
     out := newSlopeCanvas()
     before, after := slopeCornerEdges(corner)
-    dark, amount := slopeCornerShade(corner)
-    if corner == 0 {
-        dark, amount = false, slopeLightFar
-    }
+    dark := slopeCornerShade(corner)
 
     for y := range slopeCanvasHeight {
         for x := range slopeCanvasWidth {
@@ -238,18 +263,22 @@ func slopeInnerPicture(corner int) image.Image {
             distances := slopeEdgeDistances(u, v)
             reach := math.Max(distances[before], distances[after])
             if reach < slopeInnerReach {
-                out.SetNRGBA(x, y, slopeShade(dark, amount * (1 - reach / slopeInnerReach)))
+                // from the top edge of the notch down to the corner
+                if shade := dark * slopeProfile(1 - reach / slopeInnerReach); shade > 0 {
+                    out.SetNRGBA(x, y, slopeShade(true, shade))
+                }
             }
         }
     }
     return out
 }
 
-// a corner cut away where two edges drop
+// a corner cut away where two edges drop: the slope runs across the cut, from its edge down to the
+// corner
 func slopeOuterPicture(corner int, cut slopeCut) image.Image {
     out := newSlopeCanvas()
     before, after := slopeCornerEdges(corner)
-    dark, amount := slopeCornerShade(corner)
+    dark := slopeCornerShade(corner)
 
     for y := range slopeCanvasHeight {
         for x := range slopeCanvasWidth {
@@ -260,18 +289,87 @@ func slopeOuterPicture(corner int, cut slopeCut) image.Image {
             distances := slopeEdgeDistances(u, v)
             s, t := distances[before], distances[after]
 
-            cutAway := false
+            // how far into the cut, 0 at its edge to 1 at the corner. below 0 is not cut
+            into := -1.0
             switch {
                 case cut.Bevel > 0:
-                    cutAway = s + t < cut.Bevel
+                    into = 1 - (s + t) / cut.Bevel
                 case cut.Round > 0:
                     r := cut.Round
-                    cutAway = s < r && t < r && (r - s) * (r - s) + (r - t) * (r - t) > r * r
+                    if s < r && t < r {
+                        into = (math.Hypot(r - s, r - t) - r) / (r * (math.Sqrt2 - 1))
+                    }
                 case cut.Bite > 0:
-                    cutAway = s < cut.Bite && t < cut.Bite
+                    into = 1 - math.Max(s, t) / cut.Bite
             }
-            if cutAway {
-                out.SetNRGBA(x, y, slopeShade(dark, amount))
+
+            switch {
+                case into > 0:
+                    // the slope beyond the cut goes on down to the corner, where the edges' slopes start
+                    if shade := dark * slopeProfile(math.Min(into, 1) * slopeCrease); shade > 0 {
+                        out.SetNRGBA(x, y, slopeShade(true, shade))
+                    }
+                case into > -0.08:
+                    out.SetNRGBA(x, y, slopeShade(false, slopeLipLight))
+            }
+        }
+    }
+    return out
+}
+
+// the half of a cell beyond the line between the two corners beside a corner, cut away: the slope
+// hangs from the line, and what lies beyond the slope is drawn as low as the ground around
+func slopeDiagonalPicture(corner int) image.Image {
+    out := newSlopeCanvas()
+    middleX := float64(slopeDiamondCenterX)
+    middleY := float64(slopeDiamondHalfHeight)
+    left := float64(slopeDiamondCenterX - slopeDiamondHalfWidth)
+    right := float64(slopeDiamondCenterX + slopeDiamondHalfWidth)
+    // the top of a plateau is drawn lighter; taking that back leaves the ground as low as around it
+    unlift := 1 - 1 / plateauTopBrightness
+
+    for y := range slopeCanvasHeight {
+        for x := range slopeCanvasWidth {
+            tileX, tileY := slopeTilePoint(x, y)
+            _, _, inside := slopeCell(x, y)
+
+            // how far beyond the line, in the way the slope goes, and how deep that slope is
+            var beyond, depth, dark float64
+            switch corner {
+                case 0:
+                    if tileX < left || tileX >= right {
+                        continue
+                    }
+                    beyond, depth, dark = middleY - tileY, slopeFarDepth, slopeDarkFar
+                case 2:
+                    if tileX < left || tileX >= right {
+                        continue
+                    }
+                    beyond, depth, dark = tileY - middleY, slopeFaceDepth, (slopeDarkSE + slopeDarkSW) / 2
+                case 1:
+                    if tileY < 0 || tileY >= slopeTileHeight {
+                        continue
+                    }
+                    beyond, depth, dark = tileX - middleX, slopeFaceDepth, (slopeDarkSE + slopeDarkFar) / 2
+                case 3:
+                    if tileY < 0 || tileY >= slopeTileHeight {
+                        continue
+                    }
+                    beyond, depth, dark = middleX - tileX, slopeFaceDepth, (slopeDarkSW + slopeDarkFar) / 2
+            }
+
+            switch {
+                case beyond > 0:
+                    // the slope, then low ground to the end of the cell
+                    shade := dark * slopeProfile(beyond / depth)
+                    if beyond >= depth * slopeCrease && inside {
+                        shade = math.Max(shade, unlift)
+                    }
+                    if shade > 0 {
+                        out.SetNRGBA(x, y, slopeShade(true, shade))
+                    }
+                case beyond > -1 && inside:
+                    out.SetNRGBA(x, y, slopeShade(false, slopeLipLight))
             }
         }
     }
@@ -282,6 +380,7 @@ func slopeOuterPicture(corner int, cut slopeCut) image.Image {
 type slopePieceSet struct {
     Edges [4]*ebiten.Image
     Inner [4]*ebiten.Image
+    Diagonal [4]*ebiten.Image
     // the cuts of each corner
     Outer [4][]*ebiten.Image
 }
@@ -306,6 +405,9 @@ func (combat *CombatScreen) slopePictures() *slopePieceSet {
     }
     for corner, name := range slopeInnerNames {
         set.Inner[corner] = read(name, func() image.Image { return slopeInnerPicture(corner) })
+    }
+    for corner, name := range slopeDiagonalNames {
+        set.Diagonal[corner] = read(name, func() image.Image { return slopeDiagonalPicture(corner) })
     }
     for corner := range slopeCornerNames {
         // the cuts of the replacement folder, from 1 on, as many as there are
@@ -337,7 +439,8 @@ func slopeCornerHash(cgx int, cgy int, corner int) uint32 {
 }
 
 // which parts of slope a raised cell has: the edges that drop, the corners where both edges beside
-// them drop, and the inner corners. indexes into slopeSides and slopeCorners
+// them drop, and the inner corners. indexes into slopeSides and slopeCorners. where exactly two
+// edges drop and they meet at a corner, that corner is cut in half instead: see slopeDiagonal
 func (ground *BattleGround) slopeParts(cgx int, cgy int) ([]int, []int, []int) {
     height := ground.HeightAt(cgx, cgy)
     if height == 0 {
@@ -366,6 +469,20 @@ func (ground *BattleGround) slopeParts(cgx int, cgy int) ([]int, []int, []int) {
     return edges, outer, inner
 }
 
+// the corner a cell is cut in half at, or -1: exactly two of its edges drop, and they meet there
+func slopeDiagonal(edges []int) int {
+    if len(edges) != 2 {
+        return -1
+    }
+    for corner := range slopeCornerNames {
+        before, after := slopeCornerEdges(corner)
+        if (edges[0] == before && edges[1] == after) || (edges[0] == after && edges[1] == before) {
+            return corner
+        }
+    }
+    return -1
+}
+
 // the pictures of slope on a raised cell
 func (combat *CombatScreen) slopesOf(cgx int, cgy int) []*ebiten.Image {
     edges, outer, inner := combat.Model.Ground.slopeParts(cgx, cgy)
@@ -375,6 +492,16 @@ func (combat *CombatScreen) slopesOf(cgx int, cgy int) []*ebiten.Image {
 
     set := combat.slopePictures()
     var out []*ebiten.Image
+
+    // cut in half: the diagonal takes the place of both edges and the cut of their corner
+    if diagonal := slopeDiagonal(edges); diagonal >= 0 {
+        out = append(out, set.Diagonal[diagonal])
+        for _, corner := range inner {
+            out = append(out, set.Inner[corner])
+        }
+        return out
+    }
+
     for _, side := range edges {
         out = append(out, set.Edges[side])
     }
