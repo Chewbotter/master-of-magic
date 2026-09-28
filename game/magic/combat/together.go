@@ -100,7 +100,7 @@ func (combat *CombatScreen) actionTick() {
     combat.UpdateAnimations()
     combat.UpdateDamageIndicators()
     combat.ProcessInput()
-    combat.updateAutoToggle()
+    combat.updateAutoToggle(true)
 }
 
 // the unit steps to a tile: nobody else may. false if the tile is taken
@@ -283,7 +283,7 @@ func (combat *CombatScreen) runTogether(yield coroutine.YieldFunc, units []*Army
         combat.UpdateAnimations()
         combat.UpdateDamageIndicators()
         combat.ProcessInput()
-        combat.updateAutoToggle()
+        combat.updateAutoToggle(true)
         combat.ProcessEvents(yield)
         model.UpdateProjectiles(combat.Counter)
 

@@ -64,6 +64,8 @@ type frameCapture struct {
     SameBattle bool
     // the army of the player of a random battle is set to auto
     Auto bool
+    // the look of the move area, by its number. below 0: as it is
+    MoveArea int
     // the frame at which auto is toggled as by its key, 0 for never
     AutoToggle int
     // keep damage numbers over the units of a random battle

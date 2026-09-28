@@ -7,6 +7,11 @@ package combat
 // have not keep their turn, and the player goes on with them as always.
 
 import (
+    "image"
+
+    "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
+    "github.com/kazzmir/master-of-magic/game/magic/scale"
+
     "github.com/hajimehoshi/ebiten/v2"
     "github.com/hajimehoshi/ebiten/v2/colorm"
     "github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -49,8 +54,19 @@ func (model *CombatModel) humanArmy() *Army {
     return nil
 }
 
-// looks at the key. called wherever the clock of the battle moves, counts once per tick of the game
-func (combat *CombatScreen) updateAutoToggle() {
+// the AUTO button was clicked. for the times the interface is not looked at: while units act
+func (combat *CombatScreen) autoButtonClicked() bool {
+    if !inputmanager.LeftClickReleased() {
+        return false
+    }
+
+    x, y := scale.Unscale2(inputmanager.MousePosition())
+    return image.Pt(x, y).In(combat.autoButton)
+}
+
+// looks at the key. called wherever the clock of the battle moves, counts once per tick of the game.
+// withButton: the interface is not looked at now, so the click on the AUTO button is looked at here
+func (combat *CombatScreen) updateAutoToggle(withButton bool) {
     if !AutoToggle {
         return
     }
@@ -62,7 +78,11 @@ func (combat *CombatScreen) updateAutoToggle() {
     combat.autoToggleSeen = true
     combat.autoToggleTick = tick
 
-    if !inpututil.IsKeyJustPressed(AutoToggleKey) {
+    pressed := inpututil.IsKeyJustPressed(AutoToggleKey)
+    if withButton && !combat.ButtonsDisabled && combat.autoButtonClicked() {
+        pressed = true
+    }
+    if !pressed {
         return
     }
 

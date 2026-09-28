@@ -251,6 +251,13 @@ type CombatScreen struct {
     heldUnits map[*ArmyUnit]bool
     autoToggleSeen bool
     autoToggleTick int64
+    autoButton image.Rectangle
+    // where the unit can go, see movearea.go
+    moveArea *moveAreaTiles
+    moveShapes *moveAreaShapes
+    moveLayer *ebiten.Image
+    // the cursor is over a cell the unit of the player can not go to or attack
+    outOfReach bool
     claimedTiles map[image.Point]*ArmyUnit
     // the pictures of damage numbers, see damagenumbers.go
     damagePictures map[string]*ebiten.Image
@@ -1733,7 +1740,7 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
     }))
 
     // auto
-    elements = append(elements, makeButton2(4, 26, 1, 1, func(){
+    autoElement := makeButton2(4, 26, 1, 1, func(){
         if combat.ExtraControl {
             combat.Events <- &CombatDoSingleAuto{}
             return
@@ -1749,7 +1756,10 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
             // lit while the army fights by itself
             lightAutoButton(color)
         }
-    }))
+    })
+    // while units act the button is looked at in autotoggle.go
+    combat.autoButton = autoElement.Rect
+    elements = append(elements, autoElement)
 
     // flee
     elements = append(elements, makeButton(21, 27, 0, 2, func(){
@@ -2763,7 +2773,12 @@ func (combat *CombatScreen) UpdateMouseState() {
         case CombatRangeAttackOk:
             combat.setCursor(combat.Mouse.Arrow, cursorHotRanged)
         case CombatNotOk:
-            combat.setCursor(combat.shortCross(), cursorHotCross)
+            if OutOfReachOutline && combat.outOfReach {
+                // the outline of the cell says it, see movearea.go
+                globalMouse.Mouse.SetImage(combat.Mouse.Normal)
+            } else {
+                combat.setCursor(combat.shortCross(), cursorHotCross)
+            }
         case CombatCast:
             index := (combat.Counter / 8) % uint64(len(combat.Mouse.Cast))
             globalMouse.Mouse.SetImage(combat.Mouse.Cast[index])
@@ -2952,6 +2967,9 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
     combat.UI.StandardUpdate()
 
     combat.UpdateMouseState()
+    // set again below, see movearea.go
+    combat.outOfReach = false
+    combat.updateMoveAreaKey()
 
     mouseX, mouseY := inputmanager.MousePosition()
     hudImage, _ := combat.ImageCache.GetImage("cmbtfx.lbx", 28, 0)
@@ -2968,7 +2986,7 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
 
     combat.ProcessInput()
     // auto on a key, see autotoggle.go
-    combat.updateAutoToggle()
+    combat.updateAutoToggle(false)
 
     updates := combat.ProcessEvents(yield)
 
@@ -3013,6 +3031,9 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
 
             combat.MouseState = newState
         }
+
+        // a black outline and the plain cursor, see movearea.go
+        combat.outOfReach = combat.MouseState == CombatNotOk
     }
 
     // if there is no unit at the tile position then the highlighted unit will be nil
@@ -3866,8 +3887,12 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         drawExtraObject(x, y, extra)
     }
 
-    // the blue outline of the cell under the cursor, see animation.go
-    combat.drawCellOutline(screen, combat.MouseTileX, combat.MouseTileY, false)
+    // where the unit can go, see movearea.go
+    combat.drawMoveArea(screen)
+
+    // the blue outline of the cell under the cursor, see animation.go. black over a cell out of
+    // reach, see movearea.go
+    combat.drawCursorOutline(screen)
 
     if combat.Model.SelectedUnit != nil && isVisible(combat.Model.SelectedUnit) {
         // if the unit is currently selecting a spell, then don't draw the movement path

@@ -525,6 +525,10 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
 
     game.Music.PlaySong(randomChoose(musiclib.SongCombat1, musiclib.SongCombat2))
 
+    if capture.MoveArea >= 0 {
+        combat.MoveArea = combat.MoveAreaLook(capture.MoveArea)
+    }
+
     if capture.Auto {
         // development: the army of the player fights by itself
         attackingArmy.Auto = true
