@@ -96,7 +96,15 @@ func (combat *CombatScreen) drawDamageNumbers(screen *ebiten.Image) {
     matrix := combat.GetCameraMatrix()
     // the numbers are as large as the field is drawn, and so is everything about where they are
     // (user, 2026-09-27). screen pixels per art pixel of the field, whole so the letters are sharp
-    pixel := DamagePixel(combat.CameraScale)
+    // the picture of a number has whole pixels. while the zoom changes the field is between two
+    // sizes: the numbers are then where and as large as the field has them, so they do not jump
+    // from one whole size to the next
+    wholePixel := DamagePixel(combat.CameraScale)
+    pixel := wholePixel
+    if DamageNumbersZoom {
+        pixel = math.Max(1, combat.CameraScale * scale.ScaleAmount)
+    }
+    stretch := pixel / wholePixel
     gap := damageGap * pixel
 
     type placed struct {
@@ -108,7 +116,7 @@ func (combat *CombatScreen) drawDamageNumbers(screen *ebiten.Image) {
 
     for index, indicator := range combat.DamageIndicators {
         text := fmt.Sprintf("%d", indicator.Damage)
-        picture := combat.damagePicture(text, pixel)
+        picture := combat.damagePicture(text, wholePixel)
 
         x, y := matrix.Apply(float64(indicator.X), float64(indicator.Y))
         // from the middle of the tile, in art pixels of the field
@@ -155,7 +163,11 @@ func (combat *CombatScreen) drawDamageNumbers(screen *ebiten.Image) {
         taken = append(taken, place)
 
         var options ebiten.DrawImageOptions
-        options.GeoM.Translate(math.Round(place.X - float64(picture.Bounds().Dx()) / 2), math.Round(place.Y - float64(picture.Bounds().Dy()) / 2))
+        if stretch != 1 {
+            options.GeoM.Scale(stretch, stretch)
+            options.Filter = ebiten.FilterLinear
+        }
+        options.GeoM.Translate(math.Round(place.X - float64(picture.Bounds().Dx()) * stretch / 2), math.Round(place.Y - float64(picture.Bounds().Dy()) * stretch / 2))
         if indicator.Life < damageFadeTicks {
             options.ColorScale.ScaleAlpha(float32(indicator.Life) / damageFadeTicks)
         }
