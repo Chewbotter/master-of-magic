@@ -3856,6 +3856,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
     // the roads of a town, or the clouds a flying fortress stands on. see scenerydraw.go
     combat.drawTownGround(screen)
+    // the marks spells have left on the ground, see decals.go
+    combat.drawDecals(screen)
     // spells that lie on the ground, see spellanim.go
     combat.drawGroundSpells(screen)
     // the light that runs over the ground where a spell has hit, see spelleffects.go

@@ -87,6 +87,10 @@ type spellEffects struct {
     Owed map[*Projectile]float64
 
     Pixel *ebiten.Image
+
+    // the marks on the ground and their pictures, see decals.go
+    Decals []decal
+    DecalPictures map[string][]*ebiten.Image
 }
 
 func effectTicks(seconds float64) uint64 {
@@ -195,6 +199,11 @@ func (combat *CombatScreen) spellHits(projectile *Projectile) {
 
     if values.BurstCount > 0 {
         effects.Particles.emitBurst(float64(placeX), float64(placeY), values.ImpactHeight, values.BurstCount, values.BurstSpeed, values.BurstLift, values.BurstGravity, values.BurstLife, values.BurstColors)
+    }
+
+    // the mark it leaves on the ground, see decals.go
+    if values.Decal != DecalNone {
+        combat.addDecal(projectile.Name, values, target.X, target.Y)
     }
 
     if values.FlashTime > 0 && values.FlashStrength > 0 {

@@ -76,7 +76,9 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
   flight; where a spell hits, particles are thrown up, the unit shows in one color, the battle
   stands still for a moment, the view shakes and light runs over the ground
   (`combat/spelleffects.go`, `particles.go`; values per spell in `spellvalues.go` and
-  `mod/effects.txt`; F7 turns it off and on). The halo was tried and taken out: it made the
+  `mod/effects.txt`; F7 turns it off and on). A spell leaves a mark on the ground that stays for
+  the battle (`combat/decals.go`; first pictures in `combat/decals/`, made by
+  `util/decals/make.py`, replaced by `mod/spells/<name>/decal_NN.png`). The halo was tried and taken out: it made the
   pictures look blurred.
 - Bolts of spells go on with every tick of the game in place of 10 pixels with every redraw of
   the original (`SmoothBolts` in `combat/spellanim.go`). Way, time and frames are the original's.

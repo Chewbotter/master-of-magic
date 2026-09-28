@@ -12,6 +12,9 @@ package mod
 
 import (
     "fmt"
+    "image"
+    "image/png"
+    "os"
     "path/filepath"
 )
 
@@ -74,6 +77,45 @@ func makeSpellEntries() map[string]string {
 
 func SpellFrameFile(frame int) string {
     return fmt.Sprintf("%02d.png", frame)
+}
+
+// pictures of a spell that the game has none of, as the marks it leaves on the ground: the files
+// <prefix>_00.png, <prefix>_01.png and on in the folder of the spell, as they are. they end with
+// the first number that is not there
+func ReadSpellExtras(name string, prefix string) []image.Image {
+    if folder == "" || name == "" {
+        return nil
+    }
+
+    var out []image.Image
+    for number := 0; number < maxFrames; number++ {
+        path := filepath.Join(folder, spellsFolder, name, fmt.Sprintf("%v_%02d.png", prefix, number))
+        // the files of the folder are looked up anew, the cache of a battle keeps the pictures
+        delete(folderLists, filepath.Dir(path))
+        if !hasFile(path) {
+            break
+        }
+
+        file, err := os.Open(path)
+        if err != nil {
+            break
+        }
+        picture, err := png.Decode(file)
+        file.Close()
+        if err != nil {
+            reportOnce(fmt.Sprintf("Replacement picture %v can not be read: %v", path, err))
+            break
+        }
+
+        reportOnce(fmt.Sprintf("Replacement picture %v", path))
+        out = append(out, picture)
+    }
+
+    return out
+}
+
+func SpellExtraFile(prefix string, number int) string {
+    return fmt.Sprintf("%v_%02d.png", prefix, number)
 }
 
 // the file of a frame of a spell in the replacement folder, or nothing if the entry is no spell

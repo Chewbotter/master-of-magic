@@ -10,6 +10,7 @@ package combat
 import (
     "fmt"
     "image/color"
+    "slices"
     "strconv"
     "strings"
 
@@ -56,6 +57,12 @@ type SpellValues struct {
     PulseTime float64
     PulseStrength float64
     PulseColor color.RGBA
+
+    // the mark it leaves on the ground: the kind of the pictures of the game (scorch, crater,
+    // frost, spark, none), and how much of it shows 0 to 1. pictures of the replacement folder
+    // go before the kind, see decals.go
+    Decal string
+    DecalStrength float64
 }
 
 func colors(text string) []color.RGBA {
@@ -113,6 +120,8 @@ func plainValues() SpellValues {
         FlashStrength: 0.85,
         FlashColor: white,
         PulseColor: white,
+        Decal: DecalNone,
+        DecalStrength: 0.85,
     }
 }
 
@@ -138,6 +147,7 @@ func boltValues(ramp []color.RGBA, light color.RGBA) SpellValues {
     values.PulseTime = 0.35
     values.PulseStrength = 0.3
     values.PulseColor = light
+    values.Decal = "scorch"
     return values
 }
 
@@ -164,17 +174,20 @@ func gameValues(name string) SpellValues {
             values.ShakeTime = 0.3
             values.PulseRadius = 3
             values.PulseStrength = 0.4
+            values.Decal = "crater"
             return values
         case "Ice Bolt":
             values := boltValues(iceColors, color.RGBA{R: 0x70, G: 0xd0, B: 0xff, A: 0xff})
             // what comes off it sinks
             values.TrailGravity = 25
+            values.Decal = "frost"
             return values
         case "Doom Bolt":
             values := boltValues(doomColors, color.RGBA{R: 0xff, G: 0x50, B: 0x30, A: 0xff})
             values.BurstCount = 70
             values.Shake = 3
             values.PulseRadius = 3
+            values.Decal = "crater"
             return values
         case "Lightning Bolt":
             values := boltValues(lightningColors, color.RGBA{R: 0xc0, G: 0xd8, B: 0xff, A: 0xff})
@@ -185,6 +198,7 @@ func gameValues(name string) SpellValues {
             values.BurstLife = 0.4
             values.FlashTime = 0.1
             values.HitStop = 0.06
+            values.Decal = "spark"
             return values
         case "Warp Lightning":
             values := boltValues(lightningColors, color.RGBA{R: 0xc0, G: 0xd8, B: 0xff, A: 0xff})
@@ -194,6 +208,7 @@ func gameValues(name string) SpellValues {
             values.HitStop = 0
             values.Shake = 1
             values.PulseRadius = 0
+            values.Decal = "spark"
             return values
         case "Flame Strike":
             // on every unit of a side: no standing still and little shaking, or it adds up
@@ -206,6 +221,7 @@ func gameValues(name string) SpellValues {
             values.BurstColors = fireColors
             values.Shake = 1
             values.ShakeTime = 0.2
+            values.Decal = "scorch"
             return values
         case "Star Fires", "Dispel Evil":
             values := hurtValues()
@@ -241,6 +257,7 @@ var valueNames = []string{
     "flash-time", "flash-strength", "flash-color",
     "hit-stop", "shake", "shake-time",
     "pulse-radius", "pulse-time", "pulse-strength", "pulse-color",
+    "decal", "decal-strength",
 }
 
 // a value as the file has it
@@ -273,6 +290,8 @@ func (values *SpellValues) text(name string) string {
         case "pulse-time": return number(values.PulseTime)
         case "pulse-strength": return number(values.PulseStrength)
         case "pulse-color": return colorText(values.PulseColor)
+        case "decal": return values.Decal
+        case "decal-strength": return number(values.DecalStrength)
     }
     return ""
 }
@@ -300,6 +319,13 @@ func (values *SpellValues) set(name string, text string) bool {
                 values.PulseColor = oneColor
             }
             return colorOk
+        case "decal":
+            kind := strings.ToLower(strings.TrimSpace(text))
+            known := kind == DecalNone || slices.Contains(DecalKinds(), kind)
+            if known {
+                values.Decal = kind
+            }
+            return known
     }
 
     if numberError != nil {
@@ -326,6 +352,7 @@ func (values *SpellValues) set(name string, text string) bool {
         case "pulse-radius": values.PulseRadius = number
         case "pulse-time": values.PulseTime = number
         case "pulse-strength": values.PulseStrength = number
+        case "decal-strength": values.DecalStrength = number
         default:
             return false
     }
@@ -392,6 +419,11 @@ const effectsTemplateHead = `# The effects of spells in battles.
 #   pulse-time      for this long
 #   pulse-strength  how much, 0 to 1
 #   pulse-color     in which color
+#   decal           the mark it leaves on the ground, which stays for the battle: scorch, crater,
+#                   frost, spark, or none. Pictures of your own go into the folder of the spell
+#                   in the replacement folder as decal_00.png, decal_01.png and on, in any
+#                   size; they are used in place of these, whatever is named here but none
+#   decal-strength  how much of the mark shows, 0 to 1
 #
 # F7 in a battle turns all of this off and on.
 

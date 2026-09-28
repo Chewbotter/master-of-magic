@@ -266,6 +266,11 @@ func exportSpells(dataPath string, outPath string) int {
 
         writePng(filepath.Join(folder, "_sheet.png"), makeSheet([][]*image.Paletted{frames}))
 
+        // the marks the spell leaves on the ground: the first ones, of the game, to be changed
+        for number, picture := range combat.DecalPictures(combat.GameDecal(spell.Name)) {
+            writePng(filepath.Join(folder, mod.SpellExtraFile(combat.DecalPrefix, number)), picture)
+        }
+
         width, height := 0, 0
         if len(frames) > 0 {
             width = frames[0].Bounds().Dx()
@@ -396,6 +401,15 @@ spells/<name>/<frame>.png
     light. It also adds particles, and more where a spell hits. How much is in effects.txt.
     Fire Bolt and Ice Bolt: the last frame is where it hits, all frames before it go around while
     it flies. The game has 3 of those, more can be added: with 00 to 04 in flight the hit is 05.
+
+spells/<name>/decal_00.png, decal_01.png, ...
+    the marks a spell leaves on the ground where it hits. They stay for the whole battle. These
+    are not pictures of the original game, it has none: they are a first set made by this game.
+    One of them is taken by chance for every mark, and by chance turned left to right.
+    In the replacement folder there can be any number of them from 00 on, in any size and with
+    any colors. A tile of the ground is 30 wide and 16 high, and the ground is seen from above
+    at an angle, so a round mark is twice as wide as it is high. The middle of the picture lies
+    on the middle of the tile.
 
 effects.txt
     the values of what the game adds to the pictures of spells: light, particles, and where a spell
