@@ -15,7 +15,6 @@ import (
     "image/color"
     "math"
 
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/util"
 
@@ -75,6 +74,14 @@ func (combat *CombatScreen) originalTickAhead(phase float64) uint64 {
     return uint64(float64(combat.Counter) * OriginalTicksPerSecond / tps + phase)
 }
 
+// the clock of a swing: the redraws of the original with the part of one that has gone by, for a
+// figure whose frames are out of step by a phase. the frame and the place of a figure are taken
+// from the same clock, so they go together
+func (combat *CombatScreen) swingTicks(phase float64) float64 {
+    tps := float64(max(1, ebiten.TPS()))
+    return float64(combat.Counter) * OriginalTicksPerSecond / tps + phase
+}
+
 // the original's redraw counter, from our ticks
 func (combat *CombatScreen) originalTick() uint64 {
     tps := float64(max(1, ebiten.TPS()))
@@ -86,81 +93,10 @@ func moveTicksPerCell() float64 {
     return MoveTicksPerCell * float64(max(1, ebiten.TPS())) / OriginalTicksPerSecond
 }
 
-// the frame of its picture a unit shows
-// the wind up of the swing is drawn on frame 4 (user, 2026-09-27). it shows this many times as long
-// as the other frames of a long strike. one rule for all units, to be looked at again
+// the wind up of the swing is drawn on frame 4 (user, 2026-09-27)
 const strikeWindUpFrame = 4
-const strikeWindUpHold = 2
-// the frame the blow lands on, on which a figure that attacks is furthest forward, shows this
-// many times as long as the other frames: the figure stays forward for a moment before it steps
-// back for its next blow (user, 2026-09-28). 1: as long as the others
-const strikeFollowHold = 2
 
-// the frame of a swing the blow lands on: the last of a long strike that has frames after its
-// wind up, the strike frame of any other
-func strikeLandsOn(frames []int) int {
-    lands := mod.FrameStrike
-    for _, frame := range frames {
-        if frame > strikeWindUpFrame {
-            lands = max(lands, frame)
-        }
-    }
-    return lands
-}
-
-// the frames of a swing with the one the blow lands on shown longer
-func withFollowHold(frames []int) []int {
-    if strikeFollowHold <= 1 || len(frames) == 0 {
-        return frames
-    }
-
-    lands := strikeLandsOn(frames)
-    var out []int
-    for _, frame := range frames {
-        out = append(out, frame)
-        if frame == lands {
-            for range strikeFollowHold - 1 {
-                out = append(out, frame)
-            }
-        }
-    }
-    return out
-}
-
-// the frames of the swing of a unit that attacks and has the frames of the game only
-func gameStrikeFrames() []int {
-    return withFollowHold(figureAttackFrames)
-}
-
-// the frames of the long strike of the figure of the unit, as it faces: the strike frame and the
-// frames after it that the replacement folder has, up to the first that is missing. nothing if the
-// first of them is missing: the figure strikes as the original does
-func longStrikeFrames(unit *ArmyUnit) []int {
-    archive := unit.Unit.GetCombatLbxFile()
-    entry := unit.Unit.GetCombatIndex(unit.Facing)
-
-    var frames []int
-    for frame := mod.FrameStrike + 1; frame <= mod.FrameStrikeLast; frame++ {
-        if !mod.HasFrame(archive, entry, frame) {
-            break
-        }
-        if frames == nil {
-            frames = append(frames, mod.FrameStrike)
-        }
-
-        // a frame that shows longer is in the list more than once
-        hold := 1
-        if frame == strikeWindUpFrame {
-            hold = strikeWindUpHold
-        }
-        for range hold {
-            frames = append(frames, frame)
-        }
-    }
-
-    return withFollowHold(frames)
-}
-
+// the frame of its picture a unit shows
 func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase float64) int {
     tick := combat.originalTickAhead(phase)
 
@@ -179,19 +115,8 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase fl
     }
 
     if unit.Attacking || unit.Defending {
-        step := tick / attackTicksPerFrame
-
-        if long := longStrikeFrames(unit); len(long) > 0 {
-            if unit.Defending && !unit.Attacking {
-                step += uint64(len(long) / 2)
-            }
-            frame = long[step % uint64(len(long))]
-        } else if unit.Attacking {
-            strike := gameStrikeFrames()
-            frame = strike[step % uint64(len(strike))]
-        } else {
-            frame = figureDefendFrames[step % uint64(len(figureDefendFrames))]
-        }
+        // the steps of its swing, see strikeswing.go
+        frame, _ = unitSwing(unit, combat.swingTicks(phase))
     }
 
     if frameCount <= 0 {
