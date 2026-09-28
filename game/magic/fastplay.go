@@ -174,6 +174,9 @@ func (game *MagicGame) updateFastPlay(menu *mainview.MainScreen) (mainview.MainS
         return 0, false
     }
 
+    // what the last run of the game left, see debugsaved.go
+    loadDebugSaved()
+
     if capture.UnitPicker != "" {
         // development: the list of units, with races open
         for _, race := range unitPickerRaces {
@@ -354,6 +357,8 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         // a test battle: one kind of unit against its own kind on open ground. see unitpicker.go
         unit := *testBattleUnit
         testBattleLast = testBattleUnit
+        // kept for the next run of the game, see debugsaved.go
+        saveDebugSaved()
         testBattleUnit = nil
 
         defenderBanner := data.BannerBlue
