@@ -47,18 +47,21 @@ func easeInOut(part float64) float64 {
 
 // how far the figure is from where it stands, across and down in art pixels, for its lunge
 func (combat *CombatScreen) strikeSlide(unit *ArmyUnit, phase float64) (float64, float64) {
-    if !StrikeSlide || !(unit.Attacking || unit.Defending) {
+    if !(unit.Attacking || unit.Defending) {
         return 0, 0
+    }
+
+    // units across a corner have closed in on each other, see strikeapproach.go
+    nearX, nearY := combat.strikeApproach(unit)
+    if !StrikeSlide {
+        return nearX, nearY
     }
 
     // the steps of its swing, see strikeswing.go
     _, distance := unitSwing(unit, combat.swingTicks(unit, phase))
-    if distance == 0 {
-        return 0, 0
-    }
 
     faceX, faceY := facingOnScreen(unit.Facing)
-    return faceX * distance, faceY * distance
+    return nearX + faceX * distance, nearY + faceY * distance
 }
 
 // how far the figure is from its place in the tile, across and down in art pixels, while it slides

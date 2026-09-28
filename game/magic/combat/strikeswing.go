@@ -46,7 +46,8 @@ const swingStayTime = 1.0
 const swingReturnTime = 1.0
 
 // the swings of an attack
-const SwingsPerAttack = 2
+// 2 was tried (user, 2026-09-28) and taken back for now
+const SwingsPerAttack = 1
 // the swing the blow is struck in, from 1: what the attack does to the units, the numbers, the
 // blood and the figures that fall come when this swing lands. the last one, so nobody strikes at
 // figures that have fallen already
@@ -217,6 +218,9 @@ func (combat *CombatScreen) startSwing(attacker *ArmyUnit, defender *ArmyUnit) (
         defender.SwingDelay = swingRedraws(attacker) / 2
         lasts = max(lasts, defender.SwingDelay + swingRedraws(defender) * SwingsPerAttack + figurePhaseMax)
     }
+
+    // units across a corner close in on each other, see strikeapproach.go
+    combat.startApproach(attacker, defender, redrawTicks(lasts))
 
     return redrawTicks(lasts), redrawTicks(lands)
 }

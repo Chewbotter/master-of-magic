@@ -591,6 +591,11 @@ type ArmyUnit struct {
     // later than that it starts, for the unit that is attacked. see strikeswing.go
     SwingStart uint64
     SwingDelay float64
+    // the ticks of the battle the attack lasts, and how far the unit goes toward the one it
+    // fights for that time, across and down in art pixels. see strikeapproach.go
+    SwingLasts int
+    ApproachX float64
+    ApproachY float64
 
     MoveX float64
     MoveY float64
