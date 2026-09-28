@@ -5,7 +5,8 @@ package combat
 // code is ours.
 //
 // In halves of a move, the cell a step goes into costs: grass and dirt 2, rough 4, a road 1. Every
-// tree in the cell adds 1, up to 4. Mud costs 12. A diagonal step costs 1 more. Flying units pay 2
+// tree in the cell adds 1, up to 4. Mud costs 12. A diagonal step costs 1 more, a step up or down
+// the slope of a plateau 2 more (plateau.go, not in the original). Flying units pay 2
 // for every cell, whatever lies there. A unit can take a step as long as it has any movement left
 // before it (CanFollowPath), so a step into rough or mud with half a move left is allowed and uses
 // it up.
@@ -26,6 +27,8 @@ const (
     moveHalvesTreesMax = 4
     moveHalvesMud = 12
     moveHalvesDiagonal = 1
+    // going up or down the slope of a plateau, see plateau.go
+    moveHalvesSlope = 2
 )
 
 // the path search gives up on a path that costs more than this. with the costs of the ground a walk
@@ -68,6 +71,13 @@ func (model *CombatModel) StepCost(from image.Point, to image.Point, flying bool
     halves := model.cellMoveHalves(to.X, to.Y, flying)
     if from.X != to.X && from.Y != to.Y {
         halves += moveHalvesDiagonal
+    }
+    if !flying && model.Ground != nil {
+        fromX, fromY := TileToCell(from.X, from.Y)
+        toX, toY := TileToCell(to.X, to.Y)
+        if model.Ground.isSlope(fromX, fromY, toX, toY) {
+            halves += moveHalvesSlope
+        }
     }
 
     return fraction.Make(halves, 2)

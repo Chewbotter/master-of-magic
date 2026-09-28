@@ -92,6 +92,8 @@ type BattleGround struct {
     Roads []int
     // the trees that stand in every cell, see movecost.go
     Trees []int
+    // the height of every cell, 0 or 1, nil without plateaus. see plateau.go
+    Heights []int
     EnchantedRoads bool
 }
 
@@ -206,6 +208,10 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, zone Zon
     rough := roughPatches(landscape, zone.Ground)
     ground.scatterPatches(TerrainRough, rough, roughSpan, roughBase, true)
     ground.scatterPatches(TerrainRough, rough * beyond, roughSpan, roughBase, false)
+    if PlateauGround {
+        // the rough ground becomes plateaus and small hills, see plateau.go
+        ground.makePlateaus(zone, rough * (beyond + 1))
+    }
     ground.scatterPatches(TerrainDirt, dirtPatches, dirtSpan, dirtBase, true)
     ground.scatterPatches(TerrainDirt, dirtPatches * beyond, dirtSpan, dirtBase, false)
 

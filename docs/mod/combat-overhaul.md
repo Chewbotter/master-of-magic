@@ -58,6 +58,7 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 10 | Forest and hills from the world map: forest (and nature nodes) 30 to 60 trees and few rough patches, hills 20 rough patches. Trees and rocks only on grass without a road | `combat/terrain.go`, `combat/scenery.go`, `game/battleground.go` |
 | 10 | Roads: when the battle's tile of the world map has a road, roads run from the middle (from the town's sides in a town) toward each neighbor with a road, wandering as the original's, to the edge of the border. Road pieces by neighbors, two sets of pictures, enchanted roads golden | `combat/terrain.go`, `combat/terraindraw.go` |
 | 10 | Movement costs of the ground, in halves of a move: grass and dirt 2, rough 4, a road 1, each tree in the cell 1 more up to 4, mud 12, a diagonal step 1 more. Flying units 2 everywhere. Earth to Mud leaves rough alone. A step is allowed with any movement left before it (was already so) | `combat/movecost.go` |
+| 10 | NOT THE ORIGINAL (user request): plateaus replace the rough ground. The original's rough patches, grown by a cell and smoothed, become raised ground of one height, plus single cell hills; the top is drawn lighter, slopes lie along its edges (pictures made by the game, replaceable). Only a step up or down a slope costs more, 1 move. `PlateauGround` false brings back the original's rough | `combat/plateau.go` |
 
 ## Spells: what was not done in batch 9
 - Dispel Magic and Dispel Magic True share one function in our code and both show CMBTFX 26. The

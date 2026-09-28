@@ -326,8 +326,25 @@ func exportEnvironment(dataPath string, outPath string) int {
         os.WriteFile(filepath.Join(outPath, "environment", set, "_source.txt"), []byte(notes[set].String()), 0644)
     }
 
+    // the slopes of plateaus: not in the original, the first set the game makes (combat/plateau.go)
+    slopes := filepath.Join(outPath, "environment", "Slopes")
+    for piece, name := range combat.SlopePieceNames() {
+        if writePng(filepath.Join(slopes, mod.EnvironmentFrameFile(name, 0)), combat.SlopePicture(piece)) == nil {
+            count += 1
+        }
+    }
+    os.WriteFile(filepath.Join(slopes, "_source.txt"), []byte(slopesNote), 0644)
+
     return count
 }
+
+const slopesNote = "Slopes\r\n\r\n" +
+    "The slopes of hills and plateaus. Not pictures of the original game: a first set made by this game.\r\n" +
+    "A raised cell shows the pieces of its edges where the next cell is lower (edge NE, SE, SW, NW),\r\n" +
+    "and an inner corner where the cell beyond a corner is lower but the two edges beside it are not\r\n" +
+    "(inner N top, E right, S bottom, W left). They lie over the ground of the raised cell, top left\r\n" +
+    "corner where the ground picture's is. Any size, any colors; see-through pixels darken or lighten\r\n" +
+    "the ground under them. Changed ones go to mod\\environment\\Slopes with the same names.\r\n"
 
 // takes the pictures of the cursors as they are read
 type cursorKeeper struct {
@@ -456,6 +473,8 @@ environment/<set>/<name>_<frame>.png
                     near left side, 10 and 11 the near right side (11 the gate), 12 and 13 the
                     left and right corners of fire and darkness
         Other       mud, and pieces the game does not use
+        Slopes      the slopes of hills and plateaus, made by this game, not the original's.
+                    Full color and see-through allowed, _source.txt says how they are laid
     Keep the size of a changed picture: most are put in place by a fixed point in them.
 
 spells/<name>/<frame>.png
