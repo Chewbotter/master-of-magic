@@ -15,8 +15,11 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/scale"
 )
 
-// false: figures are drawn where they are, between pixels
-const FiguresOnFieldPixels = true
+// false: figures are drawn where they are, between pixels.
+// TRIED AND TAKEN BACK (user, 2026-09-28): on the art pixels the figures moved in steps, which
+// looked worse than the thin edges, which show only now and then while figures move. figures stand
+// on whole art pixels whenever they stand
+const FiguresOnFieldPixels = false
 // the size of an art pixel on the screen is taken as whole if it is this near to a whole number.
 // while the zoom changes it is not, and figures are drawn where they are
 const fieldPixelWhole = 0.001

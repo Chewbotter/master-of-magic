@@ -117,7 +117,8 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
   of the fork's column of light (`combat/unitmarker.go`).
 - A magic vortex the player sends on its way: the red outline of its cell, the four tiles it can
   go to as the move area, the black outline elsewhere, in place of the fork's red square.
-- Figures are drawn on the art pixels of the field, also while they move (`combat/fieldpixel.go`).
+- Tried and taken back: figures drawn on the art pixels of the field while they move
+  (`combat/fieldpixel.go`, off). They moved in steps, which looked worse than the thin edges.
 - No boots on the tiles a unit would walk over (`ShowMovePath` in `combat/autotoggle.go`).
 - The AUTO button toggles auto and is lit while auto is on.
 - Space sets the player's army to auto and takes it off again (`combat/autotoggle.go`). Taken off

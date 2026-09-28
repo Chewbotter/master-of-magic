@@ -67,6 +67,38 @@ func TestRimPixels(test *testing.T) {
     }
 }
 
+// a rim comes up fast and goes out a little slower, and neither at once
+func TestRimStep(test *testing.T) {
+    now := 0.0
+    first := rimStep(now, 0.65)
+    if first <= 0 || first >= 0.65 {
+        test.Errorf("after one tick of coming up: %v", first)
+    }
+
+    for range 60 {
+        now = rimStep(now, 0.65)
+    }
+    if now < 0.64 {
+        test.Errorf("after a second of coming up: %v", now)
+    }
+
+    // the light is gone at once
+    after := rimStep(now, 0)
+    if after >= now || after < now * 0.5 {
+        test.Errorf("one tick after the light is gone: %v of %v", after, now)
+    }
+
+    ticks := 0
+    for now >= rimGone && ticks < 600 {
+        now = rimStep(now, 0)
+        ticks += 1
+    }
+    // gone within half a second, not within a tenth
+    if ticks < 6 || ticks > 30 {
+        test.Errorf("the rim is gone after %v ticks", ticks)
+    }
+}
+
 func TestRimSide(test *testing.T) {
     for _, each := range []struct{X, Y float64; Side int}{
         {10, 0, 0}, {10, 10, 1}, {0, 10, 2}, {-10, 10, 3}, {-10, 0, 4}, {-10, -10, 5}, {0, -10, 6}, {10, -10, 7},

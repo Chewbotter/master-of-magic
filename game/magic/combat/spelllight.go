@@ -106,6 +106,8 @@ type spellLighting struct {
 
     // how far the shadows of the day have gone out and the ones of the spell have come up, 0 to 1
     ShadowSwap float64
+    // the rims of figures that are lit, see rimlight.go
+    Rims map[rimFigure]rimState
 }
 
 // the pixels of a light of a radius: only how much they show counts, 4 numbers a pixel
@@ -317,6 +319,7 @@ func (combat *CombatScreen) lightTick() {
     }
 
     combat.shadowTick()
+    combat.rimTick()
 }
 
 // the shadows of the day go out and the ones of the spell come up, or the other way around
