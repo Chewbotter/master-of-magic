@@ -15,9 +15,10 @@ const SpellInfoTextSize = font.TextSizeCompact
 // screen set it for as long as they run (user, 2026-09-28)
 var FullPowerWithoutAsking bool
 
-// development: the spellbook for casting shows the turn of its first page, held at this picture
-// of the turn. below 0: not
+// development: the spellbook for casting shows the turn of its first page, held at this step
+// of the turn, of captureFlipSteps (of the 4 pictures of the old turn). below 0: not
 var CaptureFlip = -1
+const captureFlipSteps = 10.0
 // the turn of which page: 0 the first, 1 the one after it
 var CaptureFlipPage = 0
 

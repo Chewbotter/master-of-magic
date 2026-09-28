@@ -67,6 +67,8 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 - Sounds were not checked.
 
 ## Different from the original on purpose (user requests)
+- Spellbooks, for casting and of research: the leaf that turns is made by the game and moves with every tick, in
+  place of the original's 4 pictures (`spellbook/pageturn.go`, `ProceduralPageTurn`).
 - Debug battles cast spells that can take more power at full power and do not ask
   (`spellbook.FullPowerWithoutAsking`, set in `fastplay.go` only).
 - Where the unit of the player can go shows on the ground, F6 goes through the looks

@@ -655,6 +655,38 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
         return pageImage
     }
 
+    // the two sides of the leaf that turns, see pageturn.go
+    researchLeafCache := make(map[int]*ebiten.Image)
+    getResearchLeafFace := func(halfPage int, right bool) *ebiten.Image {
+        key := halfPage * 2
+        region := researchBookLeftPage
+        content := researchBookLeftContent
+        if right {
+            key += 1
+            region = researchBookRightPage
+            content = researchBookRightContent
+        }
+
+        cached, ok := researchLeafCache[key]
+        if ok {
+            return cached
+        }
+
+        book, _ := imageCache.GetImage("scroll.lbx", 6, 0)
+        face := makeLeafFace(book, region, func(face *ebiten.Image, options ebiten.DrawImageOptions) {
+            if halfPage >= 0 && halfPage < len(halfPages) {
+                options.GeoM.Translate(float64(content.X - region.Min.X), float64(content.Y - region.Min.Y))
+                renderPage(halfPages[halfPage], true, face, options)
+            }
+        })
+
+        researchLeafCache[key] = face
+        return face
+    }
+
+    researchPixel := ebiten.NewImage(1, 1)
+    researchPixel.Fill(color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+
     // FIXME: this page could be passed in, so that it is stored for a while
     // page := 0
     showLeftPage := 0
@@ -834,7 +866,19 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
             }
 
             animationIndex := ui.Counter
-            if bookFlipIndex > 0 && (animationIndex - bookFlipIndex) / bookFlipSpeed < uint64(len(bookFlip)) {
+            if ProceduralPageTurn && CaptureFlip >= 0 && len(halfPages) > 2 {
+                // development: the turn of the first page, held at one of its steps
+                leaf := researchLeaf()
+                drawLeaf(screen, leaf, getResearchLeafFace(1, true), getResearchLeafFace(2, false), float64(CaptureFlip) / captureFlipSteps, getAlpha(), researchPixel)
+            } else if ProceduralPageTurn && flipping && bookFlipIndex > 0 {
+                // the leaf is made by the game, see pageturn.go. it shows flipLeftSide while it is
+                // on the right and flipRightSide on the left
+                turned := easeTurn(pageTurnPart(animationIndex - bookFlipIndex, PageTurnTicks))
+                if bookFlipReverse {
+                    turned = 1 - turned
+                }
+                drawLeaf(screen, researchLeaf(), getResearchLeafFace(flipLeftSide, true), getResearchLeafFace(flipRightSide, false), turned, getAlpha(), researchPixel)
+            } else if !ProceduralPageTurn && bookFlipIndex > 0 && (animationIndex - bookFlipIndex) / bookFlipSpeed < uint64(len(bookFlip)) {
                 index := (animationIndex - bookFlipIndex) / bookFlipSpeed
                 if bookFlipReverse {
                     index = uint64(len(bookFlip)) - 1 - index
@@ -882,7 +926,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
             showLeftPage -= 2
             flipping = true
 
-            ui.AddDelay(bookFlipSpeed * uint64(len(bookFlip)) - 1, func(){
+            ui.AddDelay(castTurnTicks(bookFlipSpeed * uint64(len(bookFlip)) - 1), func(){
                 showRightPage -= 2
                 flipping = false
             })
@@ -900,7 +944,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
 
             flipping = true
 
-            ui.AddDelay(bookFlipSpeed * uint64(len(bookFlip)) - 1, func(){
+            ui.AddDelay(castTurnTicks(bookFlipSpeed * uint64(len(bookFlip)) - 1), func(){
                 showLeftPage += 2
                 flipping = false
             })
@@ -1520,6 +1564,39 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         }
     }
 
+    // the two sides of the leaf that turns: a page as it lies in the book on the right, or on the
+    // left. see pageturn.go
+    leafCache := make(map[int]*ebiten.Image)
+    getLeafFace := func(page int, right bool) *ebiten.Image {
+        key := page * 2
+        region := castBookLeftPage
+        content := castBookLeftContent
+        if right {
+            key += 1
+            region = castBookRightPage
+            content = castBookRightContent
+        }
+
+        cached, ok := leafCache[key]
+        if ok {
+            return cached
+        }
+
+        book, _ := imageCache.GetImage("spells.lbx", 0, 0)
+        face := makeLeafFace(book, region, func(face *ebiten.Image, options ebiten.DrawImageOptions) {
+            if page >= 0 && page < len(spellPages) {
+                options.GeoM.Translate(float64(content.X - region.Min.X), float64(content.Y - region.Min.Y))
+                renderPage(face, options, spellPages[page], Spell{})
+            }
+        })
+
+        leafCache[key] = face
+        return face
+    }
+
+    whitePixel := ebiten.NewImage(1, 1)
+    whitePixel.Fill(color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+
     // lazily construct the page graphics, which consists of the section title and 4 spell descriptions
     getPageImage := func(page int) *ebiten.Image {
         cached, ok := pageCache[page]
@@ -1794,7 +1871,40 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 pageSideRight = first + 2
             }
 
-            if flipping {
+            if flipping && ProceduralPageTurn {
+                // the leaf is made by the game, see pageturn.go
+                turned := easeTurn(pageTurnPart(ui.Counter - bookFlipIndex, PageTurnTicks))
+                if CaptureFlip >= 0 {
+                    turned = float64(CaptureFlip) / captureFlipSteps
+                }
+
+                // the pages under the leaf: the one it leaves and the one it comes down on
+                under := options
+                under.GeoM.Translate(float64(castBookLeftContent.X), float64(castBookLeftContent.Y))
+                if showPageLeft >= 0 && showPageLeft < len(spellPages) {
+                    renderPage(screen, under, spellPages[showPageLeft], Spell{})
+                }
+                under = options
+                under.GeoM.Translate(float64(castBookRightContent.X), float64(castBookRightContent.Y))
+                if showPageRight >= 0 && showPageRight < len(spellPages) {
+                    renderPage(screen, under, spellPages[showPageRight], Spell{})
+                }
+
+                // the leaf shows pageSideLeft while it is on the right and pageSideRight on the
+                // left. turning back it goes the other way
+                if bookFlipReverse {
+                    turned = 1 - turned
+                }
+
+                leaf := pageLeaf{
+                    RightX: castBookX + castBookRightPage.Min.X,
+                    LeftX: castBookX + castBookLeftPage.Max.X - 1,
+                    Top: castBookY + castBookRightPage.Min.Y,
+                    Width: castBookRightPage.Dx(),
+                    Height: castBookRightPage.Dy(),
+                }
+                drawLeaf(screen, leaf, getLeafFace(pageSideLeft, true), getLeafFace(pageSideRight, false), turned, getAlpha(), whitePixel)
+            } else if flipping {
                 // the page the leaf comes down on is still the old one where the leaf does not
                 // cover it, and was the new one at once when the turn was over: its last row, under
                 // the curl of the leaf, came up out of nothing. it goes over into the new one while
@@ -1918,7 +2028,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 pageSideRight = *currentPage + 2
                 showPageLeft = *currentPage
 
-                ui.AddDelay(bookFlipSpeed * uint64(len(bookFlip)), func (){
+                ui.AddDelay(castTurnTicks(bookFlipSpeed * uint64(len(bookFlip))), func (){
                     flipping = false
                     *currentPage += 2
                     setupSpells(*currentPage)
@@ -1952,7 +2062,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 pageSideLeft = *currentPage - 1
                 pageSideRight = *currentPage
 
-                ui.AddDelay(bookFlipSpeed * uint64(len(bookFlip) - 1), func (){
+                ui.AddDelay(castTurnTicks(bookFlipSpeed * uint64(len(bookFlip) - 1)), func (){
                     flipping = false
                     *currentPage -= 2
                     setupSpells(*currentPage)
@@ -2018,6 +2128,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 updateUseSpells(filterMagic)
                 spellPages = computeHalfPages(useSpells, 6)
                 pageCache = make(map[int]*ebiten.Image)
+                leafCache = make(map[int]*ebiten.Image)
                 if *currentPage >= len(spellPages) {
                     *currentPage = max(0, len(spellPages) - 1)
                     *currentPage -= *currentPage % 2
