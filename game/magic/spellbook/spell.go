@@ -793,7 +793,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
             if spell != nil {
                 helpEntries := help.GetEntriesByName(spell.Name)
                 if helpEntries != nil {
-                    group.AddElement(uilib.MakeHelpElementWithLayer(group, cache, &imageCache, 2, helpEntries[0], helpEntries[1:]...))
+                    group.AddElement(uilib.MakeHelpElementSized(group, cache, &imageCache, 2, SpellInfoTextSize, helpEntries[0], helpEntries[1:]...))
                 }
             }
         },
@@ -807,6 +807,15 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
             }
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
+            if CaptureSpellInfo != "" {
+                // development: the window a right click on a spell opens
+                helpEntries := help.GetEntriesByName(CaptureSpellInfo)
+                CaptureSpellInfo = ""
+                if helpEntries != nil {
+                    group.AddElement(uilib.MakeHelpElementSized(group, cache, &imageCache, 2, SpellInfoTextSize, helpEntries[0], helpEntries[1:]...))
+                }
+            }
+
             background, _ := imageCache.GetImage("scroll.lbx", 6, 0)
 
             var options ebiten.DrawImageOptions
@@ -1616,7 +1625,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 RightClick: func(element *uilib.UIElement){
                     helpEntries := help.GetEntriesByName(spell.Name)
                     if helpEntries != nil {
-                        group.AddElement(uilib.MakeHelpElementWithLayer(group, cache, &imageCache, 2, helpEntries[0], helpEntries[1:]...))
+                        group.AddElement(uilib.MakeHelpElementSized(group, cache, &imageCache, 2, SpellInfoTextSize, helpEntries[0], helpEntries[1:]...))
                     }
                 },
                 Draw: func(element *uilib.UIElement, screen *ebiten.Image){

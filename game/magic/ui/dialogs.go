@@ -37,6 +37,12 @@ func MakeHelpFonts(cache *lbx.LbxCache) HelpFonts {
 }
 
 func MakeHelpElementWithLayer(container UIContainer, cache *lbx.LbxCache, imageCache *util.ImageCache, layer UILayer, help help.HelpEntry, helpEntries ...help.HelpEntry) *UIElement {
+    return MakeHelpElementSized(container, cache, imageCache, layer, font.TextSizeFull, help, helpEntries...)
+}
+
+// the same with the text under the headlines at a size of lib/font/textsize.go. the headlines stay
+// as they are
+func MakeHelpElementSized(container UIContainer, cache *lbx.LbxCache, imageCache *util.ImageCache, layer UILayer, textSize float64, help help.HelpEntry, helpEntries ...help.HelpEntry) *UIElement {
 
     helpTop, err := imageCache.GetImage("help.lbx", 0, 0)
     if err != nil {
@@ -60,7 +66,21 @@ func MakeHelpElementWithLayer(container UIContainer, cache *lbx.LbxCache, imageC
 
     // fmt.Printf("Help text: %v\n", []byte(help.Text))
 
-    wrapped := helpFonts.HelpFont.CreateWrappedText(float64(maxInfoWidth), 1, help.Text)
+    // smaller letters: more of them in a line, and the lines closer
+    relativeSize := font.RelativeTextSize(scale.ScaleAmount, textSize)
+    wrap := func(text string) font.WrappedText {
+        wrapped := helpFonts.HelpFont.CreateWrappedText(float64(maxInfoWidth), relativeSize, text)
+        if relativeSize != 1 {
+            // as high as RenderWrapped draws it
+            wrapped.TotalHeight = float64(len(wrapped.Lines)) * float64(helpFonts.HelpFont.Height() + 1) * relativeSize
+        }
+        return wrapped
+    }
+    textOptions := func(options *ebiten.DrawImageOptions) font.FontOptions {
+        return font.FontOptions{Options: options, Scale: scale.ScaleAmount, TextSize: textSize}
+    }
+
+    wrapped := wrap(help.Text)
 
     helpTextY := infoTopMargin
     titleYAdjust := 0
@@ -94,7 +114,7 @@ func MakeHelpElementWithLayer(container UIContainer, cache *lbx.LbxCache, imageC
     for _, entry := range helpEntries {
         bottom += 2
         bottom += float64(helpFonts.HelpTitleFont.Height()) + 1
-        moreWrapped := helpFonts.HelpFont.CreateWrappedText(float64(maxInfoWidth), 1, entry.Text)
+        moreWrapped := wrap(entry.Text)
         moreHelp = append(moreHelp, moreWrapped)
         bottom += moreWrapped.TotalHeight
     }
@@ -137,12 +157,12 @@ func MakeHelpElementWithLayer(container UIContainer, cache *lbx.LbxCache, imageC
             }
 
             helpFonts.HelpTitleFont.PrintOptions(window, float64(titleX), infoY + float64(infoTopMargin + titleYAdjust), font.FontOptions{Options: &options, Scale: scale.ScaleAmount}, help.Headline)
-            helpFonts.HelpFont.RenderWrapped(window, float64(infoX + infoLeftMargin + infoBodyMargin), float64(helpTextY) + infoY, wrapped, font.FontOptions{Options: &options, Scale: scale.ScaleAmount})
+            helpFonts.HelpFont.RenderWrapped(window, float64(infoX + infoLeftMargin + infoBodyMargin), float64(helpTextY) + infoY, wrapped, textOptions(&options))
 
             yPos := float64(helpTextY) + infoY + wrapped.TotalHeight + 2
             for i, moreWrapped := range moreHelp {
                 helpFonts.HelpTitleFont.PrintOptions(window, float64(titleX), yPos, font.FontOptions{Options: &options, Scale: scale.ScaleAmount}, helpEntries[i].Headline)
-                helpFonts.HelpFont.RenderWrapped(window, float64(infoX + infoLeftMargin + infoBodyMargin), yPos + float64(helpFonts.HelpTitleFont.Height()) + 1, moreWrapped, font.FontOptions{Options: &options, Scale: scale.ScaleAmount})
+                helpFonts.HelpFont.RenderWrapped(window, float64(infoX + infoLeftMargin + infoBodyMargin), yPos + float64(helpFonts.HelpTitleFont.Height()) + 1, moreWrapped, textOptions(&options))
                 yPos += float64(helpFonts.HelpTitleFont.Height()) + 1 + float64(moreWrapped.TotalHeight) + 2
             }
 

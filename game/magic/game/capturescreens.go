@@ -3,6 +3,7 @@ package game
 // Development: open a screen by name, so a frame capture can show it without clicking.
 
 import (
+    "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "image"
     "log"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
@@ -11,7 +12,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -67,6 +68,18 @@ func (game *Game) CaptureOpenScreen(name string) bool {
             }
             game.DoNextUnit(player)
             return true
+        case "spellinfo":
+            // the research spellbook with the info of a spell open
+            player := game.Model.GetHumanPlayer()
+            if player == nil {
+                return false
+            }
+            spellbook.CaptureSpellInfo = "Fire Elemental"
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    game.ResearchNewSpell(yield, player)
+                },
+            }
         case "research":
             // the spellbook for choosing new research, with spell descriptions
             player := game.Model.GetHumanPlayer()

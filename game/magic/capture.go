@@ -139,7 +139,7 @@ func (capture *frameCapture) laterFrames() int {
         // room for a spell to play and for figures to fall and lie
         return CaptureEffectFrames
     }
-    if capture.NextTurn || capture.Walk != "" || capture.Screen == "nextunit" || capture.Screen == "research" {
+    if capture.NextTurn || capture.Walk != "" || capture.Screen == "nextunit" || capture.Screen == "research" || capture.Screen == "spellinfo" {
         return CaptureNextTurnFrames
     }
     return CaptureLaterFrames
