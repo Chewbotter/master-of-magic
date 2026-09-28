@@ -3,14 +3,15 @@ package combat
 // The light of a spell on the rim of the figures near it. Not in the original (user, 2026-09-28).
 //
 // A figure that stands in the light of a spell has the pixels of its rim that face the spell in
-// white: the outermost pixels of its picture on the side the light comes from, one art pixel wide.
-// No pixel inside of the figure is changed. The rim comes up when the spell gives light and is
-// gone when the light is.
+// the color of the light of the spell: the outermost pixels of its picture on the side the light
+// comes from, one art pixel wide. No pixel inside of the figure is changed. The rim comes up when
+// the spell gives light and is gone when the light is.
 //
 // The side is one of 8. For every picture and side the rim is made once, from the picture: a
 // pixel of the figure belongs to it if the pixel next to it toward the light is empty.
 //
-// How white is the value rim-light of the spell, see spellvalues.go.
+// How much and in which color are the values rim-light and rim-color of the spell, see
+// spellvalues.go.
 
 import (
     "math"
@@ -109,10 +110,12 @@ func (combat *CombatScreen) figureRim(picture *ebiten.Image, side int) *ebiten.I
     return rim
 }
 
-// how much rim light a point on the original's screen has, 0 to 1, and the side it comes from
-func rimLightAt(lights []spellLightSource, x float64, y float64) (float64, int) {
+// how much rim light a point on the original's screen has, 0 to 1, the side it comes from and
+// its color
+func rimLightAt(lights []spellLightSource, x float64, y float64) (float64, int, [3]float32) {
     best := 0.0
     side := 0
+    tint := [3]float32{1, 1, 1}
 
     for _, light := range lights {
         if light.Radius <= 0 || light.Rim <= 0 || light.Strength <= 0 {
@@ -132,10 +135,11 @@ func rimLightAt(lights []spellLightSource, x float64, y float64) (float64, int) 
         if amount > best {
             best = amount
             side = rimSide(towardX, towardY)
+            tint = light.RimColor
         }
     }
 
-    return min(1, best), side
+    return min(1, best), side, tint
 }
 
 // the rim of a figure of a unit that stands in the light of a spell. count is the number of
@@ -164,13 +168,14 @@ func (combat *CombatScreen) drawFigureRim(screen *ebiten.Image, unit *ArmyUnit, 
     screenX += float64(points[figure].X)
     screenY += float64(points[figure].Y) - rimFigureHeight
 
-    amount, side := rimLightAt(lighting.Lights, screenX, screenY)
+    amount, side, tint := rimLightAt(lighting.Lights, screenX, screenY)
     // comes up and goes with the light of the spell, as its shadows do
     amount *= lighting.ShadowSwap
     if amount <= 0 {
         return
     }
 
+    options.ColorScale.Scale(tint[0], tint[1], tint[2], 1)
     options.ColorScale.ScaleAlpha(float32(amount))
     unitview.RenderCombatFigure(screen, combat.figureRim(picture, side), options, unit.VisibleFigures(), unit.LostUnits, nil, data.UnitEnchantmentNone, combat.Counter, &combat.ImageCache, figure)
 }

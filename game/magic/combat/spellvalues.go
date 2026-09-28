@@ -74,8 +74,10 @@ type SpellValues struct {
     LightFlicker float64
     LightLinger float64
     ShadowReach float64
-    // how white the rims of the figures in its light get on the side that faces it, 0 to 1
+    // how much the rims of the figures in its light are lit on the side that faces it, 0 to 1,
+    // and in which color
     RimLight float64
+    RimColor color.RGBA
 
     // the color the figures it kills take on as they lie, see figurefall.go. without one they
     // are gray
@@ -95,6 +97,9 @@ type SpellValues struct {
 var fireDark = color.RGBA{R: 0x48, G: 0x0c, B: 0x04, A: 0xff}
 var iceDark = color.RGBA{R: 0x06, G: 0x18, B: 0x48, A: 0xff}
 var black = color.RGBA{A: 0xff}
+// the light of fire and of ice on the rims of figures
+var fireRim = color.RGBA{R: 0xff, G: 0xa8, B: 0x50, A: 0xff}
+var iceRim = color.RGBA{R: 0x90, G: 0xd8, B: 0xff, A: 0xff}
 
 // the figures that are killed in a fight, by no spell, take this color on: blood
 var combatCorpseColor = color.RGBA{R: 0xa0, G: 0x28, B: 0x28, A: 0xff}
@@ -167,7 +172,8 @@ func plainValues() SpellValues {
         LightStrength: 1,
         LightLinger: 0.25,
         ShadowReach: 60,
-        RimLight: 0.9,
+        RimLight: 0.65,
+        RimColor: white,
     }
 }
 
@@ -221,6 +227,7 @@ func burns(values SpellValues) SpellValues {
     values.HasCorpseColor = true
     values.CorpseColor = burnedColor
     values.DarkColor = fireDark
+    values.RimColor = fireRim
     return values
 }
 
@@ -228,6 +235,7 @@ func freezes(values SpellValues) SpellValues {
     values.HasCorpseColor = true
     values.CorpseColor = frozenColor
     values.DarkColor = iceDark
+    values.RimColor = iceRim
     return values
 }
 
@@ -340,7 +348,7 @@ var valueNames = []string{
     "hit-stop", "shake", "shake-time",
     "pulse-radius", "pulse-time", "pulse-strength", "pulse-color",
     "decal", "decal-strength",
-    "dark", "light-radius", "light-strength", "light-flicker", "light-linger", "shadow-reach", "rim-light",
+    "dark", "light-radius", "light-strength", "light-flicker", "light-linger", "shadow-reach", "rim-light", "rim-color",
     "corpse-color",
     "dark-color", "resolve", "throw",
 }
@@ -389,6 +397,7 @@ func (values *SpellValues) text(name string) string {
         case "light-linger": return number(values.LightLinger)
         case "shadow-reach": return number(values.ShadowReach)
         case "rim-light": return number(values.RimLight)
+        case "rim-color": return colorText(values.RimColor)
         case "corpse-color":
             if !values.HasCorpseColor {
                 return noColor
@@ -426,6 +435,11 @@ func (values *SpellValues) set(name string, text string) bool {
         case "pulse-color":
             if colorOk {
                 values.PulseColor = oneColor
+            }
+            return colorOk
+        case "rim-color":
+            if colorOk {
+                values.RimColor = oneColor
             }
             return colorOk
         case "dark-color":
@@ -572,8 +586,9 @@ const effectsTemplateHead = `# The effects of spells in battles.
 #   light-flicker   its radius changes by up to this many art pixels all the time. 0: steady
 #   light-linger    how long the light stays where the spell has hit, getting smaller
 #   shadow-reach    units this near to the spell cast their shadows away from it
-#   rim-light       the figures in the light of the spell have the rim that faces it in white,
+#   rim-light       the figures in the light of the spell have the rim that faces it lit,
 #                   this much 0 to 1. 0: not
+#   rim-color       in which color
 #
 #   dark-color      the dark has a little of this color. 000000: none
 #

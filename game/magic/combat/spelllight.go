@@ -73,8 +73,10 @@ type spellLightSource struct {
     Strength float64
     // how far from it the shadows of units turn away from it, art pixels
     Reach float64
-    // how white the rims of the figures in its light get, 0 to 1. see rimlight.go
+    // how much the rims of the figures in its light are lit, 0 to 1, and in which color. see
+    // rimlight.go
     Rim float64
+    RimColor [3]float32
 }
 
 // a light that stays where a spell has hit and goes out
@@ -176,7 +178,13 @@ func (combat *CombatScreen) lightOf(projectile *Projectile) (spellLightSource, S
         return spellLightSource{}, values, false
     }
 
-    light := spellLightSource{Radius: values.LightRadius, Strength: values.LightStrength, Reach: values.ShadowReach, Rim: values.RimLight}
+    light := spellLightSource{
+        Radius: values.LightRadius,
+        Strength: values.LightStrength,
+        Reach: values.ShadowReach,
+        Rim: values.RimLight,
+        RimColor: colorParts(values.RimColor.R, values.RimColor.G, values.RimColor.B),
+    }
 
     // where it hits, unless it is in flight
     placeX, placeY := spellPlace(projectile.Target.X, projectile.Target.Y)
@@ -214,6 +222,7 @@ func (combat *CombatScreen) addGlow(projectile *Projectile, values SpellValues) 
             Strength: values.LightStrength,
             Reach: values.ShadowReach,
             Rim: values.RimLight,
+            RimColor: colorParts(values.RimColor.R, values.RimColor.G, values.RimColor.B),
         },
         Start: combat.effects.Tick,
         Ticks: effectTicks(values.LightLinger),

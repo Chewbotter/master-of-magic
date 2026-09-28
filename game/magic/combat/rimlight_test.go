@@ -80,30 +80,31 @@ func TestRimSide(test *testing.T) {
 
 // all of it near the light, less toward the rim of the light, none beyond it
 func TestRimLightAt(test *testing.T) {
-    lights := []spellLightSource{{X: 100, Y: 100, Radius: 60, Strength: 1, Rim: 0.9}}
+    orange := [3]float32{1, 0.7, 0.4}
+    lights := []spellLightSource{{X: 100, Y: 100, Radius: 60, Strength: 1, Rim: 0.9, RimColor: orange}}
 
-    near, side := rimLightAt(lights, 80, 100)
-    if near != 0.9 || side != 0 {
-        test.Errorf("20 to the left of the light: %v from side %v", near, side)
+    near, side, tint := rimLightAt(lights, 80, 100)
+    if near != 0.9 || side != 0 || tint != orange {
+        test.Errorf("20 to the left of the light: %v from side %v in %v", near, side, tint)
     }
 
-    far, _ := rimLightAt(lights, 45, 100)
+    far, _, _ := rimLightAt(lights, 45, 100)
     if far <= 0 || far >= near {
         test.Errorf("55 to the left of the light: %v", far)
     }
 
-    none, _ := rimLightAt(lights, 30, 100)
+    none, _, _ := rimLightAt(lights, 30, 100)
     if none != 0 {
         test.Errorf("70 to the left of the light: %v", none)
     }
 
     // up and down the screen the light goes half as far
-    none, _ = rimLightAt(lights, 100, 135)
+    none, _, _ = rimLightAt(lights, 100, 135)
     if none != 0 {
         test.Errorf("35 under the light: %v", none)
     }
 
-    off, _ := rimLightAt([]spellLightSource{{X: 100, Y: 100, Radius: 60, Strength: 1, Rim: 0}}, 80, 100)
+    off, _, _ := rimLightAt([]spellLightSource{{X: 100, Y: 100, Radius: 60, Strength: 1, Rim: 0}}, 80, 100)
     if off != 0 {
         test.Errorf("a spell without rim light: %v", off)
     }
