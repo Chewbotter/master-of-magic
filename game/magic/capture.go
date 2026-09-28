@@ -64,6 +64,8 @@ type frameCapture struct {
     SameBattle bool
     // the army of the player of a random battle is set to auto
     Auto bool
+    // as if Tab was held in a battle
+    Tab bool
     // logs the order WAIT goes through the units of the player in, and picks one as a click does
     UnitOrder bool
     // the look of the move area, by its number. below 0: as it is

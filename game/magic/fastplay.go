@@ -540,6 +540,8 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
 
     game.Music.PlaySong(randomChoose(musiclib.SongCombat1, musiclib.SongCombat2))
 
+    combat.HoldTab = capture.Tab
+
     if capture.MoveArea >= 0 {
         combat.MoveArea = combat.MoveAreaLook(capture.MoveArea)
     }

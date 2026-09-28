@@ -255,6 +255,10 @@ type CombatScreen struct {
     moveArea *moveAreaTiles
     moveShapes *moveAreaShapes
     moveLayer *ebiten.Image
+    // the magic vortex the player is moving
+    movingVortex *MagicVortex
+    // the mark over the unit whose turn it is, see unitmarker.go
+    chevron *ebiten.Image
     // the halos of the frames of spells, see spellglow.go
     spellHalos map[*ebiten.Image]*ebiten.Image
     // the cursor is over a cell the unit of the player can not go to or attack
@@ -2785,6 +2789,10 @@ func (combat *CombatScreen) ProcessInput() {
     combat.Camera.Update(keys, cursorY < scale.Scale(hudTop))
     combat.syncCamera()
 
+    if HoldTab {
+        keys = append(keys, ebiten.KeyTab)
+    }
+
     for _, key := range keys {
         switch key {
             case ebiten.KeyTab:
@@ -2884,8 +2892,12 @@ func abs(a int) int {
 // return a tile to move the vortex to. must be a cardinal direction (no diagonals)
 func (combat *CombatScreen) GetMagicVortexMoveTile(yield coroutine.YieldFunc, vortex *MagicVortex) (int, int) {
     vortex.Selected = true
+    // where it can go shows as it does for a unit, see movearea.go
+    combat.movingVortex = vortex
     defer func(){
         vortex.Selected = false
+        combat.movingVortex = nil
+        combat.outOfReach = false
     }()
 
     for {
@@ -2909,13 +2921,19 @@ func (combat *CombatScreen) GetMagicVortexMoveTile(yield coroutine.YieldFunc, vo
         combat.MouseState = CombatNotOk
 
         totalDistance := abs(vortex.X - combat.MouseTileX) + abs(vortex.Y - combat.MouseTileY)
-        if totalDistance == 1 && mouseY < scale.Scale(data.ScreenHeight - hudImage.Bounds().Dy()) {
+        overField := mouseY < scale.Scale(data.ScreenHeight - hudImage.Bounds().Dy())
+        if totalDistance == 1 && overField && combat.Model.IsInsideMap(combat.MouseTileX, combat.MouseTileY) {
             combat.MouseState = CombatMoveOk
 
             if inputmanager.LeftClick() {
                 return combat.MouseTileX, combat.MouseTileY
             }
+        } else if !overField {
+            combat.MouseState = CombatClickHud
         }
+
+        // a black outline and the plain cursor where it can not go, as for a unit
+        combat.outOfReach = combat.MouseState == CombatNotOk
     }
 }
 
@@ -4229,9 +4247,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         unitOptions.GeoM.Translate(tx, ty)
 
         if vortex.Selected {
-            minColor := color.NRGBA{R: 32, G: 0, B: 0, A: 255}
-            maxColor := color.NRGBA{R: 255, G: 0, B: 0, A: 255}
-            combat.DrawHighlightedTile(screen, vortex.X, vortex.Y, &useMatrix, minColor, maxColor)
+            // as the unit whose turn it is: the red outline of its cell. see movearea.go
+            combat.drawCellOutline(screen, vortex.X, vortex.Y, true)
         }
 
         scale.DrawScaled(screen, frame, &unitOptions)
@@ -4266,7 +4283,12 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             }
         }
 
-        combat.ShowExtraHighlight(screen, combat.ExtraHighlightedUnit, getTilePoints)
+        if UnitChevron {
+            // a chevron of art pixels, see unitmarker.go
+            combat.drawUnitChevron(screen, combat.ExtraHighlightedUnit)
+        } else {
+            combat.ShowExtraHighlight(screen, combat.ExtraHighlightedUnit, getTilePoints)
+        }
     }
 
     projectileOnScreen := originalScreenMatrix(combat.GetCameraMatrix())

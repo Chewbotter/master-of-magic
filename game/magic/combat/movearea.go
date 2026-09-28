@@ -230,11 +230,39 @@ func (combat *CombatScreen) moveAreaShapes() *moveAreaShapes {
     return shapes
 }
 
+// where a magic vortex can be sent: one tile straight on, any of the four ways
+func (combat *CombatScreen) vortexArea(vortex *MagicVortex) map[image.Point]bool {
+    tiles := make(map[image.Point]bool)
+    for _, step := range []image.Point{image.Pt(1, 0), image.Pt(-1, 0), image.Pt(0, 1), image.Pt(0, -1)} {
+        x := vortex.X + step.X
+        y := vortex.Y + step.Y
+        if combat.Model.IsInsideMap(x, y) {
+            tiles[image.Pt(x, y)] = true
+        }
+    }
+    return tiles
+}
+
 // draws the area on the ground. part of the field
 func (combat *CombatScreen) drawMoveArea(screen *ebiten.Image) {
-    unit := combat.moveAreaUnit()
-    if unit == nil {
+    if MoveArea == MoveAreaOff {
         return
+    }
+
+    var tiles map[image.Point]bool
+    var middle image.Point
+
+    if combat.movingVortex != nil {
+        // a magic vortex the player sends on its way
+        tiles = combat.vortexArea(combat.movingVortex)
+        middle = image.Pt(combat.movingVortex.X, combat.movingVortex.Y)
+    } else {
+        unit := combat.moveAreaUnit()
+        if unit == nil {
+            return
+        }
+        tiles = combat.moveAreaOf(unit)
+        middle = image.Pt(unit.X, unit.Y)
     }
 
     shapes := combat.moveAreaShapes()
@@ -242,7 +270,6 @@ func (combat *CombatScreen) drawMoveArea(screen *ebiten.Image) {
         return
     }
 
-    tiles := combat.moveAreaOf(unit)
     if len(tiles) == 0 {
         return
     }
@@ -277,7 +304,7 @@ func (combat *CombatScreen) drawMoveArea(screen *ebiten.Image) {
 
     // the unit stands in its area
     inArea := func(x int, y int) bool {
-        return tiles[image.Pt(x, y)] || (x == unit.X && y == unit.Y)
+        return tiles[image.Pt(x, y)] || (x == middle.X && y == middle.Y)
     }
 
     // the shapes are solid, so a pixel that two tiles share is not twice as strong
@@ -297,7 +324,7 @@ func (combat *CombatScreen) drawMoveArea(screen *ebiten.Image) {
         for point := range tiles {
             draw(point.X, point.Y)
         }
-        draw(unit.X, unit.Y)
+        draw(middle.X, middle.Y)
 
         var onto ebiten.DrawImageOptions
         onto.GeoM.Scale(pixel, pixel)
@@ -327,7 +354,7 @@ func (combat *CombatScreen) drawMoveArea(screen *ebiten.Image) {
 
     if MoveArea == MoveAreaDots {
         pass(moveAreaDotStrength, func(x int, y int) []*ebiten.Image {
-            if x == unit.X && y == unit.Y {
+            if x == middle.X && y == middle.Y {
                 return nil
             }
             return []*ebiten.Image{shapes.Dot}

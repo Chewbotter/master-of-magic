@@ -83,6 +83,10 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
   turn go to the next unit on the field, along a row and then the row below, in place of the
   order the units joined the army in (`combat/unitorder.go`). Armies of the computer and auto
   keep the game's order.
+- Tab: a double chevron of art pixels over the unit whose turn it is, going up and down, in place
+  of the fork's column of light (`combat/unitmarker.go`).
+- A magic vortex the player sends on its way: the red outline of its cell, the four tiles it can
+  go to as the move area, the black outline elsewhere, in place of the fork's red square.
 - No boots on the tiles a unit would walk over (`ShowMovePath` in `combat/autotoggle.go`).
 - The AUTO button toggles auto and is lit while auto is on.
 - Space sets the player's army to auto and takes it off again (`combat/autotoggle.go`). Taken off
