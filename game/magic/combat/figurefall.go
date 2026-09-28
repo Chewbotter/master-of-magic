@@ -7,6 +7,12 @@ package combat
 // by where they lie.
 // Not in the original, which shows a splash of blood on a lost figure that then is gone.
 //
+// ON WHOLE ART PIXELS (user, 2026-09-27). A figure is pushed back by a distance that is no whole
+// number of art pixels, and it can die while it walks. Drawn where that puts it, its pixels lie
+// between the pixels of the field and of the corpses next to it, which shows as thin gaps between
+// them. A corpse is drawn on the nearest whole art pixel, while it goes down and where it lies. One
+// that is tipped over is turned on a small picture of whole art pixels first, for the same reason.
+//
 // DEATH FRAMES (user, 2026-09-27): a figure that has the frames 7 and 8 in the replacement folder
 // (game/magic/mod) does not tip over. It shows 7 while it goes down and 8 from then on. With only 8
 // it shows 8 at once. It is still pushed back, darkens and loses its color.
@@ -37,6 +43,10 @@ const figureFallPushMax = 9.0
 // how far it tips over, in degrees. 90 is flat on its back
 const figureFallAngleMin = 75.0
 const figureFallAngleMax = 100.0
+// the size of the picture a figure is turned on, in art pixels. a figure of 28 by 30 turned around
+// its feet fits
+const corpseTurnedSize = 72
+
 // how bright a corpse is, how much of its color it keeps, and the seconds it takes to get there
 // once it lies
 const corpseBrightness = 0.65
@@ -70,6 +80,10 @@ type corpse struct {
     // not tip over
     Dying *ebiten.Image
     Dead *ebiten.Image
+    // for a figure that is tipped over: the picture turned, in whole art pixels, its feet in the
+    // middle. made again while it falls, kept once it lies
+    turned *ebiten.Image
+    lies bool
     // where its feet stood, on the original's screen, in art pixels
     X float64
     Y float64
@@ -175,8 +189,9 @@ func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawabl
         pushed := 1 - (1 - progress) * (1 - progress)
         tipped := progress * progress
 
-        x := body.X + body.PushX * pushed
-        y := body.Y + body.PushY * pushed
+        // on whole art pixels, see the top of the file
+        x := math.Round(body.X + body.PushX * pushed)
+        y := math.Round(body.Y + body.PushY * pushed)
 
         darkened := max(0, min(1, (seconds - figureFallTime) / corpseDarkenTime))
         brightness := float32(1 - (1 - corpseBrightness) * darkened)
@@ -188,20 +203,36 @@ func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawabl
             Layer: layerFigure,
             Render: func() {
                 picture := body.Picture
-                turned := body.Angle * tipped
+                offsetX, offsetY := unitview.FigureOffset(picture)
+
                 if body.Dead != nil {
                     // its own pictures of dying, not the standing one tipped over
-                    turned = 0
                     picture = body.Dying
                     if progress >= 1 {
                         picture = body.Dead
                     }
+                    offsetX, offsetY = unitview.FigureOffset(picture)
+                } else {
+                    // tipped over on a picture of whole art pixels, its feet in the middle
+                    if body.turned == nil {
+                        body.turned = ebiten.NewImage(corpseTurnedSize, corpseTurnedSize)
+                    }
+                    if !body.lies {
+                        body.turned.Clear()
+                        var turn ebiten.DrawImageOptions
+                        // the feet on the origin, so the figure turns around them
+                        turn.GeoM.Translate(unitview.FigureOffset(picture))
+                        turn.GeoM.Rotate(body.Angle * tipped)
+                        turn.GeoM.Translate(corpseTurnedSize / 2, corpseTurnedSize / 2)
+                        body.turned.DrawImage(picture, &turn)
+                        body.lies = progress >= 1
+                    }
+                    picture = body.turned
+                    offsetX, offsetY = -corpseTurnedSize / 2, -corpseTurnedSize / 2
                 }
 
                 var options colorm.DrawImageOptions
-                // the feet on the origin, so the figure turns around them
-                options.GeoM.Translate(unitview.FigureOffset(picture))
-                options.GeoM.Rotate(turned)
+                options.GeoM.Translate(offsetX, offsetY)
                 options.GeoM.Translate(x, y)
                 options.GeoM.Concat(originalScreenMatrix(combat.GetCameraMatrix()))
                 options.GeoM.Scale(scale.ScaleAmount, scale.ScaleAmount)
