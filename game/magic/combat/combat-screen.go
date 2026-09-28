@@ -2810,6 +2810,9 @@ func (combat *CombatScreen) UpdateMouseState() {
     }
 }
 
+// true: holding Shift shows the list of both armies over the battle, as the fork has it
+const ArmyListKey = false
+
 func (combat *CombatScreen) ProcessInput() {
     combat.ExtraHighlightedUnit = nil
     var keys []ebiten.Key
@@ -2832,7 +2835,10 @@ func (combat *CombatScreen) ProcessInput() {
                     combat.ExtraHighlightedUnit = combat.Model.SelectedUnit
                 }
             case ebiten.KeyShift:
-                showInfo = 100
+                // the list of both armies over the battle. off (user, 2026-09-28)
+                if ArmyListKey {
+                    showInfo = 100
+                }
             case ebiten.KeyControl:
                 combat.ExtraControl = true
         }
