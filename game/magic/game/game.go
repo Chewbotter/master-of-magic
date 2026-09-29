@@ -8413,7 +8413,7 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
 
         if stack == overworld.SelectedStack && onlyBackgroundBlinks() {
             doDraw = true
-            drawBack = blinkOn
+            drawBack = selectionBlinkOn(stack, overworld.Counter, overworld.ShowAnimation)
         } else if stack == overworld.SelectedStack && blinkOn {
             doDraw = true
         } else if stack == overworld.MovingStack {

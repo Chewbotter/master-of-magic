@@ -36,3 +36,22 @@ const OnlyBackgroundBlinks = true
 func onlyBackgroundBlinks() bool {
     return OnlyBackgroundBlinks && display.ModernControls()
 }
+
+// ticks the square behind the selected stack is shown, and as many it is not. the classic controls have 15
+const SelectionBlinkTicks = 20
+
+// the stack whose square blinks, and the tick its blinking started at
+var selectionBlinkStack *playerlib.UnitStack
+var selectionBlinkStart uint64
+
+// true while the square behind the selected stack is shown. the blinking starts anew, with the square
+// shown for its whole time, when another stack is selected and when the stack stops moving, so the
+// square is never shown or gone for a part of its time only. moving is true while the stack walks
+func selectionBlinkOn(stack *playerlib.UnitStack, counter uint64, moving bool) bool {
+    if stack != selectionBlinkStack || moving || counter < selectionBlinkStart {
+        selectionBlinkStack = stack
+        selectionBlinkStart = counter
+    }
+
+    return (counter - selectionBlinkStart) / SelectionBlinkTicks % 2 == 0
+}
