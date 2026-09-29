@@ -207,6 +207,20 @@ func (combat *CombatScreen) startSwing(attacker *ArmyUnit, defender *ArmyUnit) (
     attacker.SwingStart = combat.Counter
     attacker.SwingDelay = 0
 
+    if !singleStrikes() {
+        // again and again for a fixed time, and nobody closes in. see strikeclassic.go
+        if defender != nil {
+            defender.SwingStart = combat.Counter
+            defender.SwingDelay = 0
+        }
+        combat.startApproach(nil, nil, classicAttackTicks)
+        attacker.ApproachX, attacker.ApproachY = 0, 0
+        if defender != nil {
+            defender.ApproachX, defender.ApproachY = 0, 0
+        }
+        return classicAttackTicks, classicBlowTick
+    }
+
     // the figures of a unit are out of step by up to this, see figurevariety.go
     lasts := swingRedraws(attacker) * SwingsPerAttack + figurePhaseMax
     lands := swingRedraws(attacker) * (SwingOfTheBlow - 1)

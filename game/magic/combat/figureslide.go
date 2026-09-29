@@ -57,8 +57,15 @@ func (combat *CombatScreen) strikeSlide(unit *ArmyUnit, phase float64) (float64,
         return nearX, nearY
     }
 
-    // the steps of its swing, see strikeswing.go
-    _, distance := unitSwing(unit, combat.swingTicks(unit, phase))
+    var distance float64
+    if singleStrikes() {
+        // the steps of its swing, see strikeswing.go
+        _, distance = unitSwing(unit, combat.swingTicks(unit, phase))
+    } else {
+        // by its frames, which go around by the clock of the battle. see strikeclassic.go
+        tps := float64(max(1, ebiten.TPS()))
+        distance = classicStrikeSlide(unit, float64(combat.Counter) * OriginalTicksPerSecond / tps + phase)
+    }
 
     faceX, faceY := facingOnScreen(unit.Facing)
     return nearX + faceX * distance, nearY + faceY * distance

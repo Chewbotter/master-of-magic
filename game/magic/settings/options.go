@@ -42,6 +42,10 @@ const WidescreenCheckboxY = 106
 const ControlsRowY = 128
 const ControlsBoxX = DisplayColumnX + 45
 const ControlsBoxWidth = 50
+// the checkbox of how units strike in a battle: in the left column under upstream's checkboxes,
+// the right column is full down to "Aggressive AI" at 150
+const SingleStrikesCheckboxX = 30
+const SingleStrikesCheckboxY = 172
 // opacity of the resolution box while fullscreen makes it meaningless
 const DisplayDisabledAlpha = 0.4
 // ticks for the fade, matches upstream's settings screen
@@ -221,6 +225,14 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
             printText(screen, controlsRect.Min.X + 6, controlsRect.Min.Y + 3, getAlpha(), displaySettings.Controls().Name())
         },
     })
+
+    // how units strike in a battle, see display/strikes.go
+    addCheckbox(group, fonts, &getAlpha, SingleStrikesCheckboxX, SingleStrikesCheckboxY, "Single strikes",
+        func() bool { return displaySettings.SingleStrikes() },
+        func(value bool) {
+            displaySettings.SetSingleStrikes(value)
+        },
+    )
 
     if OptionsStartWithRolloutOpen && !displaySettings.Fullscreen {
         openRollout()

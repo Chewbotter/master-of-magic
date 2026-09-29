@@ -118,9 +118,12 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase fl
         }
     }
 
-    if unit.Attacking || unit.Defending {
+    if (unit.Attacking || unit.Defending) && singleStrikes() {
         // the steps of its swing, see strikeswing.go
         frame, _ = unitSwing(unit, combat.swingTicks(unit, phase))
+    } else if unit.Attacking || unit.Defending {
+        // again and again, see strikeclassic.go
+        frame = classicStrikeFrame(unit, tick)
     }
 
     if frameCount <= 0 {
