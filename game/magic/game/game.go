@@ -3889,6 +3889,16 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
     leftClick := inputmanager.LeftClick()
     rightClick := inputmanager.RightClick()
 
+    if leftClick {
+        // modern controls: a click on a stack of the player selects it, see worldselect.go
+        picked := game.stackToSelect(player, mouseX, mouseY)
+        if picked != nil {
+            player.SelectedStack = picked
+            game.RefreshUI()
+            leftClick = false
+        }
+    }
+
     if player.SelectedStack != nil && player.SelectedStack.Plane() == game.Model.Plane {
         stack := player.SelectedStack
         mapUse := game.GetMap(stack.Plane())
@@ -8397,7 +8407,14 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
         location := image.Point{stack.X(), stack.Y()}
         _, hasCity := cityPositions[location]
 
-        if stack == overworld.SelectedStack && (overworld.ShowAnimation || overworld.Counter / 15 % 2 == 0) {
+        // modern controls: only the square behind the selected stack blinks, see worldselect.go
+        drawBack := true
+        blinkOn := overworld.ShowAnimation || overworld.Counter / 15 % 2 == 0
+
+        if stack == overworld.SelectedStack && onlyBackgroundBlinks() {
+            doDraw = true
+            drawBack = blinkOn
+        } else if stack == overworld.SelectedStack && blinkOn {
             doDraw = true
         } else if stack == overworld.MovingStack {
             doDraw = true
@@ -8429,7 +8446,7 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
                 leader := stack.Leader()
 
                 unitBack, err := units.GetUnitBackgroundImage(leader.GetBanner(), overworld.ImageCache)
-                if err == nil {
+                if err == nil && drawBack {
                     saveGeom := options.GeoM
                     options.GeoM.Concat(geom)
                     scale.DrawScaled(screen, unitBack, &options)

@@ -193,6 +193,7 @@ We keep building on this fork and rebuild any visual that does not match the ori
 
 ## Control type
 - Settings has Controls: Modern (default) or Classic, saved in the settings file as `control-type` (`game/magic/display/controls.go`). Classic is the original game's controls and stays untouched. New control behavior goes behind `display.ModernControls()`.
+- WORLD MAP CONTROLS (user 2026-09-28: "leave the current mode as classic and any changes made now are part of the modern control scheme"), `game/magic/game/worldselect.go`: a LEFT CLICK on a stack of the player selects it (`LeftClickSelects`, `stackToSelect`, hooked in before the move of the selected stack in `doPlayerUpdate`); the right click stays as it is (camera move, city screen, and it selects too). So with the mouse the selected stack can not be sent onto another stack of the player, a garrison in a city included; the keys still do it. Only the colored square behind the selected stack blinks, its picture stays (`OnlyBackgroundBlinks`, in `DrawOverworld`).
 - Modern only: middle mouse pan with its glide, coast and cursor glide (user, 2026-09-27). In both: eased camera moves, panel text style, debug button.
 
 ## Current state

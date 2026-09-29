@@ -1,0 +1,38 @@
+package game
+
+// Modern controls of the world map: what a click on the map picks. see display/controls.go
+
+import (
+    "github.com/kazzmir/master-of-magic/game/magic/display"
+    playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
+)
+
+// a left click on a stack of the player selects it. false: a left click always sends the selected
+// stack to the tile, as in the classic controls, and stacks are selected with the right button
+const LeftClickSelects = true
+
+// the stack of the player a left click at this point of the screen selects, nil for none.
+// the stack that is selected already is not one: a click on it clears its path, as always
+func (game *Game) stackToSelect(player *playerlib.Player, mouseX int, mouseY int) *playerlib.UnitStack {
+    if !LeftClickSelects || !display.ModernControls() || !game.InOverworldArea(mouseX, mouseY) {
+        return nil
+    }
+
+    tileX, tileY := game.ScreenToTile(float64(mouseX), float64(mouseY))
+    tileX = game.Model.CurrentMap().WrapX(tileX)
+
+    stack := player.FindStack(tileX, tileY, game.Model.Plane)
+    if stack == nil || stack == player.SelectedStack {
+        return nil
+    }
+
+    return stack
+}
+
+// the picture of the selected stack stays and only the colored square behind it blinks.
+// false, and with the classic controls: both blink together
+const OnlyBackgroundBlinks = true
+
+func onlyBackgroundBlinks() bool {
+    return OnlyBackgroundBlinks && display.ModernControls()
+}
