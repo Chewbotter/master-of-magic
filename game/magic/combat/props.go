@@ -109,7 +109,7 @@ func (combat *CombatScreen) drawFlatProps(screen *ebiten.Image, animationIndex u
             frame /= riverGlintSlow
         }
         picture := pictures[(frame + phase) % uint64(len(pictures))]
-        anchorX, anchorY := piece.anchor(picture.Bounds().Dx(), picture.Bounds().Dy())
+        anchorX, anchorY := piece.anchor(combat.artSize(picture))
         combat.drawOnFieldDimmed(screen, picture, piece.ScreenX - anchorX, piece.ScreenY - anchorY, brightness)
     }
 }

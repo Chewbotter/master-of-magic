@@ -7,7 +7,6 @@ import (
     "math"
     "slices"
 
-    "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/unitview"
 
     "github.com/hajimehoshi/ebiten/v2"
@@ -41,7 +40,8 @@ func (combat *CombatScreen) drawOnFieldDimmed(screen *ebiten.Image, picture *ebi
     options.GeoM.Translate(float64(x), float64(y))
     options.GeoM.Concat(matrix)
     options.ColorScale.Scale(brightness, brightness, brightness, 1)
-    scale.DrawScaled(screen, picture, &options)
+    // a picture with more pixels than the art is drawn smaller, see terraindraw.go
+    combat.drawDense(screen, picture, &options)
 }
 
 // trees, rocks, houses, the fortress
@@ -82,7 +82,7 @@ func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawab
                 if piece.Kind == SceneryProp {
                     picture = pictures[animationIndex % uint64(len(pictures))]
                 }
-                anchorX, anchorY := piece.anchor(picture.Bounds().Dx(), picture.Bounds().Dy())
+                anchorX, anchorY := piece.anchor(combat.artSize(picture))
                 combat.drawOnFieldDimmed(screen, picture, piece.ScreenX - anchorX, piece.ScreenY - anchorY, brightness)
             },
         })

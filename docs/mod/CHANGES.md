@@ -72,6 +72,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - A replacement folder (`mod/`): a picture in it takes the place of the game's own. Figures, cursors, spells, the surroundings of battles, and any picture of the game's archives.
 - The folder can ADD pictures: more ground tiles, trees, rocks, houses, large pieces, and props that lie or stand. Added ground tiles are sprinkled in among the game's own, which stay the most, and the same one does not show twice close together; of the others every picture is used once before any comes again.
 - Biomes, the coast, the river and the farmland have folders of their own in the replacement folder. The beach and the water of a coast can be different for grass land, desert, mountains and tundra. The river takes glints: small animated pictures that are scattered over its water. A biome only needs the pictures that differ from its landscape.
+- An experiment: a folder of a biome can have a twin with pictures of twice the pixels (Forest_highres beside Forest), which are shown at the size of the plain ones, with finer pixels.
 - Figures can have more frames: a longer strike, dying and lying.
 - The flag of the paths on the world map and the tabs of the spellbooks under the mouse can be repainted.
 - Values of spell effects and blood in a text file that is read again while the game runs.

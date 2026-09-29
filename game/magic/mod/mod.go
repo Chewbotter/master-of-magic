@@ -252,6 +252,12 @@ func framePaths(archive string, entry int, frame int) []string {
         out = append(out, spell)
     }
 
+    // the twin of the folder of the biome with twice the pixels, see highres.go
+    highRes := biomeHighResPath(archive, entry, frame)
+    if highRes != "" {
+        out = append(out, highRes)
+    }
+
     // the biome of the battle before its landscape, see biomes.go
     ofBiome := biomeFramePath(archive, entry, frame)
     if ofBiome != "" {

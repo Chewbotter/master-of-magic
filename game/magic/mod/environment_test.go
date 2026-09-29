@@ -1,6 +1,7 @@
 package mod
 
 import (
+    "slices"
     "os"
     "path/filepath"
     "testing"
@@ -112,19 +113,29 @@ func TestBiomeGoesBeforeLandscape(test *testing.T) {
         SetBiome("")
     }()
 
+    // the twin of the folder of the biome with twice the pixels is the first, see highres.go
     paths := framePaths("cmbgrass.lbx", 49, 0)
     want := []string{
+        filepath.Join("replace", "environment", "Forest_highres", "tree 2_0.png"),
         filepath.Join("replace", "environment", "Forest", "tree 2_0.png"),
         filepath.Join("replace", "environment", "Grass", "tree 2_0.png"),
         filepath.Join("replace", "archives", "cmbgrass", "049_0.png"),
     }
-    if len(paths) != len(want) || paths[0] != want[0] || paths[1] != want[1] || paths[2] != want[2] {
+    if !slices.Equal(paths, want) {
         test.Fatalf("got %v", paths)
+    }
+
+    // without the experiment there is no twin
+    HighRes = false
+    paths = framePaths("cmbgrass.lbx", 49, 0)
+    HighRes = true
+    if !slices.Equal(paths, want[1:]) || Density("cmbgrass.lbx", 49) != 1 {
+        test.Fatalf("without twins: %v", paths)
     }
 
     // on Myrror the folder of the biome of Myrror
     paths = framePaths("cmbgrasc.lbx", 0, 0)
-    if len(paths) != 3 || paths[0] != filepath.Join("replace", "environment", "Forest Myrror", "grass 1_0.png") {
+    if len(paths) != 4 || paths[1] != filepath.Join("replace", "environment", "Forest Myrror", "grass 1_0.png") {
         test.Fatalf("on Myrror: %v", paths)
     }
 
