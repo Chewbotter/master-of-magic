@@ -5,6 +5,10 @@ package combat
 // Every figure that falls stays as a corpse (figurefall.go). Where many fall on one tile they
 // cover each other and the ground. A tile keeps its newest corpses, corpsesPerTile of them (4; 6 was the first try); once
 // it has more, its oldest fade out, slowly, and are gone (user, 2026-09-28).
+//
+// The corpse of a unit that is a single figure, as an earth elemental or a hero, never fades and
+// is not counted: such units are special, and what falls on their tile after them does not take
+// their place.
 
 import (
     "image"
@@ -19,6 +23,11 @@ const CorpseFade = true
 const corpsesPerTile = 4
 // seconds a corpse takes to fade out
 const corpseFadeTime = 3.0
+
+// true for the corpse of a unit of this many figures when it is whole: it never fades
+func corpseLasts(figures int) bool {
+    return figures <= 1
+}
 
 // the tile a corpse lies on
 func corpseTile(body *corpse) image.Point {
@@ -83,15 +92,23 @@ func (combat *CombatScreen) fadeCorpses() {
     }
     combat.corpses = kept
 
-    tiles := make([]image.Point, len(combat.corpses))
-    fading := make([]bool, len(combat.corpses))
+    // the ones that can fade, in the order they fell
+    var places []int
+    var tiles []image.Point
+    var fading []bool
     for index := range combat.corpses {
-        tiles[index] = corpseTile(&combat.corpses[index])
-        fading[index] = combat.corpses[index].Fading
+        body := &combat.corpses[index]
+        if body.Lasts {
+            continue
+        }
+        places = append(places, index)
+        tiles = append(tiles, corpseTile(body))
+        fading = append(fading, body.Fading)
     }
 
     for _, index := range corpsesToFade(tiles, fading, corpsesPerTile) {
-        combat.corpses[index].Fading = true
-        combat.corpses[index].FadeStart = combat.Counter
+        body := &combat.corpses[places[index]]
+        body.Fading = true
+        body.FadeStart = combat.Counter
     }
 }

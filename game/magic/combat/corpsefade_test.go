@@ -40,6 +40,18 @@ func TestCorpsesToFade(test *testing.T) {
     }
 }
 
+// the corpse of a unit that is one figure stays
+func TestCorpseLasts(test *testing.T) {
+    if !corpseLasts(1) {
+        test.Errorf("the corpse of a unit of one figure fades")
+    }
+    for _, figures := range []int{2, 4, 6, 8} {
+        if corpseLasts(figures) {
+            test.Errorf("the corpse of a figure of a unit of %v never fades", figures)
+        }
+    }
+}
+
 // a corpse that fades shows less and less and is gone
 func TestCorpseShows(test *testing.T) {
     body := corpse{}

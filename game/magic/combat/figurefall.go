@@ -108,6 +108,8 @@ type corpse struct {
     FadeStart uint64
     // the blood that has come down on it, see corpsesplat.go
     Splats []corpseSplat
+    // it never fades: the corpse of a unit that is one figure, see corpsefade.go
+    Lasts bool
 }
 
 // how much of the color of what killed it a corpse takes on, 0 to 1
@@ -242,6 +244,7 @@ func (combat *CombatScreen) addCorpse(unit *ArmyUnit, load func(units.Facing) []
     tint, hasTint := combat.corpseColor(unit)
 
     combat.corpses = append(combat.corpses, corpse{
+        Lasts: corpseLasts(unit.GetCount()),
         HasTint: hasTint,
         Tint: tint,
         Picture: picture,
