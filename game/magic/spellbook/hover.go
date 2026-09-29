@@ -4,7 +4,11 @@ package spellbook
 // one that is being cast, the ones that cost too much in a battle.
 //
 // The original marks the name under the mouse not at all. Upstream let it pulse to bright red,
-// which reads as an error (user, 2026-09-29): it pulses to a blue, slower and less far.
+// which reads as an error (user, 2026-09-29): it pulsed to a blue, slower and less far, and
+// pulses to the color of the realm of the spell now (user, 2026-09-29: "glow based on the school
+// of magic (Red for chaos, etc)"), in both books. The pulse starts when the mouse comes over the
+// name, from its lowest: on the clock of the book a name came up at any point of it, so going
+// from name to name flickered.
 //
 // Such a name is printed twice: in the colors of the page, and over that in its own colors, as
 // see-through as the pulse says. Its own colors are a pair as the ones of the page are, a lighter
@@ -15,6 +19,8 @@ package spellbook
 import (
     "image/color"
     "math"
+
+    "github.com/kazzmir/master-of-magic/game/magic/data"
 )
 
 // the colors of a name: the soft edge of its letters and their body
@@ -42,8 +48,29 @@ func colorsOf(body color.RGBA) nameColors {
     }
 }
 
-// under the mouse
+// under the mouse, a spell of no realm
 var hoverColors = colorsOf(color.RGBA{R: 40, G: 100, B: 232, A: 255})
+
+// under the mouse, by the realm of the spell: the color of the letters
+var realmColors = map[data.MagicType]color.RGBA{
+    data.NatureMagic: {R: 40, G: 150, B: 44, A: 255},
+    data.SorceryMagic: {R: 40, G: 100, B: 232, A: 255},
+    data.ChaosMagic: {R: 220, G: 44, B: 28, A: 255},
+    data.LifeMagic: {R: 250, G: 248, B: 236, A: 255},
+    data.DeathMagic: {R: 140, G: 52, B: 184, A: 255},
+    data.ArcaneMagic: {R: 176, G: 176, B: 176, A: 255},
+}
+
+// the realms that have a color
+var hoverRealms = []data.MagicType{data.NatureMagic, data.SorceryMagic, data.ChaosMagic, data.LifeMagic, data.DeathMagic, data.ArcaneMagic}
+
+func hoverColorsOf(magic data.MagicType) nameColors {
+    body, ok := realmColors[magic]
+    if !ok {
+        return hoverColors
+    }
+    return colorsOf(body)
+}
 // ticks one pulse takes. upstream's red took 31
 const hoverPulseTicks = 80
 // how much of its own colors the name has when the pulse is at its lowest and at its height, 0 to 1
@@ -66,6 +93,17 @@ func (colors nameColors) palette() color.Palette {
         out = append(out, colors.Body)
     }
     return out
+}
+
+// how much of its own colors the name under the mouse has at this tick, when the mouse came
+// over it at the tick start: from low up to high and back
+func pulseFrom(counter uint64, start uint64, ticks uint64, low float64, high float64) float32 {
+    since := uint64(0)
+    if counter > start {
+        since = counter - start
+    }
+    wave := 0.5 - math.Cos(float64(since) * 2 * math.Pi / float64(ticks)) / 2
+    return float32(low + (high - low) * wave)
 }
 
 // how much of its own colors a name has at this tick, between low and high

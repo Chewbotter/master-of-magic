@@ -534,6 +534,15 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
     // map from spell number to its time, where number 0 means left page spell 0, and 4 means right page spell 0
     hoverTime := make(map[string]HoverTime)
 
+    // the spell under the mouse has the color of its realm over the colors of the page, as in the
+    // book for casting. see hover.go
+    researchTitleHover := make(map[data.MagicType]*font.Font)
+    researchTextHover := make(map[data.MagicType]*font.Font)
+    for _, magic := range hoverRealms {
+        researchTitleHover[magic] = font.MakeOptimizedFontWithPalette(fonts[4], hoverColorsOf(magic).palette())
+        researchTextHover[magic] = font.MakeOptimizedFontWithPalette(fonts[0], hoverColorsOf(magic).palette())
+    }
+
     renderPage := func(page Page, flipping bool, pageImage *ebiten.Image, options ebiten.DrawImageOptions){
         if len(page.Spells.Spells) > 0 || page.ForceRender {
             // var options ebiten.DrawImageOptions
@@ -557,6 +566,8 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
 
                 if page.IsResearch || knownSpell(spell) || learnedSpell.Name == spell.Name {
                     var scaleOptions ebiten.DrawImageOptions
+                    // how much of the color of its realm the spell under the mouse has
+                    own := float32(0)
 
                     if !flipping {
 
@@ -570,7 +581,13 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
                             scaleOptions.ColorScale.SetR(float32(v))
                             scaleOptions.ColorScale.SetG(float32(v))
                             scaleOptions.ColorScale.SetB(float32(v) * 1.8)
+                        } else if pickResearchSpell && OriginalBookColors {
+                            hover, ok := hoverTime[spell.Name]
+                            if ok && hover.On > 0 {
+                                own = pulseFrom(ui.Counter, hover.On, hoverPulseTicks, hoverLow, hoverHigh)
+                            }
                         } else if pickResearchSpell {
+                            // upstream's red
                             hover, ok := hoverTime[spell.Name]
                             if ok {
                                 max := float32(5)
@@ -591,7 +608,25 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
 
                     }
 
+                    // what is printed, and over it the same in the color of the realm
+                    titleHover := researchTitleHover[spell.Magic]
+                    textHover := researchTextHover[spell.Magic]
+                    if titleHover == nil || textHover == nil {
+                        own = 0
+                    }
+                    var ownOptions ebiten.DrawImageOptions
+                    ownOptions.ColorScale.ScaleAlpha(own)
+                    printText := func(atY float64, size float64, text string) {
+                        spellTextNormalFont.PrintOptions(pageImage, x, atY, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions, TextSize: size}, text)
+                        if own > 0 {
+                            textHover.PrintOptions(pageImage, x, atY, font.FontOptions{Scale: scale.ScaleAmount, Options: &ownOptions, TextSize: size}, text)
+                        }
+                    }
+
                     spellTitleNormalFont.PrintOptions(pageImage, x, y, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions}, spell.Name)
+                    if own > 0 {
+                        titleHover.PrintOptions(pageImage, x, y, font.FontOptions{Scale: scale.ScaleAmount, Options: &ownOptions}, spell.Name)
+                    }
                     y += float64(spellTitleNormalFont.Height())
 
                     if page.IsResearch {
@@ -606,7 +641,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
                         if turns > 1 {
                             turnString = "turns"
                         }
-                        spellTextNormalFont.PrintOptions(pageImage, x, y, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions, TextSize: SpellCostTextSize}, fmt.Sprintf("Research Cost:%v (%v %v)", spell.ResearchCost, turns, turnString))
+                        printText(y, SpellCostTextSize, fmt.Sprintf("Research Cost:%v (%v %v)", spell.ResearchCost, turns, turnString))
                         y += float64(spellTextNormalFont.Height()) * costSize
                     } else {
                         spellCost := caster.ComputeEffectiveSpellCost(spell, true)
@@ -619,12 +654,15 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
                         if turns > 1 {
                             turnString = "turns"
                         }
-                        spellTextNormalFont.PrintOptions(pageImage, x, y, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions, TextSize: SpellCostTextSize}, fmt.Sprintf("Casting cost:%v (%v %v)", spellCost, turns, turnString))
+                        printText(y, SpellCostTextSize, fmt.Sprintf("Casting cost:%v (%v %v)", spellCost, turns, turnString))
                         y += float64(spellTextNormalFont.Height()) * costSize
                     }
 
                     wrapped := getSpellDescriptionNormalText(spell.Index)
                     spellTextNormalFont.RenderWrapped(pageImage, x, y, wrapped, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions, TextSize: SpellDescriptionTextSize})
+                    if own > 0 {
+                        textHover.RenderWrapped(pageImage, x, y, wrapped, font.FontOptions{Scale: scale.ScaleAmount, Options: &ownOptions, TextSize: SpellDescriptionTextSize})
+                    }
 
                     if !flipping && learnedSpell.Name == spell.Name && !learnSpellAnimation.Done() {
                         animationOptions := options
@@ -1361,6 +1399,13 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
     tintFont := font.MakeOptimizedFontWithPalette(fonts[1], paletteBlack)
     // names with colors of their own, see hover.go
     hoverFont := font.MakeOptimizedFontWithPalette(fonts[1], hoverColors.palette())
+    // by the realm of the spell
+    hoverFonts := make(map[data.MagicType]*font.Font)
+    for _, magic := range hoverRealms {
+        hoverFonts[magic] = font.MakeOptimizedFontWithPalette(fonts[1], hoverColorsOf(magic).palette())
+    }
+    // the tick the mouse came over the name it is over
+    hoverStart := uint64(0)
     castingFont := font.MakeOptimizedFontWithPalette(fonts[1], castingColors.palette())
     costlyFont := font.MakeOptimizedFontWithPalette(fonts[1], costlyColors.palette())
 
@@ -1501,7 +1546,10 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 textColorScale.SetB(float32(v))
             } else if highlightedSpell.Name == spell.Name {
                 ownFont = hoverFont
-                own = pulse(ui.Counter, hoverPulseTicks, hoverLow, hoverHigh)
+                if realmFont, ok := hoverFonts[spell.Magic]; ok {
+                    ownFont = realmFont
+                }
+                own = pulseFrom(ui.Counter, hoverStart, hoverPulseTicks, hoverLow, hoverHigh)
                 r := math.Cos(float64(ui.Counter) / 5) * 128 + 128
                 textColorScale.SetR(float32(r))
             }
@@ -1746,6 +1794,10 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 Rect: rect,
                 Layer: 1,
                 Inside: func(this *uilib.UIElement, x, y int){
+                    if highlightedSpell.Name != spell.Name {
+                        // its pulse starts now, see hover.go
+                        hoverStart = ui.Counter
+                    }
                     highlightedSpell = spell
                 },
                 NotInside: func(this *uilib.UIElement){

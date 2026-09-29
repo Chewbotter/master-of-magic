@@ -80,7 +80,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The page turn is made by the game from the pages as they are, forward and back. The folded corners that turn the pages turn with their page, and are lighter under the mouse. A click on a tab while a page turns turns the next one at once.
 - In battle the realms that filter the spells are in a row over the book.
 - The letters of both spellbooks have the original's colors: lighter soft edges, and shades in the headers.
-- The name of the spell under the mouse pulses to a soft blue, not to red.
+- The spell under the mouse pulses softly to the color of its realm (green for nature, blue for sorcery, red for chaos, white for life, purple for death), in the book for casting and when a spell to research is picked. The pulse starts when the mouse comes over the spell.
 - Bookmarks at the right edge of the book for casting, one for every kind of spell with a symbol of its own: a click turns the book to that kind.
 - The dark behind the spellbook fades in and out with it, and in a battle it covers the whole width of the window.
 
