@@ -693,6 +693,10 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
 
     for game.Update(yield) != gamelib.GameStateQuit {
         if inputmanager.IsQuitPressed() {
+            if debugWorldMap {
+                // the game of the debug list: back to the start screen, see debugworld.go
+                return nil
+            }
             return ebiten.Termination
         }
 
@@ -1165,6 +1169,8 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
                 err := startQuickGame(yield, game, gameLoader)
                 debugWorldMap = false
                 gamelib.DebugNoDisband = false
+                // the key that left the game is not the start screen's to read
+                yield()
                 gamelib.DebugUnlimitedMoves = false
                 gamelib.DebugNoGreetings = false
                 if err != nil {

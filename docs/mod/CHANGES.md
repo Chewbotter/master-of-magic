@@ -67,6 +67,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 ## For testing (debug)
 - A Debug list on the start screen: World Map, Random Battle, Random City Battle, Test Battle of a unit picked from a list (with its biome and coast), Army Size. Random battles have a landscape, a biome, a coast and roads by chance.
 - World Map: a quick game with unlimited moves, no greetings of rival wizards, 3 more units around the city, and units that are never disbanded.
-- In debug battles the player knows every spell and does not run out of mana; Escape goes back to the start screen.
+- In debug battles the player knows every spell and does not run out of mana.
+- Escape in anything started from the Debug list goes back to the start screen.
 - A Debug menu on the world map: Reveal All, Unlimited Moves, No Greetings.
 - Under the Debug list: which build this is (lane, commit, time).
