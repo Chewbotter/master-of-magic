@@ -370,7 +370,12 @@ func initializePlayer(game *gamelib.Game, wizard setup.WizardCustom, isHuman boo
     }
     */
 
-    player.LiftFog(cityX, cityY, 3, introCity.Plane)
+    if data.ClassicFog {
+        // the area of the original, 5 by 5 tiles without the corners (ReMoM Init_Square_Explored)
+        player.LiftFogSquare(cityX, cityY, data.ClassicStartingSight, introCity.Plane)
+    } else {
+        player.LiftFog(cityX, cityY, 3, introCity.Plane)
+    }
 
     if isHuman {
         // a frame capture wants the plain world map, not the city naming prompt

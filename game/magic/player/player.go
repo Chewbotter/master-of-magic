@@ -1511,6 +1511,10 @@ func (player *Player) LiftFogSquare(x int, y int, squares int, plane data.Plane)
 
     for dx := -squares; dx <= squares; dx++ {
         for dy := -squares; dy <= squares; dy++ {
+            if data.ClassicFogCorner(dx, dy, squares) {
+                continue
+            }
+
             mx := player.WrapX(x + dx)
             my := y + dy
 

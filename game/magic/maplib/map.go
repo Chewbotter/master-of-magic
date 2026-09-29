@@ -1991,7 +1991,7 @@ func (mapObject *Map) DrawMinimap(screen *ebiten.Image, cities []MiniMapCity, ce
                     default: use = color.RGBA{R: 64, G: 64, B: 64, A: 255}
                 }
 
-                if explored != data.FogTypeVisible {
+                if explored != data.FogTypeVisible && !data.ClassicFog {
                     use = util.ToRGBA(util.Darken2(use, 25))
                 }
 
@@ -2022,7 +2022,7 @@ func (mapObject *Map) DrawMinimap(screen *ebiten.Image, cities []MiniMapCity, ce
                     default: use = color.RGBA{R: 64, G: 64, B: 64, A: 255}
                 }
 
-                if explored != data.FogTypeVisible {
+                if explored != data.FogTypeVisible && !data.ClassicFog {
                     use = util.ToRGBA(util.Darken2(use, 25))
                 }
 
@@ -2032,7 +2032,7 @@ func (mapObject *Map) DrawMinimap(screen *ebiten.Image, cities []MiniMapCity, ce
 
     getCityColor := functional.Memoize2(func (cityColor color.RGBA, explored data.FogType) color.RGBA {
         use := cityColor
-        if explored == data.FogTypeExplored {
+        if explored == data.FogTypeExplored && !data.ClassicFog {
             use = util.ToRGBA(util.Lighten(use, -50))
         }
         return use

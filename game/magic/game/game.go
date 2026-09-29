@@ -8242,15 +8242,20 @@ func (overworld *Overworld) DrawFog(screen *ebiten.Image, geom ebiten.GeoM){
                     //     drawFogBorder(tileX, tileY, data.FogTypeUnexplored)
 
                     case data.FogTypeExplored:
-                        options.ColorScale = darkTransparent
-                        drawFogTile(tileX, tileY)
+                        // the original does not darken tiles that are not seen, see data/fogstyle.go
+                        if !data.ClassicFog {
+                            options.ColorScale = darkTransparent
+                            drawFogTile(tileX, tileY)
+                        }
 
                         options.ColorScale = black
                         drawFogBorder(tileX, tileY, data.FogTypeUnexplored)
 
                     case data.FogTypeVisible:
-                        options.ColorScale = lightTransparent
-                        drawFogBorder(tileX, tileY, data.FogTypeExplored)
+                        if !data.ClassicFog {
+                            options.ColorScale = lightTransparent
+                            drawFogBorder(tileX, tileY, data.FogTypeExplored)
+                        }
 
                         options.ColorScale = black
                         drawFogBorder(tileX, tileY, data.FogTypeUnexplored)

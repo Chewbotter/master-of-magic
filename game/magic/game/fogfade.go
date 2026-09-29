@@ -154,10 +154,14 @@ func fogLook(fog data.FogMap, pictures *fogPictures, wrapX func(int) int, tileX 
         case data.FogTypeUnexplored:
             draw(&pictures.Black, 1)
         case data.FogTypeExplored:
-            draw(&pictures.Black, 0.5)
+            if !data.ClassicFog {
+                draw(&pictures.Black, 0.5)
+            }
             border(data.FogTypeUnexplored, 1)
         case data.FogTypeVisible:
-            border(data.FogTypeExplored, 0.3)
+            if !data.ClassicFog {
+                border(data.FogTypeExplored, 0.3)
+            }
             border(data.FogTypeUnexplored, 1)
     }
 
