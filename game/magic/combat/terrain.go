@@ -36,6 +36,9 @@ const (
     TerrainGrass TerrainGroup = iota
     TerrainRough
     TerrainDirt
+    // the beach and the water of a coast, see coast.go
+    TerrainSand
+    TerrainWater
 )
 
 // what the world map around a battle tells the ground of the battle. the zero value is open grass
@@ -52,6 +55,11 @@ type ZoneGround struct {
     // the kind of the landscape with pictures of its own, one of mod.Biomes. nothing for the plain
     // landscape. see biomes.go
     Biome string
+    // the side of the field the sea lies on, see coast.go
+    Coast CoastSide
+    // an army of the battle has more units than the original's 12 places: the armies take more of
+    // the field. set when the battle is made
+    LargeArmy bool
 }
 
 // the directions a step goes, as the original's step_delta_cgx and step_delta_cgy: 1 is +y, 2 is -x,
@@ -142,6 +150,14 @@ type BattleGround struct {
     Extras map[int]int
     // the folder of the landscape itself. the same as Set without a biome
     BaseSet string
+    // the coast: its side, the folder of its pictures, and the archives and first pictures of the
+    // sand and the water of the game. see coast.go
+    Coast CoastSide
+    CoastSet string
+    SandLbx string
+    SandFirst int
+    WaterLbx string
+    WaterFirst int
     // the large pieces, and the cells that lie under one. see large.go
     Large []LargePiece
     Covered []bool
@@ -284,6 +300,15 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     ground.buildRoads(zone)
     ground.removeRough(zone)
     ground.mergeDirt()
+
+    // the sea beside the battle, see coast.go
+    ground.CoastSet = mod.BiomeFolder(coastSet, ground.BaseSet)
+    ground.SandLbx, ground.SandFirst = sandPictures(plane)
+    ground.WaterLbx, ground.WaterFirst = waterPictures(plane)
+    ground.Extras[groundSandFirst] = min(mod.CountExtras(ground.CoastSet, coastSandName, groundSandCount), groundExtraStep)
+    ground.Extras[groundWaterFirst] = min(mod.CountExtras(ground.CoastSet, coastWaterName, groundWaterCount), groundExtraStep)
+    ground.makeCoast(zone)
+
     ground.choosePictures()
     // pieces of 2 by 2 tiles, see large.go
     ground.placeLarge(width, height, zone, largeGameCount + mod.CountExtras(ground.Set, largeName, largeGameCount))
@@ -593,6 +618,12 @@ func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
     }
 
     switch ground.GroupAt(cgx, cgy) {
+        case TerrainSand:
+            return ground.variant(cgx, cgy, groundSandFirst, groundSandCount)
+
+        case TerrainWater:
+            return ground.variant(cgx, cgy, groundWaterFirst, groundWaterCount)
+
         case TerrainDirt:
             return ground.variant(cgx, cgy, groundDirtFirst, groundDirtCount)
 

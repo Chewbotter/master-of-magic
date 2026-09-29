@@ -47,9 +47,13 @@ const (
     BiomeVolcano = "Volcano"
     BiomeSnowyMountain = "Snowy Mountain"
     BiomeRiver = "River"
-    BiomeShore = "Shore"
     BiomeLake = "Lake"
 )
+
+// FEATURES lie on whatever the landscape or biome of a battle is, they are no kinds of it: the
+// coast (combat/coast.go), and what water and the nearness of towns are to add. A feature has a
+// folder of its own, which holds what it adds and nothing of a landscape
+const FeatureShore = "Shore"
 
 var Biomes = []Biome{
     {Name: BiomeForest, Base: "Grass", Note: "a forest of the world map, and a node of nature"},
@@ -58,7 +62,6 @@ var Biomes = []Biome{
     {Name: BiomeVolcano, Base: "Mountain", Note: "a volcano of the world map"},
     {Name: BiomeSnowyMountain, Base: "Mountain", Note: "a mountain of the world map with tundra next to it"},
     {Name: BiomeRiver, Base: "Grass", Note: "a river of the world map", Planned: true},
-    {Name: BiomeShore, Base: "Grass", Note: "a shore of the world map", Planned: true},
     {Name: BiomeLake, Base: "Grass", Note: "a lake of the world map", Planned: true},
 }
 

@@ -28,6 +28,44 @@ func (game *Game) hasNeighbor(mapObject *maplib.Map, x int, y int, kind terrain.
     return false
 }
 
+// the side of a tile of land the sea lies on, see combat/coast.go. of the three tiles of every
+// side the most of them sea decide, the tile in the middle of a side counting double
+func (game *Game) coastSide(mapObject *maplib.Map, x int, y int) combat.CoastSide {
+    sea := func(dx int, dy int) int {
+        if y + dy < 0 || y + dy >= mapObject.Height() {
+            return 0
+        }
+        switch mapObject.GetTile(mapObject.WrapX(x + dx), y + dy).Tile.TerrainType() {
+            case terrain.Ocean, terrain.Shore: return 1
+        }
+        return 0
+    }
+
+    if !mapObject.GetTile(x, y).Tile.IsLand() {
+        return combat.CoastNone
+    }
+
+    sides := []struct {
+        Side combat.CoastSide
+        Sea int
+    }{
+        {Side: combat.CoastEast, Sea: sea(1, -1) + sea(1, 0) * 2 + sea(1, 1)},
+        {Side: combat.CoastNorth, Sea: sea(-1, -1) + sea(0, -1) * 2 + sea(1, -1)},
+        {Side: combat.CoastWest, Sea: sea(-1, -1) + sea(-1, 0) * 2 + sea(-1, 1)},
+        {Side: combat.CoastSouth, Sea: sea(-1, 1) + sea(0, 1) * 2 + sea(1, 1)},
+    }
+
+    out := combat.CoastNone
+    most := 0
+    for _, side := range sides {
+        if side.Sea > most {
+            out = side.Side
+            most = side.Sea
+        }
+    }
+    return out
+}
+
 func (game *Game) combatGround(x int, y int, plane data.Plane) combat.ZoneGround {
     mapObject := game.GetMap(plane)
 
@@ -44,6 +82,8 @@ func (game *Game) combatGround(x int, y int, plane data.Plane) combat.ZoneGround
                 out.SetBiome(mod.BiomeSnowyMountain)
             }
     }
+
+    out.Coast = game.coastSide(mapObject, x, y)
 
     // a town counts as a road, as it does for the roads of the world map
     hasRoad := func(roadX int, roadY int) bool {

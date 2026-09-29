@@ -17,8 +17,62 @@ import (
 // from which folder, and the files that start with what
 var waterReference = map[string][][2]string{
     mod.BiomeRiver: {{"Other", "river "}},
-    mod.BiomeShore: {{"Water", "water "}},
     mod.BiomeLake: {{"Water", "water "}},
+}
+
+// the pictures of the coast (game/magic/combat/coast.go): the sand of the desert as the beach, the
+// water of the battles on the ocean. from which folder, the files that start with what, as what
+var coastPictures = [][3]string{
+    {"Desert", "grass ", "sand "},
+    {"Water", "water ", "water "},
+}
+
+const coastNote = "Shore\r\n\r\n" +
+    "The coast: a feature, not a kind of a landscape. Not in the original game.\r\n" +
+    "A battle on land with the sea beside it on the world map has a strip of beach and then water on\r\n" +
+    "that side of the field, whatever its landscape is. North of the world map is the upper right of\r\n" +
+    "the screen, east the lower right, south the lower left, west the upper left.\r\n" +
+    "The beach is rough ground, a step onto it costs twice what grass costs. Into the water go only\r\n" +
+    "units that fly, swim or sail.\r\n\r\n" +
+    "sand 1 to 4    the beach, one of these by chance. The sand of the desert (Desert, grass 1 to 4)\r\n" +
+    "water 1 to 4   the water, one of these by chance, 5 frames each. The water of the battles on the\r\n" +
+    "               ocean (Water, water 1 to 4)\r\n\r\n" +
+    "A picture that is changed goes to mod\\environment\\Shore with the same name. Pictures can be\r\n" +
+    "added: sand 5, water 5 and on, without a gap. A tile is 30 by 16 pixels.\r\n" +
+    "There are no pictures for where grass meets sand and sand meets water: the tiles lie side by\r\n" +
+    "side.\r\n"
+
+// writes the folder of the coast. after the folders of the landscapes are written
+func exportCoast(outPath string) int {
+    environment := filepath.Join(outPath, "environment")
+    folder := filepath.Join(environment, mod.FeatureShore)
+    err := os.MkdirAll(folder, 0755)
+    if err != nil {
+        log.Printf("%v", err)
+        return 0
+    }
+
+    count := 0
+    for _, pictures := range coastPictures {
+        entries, err := os.ReadDir(filepath.Join(environment, pictures[0]))
+        if err != nil {
+            log.Printf("%v", err)
+            continue
+        }
+        for _, entry := range entries {
+            name := entry.Name()
+            if !strings.HasPrefix(name, pictures[1]) || !strings.HasSuffix(name, ".png") {
+                continue
+            }
+            to := pictures[2] + strings.TrimPrefix(name, pictures[1])
+            if copyFile(filepath.Join(environment, pictures[0], name), filepath.Join(folder, to)) == nil {
+                count += 1
+            }
+        }
+    }
+
+    os.WriteFile(filepath.Join(folder, sourceFile), []byte(coastNote), 0644)
+    return count
 }
 
 const sourceFile = "_source.txt"

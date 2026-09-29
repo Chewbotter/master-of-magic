@@ -289,6 +289,7 @@ type randomCity struct {
 // the ground of a random battle as the world map could give it: on grass land sometimes forest or
 // hills, and roads, always in a town. one in this many
 const RandomBattleBiomeChance = 2
+const RandomBattleCoastChance = 3
 const RandomBattleRoadChance = 2
 const RandomBattleRoadSideChance = 3
 const RandomBattleEnchantedRoadChance = 4
@@ -302,6 +303,11 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
             case combat.CombatLandscapeGrass: ground.SetBiome(randomChoose(mod.BiomeForest, mod.BiomeHills, mod.BiomeSwamp))
             case combat.CombatLandscapeMountain: ground.SetBiome(randomChoose(mod.BiomeVolcano, mod.BiomeSnowyMountain))
         }
+    }
+
+    // the sea beside the battle, on a side by chance
+    if rand.N(RandomBattleCoastChance) == 0 {
+        ground.Coast = randomChoose(combat.CoastEast, combat.CoastNorth, combat.CoastWest, combat.CoastSouth)
     }
 
     if town || rand.N(RandomBattleRoadChance) == 0 {
@@ -333,6 +339,10 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
                         ground.Roads[side] = true
                     }
                 case word == "enchanted": ground.EnchantedRoads = true
+                case word == "coast=east": ground.Coast = combat.CoastEast
+                case word == "coast=north": ground.Coast = combat.CoastNorth
+                case word == "coast=west": ground.Coast = combat.CoastWest
+                case word == "coast=south": ground.Coast = combat.CoastSouth
                 case strings.HasPrefix(word, "road="):
                     side, err := strconv.Atoi(strings.TrimPrefix(word, "road="))
                     if err == nil && side >= 0 && side < len(ground.Roads) {

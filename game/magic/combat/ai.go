@@ -239,7 +239,7 @@ func doAIMovementPathfinding(model *CombatModel, aiActions AIUnitActionsInterfac
             old := tile.Unit
             tile.Unit = nil
             var ok bool
-            path, ok = model.computePath(aiUnit.X, aiUnit.Y, unit.X, unit.Y, aiUnit.CanTraverseWall(), aiUnit.IsFlying())
+            path, ok = model.computePath(aiUnit.X, aiUnit.Y, unit.X, unit.Y, aiUnit.CanTraverseWall(), aiUnit.IsFlying(), aiUnit.CanEnterWater())
             tile.Unit = old
             if ok {
                 paths[unit] = path
@@ -325,7 +325,7 @@ func doAIMovementPathfinding(model *CombatModel, aiActions AIUnitActionsInterfac
         // if inside a city wall, then move towards the gate
         gateX, gateY := model.GetCityGateCoordinates()
         if gateX != -1 && gateY != -1 {
-            path, ok := model.computePath(aiUnit.X, aiUnit.Y, gateX, gateY, aiUnit.CanTraverseWall(), aiUnit.IsFlying())
+            path, ok := model.computePath(aiUnit.X, aiUnit.Y, gateX, gateY, aiUnit.CanTraverseWall(), aiUnit.IsFlying(), aiUnit.CanEnterWater())
             if ok && len(path) > 1 && aiUnit.CanFollowPath(path, false) {
                 aiActions.MoveUnit(aiUnit, path[1:])
                 return true

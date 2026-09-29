@@ -33,6 +33,17 @@ func (combat *CombatScreen) addedPictures(set string, name string, number int) [
 
 // the frames of a picture of the ground: of the archive, or one the replacement folder adds
 func (combat *CombatScreen) groundTilePictures(lbx string, picture int) []*ebiten.Image {
+    // the beach and the water of a coast, see coast.go
+    ground := combat.Model.Ground
+    if ground != nil {
+        if sand := groundVariant(picture, groundSandFirst, groundSandCount); sand >= 0 {
+            return combat.coastPictures(coastSandName, sand, groundSandCount, ground.SandLbx, ground.SandFirst)
+        }
+        if water := groundVariant(picture, groundWaterFirst, groundWaterCount); water >= 0 {
+            return combat.coastPictures(coastWaterName, water, groundWaterCount, ground.WaterLbx, ground.WaterFirst)
+        }
+    }
+
     role, number, added := groundExtra(picture)
     if added && combat.Model.Ground != nil {
         pictures := combat.addedPictures(combat.Model.Ground.Set, role.Name, number)
@@ -46,6 +57,20 @@ func (combat *CombatScreen) groundTilePictures(lbx string, picture int) []*ebite
     }
 
     pictures, _ := combat.ImageCache.GetImages(lbx, picture)
+    return pictures
+}
+
+// the frames of a picture of a coast, by its number from 0: of the folder of the coast, or the
+// game's. an added one that can not be read is the first of the game
+func (combat *CombatScreen) coastPictures(name string, number int, count int, lbx string, first int) []*ebiten.Image {
+    pictures := combat.addedPictures(combat.Model.Ground.CoastSet, name, number + 1)
+    if len(pictures) > 0 {
+        return pictures
+    }
+    if number >= count {
+        number = 0
+    }
+    pictures, _ = combat.ImageCache.GetImages(lbx, first + number)
     return pictures
 }
 

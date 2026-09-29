@@ -6,7 +6,8 @@ package combat
 //
 // In halves of a move, the cell a step goes into costs: grass and dirt 2, rough 4, a road 1. Every
 // tree in the cell adds 1, up to 4. Mud costs 12. A diagonal step costs 1 more, a step up or down
-// the slope of a plateau 2 more (plateau.go, not in the original). Flying units pay 2
+// the slope of a plateau 2 more (plateau.go, not in the original). The beach of a coast is rough
+// ground, 4 (coast.go, not in the original). Flying units pay 2
 // for every cell, whatever lies there. A unit can take a step as long as it has any movement left
 // before it (CanFollowPath), so a step into rough or mud with half a move left is allowed and uses
 // it up.
@@ -52,6 +53,10 @@ func (model *CombatModel) cellMoveHalves(x int, y int, flying bool) int {
     // with plateaus rough ground is mounds for the look only, see plateau.go
     halves := moveHalvesGround
     if tile.Ground == TerrainRough && !PlateauGround {
+        halves = moveHalvesRough
+    }
+    // the beach of a coast is rough ground, see coast.go
+    if tile.Ground == TerrainSand {
         halves = moveHalvesRough
     }
 

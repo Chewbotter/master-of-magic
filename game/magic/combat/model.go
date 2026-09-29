@@ -2396,6 +2396,8 @@ type CombatModel struct {
 func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingArmy *Army, landscape CombatLandscape, plane data.Plane, zone ZoneType, influence data.MagicType, overworldX int, overworldY int, events chan CombatEvent) *CombatModel {
     // the pictures of the battle are the ones of its biome, see biomes.go
     mod.SetBiome(zone.Ground.Biome)
+    // the coast keeps behind the places of the armies, see coast.go
+    zone.Ground.LargeArmy = len(defendingArmy.units) > deployPlaces || len(attackingArmy.units) > deployPlaces
 
     ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone)
     tiles := makeTiles(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone)
@@ -2832,7 +2834,7 @@ func (model *CombatModel) doCallLightning(army *Army) {
     }
 }
 
-func (model *CombatModel) computePath(x1 int, y1 int, x2 int, y2 int, canTraverseWall bool, isFlying bool) (pathfinding.Path, bool) {
+func (model *CombatModel) computePath(x1 int, y1 int, x2 int, y2 int, canTraverseWall bool, isFlying bool, canEnterWater bool) (pathfinding.Path, bool) {
 
     vortexTiles := make(map[image.Point]bool)
     for _, vortex := range model.MagicVortexes {
@@ -2885,6 +2887,11 @@ func (model *CombatModel) computePath(x1 int, y1 int, x2 int, y2 int, canTravers
                         canMove = false
                     }
 
+                    // the water of a coast is for what flies, swims or sails, see coast.go
+                    if canMove && !canEnterWater && model.IsWaterTile(x, y) {
+                        canMove = false
+                    }
+
                     // can't move through a city wall
                     if canMove && !canTraverseWall && model.InsideCityWall(cx, cy) != model.InsideCityWall(x, y) && (model.ContainsWall(x, y) || model.ContainsWall(cx, cy)) {
                         // FIXME: handle destroyed walls here
@@ -2921,7 +2928,7 @@ func (model *CombatModel) FindPath(unit *ArmyUnit, x int, y int, infiniteMovemen
         return path, len(path) > 0
     }
 
-    path, ok = model.computePath(unit.X, unit.Y, x, y, unit.CanTraverseWall(), unit.IsFlying())
+    path, ok = model.computePath(unit.X, unit.Y, x, y, unit.CanTraverseWall(), unit.IsFlying(), unit.CanEnterWater())
     if !ok {
         unit.Paths[end] = nil
         // log.Printf("No such path from %v,%v -> %v,%v", unit.X, unit.Y, x, y)
@@ -2966,6 +2973,11 @@ func (model *CombatModel) ContainsMagicVortex(x int, y int) bool {
 }
 
 func (model *CombatModel) CanMoveTo(unit *ArmyUnit, x int, y int, infiniteMovement bool) bool {
+
+    // the water of a coast, see coast.go
+    if model.IsWaterTile(x, y) && !unit.CanEnterWater() {
+        return false
+    }
 
     if unit.CanTeleport() {
         return distance(float64(unit.X), float64(unit.Y), float64(x), float64(y)) <= 10
