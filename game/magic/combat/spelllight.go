@@ -34,8 +34,14 @@ const SpellLight = true
 // seconds the field takes to get dark, and to get light again once the spell has hit
 const darkInTime = 0.15
 const darkOutTime = 0.7
-// the steps a light falls off in
-const lightBands = 5
+// the steps a light falls off in. 5 at first, with the pattern all the way from a step to the
+// next: two pixels next to each other in the pattern were a fifth of the light apart, and the
+// ground in the light of a fireball or of warp lightning was grainy (user, 2026-09-29: "tone
+// down the amount of pixellation")
+const lightBands = 12
+// the part of the way from a step to the next that is in the pattern, in its middle, 0 to 1.
+// 0: plain steps, no pattern. 1: the pattern all the way
+const lightPatternPart = 0.5
 // the ground is seen from above at an angle: a light is this much as high as it is wide
 const lightSquash = 0.5
 // the radius of a light changes at most every this many ticks, when it flickers
@@ -114,6 +120,19 @@ type spellLighting struct {
     Rims map[rimFigure]rimState
 }
 
+// true if a pixel this far on the way from a step to the next, 0 to 1, has the next step. rank is
+// the place of the pixel in the pattern, 0 to 15
+func lightStepsUp(way float64, rank float64) bool {
+    if lightPatternPart <= 0 {
+        return way >= 0.5
+    }
+
+    // the pattern is in the middle of the way, before it is the step and after it the next
+    from := (1 - lightPatternPart) / 2
+    inPattern := (way - from) / lightPatternPart
+    return inPattern > (rank + 0.5) / 16
+}
+
 // the pixels of a light of a radius: only how much they show counts, 4 numbers a pixel
 func makeLightPixels(radius int) ([]byte, int, int) {
     radiusY := max(1, int(math.Round(float64(radius) * lightSquash)))
@@ -134,7 +153,7 @@ func makeLightPixels(radius int) ([]byte, int, int) {
             // in steps, from one step to the next in a pattern
             steps := part * lightBands
             whole := math.Floor(steps)
-            if steps - whole > (lightPattern[y % 4][x % 4] + 0.5) / 16 {
+            if lightStepsUp(steps - whole, lightPattern[y % 4][x % 4]) {
                 whole += 1
             }
 
