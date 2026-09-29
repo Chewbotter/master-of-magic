@@ -129,9 +129,10 @@ func (game *Game) updateMoveCursor(invalid bool) {
     })
 }
 
-// a move that can not be made: with the classic controls, and for the keys, the screen flashes
+// a move that can not be made: with the classic controls the screen flashes. with the modern controls
+// nothing happens, for a click and for the keys (user, 2026-09-28)
 func (game *Game) invalidMove(yield coroutine.YieldFunc, byClick bool) {
-    if byClick && invalidMoveCursor() {
+    if invalidMoveCursor() {
         return
     }
 
