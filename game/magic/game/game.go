@@ -8572,7 +8572,8 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
             flag = flagPicture(overworld.ImageCache, overworld.SelectedStack.Leader().GetBanner())
             if flag != nil {
                 flagGeom.Translate(float64(tileWidth) / 2, float64(tileHeight) / 2)
-                flagGeom.Translate(float64(flag.Bounds().Dx() / -2), float64(flag.Bounds().Dy() / -2))
+                // exactly as the boot is placed, so a flag of the size of the boot lies where a boot would
+                flagGeom.Translate(float64(flag.Bounds().Dx()) / -2, float64(flag.Bounds().Dy()) / -2)
                 flagGeom.Concat(geom)
             }
         }
