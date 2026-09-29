@@ -23,11 +23,27 @@ type nameColors struct {
     Body color.RGBA
 }
 
-// under the mouse
-var hoverColors = nameColors{
-    Edge: color.RGBA{R: 84, G: 128, B: 212, A: 255},
-    Body: color.RGBA{R: 24, G: 62, B: 164, A: 255},
+// the paper of the pages of the book, measured on its picture (spells.lbx 0)
+var pageColor = color.RGBA{R: 146, G: 106, B: 53, A: 255}
+// the soft edge of a letter is between the paper and the body of the letter, this far from the
+// body, 0 to 1. the page has its edges at about 0.7. an edge that was lighter than the body AND
+// lighter than the paper made the letters glow at their rims (user, 2026-09-29)
+const edgeTowardPage = 0.6
+
+// the colors of a name whose letters have this color
+func colorsOf(body color.RGBA) nameColors {
+    mix := func(from uint8, to uint8) uint8 {
+        return uint8(float64(from) + (float64(to) - float64(from)) * edgeTowardPage + 0.5)
+    }
+
+    return nameColors{
+        Body: body,
+        Edge: color.RGBA{R: mix(body.R, pageColor.R), G: mix(body.G, pageColor.G), B: mix(body.B, pageColor.B), A: 255},
+    }
 }
+
+// under the mouse
+var hoverColors = colorsOf(color.RGBA{R: 24, G: 62, B: 164, A: 255})
 // ticks one pulse takes. upstream's red took 31
 const hoverPulseTicks = 80
 // how much of its own colors the name has when the pulse is at its lowest and at its height, 0 to 1
@@ -35,19 +51,13 @@ const hoverLow = 0.35
 const hoverHigh = 0.9
 
 // the spell that is being cast: lighter than the page. the pulse is upstream's
-var castingColors = nameColors{
-    Edge: color.RGBA{R: 232, G: 216, B: 184, A: 255},
-    Body: color.RGBA{R: 196, G: 176, B: 140, A: 255},
-}
+var castingColors = colorsOf(color.RGBA{R: 216, G: 196, B: 156, A: 255})
 const castingPulseTicks = 31
 const castingLow = 0.2
 const castingHigh = 0.85
 
 // a spell that costs more than can be paid in a battle: grey, and no pulse
-var costlyColors = nameColors{
-    Edge: color.RGBA{R: 104, G: 100, B: 92, A: 255},
-    Body: color.RGBA{R: 68, G: 66, B: 62, A: 255},
-}
+var costlyColors = colorsOf(color.RGBA{R: 68, G: 66, B: 62, A: 255})
 
 // the palette of a font with these colors
 func (colors nameColors) palette() color.Palette {

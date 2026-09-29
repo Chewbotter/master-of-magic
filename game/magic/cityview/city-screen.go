@@ -2363,7 +2363,13 @@ func (cityScreen *CityScreen) Draw(screen *ebiten.Image, mapView func (screen *e
         scale.DrawScaled(screen, ui, &options)
     }
 
-    cityScreen.Fonts.BigFont.PrintOptions(screen, 20, 3, font.FontOptions{DropShadow: true, Scale: scale.ScaleAmount}, fmt.Sprintf("%v of %s", cityScreen.City.GetSize(), cityScreen.City.Name))
+    cityTitle := fmt.Sprintf("%v of %s", cityScreen.City.GetSize(), cityScreen.City.Name)
+    if OriginalCityInfo {
+        // in the middle over the left part of the screen, as the original has it. see infostyle.go
+        cityScreen.Fonts.BigFont.PrintOptions(screen, cityTitleMiddleX, cityTitleY, font.FontOptions{DropShadow: true, Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, cityTitle)
+    } else {
+        cityScreen.Fonts.BigFont.PrintOptions(screen, 20, 3, font.FontOptions{DropShadow: true, Scale: scale.ScaleAmount}, cityTitle)
+    }
     // the text of the original, see infostyle.go
     infoStyle := getCityInfoStyle(cityScreen.LbxCache)
     if infoStyle == nil {

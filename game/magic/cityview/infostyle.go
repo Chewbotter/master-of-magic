@@ -29,6 +29,9 @@ const cityPopulationSpace = 1
 
 // places, in original pixels
 const (
+    // the name of the city has its middle here
+    cityTitleMiddleX = 105
+    cityTitleY = 3
     cityRaceX = 6
     cityInfoY = 19
     // the population ends here
