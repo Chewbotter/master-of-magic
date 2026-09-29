@@ -9,9 +9,15 @@ package combat
 // change: they are relative to the middle 320 columns and can be less than 0 or more than 320.
 
 import (
+    "image/color"
+
+    "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/display"
+    "github.com/kazzmir/master-of-magic/game/magic/scale"
+    "github.com/kazzmir/master-of-magic/game/magic/spellbook"
 
     "github.com/hajimehoshi/ebiten/v2"
+    "github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type drawPass int
@@ -36,6 +42,17 @@ func (combat *CombatScreen) drawWideField(screen *ebiten.Image) {
     combat.fieldShift = float64(display.BarWidth())
 
     combat.Drawer(screen)
+
+    // the dark behind the spellbook, left and right of the middle where the book draws its own
+    dark := spellbook.TakeCastBookDark()
+    if dark > 0 {
+        bar := float32(scale.Scale(display.BarWidth()))
+        middle := float32(scale.Scale(data.ScreenWidth))
+        height := float32(screen.Bounds().Dy())
+        shade := color.RGBA{A: uint8(dark * 255)}
+        vector.FillRect(screen, 0, 0, bar, height, shade, false)
+        vector.FillRect(screen, bar + middle, 0, float32(screen.Bounds().Dx()) - bar - middle, height, shade, false)
+    }
 
     combat.pass = drawPassAll
     combat.fieldShift = 0
