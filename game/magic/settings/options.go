@@ -34,6 +34,7 @@ const ResolutionBoxHeight = 13
 // 0 to 3, then these
 const SingleStrikesRow = 4
 const HideCursorRow = 5
+const SpellbookPulseRow = 6
 // right column
 const FullscreenRow = 0
 const WidescreenRow = 1
@@ -255,6 +256,14 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
         func() bool { return displaySettings.HideCursorOnAttack() },
         func(value bool) {
             displaySettings.SetHideCursorOnAttack(value)
+        },
+    )
+
+    // the text of the spellbooks, see display/bookpulse.go
+    addCheckbox(group, fonts, &getAlpha, SettingsLeftColumnX, SettingsRowY(SpellbookPulseRow), "Pulsing spellbook text",
+        func() bool { return displaySettings.SpellbookPulse() },
+        func(value bool) {
+            displaySettings.SetSpellbookPulse(value)
         },
     )
 

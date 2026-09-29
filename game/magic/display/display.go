@@ -41,6 +41,8 @@ type Settings struct {
     SingleStrikesOn bool `json:"single-strikes"`
     // the opposite of the setting "Hide cursor on attack", see cursorhide.go
     CursorStaysOnAttack bool `json:"cursor-stays-on-attack"`
+    // the opposite of the setting "Pulsing spellbook text", see bookpulse.go
+    SpellbookTextStill bool `json:"spellbook-text-still"`
 }
 
 // the preferences in use by the running game

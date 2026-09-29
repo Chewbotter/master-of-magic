@@ -573,6 +573,10 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
 
                         if researchingSpell.Name == spell.Name {
                             v := 1.5 + (math.Cos(float64(ui.Counter) / 7) * 64 + 64) / float64(64)
+                            if !pulses() {
+                                // lighter, and stays so. see hover.go
+                                v = 2.5
+                            }
                             scaleOptions.ColorScale.SetR(float32(v))
                             scaleOptions.ColorScale.SetG(float32(v))
                             scaleOptions.ColorScale.SetB(float32(v) * 1.8)

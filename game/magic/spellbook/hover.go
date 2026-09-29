@@ -20,6 +20,7 @@ import (
     "image/color"
     "math"
 
+    "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/data"
 )
 
@@ -86,18 +87,31 @@ const castingHigh = 0.85
 // a spell that costs more than can be paid in a battle: grey, and no pulse
 var costlyColors = colorsOf(color.RGBA{R: 68, G: 66, B: 62, A: 255})
 
-// the palette of a font with these colors
+// the palette of a font with these colors. for every value a pixel of a letter can have: the
+// large letters of the names of the book of research have values the palette did not reach at
+// first (it had 17 colors), and those pixels kept the dark of the page while the name pulsed
+// (user, 2026-09-29)
 func (colors nameColors) palette() color.Palette {
     out := color.Palette{color.RGBA{}, colors.Edge}
-    for len(out) < 17 {
+    for len(out) < 256 {
         out = append(out, colors.Body)
     }
     return out
 }
 
+// false while the setting "Pulsing spellbook text" is off: nothing pulses, as in the original
+func pulses() bool {
+    return display.SpellbookPulse()
+}
+
 // how much of its own colors the name under the mouse has at this tick, when the mouse came
 // over it at the tick start: from low up to high and back
 func pulseFrom(counter uint64, start uint64, ticks uint64, low float64, high float64) float32 {
+    if !pulses() {
+        // the spell under the mouse is not marked
+        return 0
+    }
+
     since := uint64(0)
     if counter > start {
         since = counter - start
@@ -108,6 +122,11 @@ func pulseFrom(counter uint64, start uint64, ticks uint64, low float64, high flo
 
 // how much of its own colors a name has at this tick, between low and high
 func pulse(counter uint64, ticks uint64, low float64, high float64) float32 {
+    if !pulses() {
+        // the spell that is being cast is lighter and stays so
+        return float32(high)
+    }
+
     wave := math.Cos(float64(counter) * 2 * math.Pi / float64(ticks)) / 2 + 0.5
     return float32(low + (high - low) * wave)
 }
