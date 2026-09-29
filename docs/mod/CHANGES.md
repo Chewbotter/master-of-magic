@@ -27,6 +27,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The path of a stack shows boots as far as it gets in this turn, and flags in the color of your wizard on the tiles it will walk in later turns.
 - A stack that goes on along its path when a turn starts is shown for a moment before it walks.
 - Space ends the turn (modern controls), as N does. Home puts the camera on the selected stack.
+- Over the map the cursor is as large as the map is drawn, at every zoom level (modern controls).
 - The cursor is a red X over a tile the selected stack can not go to, and a click there does nothing (modern controls). No red flash of the screen.
 - Of the selected stack only the colored square blinks, the unit stays visible (modern controls). The blinking starts anew with every selection.
 - Text of the panel (gold, mana, income) with the original's black outlines.
@@ -52,6 +53,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - A strike is a swing of steps: back, forward, the blow where the swing lands. Units that fight across a corner close in. With the setting "Single strikes" off, the simpler strike of before.
 - Killed figures are thrown back and fall; corpses stay on the field, gray, and the oldest fade when a tile has more than 4.
 - Figures cast shadows.
+- The color of a wizard on figures and units keeps the shading of the art for every color; before, red, blue and yellow were nearly flat.
 - Blood made of particles, dust for the undead and mist for spirits; it stains the ground and the corpses it lands on. Sparks for a blow that does no damage.
 - Damage numbers in the original's style, as large as the field is drawn.
 - Spells play as in the original, and add to it: particles where they hit, marks on the ground, light that darkens the field around it, a lit rim on the figures that face it, corpses in the color of what killed them.
