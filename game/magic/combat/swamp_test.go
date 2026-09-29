@@ -117,6 +117,21 @@ func TestRockCounts(test *testing.T) {
     hills := ZoneGround{}
     hills.SetBiome(mod.BiomeHills)
 
+    // a swamp has twice the trees of grass land: 2 to 40, never an odd number
+    swamp := ZoneGround{}
+    swamp.SetBiome(mod.BiomeSwamp)
+    most := 0
+    for range 200 {
+        count := treeCount(CombatLandscapeGrass, swamp)
+        most = max(most, count)
+        if count < 2 || count > 40 || count % 2 != 0 {
+            test.Fatalf("%v trees in a swamp", count)
+        }
+    }
+    if most <= 20 {
+        test.Fatalf("at most %v trees in a swamp", most)
+    }
+
     for range 50 {
         if count := rockCount(CombatLandscapeMountain, ZoneGround{}); count < 13 || count > 24 {
             test.Fatalf("%v rocks on a mountain", count)

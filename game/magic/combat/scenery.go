@@ -222,6 +222,10 @@ func treeCount(landscape CombatLandscape, ground ZoneGround) int {
     if ground.Forest {
         return 30 + roll(30)
     }
+    // twice the trees of grass land, which stand on the islands (user, 2026-09-29)
+    if ground.Biome == mod.BiomeSwamp {
+        return roll(20) * swampTrees
+    }
     switch landscape {
         case CombatLandscapeDesert: return roll(10)
         case CombatLandscapeMountain: return roll(40)
@@ -233,6 +237,9 @@ func treeCount(landscape CombatLandscape, ground ZoneGround) int {
 // on the original's screen. mountains and hills have more than the original, which has 1 to 12
 // on a mountain and hills as grass land (user, 2026-09-29: "Mountain and hills should have a
 // higher density of rocks")
+// the trees of a swamp are this many times the ones of grass land
+const swampTrees = 2
+
 func rockCount(landscape CombatLandscape, ground ZoneGround) int {
     if ground.Forest {
         return roll(8)
