@@ -4,22 +4,21 @@ package mod
 // edge of the book, one for every kind of spell, with a symbol of the kind. Not in the original
 // (user, 2026-09-29). See game/magic/spellbook/bookmark.go.
 //
-// The pictures are made here, a first pass the user repaints: a red ribbon as the one with the X
-// under the book, with a forked end, and a symbol in gold. A picture
-// `markers/bookmark <kind>.png` in the replacement folder takes the place of one, as it is. It
-// should have the size of the one the game makes: the left part of a ribbon is under the pages,
-// more of it the further down its kind is in the book, so what should always show is in the
-// right part (from column BookmarkAlwaysShown on).
+// The pictures are made here, a first pass the user repaints. They are made as the ribbon with
+// the X under the book is painted (spells.lbx 0): its three reds, the darker ones where the
+// cloth comes out of the book and before its forked end, with a column of both colors in turn
+// (dither) between two reds, and the symbol in the gold of the X with its orange on the edges
+// that look up and left. A picture `markers/bookmark <kind>.png` in the replacement folder takes
+// the place of one, as it is, in any size: its left edge is where the ribbon comes out of the
+// pages.
 
 import (
     "image"
     "image/color"
 )
 
-const BookmarkWidth = 28
+const BookmarkWidth = 24
 const BookmarkHeight = 11
-// the columns from this one on show for every bookmark
-const BookmarkAlwaysShown = 15
 
 // the kinds, in the order of the book
 const (
@@ -40,17 +39,23 @@ func BookmarkName(kind string) string {
 // how deep the fork of the end of a ribbon is cut, in its middle row
 const bookmarkFork = 3
 // where the symbol is on the ribbon
-// a column right of where the pages end on the lowest ribbon
-const bookmarkSymbolX = 16
+const bookmarkSymbolX = 11
 const bookmarkSymbolY = 2
 
-var bookmarkOutline = color.NRGBA{R: 40, G: 8, B: 8, A: 255}
-var bookmarkLight = color.NRGBA{R: 228, G: 52, B: 44, A: 255}
-var bookmarkCloth = color.NRGBA{R: 192, G: 24, B: 24, A: 255}
-var bookmarkDark = color.NRGBA{R: 136, G: 12, B: 12, A: 255}
-var bookmarkSymbol = color.NRGBA{R: 252, G: 204, B: 68, A: 255}
-var bookmarkSymbolLight = color.NRGBA{R: 255, G: 240, B: 140, A: 255}
-var bookmarkSymbolShadow = color.NRGBA{R: 92, G: 8, B: 8, A: 255}
+// the colors of the ribbon with the X, read from its picture
+var bookmarkOutline = color.NRGBA{R: 8, G: 4, B: 4, A: 255}
+var bookmarkCloth = color.NRGBA{R: 212, G: 0, B: 0, A: 255}
+var bookmarkShade = color.NRGBA{R: 180, G: 0, B: 0, A: 255}
+var bookmarkDark = color.NRGBA{R: 152, G: 0, B: 0, A: 255}
+var bookmarkSymbol = color.NRGBA{R: 236, G: 164, B: 36, A: 255}
+var bookmarkSymbolEdge = color.NRGBA{R: 252, G: 120, B: 16, A: 255}
+
+// the reds along the ribbon, from where it comes out of the book: a letter per column.
+// d dark, s shade, c cloth; D and S are a column of two of them in turn, dark with shade and
+// shade with cloth
+const bookmarkColumns = "dDsSccccccccccccccccSsSc"
+// the lowest row of the cloth is a red darker than its column
+const bookmarkLowRow = BookmarkHeight - 2
 
 // 7 by 7, X is the symbol
 var bookmarkSymbols = map[string][]string{
@@ -116,6 +121,30 @@ var bookmarkSymbols = map[string][]string{
     },
 }
 
+// the red of the cloth at a place
+func bookmarkRed(x int, y int) color.NRGBA {
+    reds := []color.NRGBA{bookmarkDark, bookmarkShade, bookmarkCloth}
+
+    letter := byte('c')
+    if x >= 0 && x < len(bookmarkColumns) {
+        letter = bookmarkColumns[x]
+    }
+
+    shade := 2
+    switch letter {
+        case 'd': shade = 0
+        case 's': shade = 1
+        case 'D': shade = (x + y) % 2
+        case 'S': shade = 1 + (x + y) % 2
+    }
+
+    if y == bookmarkLowRow {
+        shade = max(0, shade - 1)
+    }
+
+    return reds[shade]
+}
+
 // the bookmark of a kind as the game makes it
 func DefaultBookmark(kind string) *image.NRGBA {
     out := image.NewNRGBA(image.Rect(0, 0, BookmarkWidth, BookmarkHeight))
@@ -137,13 +166,7 @@ func DefaultBookmark(kind string) *image.NRGBA {
     for y := range BookmarkHeight {
         for x := range BookmarkWidth {
             if cloth(x, y) {
-                shade := bookmarkCloth
-                if y == 1 {
-                    shade = bookmarkLight
-                } else if y >= BookmarkHeight - 3 {
-                    shade = bookmarkDark
-                }
-                out.SetNRGBA(x, y, shade)
+                out.SetNRGBA(x, y, bookmarkRed(x, y))
             } else if cloth(x, y - 1) || cloth(x, y + 1) || cloth(x - 1, y) || cloth(x + 1, y) {
                 out.SetNRGBA(x, y, bookmarkOutline)
             }
@@ -151,27 +174,21 @@ func DefaultBookmark(kind string) *image.NRGBA {
     }
 
     rows := bookmarkSymbols[kind]
-    // its shadow right of and below it, then the symbol, its top row lighter
-    for pass := range 2 {
-        for y, row := range rows {
-            for x, pixel := range row {
-                if pixel != 'X' {
-                    continue
-                }
-                atX := bookmarkSymbolX + x
-                atY := bookmarkSymbolY + y
-                if pass == 0 {
-                    if cloth(atX + 1, atY + 1) {
-                        out.SetNRGBA(atX + 1, atY + 1, bookmarkSymbolShadow)
-                    }
-                } else if cloth(atX, atY) {
-                    shade := bookmarkSymbol
-                    if y == 0 || (y > 0 && rows[y - 1][x] != 'X') {
-                        shade = bookmarkSymbolLight
-                    }
-                    out.SetNRGBA(atX, atY, shade)
-                }
+    part := func(x int, y int) bool {
+        return y >= 0 && y < len(rows) && x >= 0 && x < len(rows[y]) && rows[y][x] == 'X'
+    }
+
+    for y := range rows {
+        for x := range rows[y] {
+            if !part(x, y) || !cloth(bookmarkSymbolX + x, bookmarkSymbolY + y) {
+                continue
             }
+            shade := bookmarkSymbol
+            // the edges that look up and left, as on the X
+            if !part(x - 1, y) && !part(x, y - 1) {
+                shade = bookmarkSymbolEdge
+            }
+            out.SetNRGBA(bookmarkSymbolX + x, bookmarkSymbolY + y, shade)
         }
     }
 

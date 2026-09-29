@@ -20,6 +20,12 @@ const castBookY = 10
 var castBookLeftPage = image.Rect(12, 3, 142, 153)
 var castBookRightPage = image.Rect(143, 3, 273, 153)
 
+// the cost of a spell ends here, from the left of the content of a page: where the lines of the
+// page end (the picture of them is 122 wide). the original prints it ending on 121 (ReMoM
+// Spellbook.c SmlBook_Compose). upstream had 124, which is the edge of the page (user,
+// 2026-09-29: "a buffer before the edge of the page")
+const castCostRight = 122
+
 // where the letters of a page start, in the picture of the book
 var castBookLeftContent = image.Pt(15, 5)
 var castBookRightContent = image.Pt(149, 5)

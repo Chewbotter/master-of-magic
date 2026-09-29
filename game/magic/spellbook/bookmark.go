@@ -5,7 +5,9 @@ package spellbook
 // to the first page of its kind. Not in the original (user, 2026-09-29).
 //
 // A ribbon comes out from under the pages, and every ribbon from a page further down than the
-// one above it: it is a little further in the book (left) and more of it is under the pages.
+// one above it, whose edge is a pixel further right in the picture of the book. All are as long
+// (user, 2026-09-29: "I like the tabs being one row of pixels back for each, but keep each about
+// the same horizontal length"; at first the lower ones were further in the book and shorter).
 // The ribbon of the kind the book is open at is pulled out a little. The pictures are made by
 // game/magic/mod/bookmarks.go and can be repainted.
 
@@ -41,9 +43,6 @@ const (
     // right each, at the edges of the pages under it
     bookmarkPageEdge = 272
     bookmarkEdgeStep = 1
-    // the first ribbon starts here, the next ones this much further left each
-    bookmarkLeft = 272
-    bookmarkInStep = 2
     // the top of the first ribbon and from one to the next. between the golden corners of the cover
     bookmarkTop = 38
     bookmarkDown = 18
@@ -114,37 +113,42 @@ func bookmarkOpenAt(pages []Page, current int) int {
     return -1
 }
 
-// the part of the ribbon of a slot that shows, on the screen in art pixels, and the column of
-// its picture that part starts with
-func bookmarkShown(slot int, pulled bool) (image.Rectangle, int) {
-    left := castBookX + bookmarkLeft - slot * bookmarkInStep
-    if pulled {
-        left += bookmarkPulled
-    }
-    edge := castBookX + bookmarkPageEdge + slot * bookmarkEdgeStep
+// where the ribbon of a slot is, on the screen in art pixels
+func bookmarkShown(slot int, pulled bool, width int, height int) image.Rectangle {
+    left := castBookX + bookmarkPageEdge + slot * bookmarkEdgeStep
     top := castBookY + bookmarkTop + slot * bookmarkDown
+    if pulled {
+        // more of it is out of the book: it is longer by that, from the pages on
+        width += bookmarkPulled
+    }
 
-    hidden := max(0, edge - left)
-    return image.Rect(left + hidden, top, left + mod.BookmarkWidth, top + mod.BookmarkHeight), hidden
+    return image.Rect(left, top, left + width, top + height)
 }
 
 func drawBookmark(screen *ebiten.Image, slot int, pulled bool, over bool, alpha float32) {
     picture := bookmarkPicture(bookmarkSections[slot].Kind)
-    shown, hidden := bookmarkShown(slot, pulled)
     bounds := picture.Bounds()
-    if hidden >= bounds.Dx() {
-        return
-    }
-
-    part := picture.SubImage(image.Rect(bounds.Min.X + hidden, bounds.Min.Y, bounds.Max.X, bounds.Max.Y)).(*ebiten.Image)
+    shown := bookmarkShown(slot, false, bounds.Dx(), bounds.Dy())
 
     var options ebiten.DrawImageOptions
-    options.GeoM.Translate(float64(shown.Min.X), float64(shown.Min.Y))
     if over {
         options.ColorScale.Scale(1 + bookmarkLight, 1 + bookmarkLight, 1 + bookmarkLight, 1)
     }
     options.ColorScale.ScaleAlpha(alpha)
-    scale.DrawScaled(screen, part, &options)
+
+    if pulled {
+        // its first column again for what has come out of the book
+        first := picture.SubImage(image.Rect(bounds.Min.X, bounds.Min.Y, bounds.Min.X + 1, bounds.Max.Y)).(*ebiten.Image)
+        for column := range bookmarkPulled {
+            more := options
+            more.GeoM.Translate(float64(shown.Min.X + column), float64(shown.Min.Y))
+            scale.DrawScaled(screen, first, &more)
+        }
+        options.GeoM.Translate(bookmarkPulled, 0)
+    }
+
+    options.GeoM.Translate(float64(shown.Min.X), float64(shown.Min.Y))
+    scale.DrawScaled(screen, picture, &options)
 }
 
 // all bookmarks of the book. over is the slot under the mouse, -1 for none

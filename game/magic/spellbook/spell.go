@@ -1530,7 +1530,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 var nameOptions ebiten.DrawImageOptions
                 nameOptions.ColorScale = colors
                 use.PrintOptions(screen, spellX, spellY, font.FontOptions{Options: &nameOptions, Scale: scale.ScaleAmount}, spell.Name)
-                use.PrintOptions(screen, spellX + float64(124), spellY, font.FontOptions{Options: &nameOptions, Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, costText)
+                use.PrintOptions(screen, spellX + castCostRight, spellY, font.FontOptions{Options: &nameOptions, Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, costText)
             }
 
             if !OriginalBookColors {
@@ -2236,9 +2236,8 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
     }
 
     for slot, entry := range bookmarkSections {
-        // as wide as the ribbon shows when it is pulled out
-        area, _ := bookmarkShown(slot, false)
-        area.Max.X += bookmarkPulled
+        // as wide as the ribbon is when it is pulled out
+        area := bookmarkShown(slot, true, mod.BookmarkWidth, mod.BookmarkHeight)
         has := func() int {
             if !bookmarksShown(spellPages) {
                 return -1
