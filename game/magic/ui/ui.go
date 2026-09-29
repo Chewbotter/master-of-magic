@@ -455,6 +455,9 @@ func (ui *UI) PlayStandardSound() {
     }
 }
 
+// the shadow of the text of a tip, in whole art pixels
+var TooltipShadow = font.OutlineBottomRight
+
 func (ui *UI) RenderTooltip(screen *ebiten.Image) {
     if ui.TooltipElement != nil && ui.TooltipElement.Tooltip != nil {
         tip, renderFont := ui.TooltipElement.Tooltip(ui.TooltipElement)
@@ -472,7 +475,8 @@ func (ui *UI) RenderTooltip(screen *ebiten.Image) {
                     options.ColorScale.ScaleAlpha(float32(alpha) / float32(alphaRange))
                 }
 
-                renderFont.PrintOptions(screen, float64(ui.TooltipPosition.X), float64(ui.TooltipPosition.Y - renderFont.Height() - 1), font.FontOptions{Options: &options, Scale: scale.ScaleAmount, DropShadow: true}, tip)
+                // a shadow of one whole art pixel right and below. upstream's was less than a pixel
+                renderFont.PrintOutlined(screen, float64(ui.TooltipPosition.X), float64(ui.TooltipPosition.Y - renderFont.Height() - 1), font.FontOptions{Options: &options, Scale: scale.ScaleAmount}, TooltipShadow, tip)
             }
         }
     }

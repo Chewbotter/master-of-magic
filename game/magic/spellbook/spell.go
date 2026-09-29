@@ -1328,7 +1328,9 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         red, red, red,
     }
 
-    whiteFade := color.NRGBA{R: 255, G: 255, B: 255, A: 128}
+    // the letters of the tip with the turns a spell takes: solid, as the names of the spells are, so
+    // their shadow of one art pixel (ui.RenderTooltip) reads. upstream had them half see-through
+    whiteFade := color.NRGBA{R: 255, G: 255, B: 255, A: 255}
     paletteWhite := color.Palette{
         color.RGBA{},
         whiteFade, whiteFade, whiteFade,
