@@ -99,6 +99,14 @@ func (colors nameColors) palette() color.Palette {
     return out
 }
 
+// the same colors for letters that have no soft edge on the page: the names of the book of
+// research are printed in ONE color there (researchNameColors), all of their pixels. with a soft
+// edge toward the paper in the pulse those pixels were browner and darker than the letter, clear
+// dark spots on a light color as the gray of arcane (user, 2026-09-29)
+func (colors nameColors) flat() nameColors {
+    return nameColors{Edge: colors.Body, Body: colors.Body}
+}
+
 // false while the setting "Pulsing spellbook text" is off: nothing pulses, as in the original
 func pulses() bool {
     return display.SpellbookPulse()

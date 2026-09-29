@@ -539,7 +539,8 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
     researchTitleHover := make(map[data.MagicType]*font.Font)
     researchTextHover := make(map[data.MagicType]*font.Font)
     for _, magic := range hoverRealms {
-        researchTitleHover[magic] = font.MakeOptimizedFontWithPalette(fonts[4], hoverColorsOf(magic).palette())
+        // the names have no soft edge on the page, see hover.go
+        researchTitleHover[magic] = font.MakeOptimizedFontWithPalette(fonts[4], hoverColorsOf(magic).flat().palette())
         researchTextHover[magic] = font.MakeOptimizedFontWithPalette(fonts[0], hoverColorsOf(magic).palette())
     }
 
