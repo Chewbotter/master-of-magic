@@ -29,14 +29,15 @@ func (game *Game) hasNeighbor(mapObject *maplib.Map, x int, y int, kind terrain.
 }
 
 // the side of a tile of land the sea lies on, see combat/coast.go. of the three tiles of every
-// side the most of them sea decide, the tile in the middle of a side counting double
+// side the most of them sea decide, the tile in the middle of a side counting double. a lake is
+// sea for this: a battle beside one has a coast (user, 2026-09-29: "skip lakes and just use coast")
 func (game *Game) coastSide(mapObject *maplib.Map, x int, y int) combat.CoastSide {
     sea := func(dx int, dy int) int {
         if y + dy < 0 || y + dy >= mapObject.Height() {
             return 0
         }
         switch mapObject.GetTile(mapObject.WrapX(x + dx), y + dy).Tile.TerrainType() {
-            case terrain.Ocean, terrain.Shore: return 1
+            case terrain.Ocean, terrain.Shore, terrain.Lake: return 1
         }
         return 0
     }

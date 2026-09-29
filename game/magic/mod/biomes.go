@@ -46,7 +46,6 @@ const (
     BiomeHills = "Hills"
     BiomeVolcano = "Volcano"
     BiomeSnowyMountain = "Snowy Mountain"
-    BiomeLake = "Lake"
 )
 
 // FEATURES lie on whatever the landscape or biome of a battle is, they are no kinds of it: the
@@ -62,7 +61,6 @@ var Biomes = []Biome{
     {Name: BiomeHills, Base: "Grass", Note: "hills of the world map"},
     {Name: BiomeVolcano, Base: "Mountain", Note: "a volcano of the world map"},
     {Name: BiomeSnowyMountain, Base: "Mountain", Note: "a mountain of the world map with tundra next to it"},
-    {Name: BiomeLake, Base: "Grass", Note: "a lake of the world map", Planned: true},
 }
 
 // the biome of the battle that is fought, nothing for a plain landscape

@@ -13,11 +13,9 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/mod"
 )
 
-// pictures of the water the game has, copied into the folders of the biomes of water to look at:
-// from which folder, and the files that start with what
-var waterReference = map[string][][2]string{
-    mod.BiomeLake: {{"Water", "water "}},
-}
+// pictures of the game that are copied into the folder of a biome that is planned, to look at: from
+// which folder, and the files that start with what. no biome is planned now
+var waterReference = map[string][][2]string{}
 
 // the pictures of the coast (game/magic/combat/coast.go): the sand of the desert as the beach, the
 // water of the battles on the ocean. from which folder, the files that start with what, as what
