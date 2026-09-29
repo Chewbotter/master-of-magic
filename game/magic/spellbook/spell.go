@@ -620,8 +620,16 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
                     if titleHover == nil || textHover == nil {
                         own = 0
                     }
+                    // the text comes and goes with the book. upstream printed it as it is
+                    // whatever the book showed of itself, so when the book closed the names and
+                    // descriptions stayed while the book and its titles faded, and were gone at
+                    // once at the end (user, 2026-09-29: "several elements can be seen leaving at
+                    // slightly misaligned times, giving the impression of some pops")
+                    bookShows := options.ColorScale.A()
+                    scaleOptions.ColorScale.ScaleAlpha(bookShows)
+
                     var ownOptions ebiten.DrawImageOptions
-                    ownOptions.ColorScale.ScaleAlpha(own)
+                    ownOptions.ColorScale.ScaleAlpha(own * bookShows)
                     printText := func(atY float64, size float64, text string) {
                         spellTextNormalFont.PrintOptions(pageImage, x, atY, font.FontOptions{Scale: scale.ScaleAmount, Options: &scaleOptions, TextSize: size}, text)
                         if own > 0 {
