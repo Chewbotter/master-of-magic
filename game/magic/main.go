@@ -586,7 +586,7 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
         }
     }
 
-    if capture.PanX != 0 || capture.PanY != 0 || capture.DebugMenu || capture.Screen != "" || capture.CameraX >= 0 || capture.NextTurn || capture.CameraMove != "" || capture.Walk != "" {
+    if capture.PanX != 0 || capture.PanY != 0 || capture.DebugMenu || capture.Screen != "" || capture.CameraX >= 0 || capture.NextTurn || capture.CameraMove != "" || capture.Walk != "" || capture.Plan != "" {
       capture.Later = func() {
         if capture.NextTurn {
             select {
@@ -596,6 +596,11 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
         }
         if capture.CameraX >= 0 {
             game.CaptureSetCameraX(capture.CameraX)
+        }
+        if capture.Plan != "" {
+            var planX, planY int
+            fmt.Sscanf(capture.Plan, "%d,%d", &planX, &planY)
+            log.Printf("plan %v,%v: %v", planX, planY, game.CapturePlan(planX, planY))
         }
         if capture.Walk != "" {
             // the walk starts a second later, once any pan has settled on screen
@@ -693,6 +698,10 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
 
     for game.Update(yield) != gamelib.GameStateQuit {
         if inputmanager.IsQuitPressed() {
+            if debugWorldMap {
+                // the game of the debug list: back to the start screen, see debugworld.go
+                return nil
+            }
             return ebiten.Termination
         }
 
@@ -1165,6 +1174,8 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
                 err := startQuickGame(yield, game, gameLoader)
                 debugWorldMap = false
                 gamelib.DebugNoDisband = false
+                // the key that left the game is not the start screen's to read
+                yield()
                 gamelib.DebugUnlimitedMoves = false
                 gamelib.DebugNoGreetings = false
                 if err != nil {
@@ -1391,6 +1402,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&gamelib.FogFadeTrace, "capture-fog-trace", false, "development: log the number of tiles whose fog fades, every frame")
     flag.BoolVar(&debugWorldMap, "capture-debug-world", false, "development: with -start, the game of the World Map entry of the debug list")
     flag.BoolVar(&gamelib.DebugUnlimitedMoves, "capture-unlimited-moves", false, "development: turn on the Unlimited Moves debug option")
+    flag.StringVar(&capture.Plan, "capture-plan", "", "development: plan a move of the selected unit dx,dy tiles away as a first click does, to show the markers of its path")
     flag.StringVar(&capture.Walk, "capture-walk", "", "development: send the selected unit walking dx,dy tiles and log the camera")
     flag.StringVar(&capture.CameraMove, "capture-camera-move", "", "development: move the camera by dx,dy tiles the way a right click does, and log each frame")
     flag.IntVar(&capture.BattleLevel, "capture-battle-level", 0, "development: zoom level of the battlefield, in screen pixels per art pixel")

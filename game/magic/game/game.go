@@ -286,6 +286,8 @@ type GameEventShowRandomEvent struct {
 
 type GameEventMoveUnit struct {
     Player *playerlib.Player
+    // the stack goes on along its path by itself: the camera rests on it for a moment first, see worldmarker.go
+    Hold bool
 }
 
 func StartingCityEvent(city *citylib.City) *GameEventCityName {
@@ -1625,6 +1627,12 @@ func (game *Game) showMovement(yield coroutine.YieldFunc, oldX int, oldY int, st
 
     game.MovingStack = stack
 
+    // modern controls: the camera goes to where the stack of the player will stop, see walkcamera.go
+    toDestination := center && walkCamera.Walking
+    if toDestination {
+        center = false
+    }
+
     if center {
         // the unit is still drawn on its old tile while the camera pans over to it, if it is elsewhere.
         // see cameramove.go
@@ -1641,6 +1649,9 @@ func (game *Game) showMovement(yield coroutine.YieldFunc, oldX int, oldY int, st
         if center {
             // the camera moves with the unit instead of jumping a tile after it
             game.followMovingStack(stack.X(), stack.Y(), dx * interpolate, dy * interpolate)
+        }
+        if toDestination {
+            game.stepWalkCamera()
         }
         game.DoViewInput(yield)
         yield()
@@ -2842,6 +2853,9 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                         }
                     case *GameEventMoveUnit:
                         moveUnit := event.(*GameEventMoveUnit)
+                        if moveUnit.Hold {
+                            game.holdBeforeAutoMove(yield)
+                        }
                         game.doMoveSelectedUnit(yield, moveUnit.Player)
                 }
 
@@ -3689,6 +3703,9 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
 
     entityInfo := game.Model.ComputeCityStackInfo()
 
+    // modern controls: one move of the camera, to where the stack will stop. see walkcamera.go
+    game.startWalkCamera(yield, player, stack, mapUse, getStack)
+
     quitMoving:
     for i, step := range stack.CurrentPath {
         if stack.AnyOutOfMoves() {
@@ -3726,6 +3743,7 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
             if encounter != nil {
                 if game.confirmLairEncounter(yield, encounter) {
                     stack.Move(step.X - stack.X(), step.Y - stack.Y(), terrainCost, game.Model.GetNormalizeCoordinateFunc())
+                    game.liftFogForStep(player, stack)
                     game.showMovement(yield, oldX, oldY, stack, true)
                     player.LiftFogSquare(stack.X(), stack.Y(), stack.GetSightRange(), stack.Plane())
                     game.discoverWizards(yield)
@@ -3750,6 +3768,7 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
             mergeStack = player.FindStack(mapUse.WrapX(step.X), step.Y, stack.Plane())
 
             stack.Move(step.X - stack.X(), step.Y - stack.Y(), terrainCost, game.Model.GetNormalizeCoordinateFunc())
+            game.liftFogForStep(player, stack)
             game.showMovement(yield, oldX, oldY, stack, true)
             player.LiftFogSquare(stack.X(), stack.Y(), stack.GetSightRange(), stack.Plane())
             metWizard := game.discoverWizards(yield)
@@ -3826,6 +3845,8 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
             break
         }
     }
+
+    game.endWalkCamera(yield, stack)
 
     if stopMoving {
         stack.CurrentPath = nil
@@ -3937,6 +3958,13 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
                     newX, newY = game.ScreenToTile(float64(mouseX), float64(mouseY))
                     // log.Printf("Click at %v, %v -> %v, %v", mouseX, mouseY, newX, newY)
                     newX = game.Model.CurrentMap().WrapX(newX)
+
+                    // modern controls: the first click on a tile further away plans the move, see moveconfirm.go
+                    if (newX != oldX || newY != oldY) && !game.clickMoves(player, stack, newX, newY) {
+                        newX = oldX
+                        newY = oldY
+                        leftClick = false
+                    }
                 }
             }
 
@@ -7126,7 +7154,7 @@ func (game *Game) DoNextUnit(player *playerlib.Player){
         if player.SelectedStack != nil {
             if len(player.SelectedStack.CurrentPath) > 0 {
                 select {
-                    case game.Events<- &GameEventMoveUnit{Player: player}:
+                    case game.Events<- &GameEventMoveUnit{Player: player, Hold: true}:
                     default:
                 }
             }
@@ -8324,6 +8352,10 @@ type Overworld struct {
     Fog data.FogMap
     ShowAnimation bool
     FogBlack *ebiten.Image
+    // the path of a move of the selected stack that is not confirmed yet
+    PlannedPath worldPath
+    // the number of points of the path that is shown the stack reaches in this turn
+    PathReach int
 }
 
 func (overworld *Overworld) ToCameraCoordinates(x int, y int) (int, int) {
@@ -8503,7 +8535,16 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
     }
 
     // draw current path on top of fog
-    if overworld.SelectedStack != nil && len(overworld.SelectedStack.CurrentPath) > 0 {
+    var shownPath worldPath
+    if overworld.SelectedStack != nil {
+        shownPath = overworld.SelectedStack.CurrentPath
+        if len(overworld.PlannedPath) > 0 {
+            // a move that waits for its second click, see moveconfirm.go
+            shownPath = overworld.PlannedPath
+        }
+    }
+
+    if len(shownPath) > 0 {
         boot, _ := overworld.ImageCache.GetImage("compix.lbx", 72, 0)
         var options ebiten.DrawImageOptions
 
@@ -8512,19 +8553,38 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
         bootGeom.Translate(float64(boot.Bounds().Dx()) / -2, float64(boot.Bounds().Dy()) / -2)
         bootGeom.Concat(geom)
 
-        for pointI, point := range overworld.SelectedStack.CurrentPath {
+        // a flag on the tiles the stack only reaches in a later turn, see worldmarker.go
+        var flag *ebiten.Image
+        var flagGeom ebiten.GeoM
+        if overworld.PathReach < len(shownPath) && overworld.SelectedStack.Leader() != nil {
+            flag = flagPicture(overworld.ImageCache, overworld.SelectedStack.Leader().GetBanner())
+            if flag != nil {
+                flagGeom.Translate(float64(tileWidth) / 2, float64(tileHeight) / 2)
+                flagGeom.Translate(float64(flag.Bounds().Dx() / -2), float64(flag.Bounds().Dy() / -2))
+                flagGeom.Concat(geom)
+            }
+        }
+
+        for pointI, point := range shownPath {
+            marker := boot
+            markerGeom := bootGeom
+            if flag != nil && pointI >= overworld.PathReach {
+                marker = flag
+                markerGeom = flagGeom
+            }
+
             for _, offset := range mapXOffsets {
                 cx, cy := overworld.ToCameraCoordinates(point.X, point.Y)
                 x, y := convertTileCoordinates(cx + offset, cy)
                 options.GeoM.Reset()
                 options.ColorScale.Reset()
                 options.GeoM.Translate(float64(x), float64(y))
-                options.GeoM.Concat(bootGeom)
+                options.GeoM.Concat(markerGeom)
 
                 v := float32(1 + (math.Sin(float64(overworld.Counter * 4 + uint64(pointI) * 60) * math.Pi / 180) / 2 + 0.5) / 2)
                 options.ColorScale.Scale(v, v, v, 1)
 
-                scale.DrawScaled(screen, boot, &options)
+                scale.DrawScaled(screen, marker, &options)
             }
         }
     }
@@ -8645,6 +8705,15 @@ func (game *Game) DrawGame(screen *ebiten.Image){
         Fog: fog,
         ShowAnimation: game.State == GameStateUnitMoving,
         FogBlack: game.GetFogImage(),
+        PlannedPath: game.plannedPath(selectedStack),
+    }
+
+    if selectedStack != nil {
+        shown := worldPath(selectedStack.CurrentPath)
+        if len(overworld.PlannedPath) > 0 {
+            shown = overworld.PlannedPath
+        }
+        overworld.PathReach = game.pathReach(game.Model.GetHumanPlayer(), selectedStack, shown)
     }
 
     if game.WatchMode {

@@ -574,7 +574,13 @@ COLORS
 func main() {
     dataPath := flag.String("data", "", "the folder of the game's LBX files")
     outPath := flag.String("out", "", "the folder to write to. outside of the repository")
+    onlyMarkers := flag.Bool("markers", false, "write only the markers the mod makes by itself, which needs no data")
     flag.Parse()
+
+    if *onlyMarkers && *outPath != "" {
+        fmt.Printf("markers: %v\n", exportMarkers(*outPath))
+        return
+    }
 
     if *dataPath == "" || *outPath == "" {
         flag.Usage()
@@ -594,6 +600,7 @@ func main() {
     // the folders of the biomes start as copies of the folders of their landscapes, see biomes.go
     environmentPictures += exportBiomes(*outPath)
     environmentPictures += exportCoast(*outPath)
+    exportMarkers(*outPath)
 
     err = exportPalette(*outPath)
     if err != nil {
