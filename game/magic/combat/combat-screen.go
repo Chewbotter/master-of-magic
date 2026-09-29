@@ -235,6 +235,8 @@ type CombatScreen struct {
     cropsMade map[int][]*ebiten.Image
     // the pictures of ice the game makes, by their number. see terraindraw.go
     iceMade map[int][]*ebiten.Image
+    // the entries of archives whose frames are the quarters of a picture, see terraindraw.go
+    quarteredEntries map[string]bool
     // the large pieces the game makes, see large.go
     largeMade [][]*ebiten.Image
     // the pictures the replacement folder adds to the ground, trees, rocks and houses, see terraindraw.go
@@ -3897,11 +3899,10 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         x := point.X
         y := point.Y
 
-        images := combat.groundTilePictures(combat.Model.Tiles[y][x].Lbx, combat.Model.Tiles[y][x].Index)
-        if len(images) == 0 {
+        image := combat.groundFrame(combat.Model.Tiles[y][x].Lbx, combat.Model.Tiles[y][x].Index, x, y, animationIndex)
+        if image == nil {
             continue
         }
-        image := images[animationIndex % uint64(len(images))]
         options.GeoM.Reset()
         // tx,ty is the middle of the tile, the picture starts up and left of it
         tx, ty := tilePosition(float64(x), float64(y))
