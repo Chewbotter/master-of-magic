@@ -332,6 +332,8 @@ type CombatScreen struct {
     ExtraControl bool
 
     ExtraHighlightedUnit *ArmyUnit
+    // Tab is held, see unitdone.go
+    TabHeld bool
     ShowInfoLevel int
 
     DamageIndicators []DamageIndicator
@@ -2846,6 +2848,7 @@ const ArmyListKey = false
 
 func (combat *CombatScreen) ProcessInput() {
     combat.ExtraHighlightedUnit = nil
+    combat.TabHeld = false
     var keys []ebiten.Key
     keys = inpututil.AppendPressedKeys(keys)
     showInfo := 0
@@ -2862,6 +2865,7 @@ func (combat *CombatScreen) ProcessInput() {
     for _, key := range keys {
         switch key {
             case ebiten.KeyTab:
+                combat.TabHeld = true
                 if combat.Model.SelectedUnit != nil && !combat.Model.IsAIControlled(combat.Model.SelectedUnit) {
                     combat.ExtraHighlightedUnit = combat.Model.SelectedUnit
                 }
@@ -4109,8 +4113,13 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         banner := unit.Unit.GetBanner()
         imageKey := banner.String()
         imageTransform := units.MakeUpdateUnitColorsFunc(banner)
+        if combat.showsDone(unit) {
+            // while Tab is held: gray when its turn is over, see unitdone.go
+            imageKey = doneKey(imageKey)
+            imageTransform = withDoneLook(imageTransform)
+        }
         if combat.Model.HighlightedUnit == unit {
-            // the unit under the cursor: the outline of its figures pulses red, see animation.go
+            // the unit under the cursor: the outline of its figures pulses, see animation.go
             step := combat.scannedOutlineStep()
             imageKey = scannedOutlineKey(imageKey, step)
             imageTransform = withScannedOutline(imageTransform, step)
@@ -4482,6 +4491,11 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
     }
 
     if !combat.drawsInterface() {
+        // in widescreen the box of the unit under the mouse is at the edge of the window, so it
+        // is drawn with the field. see unitinfo.go
+        if combat.unitInfoOnField() && combat.Model.HighlightedUnit != nil && isVisible(combat.Model.HighlightedUnit) {
+            combat.ShowUnitInfo(screen, combat.Model.HighlightedUnit)
+        }
         return
     }
 

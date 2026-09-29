@@ -11,12 +11,16 @@ package combat
 // The name ends there, and under it is ONE column of numbers with their pictures: attack,
 // defense, resistance, moves. The original had attack, ranged attack and moves in a column on
 // the left and defense, resistance, ammunition and level in one on the right, the name in the
-// middle. "Hits" and its bar are where the original has them, the user has not decided on them.
+// middle. The bar of the hits is under the name and two pixels tall, the word "Hits" is gone,
+// and the box is as far from the right edge of the WINDOW as from its top, also in widescreen,
+// where it is drawn with the field for that (the original: one pixel from the edge).
 
 import (
     "fmt"
     "image/color"
 
+    "github.com/kazzmir/master-of-magic/game/magic/data"
+    "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/lib/font"
@@ -28,12 +32,14 @@ import (
 // false: the box of upstream
 const OriginalUnitInfo = true
 
-// the box, in pixels of the original's screen. the last column and row are part of it
+// the box, in pixels of the original's screen. the original's is 69 wide and 40 tall, 4 from
+// the top. taller here by the row of the bar
 const (
-    unitInfoLeft = 250
     unitInfoTop = 4
-    unitInfoRight = 318
-    unitInfoBottom = 43
+    unitInfoWidth = 69
+    unitInfoHeight = 47
+    // pixels between the box and the right edge of the window
+    unitInfoGutter = 4
 )
 
 // palette indexes
@@ -65,9 +71,15 @@ const (
     unitInfoNameX = 65
     unitInfoNameY = 2
     // the first row of numbers and of their pictures, and how far the rows are apart
-    unitInfoValueY = 10
-    unitInfoIconY = 8
+    unitInfoValueY = 17
+    unitInfoIconY = 15
     unitInfoRowStep = 7
+
+    // the bar of the hits, under the name. it ends where the name ends
+    unitInfoBarX = unitInfoNameX - hudHealthBarLength + 1
+    unitInfoBarY = 10
+    // the original's is 1 tall
+    unitInfoBarHeight = 2
 )
 
 // the rows of the column
@@ -88,13 +100,8 @@ const (
     unitInfoAmmoRow = 1
     // the pictures of the level
     unitInfoLevelX = 3
-    unitInfoLevelY = 25
+    unitInfoLevelY = 39
     unitInfoLevelStep = 5
-
-    unitInfoHitsX = 3
-    unitInfoHitsY = 32
-    unitInfoBarX = 19
-    unitInfoBarY = 34
 )
 
 // pictures of compix.lbx
@@ -174,6 +181,11 @@ func fillUnitInfo(screen *ebiten.Image, x int, y int, width int, height int, fil
     vector.FillRect(screen, float32(scale.Scale(x)), float32(scale.Scale(y)), float32(scale.Scale(width)), float32(scale.Scale(height)), fill, false)
 }
 
+// true while the box is drawn with the field, on the picture as wide as the window
+func (combat *CombatScreen) unitInfoOnField() bool {
+    return OriginalUnitInfo && combat.wideField && display.BarWidth() > 0 && combat.Fonts.Hud != nil && combat.Fonts.Hud.UnitInfo != nil
+}
+
 // draws the box. false when it can not, then upstream's is drawn
 func (combat *CombatScreen) showUnitInfoOriginal(screen *ebiten.Image, unit *ArmyUnit) bool {
     hud := combat.Fonts.Hud
@@ -181,18 +193,31 @@ func (combat *CombatScreen) showUnitInfoOriginal(screen *ebiten.Image, unit *Arm
         return false
     }
 
+    onField := combat.unitInfoOnField()
+    if onField != (combat.pass == drawPassField) {
+        // drawn by the other pass
+        return true
+    }
+
     text := hud.UnitInfo
-    left := unitInfoLeft
+    width := unitInfoWidth
+    height := unitInfoHeight
+    // the right edge of the picture that is drawn on
+    edge := data.ScreenWidth
+    if onField {
+        edge += 2 * display.BarWidth()
+    }
+    left := edge - unitInfoGutter - width
+    right := left + width - 1
     top := unitInfoTop
-    width := unitInfoRight - unitInfoLeft + 1
-    height := unitInfoBottom - unitInfoTop + 1
+    bottom := top + height - 1
 
     fillUnitInfo(screen, left, top, width, height, unitInfoBlack(unitInfoDark))
     // left and top, then right and bottom, as the original draws its lines
     fillUnitInfo(screen, left, top, 1, height, hud.Palette[unitInfoRimLight])
     fillUnitInfo(screen, left, top, width - 1, 1, hud.Palette[unitInfoRimLight])
-    fillUnitInfo(screen, unitInfoRight, top, 1, height, hud.Palette[unitInfoRimDark])
-    fillUnitInfo(screen, left + 1, unitInfoBottom, width - 1, 1, hud.Palette[unitInfoRimDark])
+    fillUnitInfo(screen, right, top, 1, height, hud.Palette[unitInfoRimDark])
+    fillUnitInfo(screen, left + 1, bottom, width - 1, 1, hud.Palette[unitInfoRimDark])
 
     picture := func(index int, x int, y int) {
         image, err := combat.ImageCache.GetImage("compix.lbx", index, 0)
@@ -251,12 +276,12 @@ func (combat *CombatScreen) showUnitInfoOriginal(screen *ebiten.Image, unit *Arm
         }
     }
 
-    text.Print(screen, left + unitInfoHitsX, top + unitInfoHitsY, hudOptions(), "Hits")
-    fillUnitInfo(screen, left + unitInfoBarX, top + unitInfoBarY, hudHealthBarLength, 1, unitInfoBlack(unitInfoTrackDark))
-    fillUnitInfo(screen, left + unitInfoBarX, top + unitInfoBarY + 1, hudHealthBarLength, 1, hud.Palette[unitInfoBarLine])
+    // the track, the line under it as the shadow of the bar, the bar
+    fillUnitInfo(screen, left + unitInfoBarX, top + unitInfoBarY, hudHealthBarLength, unitInfoBarHeight, unitInfoBlack(unitInfoTrackDark))
+    fillUnitInfo(screen, left + unitInfoBarX, top + unitInfoBarY + unitInfoBarHeight, hudHealthBarLength, 1, hud.Palette[unitInfoBarLine])
     length, barColor, ok := hud.healthBar(unit)
     if ok {
-        fillUnitInfo(screen, left + unitInfoBarX, top + unitInfoBarY, length, 1, barColor)
+        fillUnitInfo(screen, left + unitInfoBarX, top + unitInfoBarY, length, unitInfoBarHeight, barColor)
     }
 
     return true
