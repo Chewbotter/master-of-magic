@@ -34,12 +34,14 @@ const splashGroup = 0.5
 // art pixels around the feet of a figure the drops start in, across and down the screen
 const splashSpreadX = 4.0
 const splashSpreadY = 1.5
-// art pixels a second: along the ground, and upward
-const splashSpeed = 11.0
-const splashLiftMin = 18.0
-const splashLiftMax = 40.0
+// art pixels a second: along the ground, and upward. the drops spray out over the water more than
+// they go up (user, 2026-09-29: "spray outward more instead of upward"; first 11 along the ground,
+// 18 to 40 upward, gravity 150)
+const splashSpeed = 30.0
+const splashLiftMin = 12.0
+const splashLiftMax = 24.0
 // art pixels a second more with every second
-const splashGravity = 150.0
+const splashGravity = 90.0
 
 // the colors a drop goes through
 var splashColors = []color.RGBA{
