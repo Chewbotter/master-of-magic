@@ -194,6 +194,7 @@ func (game *MagicGame) updateFastPlay(menu *mainview.MainScreen) (mainview.MainS
         unitPickerCoastOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "coast")
         unitPickerRiverOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "river")
         unitPickerFarmlandOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "farmland")
+        unitPickerWeatherOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "weather")
         capture.UnitPicker = ""
         if testBattleLast == nil {
             // so the capture shows the button of the last test battle
@@ -370,6 +371,7 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
                 case word == "coast=west": ground.Coast = combat.CoastWest
                 case word == "coast=south": ground.Coast = combat.CoastSouth
                 case word == "coast=any": ground.Coast = combat.CoastAny
+                case strings.HasPrefix(word, "weather="): ground.Weather = combat.WeatherByName(strings.TrimPrefix(word, "weather="))
                 case word == "farmland=1": ground.Farmland = combat.FarmlandNear
                 case word == "farmland=2": ground.Farmland = combat.FarmlandFar
                 case word == "river=across": ground.River = combat.RiverAcross

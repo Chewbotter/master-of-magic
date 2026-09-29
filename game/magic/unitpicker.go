@@ -111,6 +111,18 @@ var testRiverNames = map[combat.RiverCourse]string{
 // the fields of a town with their names in the list, by how far the town is
 var testFarmlandNames = []string{"None", "Next to a town, more houses", "Two tiles from a town"}
 
+// the weather of a test battle with its names in the list (combat/weather.go)
+var testWeatherNames = map[combat.Weather]string{
+    combat.WeatherNone: "None",
+    combat.WeatherLightRain: "Light rain",
+    combat.WeatherHeavyRain: "Heavy rain",
+    combat.WeatherLightSnow: "Light snow",
+    combat.WeatherHeavySnow: "Heavy snow",
+    combat.WeatherClouds: "Cloud shadows",
+}
+var testBattleWeather = combat.WeatherNone
+var unitPickerWeatherOpen bool
+
 // the race of the town of the fields of a test battle: the one of the unit that fights
 var testBattleFarmland = combat.FarmlandNone
 var unitPickerFarmlandOpen bool
@@ -161,6 +173,7 @@ func testBattleZone() (combat.CombatLandscape, combat.ZoneType) {
     zone.Ground.Coast = testBattleCoast
     zone.Ground.River = testBattleRiver
     zone.Ground.Farmland = testBattleFarmland
+    zone.Ground.Weather = testBattleWeather
     if testBattleUnit != nil {
         zone.Ground.FarmRace = testBattleUnit.Race
     }
@@ -193,6 +206,9 @@ type unitPickerRow struct {
     IsCoast bool
     RiverTitle bool
     FarmlandTitle bool
+    WeatherTitle bool
+    Weather combat.Weather
+    IsWeather bool
     // from 1
     Farmland int
     River combat.RiverCourse
@@ -211,7 +227,7 @@ type unitPickerRow struct {
 
 // a row that stands under the title of its rollout
 func (row unitPickerRow) indented() bool {
-    return row.Unit != nil || row.Ground > 0 || row.IsCoast || row.IsRiver || row.Farmland > 0
+    return row.Unit != nil || row.Ground > 0 || row.IsCoast || row.IsRiver || row.Farmland > 0 || row.IsWeather
 }
 
 func (row unitPickerRow) contains(x float64, y float64) bool {
@@ -303,6 +319,12 @@ func unitPickerRows() []unitPickerRow {
     if unitPickerFarmlandOpen {
         for index, name := range testFarmlandNames {
             rows = append(rows, unitPickerRow{Text: name, Farmland: index + 1, Picked: index == testBattleFarmland})
+        }
+    }
+    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Weather: %v", mark(unitPickerWeatherOpen), testWeatherNames[testBattleWeather]), WeatherTitle: true})
+    if unitPickerWeatherOpen {
+        for _, weather := range combat.Weathers {
+            rows = append(rows, unitPickerRow{Text: testWeatherNames[weather], IsWeather: true, Weather: weather, Picked: weather == testBattleWeather})
         }
     }
 
@@ -409,6 +431,12 @@ func updateUnitPicker() bool {
             unitPickerGroundOpen = !unitPickerGroundOpen
         case row.CoastTitle:
             unitPickerCoastOpen = !unitPickerCoastOpen
+        case row.WeatherTitle:
+            unitPickerWeatherOpen = !unitPickerWeatherOpen
+        case row.IsWeather:
+            testBattleWeather = row.Weather
+            unitPickerWeatherOpen = false
+            saveDebugSaved()
         case row.FarmlandTitle:
             unitPickerFarmlandOpen = !unitPickerFarmlandOpen
         case row.Farmland > 0:

@@ -240,6 +240,8 @@ type CombatScreen struct {
     poolsMade bool
     poolX int
     poolY int
+    // rain, snow and the shadows of clouds, see weather.go
+    weather weatherState
     // the pictures of crops the game makes, by their number. see farmland.go
     cropsMade map[int][]*ebiten.Image
     // the pictures of ice the game makes, by their number. see terraindraw.go
@@ -4547,6 +4549,9 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
     // the field is dark while a spell plays. the spell itself, its particles and the numbers are
     // drawn over the dark. see spelllight.go
+    // the shadows of clouds lie on the ground and on what stands on it, see weather.go
+    combat.drawCloudShadows(screen)
+
     combat.drawSpellDark(screen)
 
     projectileOnScreen := originalScreenMatrix(combat.GetCameraMatrix())
@@ -4577,6 +4582,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
     // what flies off spells, see particles.go
     combat.drawParticles(screen)
+    // rain and snow, see weather.go
+    combat.drawWeather(screen)
 
     // the numbers that rise from a unit that is hurt, see damagenumbers.go
     combat.drawDamageNumbers(screen)

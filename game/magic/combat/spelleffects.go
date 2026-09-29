@@ -439,6 +439,8 @@ func (combat *CombatScreen) updateSpellEffects() {
 
     // the water of a river under the units that walk into it, see splash.go
     combat.splashTick()
+    // rain, snow and the shadows of clouds, see weather.go
+    combat.weatherTick(seconds)
 
     effects.Particles.step(seconds)
 

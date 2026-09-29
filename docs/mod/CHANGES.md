@@ -53,6 +53,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Forests are woods and clearings: many more trees, which stand close together in woods with open ground between them, and a clearing in the middle of the field where the armies start. Trees slow units down as before, so the woods are slow ground.
 - Mountains and hills have more rocks.
 - Swamps are islands in brackish green water: about half of the ground is raised, all that is low is under water. Roads run through the water as fords. Splashes in it are green. A swamp has twice the trees of grass land, on its islands. Units can wade through; a tile of a pool is rough ground and costs twice as much to cross.
+- Weather, in test battles for now: light rain, heavy rain, light snow, heavy snow, and the shadows of clouds that drift over the ground and darken the units and the land under them. Rain and snow come down in gusts, as single pixels. Weather changes no rule.
 - Rivers, in debug battles for now: shallow water 2 to 3 tiles wide that winds between the armies or beside them, over the ground of whatever the landscape is. Every unit can wade through; a tile of the river is rough ground and costs twice as much to cross, its banks cost what the ground costs. A battlefield with a river has no roads, a town has no river. A river that runs toward a coast runs into the sea, which comes in to meet it in a small bay. On tundra the river is frozen. Units that walk into the water throw up a small splash, a few drops for a single figure, a group not much more.
 - Large pieces of ground over 2 by 2 tiles, such as a cluster of rocks or a patch of dirt, each once per battle at most. For the look only.
 - Units the computer controls act at the same time, and decide as they would in turn.
@@ -91,7 +92,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - A tool that writes the game's pictures as png files, the surroundings of battles under names that say what each picture is for, and Aseprite files for figures and spells with an export back into the replacement folder.
 
 ## For testing (debug)
-- A Debug list on the start screen: World Map, Random Battle, Random City Battle, Test Battle of a unit picked from a list (with its biome, coast, river and farmland, or a coast or river by chance; a button starts the last unit again on what is picked), Army Size. Random battles have a landscape, a biome, a coast, farmland and roads or a river by chance.
+- A Debug list on the start screen: World Map, Random Battle, Random City Battle, Test Battle of a unit picked from a list (with its biome, coast, river, farmland and weather, or a coast or river by chance; a button starts the last unit again on what is picked), Army Size. Random battles have a landscape, a biome, a coast, farmland and roads or a river by chance.
 - World Map: a quick game with unlimited moves, no greetings of rival wizards, 3 more units around the city, and units that are never disbanded.
 - In debug battles the player knows every spell and does not run out of mana.
 - Escape in anything started from the Debug list goes back to the start screen.

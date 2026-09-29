@@ -48,6 +48,20 @@ func TestTestBattleGround(test *testing.T) {
         }
     }
 
+    // the weather
+    weather := testBattleWeather
+    defer func() {
+        testBattleWeather = weather
+    }()
+    for _, picked := range combat.Weathers {
+        testBattleWeather = picked
+        _, zone := testBattleZone()
+        if zone.Ground.Weather != picked || testWeatherNames[picked] == "" {
+            test.Fatalf("weather %v: %+v", picked, zone.Ground)
+        }
+    }
+    testBattleWeather = weather
+
     // the fields of a town
     farmland := testBattleFarmland
     defer func() {

@@ -1,0 +1,108 @@
+package combat
+
+import (
+    "image"
+    "testing"
+)
+
+func TestWeatherNames(test *testing.T) {
+    for _, weather := range Weathers {
+        if WeatherByName(weather.String()) != weather {
+            test.Fatalf("weather %v is not found by its name", weather)
+        }
+        _, falls := weatherLooks[weather]
+        if falls == (weather == WeatherNone || weather == WeatherClouds) {
+            test.Fatalf("weather %v: falls %v", weather, falls)
+        }
+    }
+    if WeatherByName("hail") != WeatherNone {
+        test.Fatalf("a name that is not there")
+    }
+}
+
+// rain and snow come down on the ground that is seen, land where they are to land and are gone,
+// heavy weather has more of them than light, and they fall in gusts
+func TestWeatherFalls(test *testing.T) {
+    view := image.Rect(0, 0, 350, 200)
+    counts := make(map[Weather]int)
+
+    for _, weather := range []Weather{WeatherLightRain, WeatherHeavyRain, WeatherLightSnow, WeatherHeavySnow} {
+        look := weatherLooks[weather]
+        state := weatherState{Seed: 12345}
+        area := view.Inset(-weatherAround)
+
+        for range 600 {
+            state.spawn(look, area, 1.0 / 60, func() float64 { return 0 })
+            state.step(look, 1.0 / 60)
+            for _, each := range state.Drops {
+                if each.Y > each.Ground || each.Ground < float64(area.Min.Y) || each.Ground > float64(area.Max.Y) {
+                    test.Fatalf("%v: a drop at %v that lands at %v", weather, each.Y, each.Ground)
+                }
+            }
+        }
+        counts[weather] = len(state.Drops)
+        if len(state.Drops) < 30 || len(state.Drops) >= weatherMost {
+            test.Fatalf("%v: %v in the air", weather, len(state.Drops))
+        }
+
+        // without new ones the air is empty after a while
+        for range int((look.Height / look.Speed / (1 - look.Spread) + look.Linger) * 60) + 60 {
+            state.step(look, 1.0 / 60)
+        }
+        if len(state.Drops) != 0 {
+            test.Fatalf("%v: %v are left", weather, len(state.Drops))
+        }
+
+        // gusts: much comes down in places, little in others
+        least, most := 1.0, 0.0
+        for x := 0; x < 2000; x += 10 {
+            gust := weatherGust(look, float64(x), 100, 3, 12345)
+            least = min(least, gust)
+            most = max(most, gust)
+        }
+        if least < 0 || most > 1 || most - least < 0.4 {
+            test.Fatalf("%v: gusts from %v to %v", weather, least, most)
+        }
+    }
+
+    if counts[WeatherHeavyRain] < counts[WeatherLightRain] * 2 || counts[WeatherHeavySnow] < counts[WeatherLightSnow] * 2 {
+        test.Fatalf("in the air: %v", counts)
+    }
+}
+
+// the shadows of clouds: a part of the ground is dark, a part is not, every pixel is dark as a
+// whole or not at all, and the picture goes on from its one edge to the other
+func TestCloudShadows(test *testing.T) {
+    picture := makeCloudShadows(99)
+    bounds := picture.Bounds()
+    if bounds.Dx() != cloudWidth || bounds.Dy() != cloudHeight {
+        test.Fatalf("the picture is %v", bounds)
+    }
+
+    dark := 0
+    for y := range cloudHeight {
+        for x := range cloudWidth {
+            pixel := picture.NRGBAAt(x, y)
+            switch {
+                case pixel.A == 0:
+                case pixel.A == uint8(cloudDark * 255 + 0.5) && pixel.R == 0 && pixel.G == 0 && pixel.B == 0: dark += 1
+                default: test.Fatalf("a pixel %v", pixel)
+            }
+        }
+    }
+    share := float64(dark) / float64(cloudWidth * cloudHeight)
+    if share < cloudCover - 0.1 || share > cloudCover + 0.1 {
+        test.Fatalf("%v of the ground is in the shadow", share)
+    }
+
+    for y := 0; y < cloudHeight; y += 7 {
+        if cloudNoise(0, y, 99) != cloudNoise(cloudWidth, y, 99) {
+            test.Fatalf("the picture does not go on from right to left at %v", y)
+        }
+    }
+    for x := 0; x < cloudWidth; x += 7 {
+        if cloudNoise(x, 0, 99) != cloudNoise(x, cloudHeight, 99) {
+            test.Fatalf("the picture does not go on from bottom to top at %v", x)
+        }
+    }
+}

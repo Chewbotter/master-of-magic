@@ -65,6 +65,8 @@ type ZoneGround struct {
     // and the race of the town, for its houses. see farmland.go
     Farmland int
     FarmRace data.Race
+    // rain, snow or the shadows of clouds, see weather.go
+    Weather Weather
     // an army of the battle has more units than the original's 12 places: the armies take more of
     // the field. set when the battle is made
     LargeArmy bool

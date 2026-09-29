@@ -28,6 +28,8 @@ type debugSaved struct {
     TestBattleRiver string `json:"test-battle-river"`
     // how many tiles from a town, 0 to 2
     TestBattleFarmland int `json:"test-battle-farmland"`
+    // the weather, by its name
+    TestBattleWeather string `json:"test-battle-weather"`
 }
 
 var debugSavedLoaded bool
@@ -68,6 +70,7 @@ func loadDebugSaved() {
     testBattleGround = testGroundByName(saved.TestBattleGround)
     testBattleCoast = testCoastByName(saved.TestBattleCoast)
     testBattleRiver = testRiverByName(saved.TestBattleRiver)
+    testBattleWeather = combat.WeatherByName(saved.TestBattleWeather)
     testBattleFarmland = min(max(saved.TestBattleFarmland, combat.FarmlandNone), combat.FarmlandFar)
 
     if saved.TestBattleUnit != "" && testBattleLast == nil {
@@ -87,6 +90,7 @@ func saveDebugSaved() {
     saved.TestBattleCoast = testBattleCoast.String()
     saved.TestBattleRiver = testBattleRiver.String()
     saved.TestBattleFarmland = testBattleFarmland
+    saved.TestBattleWeather = testBattleWeather.String()
     if testBattleLast != nil {
         saved.TestBattleUnit = unitFullName(testBattleLast)
     }
