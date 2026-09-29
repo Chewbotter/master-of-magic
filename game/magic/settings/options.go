@@ -10,7 +10,6 @@ import (
     "image/color"
 
     "github.com/kazzmir/master-of-magic/lib/lbx"
-    "github.com/kazzmir/master-of-magic/lib/font"
     "github.com/kazzmir/master-of-magic/lib/coroutine"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/display"
@@ -92,7 +91,8 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
     printText := func(screen *ebiten.Image, x int, y int, alpha float32, text string) {
         var options ebiten.DrawImageOptions
         options.ColorScale.ScaleAlpha(alpha)
-        fonts.OptionFont.PrintOptions(screen, float64(x), float64(y), font.FontOptions{Scale: scale.ScaleAmount, DropShadow: true, Options: &options}, text)
+        // small, see textsize.go
+        fonts.OptionFont.PrintOptions(screen, float64(x), settingsTextY(fonts.OptionFont, y), settingsText(&options), text)
     }
 
     // caption

@@ -7,7 +7,6 @@ import (
     "image/color"
 
     "github.com/kazzmir/master-of-magic/lib/lbx"
-    "github.com/kazzmir/master-of-magic/lib/font"
     "github.com/kazzmir/master-of-magic/lib/coroutine"
     fontslib "github.com/kazzmir/master-of-magic/game/magic/fonts"
     "github.com/kazzmir/master-of-magic/game/magic/util"
@@ -49,7 +48,8 @@ func addCheckbox(group *uilib.UIElementGroup, fonts *fontslib.SettingsFonts, get
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             var options ebiten.DrawImageOptions
             options.ColorScale.ScaleAlpha((*getAlpha)())
-            fonts.OptionFont.PrintOptions(screen, float64(checkboxRect.Max.X + 6), float64(checkboxRect.Min.Y - 2), font.FontOptions{Scale: scale.ScaleAmount, DropShadow: true, Options: &options}, label)
+            // small, see textsize.go
+            fonts.OptionFont.PrintOptions(screen, float64(checkboxRect.Max.X + 6), settingsTextY(fonts.OptionFont, checkboxRect.Min.Y - 2), settingsText(&options), label)
         },
     })
 }
@@ -114,7 +114,7 @@ func MakeSettingsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lb
 
             var options ebiten.DrawImageOptions
             options.ColorScale.ScaleAlpha(getAlpha())
-            fonts.OptionFont.PrintOptions(screen, float64(rect.Min.X + 6), float64(rect.Min.Y + 3), font.FontOptions{Scale: scale.ScaleAmount, DropShadow: true, Options: &options}, "Keys")
+            fonts.OptionFont.PrintOptions(screen, float64(rect.Min.X + 6), settingsTextY(fonts.OptionFont, rect.Min.Y + 3), settingsText(&options), "Keys")
         },
     })
 
@@ -123,7 +123,7 @@ func MakeSettingsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lb
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             var options ebiten.DrawImageOptions
             options.ColorScale.ScaleAlpha(getAlpha())
-            fonts.OptionFont.PrintOptions(screen, 30, 40, font.FontOptions{Scale: scale.ScaleAmount, DropShadow: true, Options: &options}, fmt.Sprintf("Volume: %02d%%", int(musicSettings.GetVolume() * 100)))
+            fonts.OptionFont.PrintOptions(screen, 30, settingsTextY(fonts.OptionFont, 40), settingsText(&options), fmt.Sprintf("Volume: %02d%%", int(musicSettings.GetVolume() * 100)))
         },
     })
 
