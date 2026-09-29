@@ -105,6 +105,8 @@ type HudFonts struct {
     DefenderName *font.StyledFont
     // the numbers that rise from a unit that is hurt, see damagenumbers.go
     Damage *font.StyledFont
+    // the box of the unit under the mouse, see unitinfo.go
+    UnitInfo *font.StyledFont
     Palette color.Palette
     // the fonts of the game as they are in its data, for styles that are made later
     LbxFonts []*font.LbxFont
@@ -150,6 +152,7 @@ func makeHudFonts(cache *lbx.LbxCache, lbxFonts []*font.LbxFont, attackerBanner 
         AttackerName: makeName(attackerBanner),
         DefenderName: makeName(defenderBanner),
         Damage: makeDamageFont(lbxFonts, palette),
+        UnitInfo: makeUnitInfoFont(lbxFonts, palette),
         Palette: palette,
         LbxFonts: lbxFonts,
     }
@@ -177,20 +180,14 @@ func (combat *CombatScreen) drawHudHealthBar(screen *ebiten.Image, unit *ArmyUni
     }
 
     hud := combat.Fonts.Hud
-    maxHealth := unit.GetMaxHealth()
-    health := unit.GetHealth()
-    if hud == nil || maxHealth <= 0 || health <= 0 {
+    if hud == nil {
         return
     }
 
-    length := health * hudHealthBarLength / maxHealth - 1
-    barColor := hud.Palette[hudBarRed]
-    if length >= hudHealthGreenLength {
-        barColor = hud.Palette[hudBarGreen]
-    } else if length >= hudHealthYellowLength {
-        barColor = hud.Palette[hudBarYellow]
+    length, barColor, ok := hud.healthBar(unit)
+    if !ok {
+        return
     }
 
-    // the line runs from its first pixel to its last, so it is one longer than the length
-    vector.FillRect(screen, float32(scale.Scale(hudHealthBarX)), float32(scale.Scale(hudHealthBarY)), float32(scale.Scale(length + 1)), float32(scale.Scale(1)), barColor, false)
+    vector.FillRect(screen, float32(scale.Scale(hudHealthBarX)), float32(scale.Scale(hudHealthBarY)), float32(scale.Scale(length)), float32(scale.Scale(1)), barColor, false)
 }

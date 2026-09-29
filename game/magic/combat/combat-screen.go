@@ -3266,6 +3266,11 @@ func (combat *CombatScreen) DrawHighlightedTile(screen *ebiten.Image, x int, y i
 }
 
 func (combat *CombatScreen) ShowUnitInfo(screen *ebiten.Image, unit *ArmyUnit){
+    // the box of the original, see unitinfo.go
+    if combat.showUnitInfoOriginal(screen, unit) {
+        return
+    }
+
     x1 := 255 - 1
     y1 := 5
     width := 65
