@@ -43,6 +43,12 @@ func MakeUpdateUnitColorsFunc(banner data.BannerType) util.ImageTransformFunc {
             case data.BannerBrown: baseColor = color.RGBA{R: 0xce, G: 0x65, B: 0x00, A: 0xff}
         }
 
+        if BannerTones {
+            // every green keeps how light and how pale it is, see bannertones.go
+            original.Palette = BannerTonesOf(original.Palette, baseColor)
+            return original
+        }
+
         light := float64(10)
         original.Palette = util.ClonePalette(original.Palette)
         for i := 0; i < 4; i++ {
