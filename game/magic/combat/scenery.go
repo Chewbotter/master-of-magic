@@ -490,9 +490,14 @@ func makeScenery(width int, height int, landscape CombatLandscape, plane data.Pl
     treePool := makeSceneryPool(set, "tree", lbx, sceneryTreeIndex, sceneryPictures)
     rockPool := makeSceneryPool(set, "rock", lbx, sceneryRockIndex, sceneryPictures)
 
-    trees := treeCount(landscape, zone.Ground)
-    out = append(out, scatterTrees(trees, treePool, zone, originalArea(), ground)...)
-    out = append(out, scatterTrees(trees * sceneryBeyondScreen(width, height), treePool, zone, beyondArea(width, height), ground)...)
+    if ForestWoods && zone.Ground.Forest && ground != nil {
+        // woods and clearings, see forest.go
+        out = append(out, makeWoods(treePool, zone, ground)...)
+    } else {
+        trees := treeCount(landscape, zone.Ground)
+        out = append(out, scatterTrees(trees, treePool, zone, originalArea(), ground)...)
+        out = append(out, scatterTrees(trees * sceneryBeyondScreen(width, height), treePool, zone, beyondArea(width, height), ground)...)
+    }
 
     rocks := rockCount(landscape, zone.Ground)
     out = append(out, scatterRocks(rocks, rockPool, zone, originalArea(), ground)...)

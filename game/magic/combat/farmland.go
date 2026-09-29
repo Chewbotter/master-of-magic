@@ -33,7 +33,6 @@ package combat
 
 import (
     "image"
-    "math"
     "math/rand/v2"
 
     "github.com/kazzmir/master-of-magic/game/magic/mod"
@@ -93,16 +92,7 @@ func farmCrops(landscape CombatLandscape, zone ZoneType) bool {
 
 // a number for a place that changes slowly from place to place, -1 to 1
 func farmNoise(cgx int, cgy int, seed uint32) float64 {
-    x := float64(cgx) / farmDirtPatch
-    y := float64(cgy) / farmDirtPatch
-    beforeX := int(math.Floor(x))
-    beforeY := int(math.Floor(y))
-    partX := slopeSmooth(x - float64(beforeX))
-    partY := slopeSmooth(y - float64(beforeY))
-
-    top := coastNoise(beforeX, beforeY, seed) * (1 - partX) + coastNoise(beforeX + 1, beforeY, seed) * partX
-    bottom := coastNoise(beforeX, beforeY + 1, seed) * (1 - partX) + coastNoise(beforeX + 1, beforeY + 1, seed) * partX
-    return top * (1 - partY) + bottom * partY
+    return patchNoise(cgx, cgy, farmDirtPatch, seed)
 }
 
 // lays the fields over the ground, after the coast and the river
