@@ -251,9 +251,9 @@ func TestFences(test *testing.T) {
             if !crop && !road {
                 test.Fatalf("a fence at %+v with no plot or road beside it", place)
             }
-            // not behind a house
-            if ground.builtAt(place.Cgx, place.Cgy) {
-                test.Fatalf("a fence behind the house at %+v", place)
+            // not at a house
+            if ground.builtAt(x1, y1) || ground.builtAt(x2, y2) {
+                test.Fatalf("a fence at the house at %+v", place)
             }
         }
 

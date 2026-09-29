@@ -18,9 +18,10 @@ package combat
 // a closed box or three edges of a closed box) since this looks unintentional"): no cell has
 // fences on more than fenceCellSides of its four sides.
 //
-// NOT BEHIND A HOUSE (user: "fences appear over the top of houses"): a fence on one of the two far
+// NOT AT A HOUSE (user: "fences appear over the top of houses"): a fence on one of the two far
 // sides of the cell of a house would be drawn over the house, which is drawn from the far corner
-// of its cell. There is none there. Houses have no fences of their own (first they had them on
+// of its cell, and one on a near side runs into its picture, which is wider than its cell. The
+// four sides of the cell of a house have none. Houses have no fences of their own (first they had them on
 // their two near sides; user: "no special rule about fences being near houses").
 //
 // Fences are for the look: they cost nothing and block nothing.
@@ -139,8 +140,9 @@ func (fences *fenceSet) add(place fencePlace) bool {
     if fences.sidesOf(x1, y1) >= fenceCellSides || fences.sidesOf(x2, y2) >= fenceCellSides {
         return false
     }
-    // not behind a house: the sides are kept under the cell they are the far sides of
-    if fences.ground.builtAt(place.Cgx, place.Cgy) {
+    // not at a house: behind it a fence would be drawn over it, and its picture is wider than
+    // its cell, so a fence on a near side would run into it
+    if fences.ground.builtAt(x1, y1) || fences.ground.builtAt(x2, y2) {
         return false
     }
     // not across a road
