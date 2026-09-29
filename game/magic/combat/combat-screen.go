@@ -3275,7 +3275,7 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
         return CombatStateRunning
     }
 
-    if leftClick && combat.MouseState == CombatMeleeAttackOk && inputmanager.LeftClick() {
+    if leftClick && (combat.MouseState == CombatMeleeAttackOk || combat.MouseState == CombatRangeAttackOk) && inputmanager.LeftClick() {
         // the cursor is out of the way of the fight, see cursorhide.go
         combat.hideCursor()
     }

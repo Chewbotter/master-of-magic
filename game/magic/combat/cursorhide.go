@@ -1,8 +1,9 @@
 package combat
 
-// The cursor goes away after a click that sends a unit to strike (the crossed swords), so the
-// fight is not under it, and is back when the mouse moves. Not in the original (user,
-// 2026-09-29). With the modern controls.
+// The cursor goes away after a click that sends a unit to strike (the crossed swords) or to
+// shoot (the arrow), so the fight is not under it, and is back when the mouse moves. Not in the
+// original (user, 2026-09-29; the shots a little later: "let's extend it to ranged attacks,
+// too"). With the modern controls.
 
 import (
     "image"
@@ -25,7 +26,7 @@ type cursorHide struct {
     Start uint64
 }
 
-// the click that starts a strike
+// the click that starts a strike or a shot
 func (combat *CombatScreen) hideCursor() {
     if !CursorHidesOnAttack || !display.ModernControls() {
         return

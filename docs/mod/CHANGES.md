@@ -62,7 +62,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - What is marked on the ground (where a unit can go, the outlines of cells) shows over corpses. While Tab is held the corpses fade away.
 - The area the selected unit can move to is shown. A click on a unit picks it; WAIT goes through the units by where they stand.
 - A chevron marks the unit whose turn it is.
-- Cursors sit on the tile they act on and are drawn on the pixels of the field. After a click that sends a unit to strike the cursor fades away until the mouse moves.
+- Cursors sit on the tile they act on and are drawn on the pixels of the field. After a click that sends a unit to strike or to shoot the cursor fades away until the mouse moves.
 - Figures of a unit move and strike each with timing of their own.
 - A strike is a swing of steps: back, forward, the blow where the swing lands. Units that fight across a corner close in. With the setting "Single strikes" off, the simpler strike of before.
 - Killed figures are thrown back and fall; corpses stay on the field, gray, and the oldest fade when a tile has more than 4.
