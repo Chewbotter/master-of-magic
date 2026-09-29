@@ -874,7 +874,8 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
                 // the leaf is made by the game, see pageturn.go. it shows flipLeftSide while it is
                 // on the right and flipRightSide on the left
                 // turned back it goes from the left to the right, as in a mirror
-                turned := easeTurn(pageTurnPart(animationIndex - bookFlipIndex, PageTurnTicks))
+                // clear of the tabs in the corners from its first tick, see pagetab.go
+                turned := turnedAt(pageTurnPart(animationIndex - bookFlipIndex, PageTurnTicks), researchLeaf().Width, researchTabReach)
                 drawLeaf(screen, researchLeaf(), getResearchLeafFace(flipLeftSide, true), getResearchLeafFace(flipRightSide, false), turned, bookFlipReverse, getAlpha(), researchPixel)
             } else if !ProceduralPageTurn && bookFlipIndex > 0 && (animationIndex - bookFlipIndex) / bookFlipSpeed < uint64(len(bookFlip)) {
                 index := (animationIndex - bookFlipIndex) / bookFlipSpeed
@@ -949,20 +950,27 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
         }
     }
 
+    // the mouse is over a tab, see pagetab.go
+    leftTurnOver := false
+    rightTurnOver := false
+
     // left page turn
     leftTurn, _ := imageCache.GetImage("scroll.lbx", 7, 0)
     leftRect := util.ImageRect(15, 9, leftTurn)
     elements = append(elements, &uilib.UIElement{
         Rect: leftRect,
+        Inside: func(this *uilib.UIElement, x int, y int){
+            leftTurnOver = true
+        },
+        NotInside: func(this *uilib.UIElement){
+            leftTurnOver = false
+        },
         LeftClick: func(this *uilib.UIElement){
             doLeftPageTurn()
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             if hasPreviousPage(showLeftPage){
-                var options ebiten.DrawImageOptions
-                options.GeoM.Translate(float64(leftRect.Min.X), float64(leftRect.Min.Y))
-                options.ColorScale.ScaleAlpha(getAlpha())
-                scale.DrawScaled(screen, leftTurn, &options)
+                drawPageTab(screen, leftTurn, leftRect.Min, getAlpha(), leftTurnOver && !flipping)
             }
         },
     })
@@ -972,15 +980,18 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
     rightRect := util.ImageRect(289, 9, rightTurn)
     elements = append(elements, &uilib.UIElement{
         Rect: rightRect,
+        Inside: func(this *uilib.UIElement, x int, y int){
+            rightTurnOver = true
+        },
+        NotInside: func(this *uilib.UIElement){
+            rightTurnOver = false
+        },
         LeftClick: func(this *uilib.UIElement){
             doRightPageTurn()
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             if hasNextPage(showRightPage){
-                var options ebiten.DrawImageOptions
-                options.GeoM.Translate(float64(rightRect.Min.X), float64(rightRect.Min.Y))
-                options.ColorScale.ScaleAlpha(getAlpha())
-                scale.DrawScaled(screen, rightTurn, &options)
+                drawPageTab(screen, rightTurn, rightRect.Min, getAlpha(), rightTurnOver && !flipping)
             }
         },
     })
@@ -1873,7 +1884,8 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
 
             if flipping && ProceduralPageTurn {
                 // the leaf is made by the game, see pageturn.go
-                turned := easeTurn(pageTurnPart(ui.Counter - bookFlipIndex, PageTurnTicks))
+                // clear of the tabs in the corners from its first tick, see pagetab.go
+                turned := turnedAt(pageTurnPart(ui.Counter - bookFlipIndex, PageTurnTicks), castBookRightPage.Dx(), castTabReach)
                 if CaptureFlip >= 0 {
                     turned = float64(CaptureFlip) / captureFlipSteps
                 }
@@ -2059,12 +2071,22 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         setupSpells(*currentPage)
     })
 
+    // the mouse is over a tab, see pagetab.go
+    pageTurnRightOver := false
+    pageTurnLeftOver := false
+
     pageTurnRight, _ := imageCache.GetImage("spells.lbx", 2, 0)
     pageTurnRightRect := image.Rect(0, 0, pageTurnRight.Bounds().Dx(), pageTurnRight.Bounds().Dy()).Add(image.Pt(268, 14))
     elements = append(elements, &uilib.UIElement{
         Layer: 1,
         Order: 1,
         Rect: pageTurnRightRect,
+        Inside: func(this *uilib.UIElement, x int, y int){
+            pageTurnRightOver = true
+        },
+        NotInside: func(this *uilib.UIElement){
+            pageTurnRightOver = false
+        },
         LeftClick: func(this *uilib.UIElement){
             if *currentPage + 2 < len(spellPages) && !flipping {
                 flipping = true
@@ -2085,10 +2107,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             if *currentPage + 2 < len(spellPages) {
-                var options ebiten.DrawImageOptions
-                options.ColorScale.ScaleAlpha(getAlpha())
-                options.GeoM.Translate(float64(pageTurnRightRect.Min.X), float64(pageTurnRightRect.Min.Y))
-                scale.DrawScaled(screen, pageTurnRight, &options)
+                drawPageTab(screen, pageTurnRight, pageTurnRightRect.Min, getAlpha(), pageTurnRightOver && !flipping)
             }
         },
     })
@@ -2099,6 +2118,12 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         Rect: pageTurnLeftRect,
         Layer: 1,
         Order: 1,
+        Inside: func(this *uilib.UIElement, x int, y int){
+            pageTurnLeftOver = true
+        },
+        NotInside: func(this *uilib.UIElement){
+            pageTurnLeftOver = false
+        },
         LeftClick: func(this *uilib.UIElement){
             if *currentPage >= 2 && !flipping {
                 flipping = true
@@ -2119,10 +2144,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             if *currentPage > 0 {
-                var options ebiten.DrawImageOptions
-                options.ColorScale.ScaleAlpha(getAlpha())
-                options.GeoM.Translate(float64(pageTurnLeftRect.Min.X), float64(pageTurnLeftRect.Min.Y))
-                scale.DrawScaled(screen, pageTurnLeft, &options)
+                drawPageTab(screen, pageTurnLeft, pageTurnLeftRect.Min, getAlpha(), pageTurnLeftOver && !flipping)
             }
 
         },
