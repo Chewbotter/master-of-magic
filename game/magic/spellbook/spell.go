@@ -32,6 +32,8 @@ type Page struct {
     ForceRender bool
     // true if the text for the spell should always use normal font rather than alien
     IsResearch bool
+    // the page is a right page of the book for casting, see castCostRight in bookplaces.go
+    Right bool
 }
 
 func magicToOrder(magic data.MagicType) int {
@@ -70,6 +72,7 @@ func computeHalfPages(spells Spells, max int) []Page {
                 halfPages = append(halfPages, Page{
                     Title: section.Name(),
                     Spells: pageSpells,
+                    Right: len(halfPages) % 2 == 1,
                 })
             }
         }
@@ -1526,11 +1529,16 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             textColorOptions.ColorScale = textColorScale
 
             costText := fmt.Sprintf("%v MP", costRemaining)
+            // where the cost ends, see bookplaces.go
+            costRight := float64(castCostRight)
+            if page.Right {
+                costRight = castCostRightPage
+            }
             printName := func(use *font.Font, colors ebiten.ColorScale) {
                 var nameOptions ebiten.DrawImageOptions
                 nameOptions.ColorScale = colors
                 use.PrintOptions(screen, spellX, spellY, font.FontOptions{Options: &nameOptions, Scale: scale.ScaleAmount}, spell.Name)
-                use.PrintOptions(screen, spellX + castCostRight, spellY, font.FontOptions{Options: &nameOptions, Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, costText)
+                use.PrintOptions(screen, spellX + costRight, spellY, font.FontOptions{Options: &nameOptions, Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, costText)
             }
 
             if !OriginalBookColors {
@@ -1558,7 +1566,9 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
 
             subLines := 6
 
-            part1 := gibberishPart.SubImage(image.Rect(int(nameLength), partIndex * partHeight, int(nameLength) + gibberishPart.Bounds().Dx() - int(nameLength + mpLength), partIndex * partHeight + subLines)).(*ebiten.Image)
+            // the lines of the page end before the cost, see bookplaces.go
+            linesEnd := max(int(nameLength), int(costRight - mpLength) - castCostGap)
+            part1 := gibberishPart.SubImage(image.Rect(int(nameLength), partIndex * partHeight, linesEnd, partIndex * partHeight + subLines)).(*ebiten.Image)
 
             part1Options := options2
             part1Options.GeoM.Translate(nameLength, 0)

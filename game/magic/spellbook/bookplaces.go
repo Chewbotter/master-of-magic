@@ -25,6 +25,13 @@ var castBookRightPage = image.Rect(143, 3, 273, 153)
 // Spellbook.c SmlBook_Compose). upstream had 124, which is the edge of the page (user,
 // 2026-09-29: "a buffer before the edge of the page")
 const castCostRight = 122
+// on a right page a pixel less: the edge of the page is closer there (user, 2026-09-29: "looks
+// right on the left page, and like it should be scooted in one more pixel on the right page")
+const castCostRightPage = 121
+// the lines of the page end this many pixels before the cost. the original clears them from 4
+// before it (ReMoM Spellbook.c SmlBook_Compose); upstream ended them where it took the cost to
+// start, which was in the cost once that was moved in
+const castCostGap = 3
 
 // where the letters of a page start, in the picture of the book
 var castBookLeftContent = image.Pt(15, 5)
