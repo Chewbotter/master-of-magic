@@ -21,8 +21,9 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - When you send a stack walking, the camera makes one move to where the stack will stop and waits for it there (modern controls).
 - Fog as in the original: land is unexplored (black) or shown as it is. Explored land that no unit or city sees at the moment is not darkened.
 - The start of a game reveals the original's area around the first city, 5 by 5 tiles without the corners.
-- Newly revealed land fades in, one art pixel at a time.
+- Newly revealed land fades in, one art pixel at a time, and starts to when a unit sets out for the next tile, not when it has arrived.
 - A left click on one of your stacks selects it (modern controls). Shift and a left click sends the selected stack there.
+- A move of more than one tile takes two clicks (modern controls): the first shows the path, the second on the same tile sends the stack. A tile next to the stack takes one click.
 - The cursor is a red X over a tile the selected stack can not go to, and a click there does nothing (modern controls). No red flash of the screen.
 - Of the selected stack only the colored square blinks, the unit stays visible (modern controls). The blinking starts anew with every selection.
 - Text of the panel (gold, mana, income) with the original's black outlines.

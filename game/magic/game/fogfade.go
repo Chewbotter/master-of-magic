@@ -21,6 +21,7 @@ import (
     "time"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
+    playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
 
     "github.com/hajimehoshi/ebiten/v2"
@@ -41,6 +42,10 @@ var FogFadeProbe float64 = -1
 
 // development: logs the number of fading tiles every frame they are drawn
 var FogFadeTrace = false
+
+// true: what a stack of the player sees from the tile it steps on is revealed when the step starts,
+// so the black fades while the stack walks. false: when the stack has arrived, as upstream
+const FogLiftsAtStepStart = true
 
 // how much fog of the last frame and of tiles that fade is kept before it is thrown away
 const fogFadeMapsKept = 8
@@ -545,4 +550,13 @@ func (frame *fogFadeFrame) DrawTile(screen *ebiten.Image, tileX int, tileY int, 
     options.ColorScale = ebiten.ColorScale{}
     scale.DrawScaled(screen, picture, options)
     return true
+}
+
+// called when a stack has been put on the next tile of its path and is about to be shown walking there
+func (game *Game) liftFogForStep(player *playerlib.Player, stack *playerlib.UnitStack) {
+    if !FogLiftsAtStepStart {
+        return
+    }
+
+    player.LiftFogSquare(stack.X(), stack.Y(), stack.GetSightRange(), stack.Plane())
 }

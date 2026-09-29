@@ -3738,6 +3738,7 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
             if encounter != nil {
                 if game.confirmLairEncounter(yield, encounter) {
                     stack.Move(step.X - stack.X(), step.Y - stack.Y(), terrainCost, game.Model.GetNormalizeCoordinateFunc())
+                    game.liftFogForStep(player, stack)
                     game.showMovement(yield, oldX, oldY, stack, true)
                     player.LiftFogSquare(stack.X(), stack.Y(), stack.GetSightRange(), stack.Plane())
                     game.discoverWizards(yield)
@@ -3762,6 +3763,7 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
             mergeStack = player.FindStack(mapUse.WrapX(step.X), step.Y, stack.Plane())
 
             stack.Move(step.X - stack.X(), step.Y - stack.Y(), terrainCost, game.Model.GetNormalizeCoordinateFunc())
+            game.liftFogForStep(player, stack)
             game.showMovement(yield, oldX, oldY, stack, true)
             player.LiftFogSquare(stack.X(), stack.Y(), stack.GetSightRange(), stack.Plane())
             metWizard := game.discoverWizards(yield)
@@ -3951,6 +3953,13 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
                     newX, newY = game.ScreenToTile(float64(mouseX), float64(mouseY))
                     // log.Printf("Click at %v, %v -> %v, %v", mouseX, mouseY, newX, newY)
                     newX = game.Model.CurrentMap().WrapX(newX)
+
+                    // modern controls: the first click on a tile further away plans the move, see moveconfirm.go
+                    if (newX != oldX || newY != oldY) && !game.clickMoves(player, stack, newX, newY) {
+                        newX = oldX
+                        newY = oldY
+                        leftClick = false
+                    }
                 }
             }
 
@@ -8338,6 +8347,8 @@ type Overworld struct {
     Fog data.FogMap
     ShowAnimation bool
     FogBlack *ebiten.Image
+    // the path of a move of the selected stack that is not confirmed yet
+    PlannedPath worldPath
 }
 
 func (overworld *Overworld) ToCameraCoordinates(x int, y int) (int, int) {
@@ -8517,7 +8528,16 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
     }
 
     // draw current path on top of fog
-    if overworld.SelectedStack != nil && len(overworld.SelectedStack.CurrentPath) > 0 {
+    var shownPath worldPath
+    if overworld.SelectedStack != nil {
+        shownPath = overworld.SelectedStack.CurrentPath
+        if len(overworld.PlannedPath) > 0 {
+            // a move that waits for its second click, see moveconfirm.go
+            shownPath = overworld.PlannedPath
+        }
+    }
+
+    if len(shownPath) > 0 {
         boot, _ := overworld.ImageCache.GetImage("compix.lbx", 72, 0)
         var options ebiten.DrawImageOptions
 
@@ -8526,7 +8546,7 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
         bootGeom.Translate(float64(boot.Bounds().Dx()) / -2, float64(boot.Bounds().Dy()) / -2)
         bootGeom.Concat(geom)
 
-        for pointI, point := range overworld.SelectedStack.CurrentPath {
+        for pointI, point := range shownPath {
             for _, offset := range mapXOffsets {
                 cx, cy := overworld.ToCameraCoordinates(point.X, point.Y)
                 x, y := convertTileCoordinates(cx + offset, cy)
@@ -8659,6 +8679,7 @@ func (game *Game) DrawGame(screen *ebiten.Image){
         Fog: fog,
         ShowAnimation: game.State == GameStateUnitMoving,
         FogBlack: game.GetFogImage(),
+        PlannedPath: game.plannedPath(selectedStack),
     }
 
     if game.WatchMode {
