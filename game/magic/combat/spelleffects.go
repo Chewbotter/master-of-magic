@@ -137,6 +137,8 @@ type spellEffects struct {
 
     // what is left of the particles a bolt is to give off, by bolt
     Owed map[*Projectile]float64
+    // the tile every unit that walks was last over, see splash.go
+    Wading map[*ArmyUnit]image.Point
 
     Pixel *ebiten.Image
 
@@ -434,6 +436,9 @@ func (combat *CombatScreen) updateSpellEffects() {
             delete(effects.Owed, projectile)
         }
     }
+
+    // the water of a river under the units that walk into it, see splash.go
+    combat.splashTick()
 
     effects.Particles.step(seconds)
 
