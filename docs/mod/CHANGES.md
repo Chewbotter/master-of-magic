@@ -57,6 +57,8 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Large pieces of ground over 2 by 2 tiles, such as a cluster of rocks or a patch of dirt, each once per battle at most. For the look only.
 - Units the computer controls act at the same time, and decide as they would in turn.
 - Space toggles auto combat; the AUTO button is lit while it is on.
+- With the modern controls the buttons of a battle are AUTO, STAY and END in the place of WAIT, AUTO and DONE: STAY ends the turn of the selected unit, END the turn of all your units that still have theirs.
+- What is marked on the ground (where a unit can go, the outlines of cells) shows over corpses. While Tab is held the corpses fade away.
 - The area the selected unit can move to is shown. A click on a unit picks it; WAIT goes through the units by where they stand.
 - A chevron marks the unit whose turn it is.
 - Cursors sit on the tile they act on and are drawn on the pixels of the field.

@@ -289,6 +289,10 @@ type CombatScreen struct {
     moveArea *moveAreaTiles
     moveShapes *moveAreaShapes
     moveLayer *ebiten.Image
+    // what is marked on the ground, for the corpses. see groundmarks.go
+    marks groundMarks
+    // buttons of the combat bar with words of their own, see hudbuttons.go
+    madeButtons map[string]*madeButton
     // ticks the battle has been shown after its end, see combatend.go
     endTicks int
     // Escape leaves the battle. false in the game, set by the debug battles of the start screen.
@@ -1613,9 +1617,16 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
     buttonX := float64(144)
     buttonY := float64(168)
 
+    var makeButtonOf func(buttons []*ebiten.Image, buttonDisabled *ebiten.Image, lbxIndex int, x int, y int, action func(), alterColor func(*colorm.ColorM)) *uilib.UIElement
+
     makeButton2 := func(lbxIndex int, buttonDisabledIndex, x int, y int, action func(), alterColor func(*colorm.ColorM)) *uilib.UIElement {
         buttons, _ := combat.ImageCache.GetImages("compix.lbx", lbxIndex)
         buttonDisabled, _ := combat.ImageCache.GetImage("compix.lbx", buttonDisabledIndex, 0)
+        return makeButtonOf(buttons, buttonDisabled, lbxIndex, x, y, action, alterColor)
+    }
+
+    // a button of these pictures: not pressed and pressed, and when the buttons can not be used
+    makeButtonOf = func(buttons []*ebiten.Image, buttonDisabled *ebiten.Image, lbxIndex int, x int, y int, action func(), alterColor func(*colorm.ColorM)) *uilib.UIElement {
         rect := image.Rect(0, 0, buttons[0].Bounds().Dx(), buttons[0].Bounds().Dy()).Add(image.Point{int(buttonX) + buttons[0].Bounds().Dx() * x, int(buttonY) + buttons[0].Bounds().Dy() * y})
         index := 0
         if lbxIndex == spellButtonIndex {
@@ -1785,10 +1796,21 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
         }
     }))
 
+    // the right column with the modern controls: AUTO, STAY, END. see hudbuttons.go
+    autoRow, doneRow := 1, 2
+    stayButton := combat.makeWordButton("STAY")
+    endButton := combat.makeWordButton("END")
+    modern := modernButtons() && stayButton != nil && endButton != nil
+    if modern {
+        autoRow, doneRow = 0, 1
+    }
+
     // wait
-    elements = append(elements, makeButton(2, 24, 1, 0, func(){
-        combat.Model.NextUnit()
-    }))
+    if !modern {
+        elements = append(elements, makeButton(2, 24, 1, 0, func(){
+            combat.Model.NextUnit()
+        }))
+    }
 
     // info
     elements = append(elements, makeButton(20, 25, 0, 1, func(){
@@ -1801,7 +1823,7 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
     }))
 
     // auto
-    autoElement := makeButton2(4, 26, 1, 1, func(){
+    autoElement := makeButton2(4, 26, 1, autoRow, func(){
         if combat.ExtraControl {
             combat.Events <- &CombatDoSingleAuto{}
             return
@@ -1838,9 +1860,17 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
     }))
 
     // done
-    elements = append(elements, makeButton(3, 28, 1, 2, func(){
-        combat.Model.DoneTurn()
-    }))
+    if modern {
+        plain := func(_ *colorm.ColorM){}
+        elements = append(elements, makeButtonOf(stayButton.Frames, stayButton.Disabled, -1, 1, doneRow, func(){
+            combat.Model.DoneTurn()
+        }, plain))
+        elements = append(elements, makeButtonOf(endButton.Frames, endButton.Disabled, -1, 1, doneRow + 1, combat.endPlayerTurn, plain))
+    } else {
+        elements = append(elements, makeButton(3, 28, 1, doneRow, func(){
+            combat.Model.DoneTurn()
+        }))
+    }
 
     ui.SetElementsFromArray(elements)
 
@@ -2450,6 +2480,8 @@ func (combat *CombatScreen) updateHighlightedUnit() {
 
 func (combat *CombatScreen) UpdateAnimations(){
     combat.updateHighlightedUnit()
+    // corpses are gone while Tab is held, see groundmarks.go
+    combat.updateCorpseHide()
 
     // particles and what else goes with spells, see spelleffects.go
     combat.updateSpellEffects()
@@ -4071,6 +4103,17 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
     // the blue outline of the cell under the cursor, see animation.go. black over a cell out of
     // reach, see movearea.go
     combat.drawCursorOutline(screen)
+
+    // what is marked on the ground once more on a picture of its own, for the corpses that lie
+    // on it. see groundmarks.go
+    marksLayer := combat.startGroundMarks(screen)
+    if marksLayer != nil {
+        combat.drawMoveArea(marksLayer)
+        combat.drawCursorOutline(marksLayer)
+        if combat.Model.SelectedUnit != nil && isVisible(combat.Model.SelectedUnit) && !combat.Model.SelectedUnit.Moving {
+            combat.drawCellOutline(marksLayer, combat.Model.SelectedUnit.X, combat.Model.SelectedUnit.Y, true)
+        }
+    }
 
     if combat.Model.SelectedUnit != nil && isVisible(combat.Model.SelectedUnit) {
         // if the unit is currently selecting a spell, then don't draw the movement path

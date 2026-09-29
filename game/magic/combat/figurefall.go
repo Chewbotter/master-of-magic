@@ -339,11 +339,17 @@ func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawabl
                     red, green, blue := corpseTintParts(body.Tint, corpseTintStrength * darkened)
                     colors.Scale(red, green, blue, 1)
                 }
-                shows := corpseShows(body, combat.Counter)
+                // gone while Tab is held, see groundmarks.go
+                shows := corpseShows(body, combat.Counter) * combat.corpsesShow()
+                if shows <= 0 {
+                    return
+                }
                 if shows < 1 {
                     colors.Scale(shows, shows, shows, shows)
                 }
                 colorm.DrawImage(screen, picture, colors, &options)
+                // what is marked on the ground lies over it, see groundmarks.go
+                combat.drawMarksOnCorpse(screen, picture, options.GeoM, shows)
 
                 // the blood on it stays red, see corpsesplat.go
                 combat.drawCorpseSplats(screen, body, x + offsetX, y + offsetY, shows, fieldBrightness(int(x), int(y)))
