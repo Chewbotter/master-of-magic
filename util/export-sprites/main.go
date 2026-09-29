@@ -497,6 +497,14 @@ environment/<set>/<name>_<frame>.png
         Other       mud, and pieces the game does not use
     Keep the size of a changed picture: most are put in place by a fixed point in them.
 
+    BIOMES, kinds of a landscape with pictures of their own. Not in the original game.
+        Forest, Swamp, Hills      kinds of Grass: a forest, a swamp, hills of the world map
+        Volcano, Snowy Mountain   kinds of Mountain: a volcano, a mountain next to tundra
+        River, Shore, Lake        kinds of Grass, NOT SHOWN BY THE GAME YET
+    Their folders start as copies of the folder of their landscape, to be painted over. A battle
+    of a biome looks for a picture in mod\environment\<biome>, then in the folder of the
+    landscape, then takes the game's. _source.txt in each folder says more.
+
 spells/<name>/<frame>.png
     the pictures of the spells of battles, in folders with their names. They are the same pictures
     as in archives/cmbtfx, specfx and cmbmagic, easier to find. _source.txt says which spells show
@@ -579,6 +587,8 @@ func main() {
     cursorPictures := exportCursors(*dataPath, *outPath)
     spellPictures := exportSpells(*dataPath, *outPath)
     environmentPictures := exportEnvironment(*dataPath, *outPath)
+    // the folders of the biomes start as copies of the folders of their landscapes, see biomes.go
+    environmentPictures += exportBiomes(*outPath)
 
     err = exportPalette(*outPath)
     if err != nil {

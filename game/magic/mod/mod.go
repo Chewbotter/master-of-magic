@@ -252,6 +252,12 @@ func framePaths(archive string, entry int, frame int) []string {
         out = append(out, spell)
     }
 
+    // the biome of the battle before its landscape, see biomes.go
+    ofBiome := biomeFramePath(archive, entry, frame)
+    if ofBiome != "" {
+        out = append(out, ofBiome)
+    }
+
     // the places of battles by name, see environment.go
     environment := environmentFramePath(archive, entry, frame)
     if environment != "" {

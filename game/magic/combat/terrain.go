@@ -49,6 +49,9 @@ type ZoneGround struct {
     // the battle itself: without a road there, the battlefield has none
     Roads [9]bool
     EnchantedRoads bool
+    // the kind of the landscape with pictures of its own, one of mod.Biomes. nothing for the plain
+    // landscape. see biomes.go
+    Biome string
 }
 
 // the directions a step goes, as the original's step_delta_cgx and step_delta_cgy: 1 is +y, 2 is -x,
@@ -137,6 +140,8 @@ type BattleGround struct {
     // it adds to a use, by the first picture of the use
     Set string
     Extras map[int]int
+    // the folder of the landscape itself. the same as Set without a biome
+    BaseSet string
     // the large pieces, and the cells that lie under one. see large.go
     Large []LargePiece
     Covered []bool
@@ -250,8 +255,9 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     ground.Picture = make([]int, cells)
     ground.Roads = make([]int, cells)
 
-    // what the replacement folder adds to the pictures of the ground
-    ground.Set = mod.EnvironmentSet(terrainSetLbx(landscape, plane))
+    // what the replacement folder adds to the pictures of the ground, in the folder of the biome
+    ground.BaseSet = mod.EnvironmentSet(terrainSetLbx(landscape, plane))
+    ground.Set = mod.BiomeFolder(zone.Ground.Biome, ground.BaseSet)
     ground.Extras = make(map[int]int)
     for _, role := range mod.GroundRoles {
         extras := mod.CountExtras(ground.Set, role.Name, role.Count)

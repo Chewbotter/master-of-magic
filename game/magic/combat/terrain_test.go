@@ -6,6 +6,7 @@ import (
     "testing"
 
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
 )
 
 func testGround(width int, height int) *BattleGround {
@@ -519,5 +520,38 @@ func TestLargePiecesOnceEach(test *testing.T) {
             test.Fatalf("picture %v", piece.Number)
         }
         numbers[piece.Number] = true
+    }
+}
+
+// a biome is a kind of one landscape and keeps the rules that were there: a forest its trees, hills
+// their raised ground. its added pictures are the ones of its own folder
+func TestBiomes(test *testing.T) {
+    var ground ZoneGround
+    ground.SetBiome(mod.BiomeForest)
+    if !ground.Forest || ground.Hills || ground.Biome != mod.BiomeForest {
+        test.Fatalf("forest: %+v", ground)
+    }
+    ground.SetBiome(mod.BiomeHills)
+    if ground.Forest || !ground.Hills {
+        test.Fatalf("hills: %+v", ground)
+    }
+    ground.SetBiome(mod.BiomeSwamp)
+    if ground.Forest || ground.Hills {
+        test.Fatalf("swamp: %+v", ground)
+    }
+
+    if BiomeLandscape(mod.BiomeVolcano, CombatLandscapeGrass) != CombatLandscapeMountain || BiomeLandscape(mod.BiomeSwamp, CombatLandscapeDesert) != CombatLandscapeGrass || BiomeLandscape("", CombatLandscapeTundra) != CombatLandscapeTundra {
+        test.Fatalf("landscapes of biomes")
+    }
+
+    zone := ZoneType{}
+    zone.Ground.SetBiome(mod.BiomeVolcano)
+    made := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeMountain, 0, zone)
+    if made.Set != "Volcano" || made.BaseSet != "Mountain" {
+        test.Fatalf("folders: %v of %v", made.Set, made.BaseSet)
+    }
+    plain := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeMountain, 0, ZoneType{})
+    if plain.Set != "Mountain" || plain.BaseSet != "Mountain" {
+        test.Fatalf("folders without a biome: %v of %v", plain.Set, plain.BaseSet)
     }
 }

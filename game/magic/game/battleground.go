@@ -9,8 +9,24 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/combat"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/terrain"
 )
+
+// true if one of the 8 tiles around a tile of the world map is of a kind
+func (game *Game) hasNeighbor(mapObject *maplib.Map, x int, y int, kind terrain.TerrainType) bool {
+    for dy := -1; dy <= 1; dy++ {
+        for dx := -1; dx <= 1; dx++ {
+            if dx == 0 && dy == 0 || y + dy < 0 || y + dy >= mapObject.Height() {
+                continue
+            }
+            if mapObject.GetTile(mapObject.WrapX(x + dx), y + dy).Tile.TerrainType() == kind {
+                return true
+            }
+        }
+    }
+    return false
+}
 
 func (game *Game) combatGround(x int, y int, plane data.Plane) combat.ZoneGround {
     mapObject := game.GetMap(plane)
@@ -19,8 +35,14 @@ func (game *Game) combatGround(x int, y int, plane data.Plane) combat.ZoneGround
 
     switch mapObject.GetTile(x, y).Tile.TerrainType() {
         // the original counts a node of nature as forest
-        case terrain.Forest, terrain.NatureNode: out.Forest = true
-        case terrain.Hill: out.Hills = true
+        case terrain.Forest, terrain.NatureNode: out.SetBiome(mod.BiomeForest)
+        case terrain.Hill: out.SetBiome(mod.BiomeHills)
+        case terrain.Swamp: out.SetBiome(mod.BiomeSwamp)
+        case terrain.Volcano: out.SetBiome(mod.BiomeVolcano)
+        case terrain.Mountain:
+            if game.hasNeighbor(mapObject, x, y, terrain.Tundra) {
+                out.SetBiome(mod.BiomeSnowyMountain)
+            }
     }
 
     // a town counts as a road, as it does for the roads of the world map

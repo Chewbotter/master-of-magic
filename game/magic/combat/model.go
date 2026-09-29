@@ -22,6 +22,7 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/setup"
     // playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
 
     "github.com/hajimehoshi/ebiten/v2"
 )
@@ -2393,6 +2394,9 @@ type CombatModel struct {
 }
 
 func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingArmy *Army, landscape CombatLandscape, plane data.Plane, zone ZoneType, influence data.MagicType, overworldX int, overworldY int, events chan CombatEvent) *CombatModel {
+    // the pictures of the battle are the ones of its biome, see biomes.go
+    mod.SetBiome(zone.Ground.Biome)
+
     ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone)
     tiles := makeTiles(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone)
     ground.applyTo(tiles)

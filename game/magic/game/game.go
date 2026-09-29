@@ -4965,6 +4965,8 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     landscape := game.GetCombatLandscape(defenderStack.X(), defenderStack.Y(), defenderStack.Plane())
     // forest, hills and roads for the ground of the battlefield, see battleground.go
     zone.Ground = game.combatGround(defenderStack.X(), defenderStack.Y(), defenderStack.Plane())
+    // a biome is a kind of one landscape, see combat/biomes.go
+    landscape = combat.BiomeLandscape(zone.Ground.Biome, landscape)
 
     // do graphic combat only if a human is involved
     useHuman := attacker.IsHuman() || defender.IsHuman()

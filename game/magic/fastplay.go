@@ -23,6 +23,7 @@ import (
     fontslib "github.com/kazzmir/master-of-magic/game/magic/fonts"
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
     "github.com/kazzmir/master-of-magic/game/magic/mainview"
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
     musiclib "github.com/kazzmir/master-of-magic/game/magic/music"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
@@ -287,8 +288,7 @@ type randomCity struct {
 
 // the ground of a random battle as the world map could give it: on grass land sometimes forest or
 // hills, and roads, always in a town. one in this many
-const RandomBattleForestChance = 3
-const RandomBattleHillsChance = 3
+const RandomBattleBiomeChance = 2
 const RandomBattleRoadChance = 2
 const RandomBattleRoadSideChance = 3
 const RandomBattleEnchantedRoadChance = 4
@@ -296,10 +296,11 @@ const RandomBattleEnchantedRoadChance = 4
 func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.CombatLandscape, combat.ZoneGround) {
     var ground combat.ZoneGround
 
-    if landscape == combat.CombatLandscapeGrass {
-        switch {
-            case rand.N(RandomBattleForestChance) == 0: ground.Forest = true
-            case rand.N(RandomBattleHillsChance) == 0: ground.Hills = true
+    // one battle in RandomBattleBiomeChance is of a biome of its landscape
+    if rand.N(RandomBattleBiomeChance) == 0 {
+        switch landscape {
+            case combat.CombatLandscapeGrass: ground.SetBiome(randomChoose(mod.BiomeForest, mod.BiomeHills, mod.BiomeSwamp))
+            case combat.CombatLandscapeMountain: ground.SetBiome(randomChoose(mod.BiomeVolcano, mod.BiomeSnowyMountain))
         }
     }
 
@@ -322,12 +323,11 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
                 case word == "desert": landscape = combat.CombatLandscapeDesert
                 case word == "mountain": landscape = combat.CombatLandscapeMountain
                 case word == "tundra": landscape = combat.CombatLandscapeTundra
-                case word == "forest":
-                    landscape = combat.CombatLandscapeGrass
-                    ground.Forest = true
-                case word == "hills":
-                    landscape = combat.CombatLandscapeGrass
-                    ground.Hills = true
+                case word == "forest": ground.SetBiome(mod.BiomeForest)
+                case word == "hills": ground.SetBiome(mod.BiomeHills)
+                case word == "swamp": ground.SetBiome(mod.BiomeSwamp)
+                case word == "volcano": ground.SetBiome(mod.BiomeVolcano)
+                case word == "snowy": ground.SetBiome(mod.BiomeSnowyMountain)
                 case word == "roads":
                     for side := range ground.Roads {
                         ground.Roads[side] = true
@@ -343,7 +343,7 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
         }
     }
 
-    return landscape, ground
+    return combat.BiomeLandscape(ground.Biome, landscape), ground
 }
 
 func makeRandomCity() randomCity {

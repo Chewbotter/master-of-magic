@@ -482,7 +482,8 @@ func makeScenery(width int, height int, landscape CombatLandscape, plane data.Pl
 
     lbx := terrainSetLbx(landscape, plane)
 
-    set := mod.EnvironmentSet(lbx)
+    // the pictures that are added are the ones of the biome, see mod/biomes.go
+    set := mod.BiomeFolder(zone.Ground.Biome, mod.EnvironmentSet(lbx))
     treePool := makeSceneryPool(set, "tree", lbx, sceneryTreeIndex, sceneryPictures)
     rockPool := makeSceneryPool(set, "rock", lbx, sceneryRockIndex, sceneryPictures)
 

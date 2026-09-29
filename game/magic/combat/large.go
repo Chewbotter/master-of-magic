@@ -250,6 +250,13 @@ func (combat *CombatScreen) largePictures(number int) []*ebiten.Image {
     if len(pictures) > 0 {
         return pictures
     }
+    // in a biome, the ones that take the place of the game's in the folder of its landscape
+    if number <= largeGameCount && ground.BaseSet != ground.Set {
+        pictures = combat.addedPictures(ground.BaseSet, largeName, number)
+        if len(pictures) > 0 {
+            return pictures
+        }
+    }
 
     if combat.largeMade == nil {
         combat.largeMade = make([][]*ebiten.Image, largeGameCount)

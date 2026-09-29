@@ -101,3 +101,51 @@ func TestGroundExtrasAreCounted(test *testing.T) {
         test.Fatalf("sets: %v, %v", EnvironmentSet("CMBGRASS.LBX"), EnvironmentSet("cmbtundc.lbx"))
     }
 }
+
+// in a battle of a biome a picture of the landscape is looked for in the folder of the biome, then
+// in the one of the landscape, then by number. other pictures know no biome
+func TestBiomeGoesBeforeLandscape(test *testing.T) {
+    folder = "replace"
+    SetBiome(BiomeForest)
+    defer func() {
+        folder = ""
+        SetBiome("")
+    }()
+
+    paths := framePaths("cmbgrass.lbx", 49, 0)
+    want := []string{
+        filepath.Join("replace", "environment", "Forest", "tree 2_0.png"),
+        filepath.Join("replace", "environment", "Grass", "tree 2_0.png"),
+        filepath.Join("replace", "archives", "cmbgrass", "049_0.png"),
+    }
+    if len(paths) != len(want) || paths[0] != want[0] || paths[1] != want[1] || paths[2] != want[2] {
+        test.Fatalf("got %v", paths)
+    }
+
+    // on Myrror the folder of the biome of Myrror
+    paths = framePaths("cmbgrasc.lbx", 0, 0)
+    if len(paths) != 3 || paths[0] != filepath.Join("replace", "environment", "Forest Myrror", "grass 1_0.png") {
+        test.Fatalf("on Myrror: %v", paths)
+    }
+
+    // a house is no picture of a landscape
+    paths = framePaths("cmbtcity.lbx", 2, 0)
+    if len(paths) != 2 || paths[0] != filepath.Join("replace", "environment", "Town", "house 1_0.png") {
+        test.Fatalf("a house: %v", paths)
+    }
+
+    if BiomeFolder(BiomeSwamp, "Grass") != "Swamp" || BiomeFolder(BiomeSwamp, "Grass Myrror") != "Swamp Myrror" || BiomeFolder("", "Grass") != "Grass" {
+        test.Fatalf("folders of biomes")
+    }
+
+    // every biome is a kind of a landscape there is
+    for _, biome := range Biomes {
+        found := false
+        for _, landscape := range environmentLandscapes {
+            found = found || landscape.Set == biome.Base
+        }
+        if !found || FolderName(biome.Name) != biome.Name {
+            test.Fatalf("biome %+v", biome)
+        }
+    }
+}
