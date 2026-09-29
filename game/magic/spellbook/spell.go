@@ -1848,6 +1848,8 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
     showPageRight := 0
     // the bookmark under the mouse, -1 for none. see bookmark.go
     bookmarkOver := -1
+    // the page a click on a bookmark turns the book to, while it turns. -1 for none
+    bookmarkGoesTo := -1
     pageSideLeft := 0
     pageSideRight := 0
 
@@ -1938,7 +1940,12 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             scale.DrawScaled(screen, background, &options)
 
             // the ribbons at the edge of the book, see bookmark.go
-            drawBookmarks(screen, spellPages, *currentPage, bookmarkOver, getAlpha())
+            // the ribbon of the kind the book is turned to is out from the click on
+            bookmarkAt := *currentPage
+            if bookmarkGoesTo >= 0 {
+                bookmarkAt = bookmarkGoesTo
+            }
+            drawBookmarks(screen, spellPages, bookmarkAt, bookmarkOver, getAlpha())
 
             flipOptions := options
 
@@ -2211,6 +2218,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         }
 
         flipping = true
+        bookmarkGoesTo = target
         bookFlipIndex = ui.Counter
         ticks := bookFlipSpeed * uint64(len(bookFlip))
         if target > *currentPage {
@@ -2230,6 +2238,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
 
         castTurns.start(ui, castTurnTicks(ticks), func (){
             flipping = false
+            bookmarkGoesTo = -1
             *currentPage = target
             setupSpells(*currentPage)
         })
@@ -2257,12 +2266,6 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 if bookmarkOver == slot {
                     bookmarkOver = -1
                 }
-            },
-            Tooltip: func (element *uilib.UIElement) (string, *font.Font) {
-                if has() < 0 {
-                    return "", nil
-                }
-                return entry.Section.Name(), whiteFadeFont
             },
             LeftClick: func(this *uilib.UIElement){
                 page := has()
