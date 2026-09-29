@@ -94,7 +94,8 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
   (`combat/rimlight.go`).
 - A tile keeps its 4 newest corpses, its older ones fade out slowly (`combat/corpsefade.go`).
 - Corpses take on a color by what killed the figure: brown for fire, blue for ice, gray for
-  lightning and other spells, red for a fight (`corpse-color` in the values of spells).
+  lightning, other spells and a fight (`corpse-color` in the values of spells). Drops of blood
+  that come down on a corpse stay on top of it in red (`combat/corpsesplat.go`).
 - A battle that is won or lost is shown for a moment longer before its result comes up
   (`combat/combatend.go`).
 - Spells that hurt do what they do when they hit, not when their pictures have played to their

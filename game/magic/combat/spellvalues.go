@@ -103,6 +103,9 @@ var iceRim = color.RGBA{R: 0x90, G: 0xd8, B: 0xff, A: 0xff}
 
 // the figures that are killed in a fight, by no spell, take this color on: blood
 var combatCorpseColor = color.RGBA{R: 0xa0, G: 0x28, B: 0x28, A: 0xff}
+// false: they are gray, and the blood on them is what is red. see corpsesplat.go. the file of
+// values can still give them a color
+const combatCorpseTinted = false
 // the part of the file of values that is about the fight and no spell
 const combatPart = "combat"
 
@@ -598,7 +601,8 @@ const effectsTemplateHead = `# The effects of spells in battles.
 #                   facing where it came from. 0: as in a fight
 #   corpse-color    the color the figures it kills take on as they lie, or none for gray
 #
-# [combat] is no spell: corpse-color there is for the figures that are killed in a fight.
+# [combat] is no spell: corpse-color there is for the figures that are killed in a fight. They
+# are gray (none), and the drops of blood that come down on them stay on them in red.
 #
 # F7 in a battle turns all of this off and on.
 
@@ -613,7 +617,11 @@ corpse-color = COMBATCOLOR
 // a file with the values of the game for every spell, to be changed
 func EffectsTemplate() string {
     var out strings.Builder
-    out.WriteString(strings.ReplaceAll(effectsTemplateHead, "COMBATCOLOR", colorText(combatCorpseColor)))
+    fight := noColor
+    if combatCorpseTinted {
+        fight = colorText(combatCorpseColor)
+    }
+    out.WriteString(strings.ReplaceAll(effectsTemplateHead, "COMBATCOLOR", fight))
 
     for _, spell := range mod.SpellPictures {
         values := gameValues(spell.Name)

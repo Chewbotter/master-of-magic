@@ -106,6 +106,8 @@ type corpse struct {
     // it fades out, since this tick of the battle: its tile has too many. see corpsefade.go
     Fading bool
     FadeStart uint64
+    // the blood that has come down on it, see corpsesplat.go
+    Splats []corpseSplat
 }
 
 // how much of the color of what killed it a corpse takes on, 0 to 1
@@ -334,10 +336,14 @@ func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawabl
                     red, green, blue := corpseTintParts(body.Tint, corpseTintStrength * darkened)
                     colors.Scale(red, green, blue, 1)
                 }
-                if shows := corpseShows(body, combat.Counter); shows < 1 {
+                shows := corpseShows(body, combat.Counter)
+                if shows < 1 {
                     colors.Scale(shows, shows, shows, shows)
                 }
                 colorm.DrawImage(screen, picture, colors, &options)
+
+                // the blood on it stays red, see corpsesplat.go
+                combat.drawCorpseSplats(screen, body, x + offsetX, y + offsetY, shows, fieldBrightness(int(x), int(y)))
             },
         })
     }

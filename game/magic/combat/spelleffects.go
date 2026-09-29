@@ -82,7 +82,7 @@ func (combat *CombatScreen) corpseColor(unit *ArmyUnit) (color.RGBA, bool) {
             return value, true
         }
     }
-    return combatCorpseColor, true
+    return combatCorpseColor, combatCorpseTinted
 }
 
 // a unit that shows in one color
@@ -145,6 +145,8 @@ type spellEffects struct {
     // what a unit was last hit by, for the color of its corpses. see figurefall.go
     Causes map[*ArmyUnit]deathCause
 
+    // which pixels of the pictures of corpses are there, see corpsesplat.go
+    Solid map[*ebiten.Image][]bool
     // the figures the units had at the start of the tick, see blood.go
     Figures map[*ArmyUnit]int
     // the stains of blood on the ground, see blood.go
@@ -438,6 +440,8 @@ func (combat *CombatScreen) updateSpellEffects() {
     // drops of blood that have come down, see blood.go
     for _, each := range effects.Particles.Landed {
         combat.stain(each.X, each.Y, each.Color)
+        // on a corpse that lies there it stays on top of it, see corpsesplat.go
+        combat.splatCorpse(each.X, each.Y, each.Color)
     }
     effects.Particles.Landed = effects.Particles.Landed[:0]
 }
