@@ -1141,8 +1141,10 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
                 game.Music.Stop()
                 yield()
                 gamelib.DebugUnlimitedMoves = true
+                gamelib.DebugNoGreetings = true
                 err := startQuickGame(yield, game, gameLoader)
                 gamelib.DebugUnlimitedMoves = false
+                gamelib.DebugNoGreetings = false
                 if err != nil {
                     game.Drawer = shutdown
                     yield()

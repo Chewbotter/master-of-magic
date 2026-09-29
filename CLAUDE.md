@@ -132,6 +132,7 @@ We keep building on this fork and rebuild any visual that does not match the ori
 ## Debug menu
 - `game/magic/game/debug.go`. The Debug button is a hud element in the upper left: in widescreen centered in the empty stretch of the top bar next to the Game button (its rect is to the left of zero in the shifted hud's coordinates, and `drawHud` draws it on the screen), otherwise in the top left corner of the map. It opens the original selection menu (`uilib.MakeSelectionUI`, the Info menu's look). New options go in `makeDebugMenu`; state is package variables, session only.
 - Unlimited Moves (`DebugUnlimitedMoves`, user request 2026-09-28): steps of the human player's units on the world map cost no moves (`debugMoveCost`, one line in `doMoveSelectedUnit`), so a unit walks as far as its path goes; terrain it can not enter stays closed, a fight or a meeting still ends the walk. Dev: `-capture-unlimited-moves`.
+- No Greetings (`DebugNoGreetings`, user request 2026-09-28): a rival wizard that comes into view is known at once (contact is made as always) but the screen of its greeting is not shown and a walk goes on (`discoverWizards` in contact.go). On in the World Map debug game.
 - Reveal All swaps in a fully visible fog map for drawing only (`revealedFogFor`). The fog map must never be nil: unit drawing indexes it.
 
 ## Fog fade (world map, user request 2026-09-28)

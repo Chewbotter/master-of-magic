@@ -47,6 +47,9 @@ var DebugRevealAll = false
 // terrain a unit can not enter stays closed
 var DebugUnlimitedMoves = false
 
+// a rival wizard that comes into view is known at once, without the screen of its greeting, and a walk goes on
+var DebugNoGreetings = false
+
 func debugMoveCost(player *playerlib.Player, cost fraction.Fraction) fraction.Fraction {
     if DebugUnlimitedMoves && player != nil && player.IsHuman() {
         return fraction.Zero()
@@ -172,6 +175,13 @@ func (game *Game) makeDebugMenu() []*uilib.UIElement {
             Hotkey: DebugMenuStateGap + onOffText(DebugUnlimitedMoves),
             Action: func(){
                 DebugUnlimitedMoves = !DebugUnlimitedMoves
+            },
+        },
+        uilib.Selection{
+            Name: "No Greetings",
+            Hotkey: DebugMenuStateGap + onOffText(DebugNoGreetings),
+            Action: func(){
+                DebugNoGreetings = !DebugNoGreetings
             },
         },
     }

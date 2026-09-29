@@ -96,6 +96,10 @@ func (game *Game) discoverWizards(yield coroutine.YieldFunc) bool {
     }
 
     meetings := game.Model.DiscoverVisibleWizards()
+    if DebugNoGreetings {
+        // debug option, see debug.go. the wizards are known, their greeting is not shown
+        return false
+    }
     for _, meeting := range meetings {
         game.playFirstMeeting(yield, meeting)
     }
