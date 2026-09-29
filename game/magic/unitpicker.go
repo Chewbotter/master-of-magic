@@ -170,6 +170,8 @@ type unitPickerRow struct {
     IsRiver bool
     // the one that is picked
     Picked bool
+    // an empty row lies above it
+    Apart bool
 
     // in art pixels of the picture of the window
     X float64
@@ -262,6 +264,8 @@ func unitPickerRows() []unitPickerRow {
         }
     }
 
+    // the races stand apart from what the battle is fought on
+    apart := true
     for _, race := range unitPickerRaces {
         list := unitsOfRace(race)
         if len(list) == 0 {
@@ -272,7 +276,8 @@ func unitPickerRows() []unitPickerRow {
         if unitPickerExpanded[race] {
             mark = "-"
         }
-        rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v %v (%v)", mark, race, len(list)), Race: race})
+        rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v %v (%v)", mark, race, len(list)), Race: race, Apart: apart})
+        apart = false
 
         if unitPickerExpanded[race] {
             for _, unit := range list {
@@ -292,6 +297,9 @@ func unitPickerRows() []unitPickerRow {
         row.Height = height
         row.Width = unitPickerFont().TextWidth(row.Text, options)
 
+        if row.Apart && y > top {
+            y += height + unitPickerRowGap
+        }
         if y + height > unitPickerBottom {
             x += columnWidth + unitPickerColumnGap
             y = top
