@@ -23,6 +23,13 @@ const DoneUnitsGray = true
 
 // how much of its color a unit whose turn is over keeps, 0 (gray) to 1
 const doneSaturation = 0.15
+// and how much the color of its wizard keeps. that color is gray for every wizard alike: it is
+// made of the greens the pictures have, not of the color of the wizard, whose gray is as dark as
+// the color is (blue was nearly black; user, 2026-09-29)
+const doneBannerSaturation = 0.0
+// the colors of the wizard in the palette of a figure
+const doneBannerFirst = 215
+const doneBannerLast = 218
 
 // true if the unit has acted in this turn or can not act any more in it
 func (model *CombatModel) turnIsOver(unit *ArmyUnit) bool {
@@ -38,8 +45,8 @@ func (combat *CombatScreen) showsDone(unit *ArmyUnit) bool {
     return DoneUnitsGray && combat.TabHeld && combat.Model.turnIsOver(unit)
 }
 
-// a color with less of its color and the same lightness
-func doneColor(from color.Color) color.Color {
+// a color with this much of its color and the same lightness
+func doneColor(from color.Color, saturation float64) color.Color {
     r, g, b, a := from.RGBA()
     if a == 0 {
         return from
@@ -51,7 +58,7 @@ func doneColor(from color.Color) color.Color {
     gray := 0.299 * red + 0.587 * green + 0.114 * blue
 
     mix := func(part float64) uint8 {
-        value := gray + (part - gray) * doneSaturation
+        value := gray + (part - gray) * saturation
         return uint8(min(1, max(0, value)) * 255 + 0.5)
     }
 
@@ -61,12 +68,18 @@ func doneColor(from color.Color) color.Color {
 // the look of a unit whose turn is over, after the banner colors have been applied
 func withDoneLook(base util.ImageTransformFunc) util.ImageTransformFunc {
     return func(original *image.Paletted) image.Image {
+        // the palette with the greens of the picture, before they get the color of the wizard
+        plain := original.Palette
         out := base(original)
         paletted, ok := out.(*image.Paletted)
         if ok {
             palette := util.ClonePalette(paletted.Palette)
             for index := range palette {
-                palette[index] = doneColor(palette[index])
+                if index >= doneBannerFirst && index <= doneBannerLast && index < len(plain) {
+                    palette[index] = doneColor(plain[index], doneBannerSaturation)
+                } else {
+                    palette[index] = doneColor(palette[index], doneSaturation)
+                }
             }
             paletted.Palette = palette
         }
