@@ -10,12 +10,20 @@ import (
 )
 
 func exportMarkers(outPath string) int {
+    count := 0
     flag := mod.DefaultFlag(lbx.GetDefaultPalette())
-    if writePng(filepath.Join(outPath, "markers", mod.FlagFile), flag) != nil {
-        return 0
+    if writePng(filepath.Join(outPath, "markers", mod.FlagFile), flag) == nil {
+        count += 1
     }
 
-    return 1
+    // the bookmarks of the spellbook, see game/magic/mod/bookmarks.go
+    for _, kind := range mod.BookmarkKinds {
+        if writePng(filepath.Join(outPath, "markers", mod.BookmarkName(kind) + ".png"), mod.DefaultBookmark(kind)) == nil {
+            count += 1
+        }
+    }
+
+    return count
 }
 
 // the tabs of the spellbooks as they look under the mouse, made from the pictures of the game

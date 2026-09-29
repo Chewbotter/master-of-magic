@@ -81,6 +81,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - In battle the realms that filter the spells are in a row over the book.
 - The letters of both spellbooks have the original's colors: lighter soft edges, and shades in the headers.
 - The name of the spell under the mouse pulses to a soft blue, not to red.
+- Bookmarks at the right edge of the book for casting, one for every kind of spell with a symbol of its own: a click turns the book to that kind.
 - The dark behind the spellbook fades in and out with it, and in a battle it covers the whole width of the window.
 
 ## For artists
@@ -88,7 +89,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The folder can ADD pictures: more ground tiles, trees, rocks, houses, large pieces, and props that lie or stand. Added ground tiles are sprinkled in among the game's own, which stay the most, and the same one does not show twice close together; of the others every picture is used once before any comes again.
 - Biomes, the coast, the river and the farmland have folders of their own in the replacement folder. The beach and the water of a coast can be different for grass land, desert, mountains and tundra. The river takes glints: small animated pictures that are scattered over its water. A biome only needs the pictures that differ from its landscape.
 - Figures can have more frames: a longer strike, dying and lying.
-- The flag of the paths on the world map and the tabs of the spellbooks under the mouse can be repainted.
+- The flag of the paths on the world map, the tabs of the spellbooks under the mouse and the bookmarks of the spellbook can be repainted.
 - Values of spell effects and blood in a text file that is read again while the game runs.
 - A tool that writes the game's pictures as png files, the surroundings of battles under names that say what each picture is for, and Aseprite files for figures and spells with an export back into the replacement folder.
 

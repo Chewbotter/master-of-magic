@@ -1846,6 +1846,8 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
 
     showPageLeft := 0
     showPageRight := 0
+    // the bookmark under the mouse, -1 for none. see bookmark.go
+    bookmarkOver := -1
     pageSideLeft := 0
     pageSideRight := 0
 
@@ -1934,6 +1936,9 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             options.ColorScale.ScaleAlpha(getAlpha())
             options.GeoM.Translate(10, 10)
             scale.DrawScaled(screen, background, &options)
+
+            // the ribbons at the edge of the book, see bookmark.go
+            drawBookmarks(screen, spellPages, *currentPage, bookmarkOver, getAlpha())
 
             flipOptions := options
 
@@ -2195,6 +2200,79 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             }
         },
     })
+
+    // the bookmarks: a click turns the book to the first page of a kind of spells, in one turn
+    // of a leaf. see bookmark.go
+    forgetBookmarks()
+    turnTo := func(target int) {
+        castTurns.end()
+        if flipping || target < 0 || target >= len(spellPages) || target == *currentPage {
+            return
+        }
+
+        flipping = true
+        bookFlipIndex = ui.Counter
+        ticks := bookFlipSpeed * uint64(len(bookFlip))
+        if target > *currentPage {
+            bookFlipReverse = false
+            showPageLeft = *currentPage
+            pageSideLeft = *currentPage + 1
+            pageSideRight = target
+            showPageRight = target + 1
+        } else {
+            bookFlipReverse = true
+            ticks = bookFlipSpeed * uint64(len(bookFlip) - 1)
+            showPageRight = *currentPage + 1
+            pageSideRight = *currentPage
+            pageSideLeft = target + 1
+            showPageLeft = target
+        }
+
+        castTurns.start(ui, castTurnTicks(ticks), func (){
+            flipping = false
+            *currentPage = target
+            setupSpells(*currentPage)
+        })
+    }
+
+    for slot, entry := range bookmarkSections {
+        // as wide as the ribbon shows when it is pulled out
+        area, _ := bookmarkShown(slot, false)
+        area.Max.X += bookmarkPulled
+        has := func() int {
+            if !bookmarksShown(spellPages) {
+                return -1
+            }
+            return bookmarkPage(spellPages, entry.Section)
+        }
+        elements = append(elements, &uilib.UIElement{
+            Layer: 1,
+            Order: 1,
+            Rect: area,
+            Inside: func(this *uilib.UIElement, x int, y int){
+                if has() >= 0 {
+                    bookmarkOver = slot
+                }
+            },
+            NotInside: func(this *uilib.UIElement){
+                if bookmarkOver == slot {
+                    bookmarkOver = -1
+                }
+            },
+            Tooltip: func (element *uilib.UIElement) (string, *font.Font) {
+                if has() < 0 {
+                    return "", nil
+                }
+                return entry.Section.Name(), whiteFadeFont
+            },
+            LeftClick: func(this *uilib.UIElement){
+                page := has()
+                if page >= 0 {
+                    turnTo(page - page % 2)
+                }
+            },
+        })
+    }
 
     pageTurnLeft, _ := imageCache.GetImage("spells.lbx", 1, 0)
     pageTurnLeftRect := image.Rect(0, 0, pageTurnLeft.Bounds().Dx(), pageTurnLeft.Bounds().Dy()).Add(castTabLeft)
