@@ -10,7 +10,10 @@ func TestWeatherNames(test *testing.T) {
         if WeatherByName(weather.String()) != weather {
             test.Fatalf("weather %v is not found by its name", weather)
         }
-        _, falls := weatherLooks[weather]
+        look, falls := weatherLooks[weather]
+        if look.Splash > len(rainSplashes) || look.Smooth != (weather == WeatherLightSnow || weather == WeatherHeavySnow) {
+            test.Fatalf("weather %v: %v pictures of a splash, smooth %v", weather, look.Splash, look.Smooth)
+        }
         if falls == (weather == WeatherNone || weather == WeatherClouds) {
             test.Fatalf("weather %v: falls %v", weather, falls)
         }
@@ -104,5 +107,40 @@ func TestCloudShadows(test *testing.T) {
         if cloudNoise(x, 0, 99) != cloudNoise(x, cloudHeight, 99) {
             test.Fatalf("the picture does not go on from bottom to top at %v", x)
         }
+    }
+}
+
+// light rain splashes in one picture, heavy rain in two, and heavy snow has a thin layer of large
+// flakes in front that fall through the view and are gone
+func TestWeatherFront(test *testing.T) {
+    if weatherLooks[WeatherLightRain].Splash != 1 || weatherLooks[WeatherHeavyRain].Splash != 2 || weatherLooks[WeatherHeavySnow].Splash != 0 {
+        test.Fatalf("the pictures of the splashes")
+    }
+
+    look := weatherLooks[WeatherHeavySnow]
+    if look.FrontSize != 2 || weatherLooks[WeatherLightSnow].FrontRate != 0 {
+        test.Fatalf("the flakes in front")
+    }
+
+    area := image.Rect(0, 0, 350, 200)
+    state := weatherState{Seed: 5}
+    for range 900 {
+        state.spawnFront(look, area, 1.0 / 60, func() float64 { return 0 })
+        state.step(look, 1.0 / 60)
+        for _, each := range state.Drops {
+            if !each.Front || each.Landed > 0 || each.Y >= float64(area.Max.Y) {
+                test.Fatalf("a flake in front: %+v", each)
+            }
+        }
+    }
+    if len(state.Drops) < 4 || len(state.Drops) > 30 {
+        test.Fatalf("%v flakes in front", len(state.Drops))
+    }
+
+    for range 600 {
+        state.step(look, 1.0 / 60)
+    }
+    if len(state.Drops) != 0 {
+        test.Fatalf("%v flakes in front are left", len(state.Drops))
     }
 }

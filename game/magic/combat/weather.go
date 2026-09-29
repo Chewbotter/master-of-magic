@@ -11,7 +11,9 @@ package combat
 // (particles.go), so they are as large as the pixels of everything else at every zoom and stay
 // with the ground when the view moves. Every one has a place on the ground it comes down on: it
 // starts high above it, falls with the wind and is gone where it lands, a drop of rain with a
-// small splash, a flake of snow after it has lain a moment. They fall in GUSTS: how many come
+// splash (light rain in one picture, heavy rain in two), a flake of snow after it has lain a
+// moment. Snow falls between the pixels of the art and lands on one. Heavy snow has a thin layer
+// of flakes of 2 by 2 pixels in front of everything, which fall through the view. They fall in GUSTS: how many come
 // down at a place follows a number that changes slowly from place to place and moves with the
 // wind, so rain comes in sheets with thin air between them.
 //
@@ -84,8 +86,18 @@ type weatherLook struct {
     SwayRate float64
     // seconds it is seen where it has landed
     Linger float64
-    // drops splash: a pixel to each side where they land
-    Splash bool
+    // drops splash where they land: in so many pictures, one after the other. 0 for none
+    Splash int
+    // it falls between the pixels of the art and lands on one (user, 2026-09-29: "let snow fall
+    // smoothly instead of pixel-locked, but always land on a solid pixel")
+    Smooth bool
+    // flakes in front of everything, near the eye: how many come in a second on 100 art pixels
+    // of the width of the view, how many art pixels across they are, and how fast they fall and
+    // go with the wind. they fall through the view and land nowhere
+    FrontRate float64
+    FrontSize int
+    FrontSpeed float64
+    FrontWind float64
     // how much there is of it, of 1, from far to near
     Shades []float32
     Color color.NRGBA
@@ -98,25 +110,40 @@ type weatherLook struct {
 
 var weatherLooks = map[Weather]weatherLook{
     WeatherLightRain: {
-        Rate: 45, Speed: 230, Wind: -50, Spread: 0.15, Height: 130, Length: 3, Linger: 0.07,
+        Rate: 45, Speed: 230, Wind: -50, Spread: 0.15, Height: 130, Length: 3, Linger: 0.09, Splash: 1,
         Shades: []float32{0.35, 0.5, 0.65}, Color: color.NRGBA{R: 178, G: 200, B: 226, A: 255},
         GustSize: 90, GustSpeed: 45, GustDepth: 0.7,
     },
     WeatherHeavyRain: {
-        Rate: 190, Speed: 270, Wind: -95, Spread: 0.15, Height: 140, Length: 4, Linger: 0.09, Splash: true,
+        Rate: 190, Speed: 270, Wind: -95, Spread: 0.15, Height: 140, Length: 4, Linger: 0.16, Splash: 2,
         Shades: []float32{0.4, 0.55, 0.75}, Color: color.NRGBA{R: 178, G: 200, B: 226, A: 255},
         GustSize: 110, GustSpeed: 80, GustDepth: 0.85,
     },
     WeatherLightSnow: {
-        Rate: 4.5, Speed: 26, Wind: -6, Spread: 0.3, Height: 120, Length: 1, Sway: 2.5, SwayRate: 0.5, Linger: 0.5,
+        Rate: 4.5, Speed: 26, Wind: -6, Spread: 0.3, Height: 120, Length: 1, Sway: 2.5, SwayRate: 0.5, Linger: 0.5, Smooth: true,
         Shades: []float32{0.6, 0.8, 1}, Color: color.NRGBA{R: 244, G: 248, B: 255, A: 255},
         GustSize: 100, GustSpeed: 8, GustDepth: 0.6,
     },
     WeatherHeavySnow: {
-        Rate: 40, Speed: 40, Wind: -28, Spread: 0.35, Height: 130, Length: 1, Sway: 3, SwayRate: 0.7, Linger: 0.6,
+        Rate: 40, Speed: 40, Wind: -28, Spread: 0.35, Height: 130, Length: 1, Sway: 3, SwayRate: 0.7, Linger: 0.6, Smooth: true,
         Shades: []float32{0.6, 0.8, 1}, Color: color.NRGBA{R: 244, G: 248, B: 255, A: 255},
         GustSize: 120, GustSpeed: 30, GustDepth: 0.8,
+        // a thin layer of flakes of 4 pixels in front (user, 2026-09-29)
+        FrontRate: 0.9, FrontSize: 2, FrontSpeed: 75, FrontWind: -55,
     },
+}
+
+// the pixels of the pictures of a splash, from the place a drop has landed on, and how much of
+// the drop is seen of them. the first picture is small, the second wider and weaker
+type splashPixel struct {
+    X int
+    Y int
+    Shade float32
+}
+
+var rainSplashes = [][]splashPixel{
+    {{0, 0, 1}, {-1, -1, 1}, {1, -1, 1}},
+    {{-2, -1, 0.6}, {2, -1, 0.6}, {-1, -2, 0.45}, {1, -2, 0.45}},
 }
 
 // no more than this many at a time
@@ -149,14 +176,17 @@ type weatherDrop struct {
     Landed float64
     Phase float64
     Shade float32
+    // a flake in front of everything
+    Front bool
 }
 
 type weatherState struct {
     Drops []weatherDrop
     // seconds of weather
     Time float64
-    // what is left of the ones that are to come down
+    // what is left of the ones that are to come down, and of the ones in front
     Owed float64
+    FrontOwed float64
     // what the view shows of the original's screen, from the last draw
     View image.Rectangle
     Seen bool
@@ -217,12 +247,55 @@ func (state *weatherState) spawn(look weatherLook, area image.Rectangle, seconds
     }
 }
 
+// new flakes in front of everything for a part of a second. they fall through an area, from its
+// top to its bottom
+func (state *weatherState) spawnFront(look weatherLook, area image.Rectangle, seconds float64, fallen func() float64) {
+    if look.FrontRate <= 0 {
+        return
+    }
+    state.FrontOwed += look.FrontRate * float64(area.Dx()) / 100 * seconds
+    count := int(state.FrontOwed)
+    state.FrontOwed -= float64(count)
+
+    for range count {
+        if len(state.Drops) >= weatherMost {
+            return
+        }
+        speed := look.FrontSpeed * randomPart(1 - look.Spread, 1 + look.Spread)
+        wind := look.FrontWind * randomPart(1 - look.Spread, 1 + look.Spread)
+        left := float64(area.Dy()) / speed * (1 - fallen())
+        // where it leaves the area
+        x := float64(area.Min.X) + rand.Float64() * float64(area.Dx())
+
+        state.Drops = append(state.Drops, weatherDrop{
+            X: x - wind * left,
+            Y: float64(area.Max.Y) - speed * left,
+            SpeedX: wind,
+            SpeedY: speed,
+            Ground: float64(area.Max.Y),
+            Phase: rand.Float64() * 2 * math.Pi,
+            Shade: 1,
+            Front: true,
+        })
+    }
+}
+
 // what happens in a part of a second
 func (state *weatherState) step(look weatherLook, seconds float64) {
     state.Time += seconds
 
     kept := state.Drops[:0]
     for _, each := range state.Drops {
+        if each.Front {
+            each.Age += seconds
+            each.X += each.SpeedX * seconds
+            each.Y += each.SpeedY * seconds
+            if each.Y < each.Ground {
+                kept = append(kept, each)
+            }
+            continue
+        }
+
         if each.Landed > 0 || each.Y >= each.Ground {
             each.Y = each.Ground
             each.Landed += seconds
@@ -263,8 +336,12 @@ func (combat *CombatScreen) weatherTick(seconds float64) {
             // the air is full of it when the battle starts
             state.Filled = true
             state.spawn(look, area, look.Height / look.Speed, rand.Float64)
+            if look.FrontRate > 0 {
+                state.spawnFront(look, area, float64(area.Dy()) / look.FrontSpeed, rand.Float64)
+            }
         }
         state.spawn(look, area, seconds, func() float64 { return 0 })
+        state.spawnFront(look, area, seconds, func() float64 { return 0 })
     }
     state.step(look, seconds)
 }
@@ -307,40 +384,74 @@ func (combat *CombatScreen) drawWeather(screen *ebiten.Image) {
     blue := float32(look.Color.B) / 255
 
     var options ebiten.DrawImageOptions
-    draw := func(x int, y int, shade float32) {
-        if !image.Pt(x, y).In(state.View) {
+    // a square of so many art pixels at a place of the original's screen, which can lie between
+    // the pixels of the art
+    draw := func(x float64, y float64, size int, shade float32) {
+        if !image.Pt(int(math.Floor(x)), int(math.Floor(y))).In(state.View.Inset(-size)) {
             return
         }
         options.GeoM.Reset()
-        options.GeoM.Translate(float64(x), float64(y))
+        options.GeoM.Scale(float64(size), float64(size))
+        options.GeoM.Translate(x, y)
         options.GeoM.Concat(matrix)
         options.ColorScale.Reset()
         options.ColorScale.Scale(red * shade, green * shade, blue * shade, shade)
         scale.DrawScaled(screen, pixel, &options)
     }
+    // on a pixel of the art
+    drawPixel := func(x int, y int, shade float32) {
+        draw(float64(x), float64(y), 1, shade)
+    }
+
+    swayed := func(each *weatherDrop) float64 {
+        if look.Sway <= 0 {
+            return each.X
+        }
+        return each.X + math.Sin(each.Age * look.SwayRate * 2 * math.Pi + each.Phase) * look.Sway
+    }
 
     for index := range state.Drops {
         each := &state.Drops[index]
-        x := each.X
-        if look.Sway > 0 {
-            x += math.Sin(each.Age * look.SwayRate * 2 * math.Pi + each.Phase) * look.Sway
+        if each.Front {
+            continue
         }
+        x := swayed(each)
 
         if each.Landed > 0 {
-            // less of it the longer it has lain
-            shade := each.Shade * float32(1 - each.Landed / look.Linger)
-            draw(int(math.Floor(x)), int(math.Floor(each.Y)), shade)
-            if look.Splash {
-                draw(int(math.Floor(x)) - 1, int(math.Floor(each.Y)) - 1, shade)
-                draw(int(math.Floor(x)) + 1, int(math.Floor(each.Y)) - 1, shade)
+            landedX := int(math.Floor(x))
+            landedY := int(math.Floor(each.Y))
+
+            if look.Splash > 0 {
+                // the pictures of its splash, one after the other
+                picture := min(int(each.Landed / look.Linger * float64(look.Splash)), look.Splash - 1, len(rainSplashes) - 1)
+                for _, part := range rainSplashes[picture] {
+                    drawPixel(landedX + part.X, landedY + part.Y, each.Shade * part.Shade)
+                }
+                continue
             }
+
+            // less of it the longer it has lain
+            drawPixel(landedX, landedY, each.Shade * float32(1 - each.Landed / look.Linger))
+            continue
+        }
+
+        if look.Smooth {
+            draw(x, each.Y, 1, each.Shade)
             continue
         }
 
         // its pixels, back along its way
         slant := each.SpeedX / each.SpeedY
         for part := range look.Length {
-            draw(int(math.Floor(x - float64(part) * slant)), int(math.Floor(each.Y)) - part, each.Shade)
+            drawPixel(int(math.Floor(x - float64(part) * slant)), int(math.Floor(each.Y)) - part, each.Shade)
+        }
+    }
+
+    // the flakes in front, over all others
+    for index := range state.Drops {
+        each := &state.Drops[index]
+        if each.Front {
+            draw(swayed(each), each.Y, look.FrontSize, each.Shade)
         }
     }
 }
