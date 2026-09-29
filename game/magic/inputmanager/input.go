@@ -14,6 +14,10 @@ type InputManager struct {
     lastTouchY int
     mouseX int
     mouseY int
+    // how far right and down the screen on top was drawn when the mouse was read, see
+    // MouseOnScreen
+    offsetX int
+    offsetY int
     Counter uint64
     touchStartTime uint64
 
@@ -40,6 +44,7 @@ func (manager *InputManager) Update() {
     manager.leftClickReleased = false
     manager.rightClick = false
 
+    manager.offsetX, manager.offsetY = display.ContentOffsetX(), display.ContentOffsetY()
     if manager.lastTouchX == 0 && manager.lastTouchY == 0 {
         manager.mouseX, manager.mouseY = display.CursorPosition()
     }
@@ -124,6 +129,20 @@ func MousePosition() (int, int) {
     }
 
     return theInputManager.mouseX, theInputManager.mouseY
+}
+
+// where the mouse is in the window, for drawing the cursor. the position of MousePosition is
+// the one the screen on top understands, which is without the black bars of a screen that has no
+// wide layout; it was read at the last tick. the cursor was drawn at that position plus the bars
+// of the moment of the DRAW, so when a screen with bars closed over the wide map (or opened) the
+// cursor was a bar's width off until the next tick (user, 2026-09-29: "the cursor changes
+// position suddenly after closing the research book")
+func MouseOffset() (int, int) {
+    if !updated || FixedMouse {
+        return display.ContentOffsetX(), display.ContentOffsetY()
+    }
+
+    return theInputManager.offsetX, theInputManager.offsetY
 }
 
 // return normalized wheel values, which are always -1,0,1 for both x and y, no matter how far the wheel has moved

@@ -5668,11 +5668,18 @@ func (game *Game) ResearchNewSpell(yield coroutine.YieldFunc, player *playerlib.
     game.PushDrawer(func (screen *ebiten.Image){
         newDrawer(screen)
     })
-    defer game.PopDrawer()
 
+    shown := false
     if len(player.ResearchCandidateSpells.Spells) > 0 {
         power := game.Model.ComputePower(player)
         spellbook.ShowSpellBook(yield, game.Cache, player.ResearchPoolSpells, player.KnownSpells, player.ResearchCandidateSpells, spellbook.Spell{}, 0, player.SpellResearchPerTurn(power), player.ComputeOverworldCastingSkill(), spellbook.Spell{}, true, &player.ResearchingSpell, player, &newDrawer)
+        shown = true
+    }
+
+    game.PopDrawer()
+    if shown {
+        // the book has faded to black: the map comes back out of it, see fadein.go
+        game.fadeInFromBlack(yield)
     }
 }
 

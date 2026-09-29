@@ -2,7 +2,6 @@ package mouse
 
 import (
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
-    "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
 
     "github.com/hajimehoshi/ebiten/v2"
@@ -45,16 +44,18 @@ func (mouse *GlobalMouse) SetImageFunc(imageFunc func (*ebiten.Image, *ebiten.Dr
 func (mouse *GlobalMouse) Draw(screen *ebiten.Image) {
     if mouse != nil && mouse.Enabled {
         x, y := inputmanager.MousePosition()
+        // the bars of when the mouse was read, not of now. see inputmanager.MouseOffset
+        offsetX, offsetY := inputmanager.MouseOffset()
         if SmoothPosition != nil {
             // gliding in step with the world map, see smooth.go
             if smoothX, smoothY, ok := SmoothPosition(x, y); ok {
-                mouse.drawBetweenPixels(screen, smoothX + float64(display.ContentOffsetX()), smoothY + float64(display.ContentOffsetY()))
+                mouse.drawBetweenPixels(screen, smoothX + float64(offsetX), smoothY + float64(offsetY))
                 return
             }
         }
         // the cursor is drawn on the real screen, outside of any black bars
-        x += display.ContentOffsetX()
-        y += display.ContentOffsetY()
+        x += offsetX
+        y += offsetY
         mouse.Options.GeoM.Reset()
         mouse.Options.GeoM.Translate(scale.Unscale(float64(x)), scale.Unscale(float64(y)))
         mouse.DrawFunc(screen, &mouse.Options)
