@@ -53,11 +53,12 @@ type fencePlace struct {
     Side fenceSide
 }
 
-// a plot of crops: its first cell, and the cells of a side of it
+// a plot of crops: its first cell, and its cells across and down the grid
 type farmPlot struct {
     X int
     Y int
-    Size int
+    Width int
+    Height int
 }
 
 // of the sides of the plots this share has a fence, and of the cells of such a side this share
@@ -75,6 +76,17 @@ const fenceCellSides = 2
 // the point of the picture of a fence that is put on the middle of its side: the middle of its
 // width, this far above its bottom edge
 const fenceAnchorBelow = 6
+
+// a side of a cell of the rim of a plot: of its north east, south east, south west or north west
+// side, the cell that far along it
+func (plot farmPlot) side(side int, along int) fencePlace {
+    switch side {
+        case 0: return cellSide(plot.X + along, plot.Y, 0)
+        case 1: return cellSide(plot.X + plot.Width - 1, plot.Y + along, 1)
+        case 2: return cellSide(plot.X + along, plot.Y + plot.Height - 1, 2)
+    }
+    return cellSide(plot.X, plot.Y + along, 3)
+}
 
 // the fences of a ground, by the side they stand on
 type fenceSet struct {
@@ -165,16 +177,16 @@ func (ground *BattleGround) fencePlaces(zone ZoneType) []fencePlace {
                 continue
             }
             sides += 1
-            for along := range plot.Size {
+            // the cells of the side
+            length := plot.Width
+            if side == 1 || side == 3 {
+                length = plot.Height
+            }
+            for along := range length {
                 if rand.Float64() < fenceGapShare {
                     continue
                 }
-                switch side {
-                    case 0: fences.add(cellSide(plot.X + along, plot.Y, 0))
-                    case 1: fences.add(cellSide(plot.X + plot.Size - 1, plot.Y + along, 1))
-                    case 2: fences.add(cellSide(plot.X + along, plot.Y + plot.Size - 1, 2))
-                    case 3: fences.add(cellSide(plot.X, plot.Y + along, 3))
-                }
+                fences.add(plot.side(side, along))
             }
         }
     }

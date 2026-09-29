@@ -84,6 +84,14 @@ func TestFarmland(test *testing.T) {
         }
 
         crops := 0
+        shapes := make(map[[2]int]bool)
+        oblong := false
+        defer func() {
+            // plots of many sizes, and not all of them squares
+            if len(shapes) < 4 || !oblong {
+                test.Fatalf("the plots have the sizes %v", shapes)
+            }
+        }()
         for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
             for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
                 if ground.HeightAt(cgx, cgy) != 0 {
@@ -123,10 +131,14 @@ func TestFarmland(test *testing.T) {
                 if width > farmPlotMax || height > farmPlotMax {
                     test.Fatalf("a plot of %v by %v at %v, %v", width, height, cgx, cgy)
                 }
-                // cut off by the edge of the ground it can be less than a square
+                // cut off by the edge of the ground it can be smaller than the smallest
                 inside := left > ground.MinX && top > ground.MinY && right < ground.MinX + ground.Width - 1 && bottom < ground.MinY + ground.Height - 1
-                if inside && (width != height || width < farmPlotSmall) {
+                if inside && (width < farmPlotSmall || height < farmPlotSmall) {
                     test.Fatalf("a plot of %v by %v at %v, %v", width, height, cgx, cgy)
+                }
+                shapes[[2]int{width, height}] = true
+                if inside && width != height {
+                    oblong = true
                 }
                 for y := top - 1; y <= bottom + 1; y++ {
                     for x := left - 1; x <= right + 1; x++ {
@@ -275,13 +287,12 @@ func TestFences(test *testing.T) {
             sides := 0
             for side := range 4 {
                 fenced := false
-                for along := range plot.Size {
-                    switch side {
-                        case 0: fenced = fenced || seen[cellSide(plot.X + along, plot.Y, 0)]
-                        case 1: fenced = fenced || seen[cellSide(plot.X + plot.Size - 1, plot.Y + along, 1)]
-                        case 2: fenced = fenced || seen[cellSide(plot.X + along, plot.Y + plot.Size - 1, 2)]
-                        case 3: fenced = fenced || seen[cellSide(plot.X, plot.Y + along, 3)]
-                    }
+                length := plot.Width
+                if side == 1 || side == 3 {
+                    length = plot.Height
+                }
+                for along := range length {
+                    fenced = fenced || seen[plot.side(side, along)]
                 }
                 if fenced {
                     sides += 1

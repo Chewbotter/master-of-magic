@@ -18,9 +18,10 @@ package combat
 // THE FIELDS. They take about half of the ground (user, first: "cover more area so it looks less
 // like a caricature of a crop field", which was 0.85 of the squares and two thirds of the ground;
 // then: "cover less of the entire play area in crop fields, roughly half"), and what they leave is more dirt than grass (user: "weight dirt
-// tiles more than grass in this sub-biome"). The ground is laid out in squares of one size for the battle, farmPlotMin to
-// farmPlotMax cells, with one row of grass between them. A square is a plot of crops or is left
-// as grass, by chance. A plot shows one picture of crops in all of its cells, so it looks
+// tiles more than grass in this sub-biome"). The ground is laid out in columns and rows of different widths, farmPlotMin to
+// farmPlotMax cells each, with one row of grass between them (user, 2026-09-29: "variation to the
+// number of tiles in a crop field, including different ratios besides a square. Some can be
+// rectangular"). Where a column meets a row there is a plot of crops, or grass, by chance. A plot shows one picture of crops in all of its cells, so it looks
 // of one crop. The pictures of crops come in kinds of 4 (crop 1 to 4, 5 to 8, ...): a plot
 // is of one kind and shows its 4 pictures by chance. No plot lies on a road, a coast or a river: a square they run through has a
 // smaller plot beside them, or none. The ground is flat.
@@ -34,8 +35,10 @@ package combat
 // place of the game's, crop 5 on added. The game makes its own from the grass of the landscape.
 
 import (
+    "cmp"
     "image"
     "math/rand/v2"
+    "slices"
 
     "github.com/kazzmir/master-of-magic/game/magic/mod"
 
@@ -53,12 +56,12 @@ const (
 )
 
 // the cells of a side of a plot
-const farmPlotMin = 5
-const farmPlotMax = 8
+const farmPlotMin = 3
+const farmPlotMax = 9
 // a plot beside a road, a coast or a river can be as small as this
 const farmPlotSmall = 2
 // of the squares this share is plots
-const farmPlotShare = 0.65
+const farmPlotShare = 0.7
 // of the ground between and beside the plots about this share is dirt, in patches about this
 // many cells across
 const farmDirtShare = 0.65
@@ -129,33 +132,44 @@ func (ground *BattleGround) makeFarmland(landscape CombatLandscape, zone ZoneTyp
         return group != TerrainSand && group != TerrainWater && ground.Roads[index] == 0 && ground.coastAt(cgx, cgy) == coastLand && ground.riverAt(cgx, cgy) == riverLand
     }
 
-    size := farmPlotMin + rand.N(farmPlotMax - farmPlotMin + 1)
-    step := size + 1
+    // the columns and the rows the plots lie in, each as wide as chance has it, with a row of
+    // one cell between them: so plots are of many sizes and few of them are squares, and they
+    // still lie in line with each other as fields do
+    strips := func(first int, length int) [][2]int {
+        var out [][2]int
+        at := first - rand.N(farmPlotMax + 1)
+        for at < first + length {
+            width := farmPlotMin + rand.N(farmPlotMax - farmPlotMin + 1)
+            out = append(out, [2]int{at, width})
+            at += width + 1
+        }
+        return out
+    }
+    columns := strips(ground.MinX, ground.Width)
+    rows := strips(ground.MinY, ground.Height)
     // the kinds of crops: every 4 pictures are one kind (user, 2026-09-29: "Every group of 4
     // (1-4, 5-8, 9-12) is a different type of crop and should be grouped together in a field")
     kinds := max(1, (groundCropCount + ground.Extras[groundCropFirst]) / cropsOfKind)
 
-    // the squares, from a corner by chance
-    startX := ground.MinX - rand.N(step)
-    startY := ground.MinY - rand.N(step)
-    for cornerY := startY; cornerY < ground.MinY + ground.Height; cornerY += step {
-        for cornerX := startX; cornerX < ground.MinX + ground.Width; cornerX += step {
+    for _, row := range rows {
+        for _, column := range columns {
             if rand.Float64() >= farmPlotShare {
                 continue
             }
 
-            // the largest plot the square has room for: a road, the coast or a river in it
-            // leave a smaller one beside them
-            plotX, plotY, plot := ground.largestPlot(cornerX, cornerY, size, free)
-            if plot < farmPlotSmall {
+            // the largest plot the place has room for: a road, the coast or a river in it leave
+            // a smaller one beside them
+            plot, ok := ground.largestPlot(column[0], row[0], column[1], row[1], free)
+            if !ok {
                 continue
             }
 
             // a plot is of one kind of crops, its cells show the pictures of the kind by chance
             kind := rand.N(kinds)
-            ground.Plots = append(ground.Plots, farmPlot{X: plotX, Y: plotY, Size: plot})
-            for dy := range plot {
-                for dx := range plot {
+            ground.Plots = append(ground.Plots, plot)
+            plotX, plotY := plot.X, plot.Y
+            for dy := range plot.Height {
+                for dx := range plot.Width {
                     if !ground.contains(plotX + dx, plotY + dy) {
                         continue
                     }
@@ -199,14 +213,14 @@ func (ground *BattleGround) makeFarmland(landscape CombatLandscape, zone ZoneTyp
     }
 }
 
-// the largest square of free cells within a square of the ground, and its corner. the places
-// it is looked for at are tried in an order by chance. a cell beyond the ground counts as free: a
-// plot at the edge of the ground is cut off there
-func (ground *BattleGround) largestPlot(cornerX int, cornerY int, size int, free func(int, int) bool) (int, int, int) {
-    fits := func(x int, y int, plot int) bool {
-        for dy := range plot {
-            for dx := range plot {
-                if ground.contains(x + dx, y + dy) && !free(x + dx, y + dy) {
+// the largest plot of free cells within a place of the ground, of so many cells across and down.
+// the places it is looked for at are tried in an order by chance. a cell beyond the ground counts
+// as free: a plot at the edge of the ground is cut off there
+func (ground *BattleGround) largestPlot(cornerX int, cornerY int, width int, height int, free func(int, int) bool) (farmPlot, bool) {
+    fits := func(plot farmPlot) bool {
+        for dy := range plot.Height {
+            for dx := range plot.Width {
+                if ground.contains(plot.X + dx, plot.Y + dy) && !free(plot.X + dx, plot.Y + dy) {
                     return false
                 }
             }
@@ -214,17 +228,31 @@ func (ground *BattleGround) largestPlot(cornerX int, cornerY int, size int, free
         return true
     }
 
-    for plot := size; plot >= farmPlotSmall; plot-- {
-        room := size - plot + 1
-        for _, place := range rand.Perm(room * room) {
-            x := cornerX + place % room
-            y := cornerY + place / room
-            if fits(x, y, plot) {
-                return x, y, plot
+    // the sizes a plot can have there, the ones of the most cells first
+    var sizes [][2]int
+    for down := farmPlotSmall; down <= height; down++ {
+        for across := farmPlotSmall; across <= width; across++ {
+            sizes = append(sizes, [2]int{across, down})
+        }
+    }
+    rand.Shuffle(len(sizes), func(a int, b int) {
+        sizes[a], sizes[b] = sizes[b], sizes[a]
+    })
+    slices.SortStableFunc(sizes, func(a [2]int, b [2]int) int {
+        return cmp.Compare(b[0] * b[1], a[0] * a[1])
+    })
+
+    for _, size := range sizes {
+        roomX := width - size[0] + 1
+        roomY := height - size[1] + 1
+        for _, place := range rand.Perm(roomX * roomY) {
+            plot := farmPlot{X: cornerX + place % roomX, Y: cornerY + place / roomX, Width: size[0], Height: size[1]}
+            if fits(plot) {
+                return plot, true
             }
         }
     }
-    return 0, 0, 0
+    return farmPlot{}, false
 }
 
 // the number the ground has for a picture of crops, by its number from 0 among the game's and the
