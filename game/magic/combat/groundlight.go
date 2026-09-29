@@ -70,10 +70,13 @@ func (combat *CombatScreen) drawGroundLight(screen *ebiten.Image) {
             continue
         }
 
-        picture := combat.lightPicture(radius)
         screenX, screenY := onScreen.Apply(light.X, light.Y)
-        atX := math.Round((screenX * scale.ScaleAmount - startX) / pixel) - float64(picture.Bounds().Dx() / 2)
-        atY := math.Round((screenY * scale.ScaleAmount - startY) / pixel) - float64(picture.Bounds().Dy() / 2)
+        atX := math.Round((screenX * scale.ScaleAmount - startX) / pixel) - float64(radius)
+        atY := math.Round((screenY * scale.ScaleAmount - startY) / pixel) - float64(lightRadiusY(radius))
+        // the pattern of the light is the one of the ground under it, see spelllight.go
+        picture := combat.lightPicture(radius,
+            lightPhase(atX, math.Round(fieldX * scale.ScaleAmount), startX, pixel),
+            lightPhase(atY, math.Round(fieldY * scale.ScaleAmount), startY, pixel))
 
         much := float32(light.Ground * min(1, light.Strength))
 

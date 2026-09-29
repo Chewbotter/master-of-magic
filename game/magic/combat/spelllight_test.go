@@ -10,7 +10,7 @@ import (
 
 // a light is all there in its middle, not there at its rim, and has only its steps
 func TestLightPixels(test *testing.T) {
-    pixels, width, height := makeLightPixels(40)
+    pixels, width, height := makeLightPixels(40, 0, 0)
     if width != 81 || height != 41 {
         test.Fatalf("a light of 40 is %v by %v", width, height)
     }

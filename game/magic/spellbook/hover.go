@@ -128,6 +128,26 @@ func pulseFrom(counter uint64, start uint64, ticks uint64, low float64, high flo
     return float32(low + (high - low) * wave)
 }
 
+// ticks the spell under the mouse takes to get its color in the book of research. there it does
+// not pulse: it fades up to all of its color and stays so until the mouse leaves (user,
+// 2026-09-29)
+const researchHoverTicks = 14
+
+// how much of the color of its realm the spell under the mouse has in the book of research, when
+// the mouse came over it at the tick start
+func fadeUpFrom(counter uint64, start uint64) float32 {
+    if !pulses() {
+        // the spell under the mouse is not marked
+        return 0
+    }
+
+    since := uint64(0)
+    if counter > start {
+        since = counter - start
+    }
+    return float32(hoverHigh * min(1, float64(since) / researchHoverTicks))
+}
+
 // how much of its own colors a name has at this tick, between low and high
 func pulse(counter uint64, ticks uint64, low float64, high float64) float32 {
     if !pulses() {

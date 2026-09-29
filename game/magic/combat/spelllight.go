@@ -106,7 +106,7 @@ type spellLighting struct {
 
     Lights []spellLightSource
     Glows []spellGlow
-    // pictures of lights by their radius
+    // pictures of lights by their radius and the place of their corner in the pattern
     Pictures map[int]*ebiten.Image
     Layer *ebiten.Image
     // the light that is added to the ground, see groundlight.go
@@ -133,9 +133,39 @@ func lightStepsUp(way float64, rank float64) bool {
     return inPattern > (rank + 0.5) / 16
 }
 
-// the pixels of a light of a radius: only how much they show counts, 4 numbers a pixel
-func makeLightPixels(radius int) ([]byte, int, int) {
-    radiusY := max(1, int(math.Round(float64(radius) * lightSquash)))
+// THE PATTERN IS LOCKED TO THE GROUND (user, 2026-09-29): a pixel of the ground has its place in
+// the pattern whatever light falls on it and wherever that light is. Before, the pattern was a
+// part of the picture of a light, so it went along with a bolt that flies and the pixels of the
+// ground in the light changed all the time. A light has a picture for each of the 16 places its
+// corner can have in the pattern (lightPhase).
+const LightPatternOnGround = true
+
+// half the height of the picture of a light of a radius
+func lightRadiusY(radius int) int {
+    return max(1, int(math.Round(float64(radius) * lightSquash)))
+}
+
+// the place in the pattern of the corner of a picture that is drawn at a pixel of its layer, in
+// one direction. field is where the ground starts on the screen and start where the layer does,
+// in pixels of the screen, pixel the size of an art pixel
+func lightPhase(at float64, field float64, start float64, pixel float64) int {
+    if !LightPatternOnGround {
+        return 0
+    }
+
+    // the pixel of the layer the ground starts at
+    origin := int(math.Round((field - start) / pixel))
+    phase := (int(at) - origin) % 4
+    if phase < 0 {
+        phase += 4
+    }
+    return phase
+}
+
+// the pixels of a light of a radius: only how much they show counts, 4 numbers a pixel. the
+// phases are the place of its corner in the pattern
+func makeLightPixels(radius int, phaseX int, phaseY int) ([]byte, int, int) {
+    radiusY := lightRadiusY(radius)
     width := radius * 2 + 1
     height := radiusY * 2 + 1
     pixels := make([]byte, 4 * width * height)
@@ -153,7 +183,7 @@ func makeLightPixels(radius int) ([]byte, int, int) {
             // in steps, from one step to the next in a pattern
             steps := part * lightBands
             whole := math.Floor(steps)
-            if lightStepsUp(steps - whole, lightPattern[y % 4][x % 4]) {
+            if lightStepsUp(steps - whole, lightPattern[(y + phaseY) % 4][(x + phaseX) % 4]) {
                 whole += 1
             }
 
@@ -169,20 +199,21 @@ func makeLightPixels(radius int) ([]byte, int, int) {
     return pixels, width, height
 }
 
-func (combat *CombatScreen) lightPicture(radius int) *ebiten.Image {
+func (combat *CombatScreen) lightPicture(radius int, phaseX int, phaseY int) *ebiten.Image {
     lighting := &combat.effects.Lighting
-    if picture, ok := lighting.Pictures[radius]; ok {
+    key := radius * 16 + phaseY * 4 + phaseX
+    if picture, ok := lighting.Pictures[key]; ok {
         return picture
     }
 
-    pixels, width, height := makeLightPixels(radius)
+    pixels, width, height := makeLightPixels(radius, phaseX, phaseY)
     picture := ebiten.NewImage(width, height)
     picture.WritePixels(pixels)
 
     if lighting.Pictures == nil {
         lighting.Pictures = make(map[int]*ebiten.Image)
     }
-    lighting.Pictures[radius] = picture
+    lighting.Pictures[key] = picture
     return picture
 }
 
@@ -424,10 +455,13 @@ func (combat *CombatScreen) drawSpellDark(screen *ebiten.Image) {
             continue
         }
 
-        picture := combat.lightPicture(radius)
         screenX, screenY := onScreen.Apply(light.X, light.Y)
-        atX := math.Round((screenX * scale.ScaleAmount - startX) / pixel) - float64(picture.Bounds().Dx() / 2)
-        atY := math.Round((screenY * scale.ScaleAmount - startY) / pixel) - float64(picture.Bounds().Dy() / 2)
+        atX := math.Round((screenX * scale.ScaleAmount - startX) / pixel) - float64(radius)
+        atY := math.Round((screenY * scale.ScaleAmount - startY) / pixel) - float64(lightRadiusY(radius))
+        // the pattern of the light is the one of the ground under it
+        picture := combat.lightPicture(radius,
+            lightPhase(atX, math.Round(fieldX * scale.ScaleAmount), startX, pixel),
+            lightPhase(atY, math.Round(fieldY * scale.ScaleAmount), startY, pixel))
 
         var options ebiten.DrawImageOptions
         options.GeoM.Translate(atX, atY)

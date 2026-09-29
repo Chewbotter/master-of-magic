@@ -589,7 +589,8 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
                         } else if pickResearchSpell && OriginalBookColors {
                             hover, ok := hoverTime[spell.Name]
                             if ok && hover.On > 0 {
-                                own = pulseFrom(ui.Counter, hover.On, hoverPulseTicks, hoverLow, hoverHigh)
+                                // up to all of its color, and stays so. see hover.go
+                                own = fadeUpFrom(ui.Counter, hover.On)
                             }
                         } else if pickResearchSpell {
                             // upstream's red
