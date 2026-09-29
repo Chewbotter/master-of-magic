@@ -77,17 +77,16 @@ func MarkerFlag(palette color.Palette) *image.Paletted {
 }
 
 // The tabs in the corners of the spellbooks that turn the pages, as they look under the mouse.
-// The game makes that look from the tab: lifted by TabHoverLift art pixels over a shadow of
-// itself. A picture `markers/<name> hover.png` in the replacement folder takes its place, as it
-// is (any colors, see-through pixels stay so). It is put with its lower left corner on the lower
-// left corner of the tab, so a picture that is higher than the tab reaches up.
+// The game makes that look from the tab: the same picture, lighter by TabHoverLight. A picture
+// `markers/<name> hover.png` in the replacement folder takes its place, as it is (any colors,
+// see-through pixels stay so). It is put with its lower left corner on the lower left corner of
+// the tab, so a picture that is higher than the tab reaches up.
 const TabCastLeft = "tab cast left"
 const TabCastRight = "tab cast right"
 const TabResearchLeft = "tab research left"
 const TabResearchRight = "tab research right"
 
-const TabHoverLift = 1
-const TabHoverShadow = 0.35
+const TabHoverLight = 0.2
 
 // the archive and entry of the picture of a tab
 type TabPicture struct {
@@ -138,25 +137,17 @@ func ReadMarker(name string) image.Image {
 // the look of a tab under the mouse as the game makes it
 func MakeTabHover(tab image.Image) image.Image {
     bounds := tab.Bounds()
-    out := image.NewNRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy() + TabHoverLift))
+    out := image.NewNRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
 
-    shadow := float64(TabHoverShadow) * 255
-
-    for y := 0; y < bounds.Dy(); y++ {
-        for x := 0; x < bounds.Dx(); x++ {
-            _, _, _, alpha := tab.At(bounds.Min.X + x, bounds.Min.Y + y).RGBA()
-            if alpha != 0 {
-                out.Set(x, y + TabHoverLift, color.NRGBA{A: uint8(shadow)})
-            }
-        }
+    lighter := func(value uint32) uint8 {
+        return uint8(min(255, float64(value >> 8) * (1 + TabHoverLight)))
     }
 
     for y := 0; y < bounds.Dy(); y++ {
         for x := 0; x < bounds.Dx(); x++ {
-            pixel := tab.At(bounds.Min.X + x, bounds.Min.Y + y)
-            _, _, _, alpha := pixel.RGBA()
+            red, green, blue, alpha := tab.At(bounds.Min.X + x, bounds.Min.Y + y).RGBA()
             if alpha != 0 {
-                out.Set(x, y, pixel)
+                out.Set(x, y, color.NRGBA{R: lighter(red), G: lighter(green), B: lighter(blue), A: 255})
             }
         }
     }

@@ -2,11 +2,13 @@ package spellbook
 
 // The turn of a page and the tabs in the outer corners of the pages.
 //
-// The tabs that turn the pages stay where they are while a leaf turns, so the rim of the leaf
-// was seen moving under them at the start of a turn and at its end. The leaf now starts far
-// enough into its turn to be clear of the tab it leaves, and is put down at once when it reaches
-// the tab of the other side (user, 2026-09-29: "make the first few frames of the page turn come
-// out faster so that the first frame clears the tab completely").
+// A tab is the folded corner of a page. It belongs to its page (user, 2026-09-29): the page a
+// leaf shows has its tab painted on it and turns with it, and the tabs of the pages under the
+// leaf are drawn under the leaf, which comes down over them. Before, the tabs lay over the book
+// and the leaf, so a leaf went under the tab of the page it came down on.
+//
+// The leaf starts far enough into its turn to be clear of the corner it leaves ("make the first
+// few frames of the page turn come out faster"), which he kept for the speed of it.
 
 import (
     "image"
@@ -15,17 +17,24 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     uilib "github.com/kazzmir/master-of-magic/game/magic/ui"
+    "github.com/kazzmir/master-of-magic/game/magic/util"
 
     "github.com/hajimehoshi/ebiten/v2"
 )
 
-// with the mouse over it a tab is lifted by this many art pixels, and leaves a shadow this dark,
-// 0 to 1, where it lay. there is no look for a tab that is pressed.
-// KEEP IN STEP with mod.TabHoverLift and mod.TabHoverShadow, which the export makes the pictures with
-const pageTabLift = mod.TabHoverLift
-const pageTabShadow = mod.TabHoverShadow
+// where the tabs are on the screen, in art pixels
+var castTabLeft = image.Pt(23, 14)
+var castTabRight = image.Pt(268, 14)
+var researchTabLeft = image.Pt(15, 9)
+var researchTabRight = image.Pt(289, 9)
 
-// the pictures of the tabs under the mouse of the replacement folder, by name. nil for none
+// with the mouse over it a tab is this much lighter, 0 for not at all. it does not move and has no
+// shadow: a tab lifted over a shadow of itself looked like a sticker on the page, not like a fold of
+// it (user, 2026-09-29: "brighten"). there is no look for a tab that is pressed.
+// KEEP IN STEP with mod.TabHoverLight, which the export makes the pictures with
+const pageTabLight = mod.TabHoverLight
+
+// the pictures of the tabs of the game, and the ones under the mouse of the replacement folder, by name
 var hoverTabs = make(map[string]*ebiten.Image)
 
 // the pictures are read again when they are asked for next
@@ -47,8 +56,34 @@ func hoverTab(name string) *ebiten.Image {
     return picture
 }
 
+// the picture of a tab of the game
+func tabPicture(imageCache *util.ImageCache, name string) *ebiten.Image {
+    for _, tab := range mod.TabPictures {
+        if tab.Name == name {
+            picture, err := imageCache.GetImage(tab.Archive, tab.Entry, 0)
+            if err != nil {
+                return nil
+            }
+            return picture
+        }
+    }
+
+    return nil
+}
+
+// a page of the book for casting has a tab that turns back, or on. pages with even numbers lie
+// on the left
+func castPageHasPrevious(page int) bool {
+    return page > 0
+}
+
+func castPageHasNext(page int, pages int) bool {
+    return page >= 0 && page + 1 < pages
+}
+
 // draws a tab that turns the pages at a place in art pixels. name is the one of mod.Tab...
-func drawPageTab(screen *ebiten.Image, tab *ebiten.Image, name string, place image.Point, alpha float32, over bool) {
+func drawPageTab(screen *ebiten.Image, imageCache *util.ImageCache, name string, place image.Point, alpha float32, over bool) {
+    tab := tabPicture(imageCache, name)
     if tab == nil {
         return
     }
@@ -67,14 +102,24 @@ func drawPageTab(screen *ebiten.Image, tab *ebiten.Image, name string, place ima
             return
         }
 
-        shadow := options
-        shadow.ColorScale.Scale(0, 0, 0, pageTabShadow)
-        scale.DrawScaled(screen, tab, &shadow)
-
-        options.GeoM.Translate(0, -pageTabLift)
+        light := float32(1 + pageTabLight)
+        options.ColorScale.Scale(light, light, light, 1)
     }
 
     scale.DrawScaled(screen, tab, &options)
+}
+
+// draws the tab of a page on the picture of the page a leaf shows, so it turns with the leaf.
+// place is where the tab is in the picture of the book, region the page in it, in art pixels
+func drawTabOnFace(face *ebiten.Image, imageCache *util.ImageCache, name string, place image.Point, region image.Rectangle) {
+    tab := tabPicture(imageCache, name)
+    if tab == nil {
+        return
+    }
+
+    var options ebiten.DrawImageOptions
+    options.GeoM.Translate(float64(place.X - region.Min.X), float64(place.Y - region.Min.Y))
+    scale.DrawScaled(face, tab, &options)
 }
 
 // the turn of a leaf that runs. a new turn puts the leaf of the one before down at once, so

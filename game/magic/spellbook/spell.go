@@ -675,6 +675,13 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
 
         book, _ := imageCache.GetImage("scroll.lbx", 6, 0)
         face := makeLeafFace(book, region, func(face *ebiten.Image, options ebiten.DrawImageOptions) {
+            // the tab in its corner is a part of the page and turns with it, see pagetab.go
+            if right && hasNextPage(halfPage) {
+                drawTabOnFace(face, &imageCache, mod.TabResearchRight, researchTabRight, region)
+            } else if !right && hasPreviousPage(halfPage) {
+                drawTabOnFace(face, &imageCache, mod.TabResearchLeft, researchTabLeft, region)
+            }
+
             if halfPage >= 0 && halfPage < len(halfPages) {
                 options.GeoM.Translate(float64(content.X - region.Min.X), float64(content.Y - region.Min.Y))
                 renderPage(halfPages[halfPage], true, face, options)
@@ -877,6 +884,15 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
                 // turned back it goes from the left to the right, as in a mirror
                 // clear of the tabs in the corners from its first tick, see pagetab.go
                 turned := turnedAt(pageTurnPart(animationIndex - bookFlipIndex, PageTurnTicks), researchLeaf().Width, researchTabReach)
+
+                // the tabs of the pages under the leaf, which comes down over them
+                if hasPreviousPage(showLeftPage) {
+                    drawPageTab(screen, &imageCache, mod.TabResearchLeft, researchTabLeft, getAlpha(), false)
+                }
+                if hasNextPage(showRightPage) {
+                    drawPageTab(screen, &imageCache, mod.TabResearchRight, researchTabRight, getAlpha(), false)
+                }
+
                 drawLeaf(screen, researchLeaf(), getResearchLeafFace(flipLeftSide, true), getResearchLeafFace(flipRightSide, false), turned, bookFlipReverse, getAlpha(), researchPixel)
             } else if !ProceduralPageTurn && bookFlipIndex > 0 && (animationIndex - bookFlipIndex) / bookFlipSpeed < uint64(len(bookFlip)) {
                 index := (animationIndex - bookFlipIndex) / bookFlipSpeed
@@ -963,7 +979,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
 
     // left page turn
     leftTurn, _ := imageCache.GetImage("scroll.lbx", 7, 0)
-    leftRect := util.ImageRect(15, 9, leftTurn)
+    leftRect := util.ImageRect(researchTabLeft.X, researchTabLeft.Y, leftTurn)
     elements = append(elements, &uilib.UIElement{
         Rect: leftRect,
         Inside: func(this *uilib.UIElement, x int, y int){
@@ -976,15 +992,16 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
             doLeftPageTurn()
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
-            if hasPreviousPage(showLeftPage){
-                drawPageTab(screen, leftTurn, mod.TabResearchLeft, leftRect.Min, getAlpha(), leftTurnOver)
+            // while a leaf turns the tabs are drawn under it, with the book
+            if hasPreviousPage(showLeftPage) && !(flipping && ProceduralPageTurn) {
+                drawPageTab(screen, &imageCache, mod.TabResearchLeft, leftRect.Min, getAlpha(), leftTurnOver)
             }
         },
     })
 
     // right page turn
     rightTurn, _ := imageCache.GetImage("scroll.lbx", 8, 0)
-    rightRect := util.ImageRect(289, 9, rightTurn)
+    rightRect := util.ImageRect(researchTabRight.X, researchTabRight.Y, rightTurn)
     elements = append(elements, &uilib.UIElement{
         Rect: rightRect,
         Inside: func(this *uilib.UIElement, x int, y int){
@@ -997,8 +1014,8 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
             doRightPageTurn()
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
-            if hasNextPage(showRightPage){
-                drawPageTab(screen, rightTurn, mod.TabResearchRight, rightRect.Min, getAlpha(), rightTurnOver)
+            if hasNextPage(showRightPage) && !(flipping && ProceduralPageTurn) {
+                drawPageTab(screen, &imageCache, mod.TabResearchRight, rightRect.Min, getAlpha(), rightTurnOver)
             }
         },
     })
@@ -1602,6 +1619,13 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
 
         book, _ := imageCache.GetImage("spells.lbx", 0, 0)
         face := makeLeafFace(book, region, func(face *ebiten.Image, options ebiten.DrawImageOptions) {
+            // the tab in its corner is a part of the page and turns with it, see pagetab.go
+            if right && castPageHasNext(page, len(spellPages)) {
+                drawTabOnFace(face, &imageCache, mod.TabCastRight, castTabRight.Sub(image.Pt(castBookX, castBookY)), region)
+            } else if !right && castPageHasPrevious(page) {
+                drawTabOnFace(face, &imageCache, mod.TabCastLeft, castTabLeft.Sub(image.Pt(castBookX, castBookY)), region)
+            }
+
             if page >= 0 && page < len(spellPages) {
                 options.GeoM.Translate(float64(content.X - region.Min.X), float64(content.Y - region.Min.Y))
                 renderPage(face, options, spellPages[page], Spell{})
@@ -1909,6 +1933,14 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                     renderPage(screen, under, spellPages[showPageRight], Spell{})
                 }
 
+                // the tabs of the pages under the leaf, which comes down over them
+                if castPageHasPrevious(showPageLeft) {
+                    drawPageTab(screen, &imageCache, mod.TabCastLeft, castTabLeft, getAlpha(), false)
+                }
+                if castPageHasNext(showPageRight, len(spellPages)) {
+                    drawPageTab(screen, &imageCache, mod.TabCastRight, castTabRight, getAlpha(), false)
+                }
+
                 // the leaf shows pageSideLeft while it is on the right and pageSideRight on the
                 // left. turned back it goes from the left to the right, as in a mirror
                 back := bookFlipReverse
@@ -2087,7 +2119,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
     forgetHoverTabs()
 
     pageTurnRight, _ := imageCache.GetImage("spells.lbx", 2, 0)
-    pageTurnRightRect := image.Rect(0, 0, pageTurnRight.Bounds().Dx(), pageTurnRight.Bounds().Dy()).Add(image.Pt(268, 14))
+    pageTurnRightRect := image.Rect(0, 0, pageTurnRight.Bounds().Dx(), pageTurnRight.Bounds().Dy()).Add(castTabRight)
     elements = append(elements, &uilib.UIElement{
         Layer: 1,
         Order: 1,
@@ -2118,14 +2150,15 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             }
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
-            if *currentPage + 2 < len(spellPages) {
-                drawPageTab(screen, pageTurnRight, mod.TabCastRight, pageTurnRightRect.Min, getAlpha(), pageTurnRightOver)
+            // while a leaf turns the tabs are drawn under it, with the book
+            if *currentPage + 2 < len(spellPages) && !(flipping && ProceduralPageTurn) {
+                drawPageTab(screen, &imageCache, mod.TabCastRight, pageTurnRightRect.Min, getAlpha(), pageTurnRightOver)
             }
         },
     })
 
     pageTurnLeft, _ := imageCache.GetImage("spells.lbx", 1, 0)
-    pageTurnLeftRect := image.Rect(0, 0, pageTurnLeft.Bounds().Dx(), pageTurnLeft.Bounds().Dy()).Add(image.Pt(23, 14))
+    pageTurnLeftRect := image.Rect(0, 0, pageTurnLeft.Bounds().Dx(), pageTurnLeft.Bounds().Dy()).Add(castTabLeft)
     elements = append(elements, &uilib.UIElement{
         Rect: pageTurnLeftRect,
         Layer: 1,
@@ -2156,8 +2189,8 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             }
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
-            if *currentPage > 0 {
-                drawPageTab(screen, pageTurnLeft, mod.TabCastLeft, pageTurnLeftRect.Min, getAlpha(), pageTurnLeftOver)
+            if *currentPage > 0 && !(flipping && ProceduralPageTurn) {
+                drawPageTab(screen, &imageCache, mod.TabCastLeft, pageTurnLeftRect.Min, getAlpha(), pageTurnLeftOver)
             }
 
         },

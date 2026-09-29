@@ -64,7 +64,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 ## Spellbook
 - Descriptions and the info window of a spell in smaller, sharp text.
 - The tip that says how many turns a spell takes to cast is solid and has a shadow of whole pixels, as all tips have now.
-- The page turn is made by the game from the pages as they are, forward and back. It starts clear of the tab in the corner, and a tab lifts a little under the mouse. A click on a tab while a page turns turns the next one at once.
+- The page turn is made by the game from the pages as they are, forward and back. The folded corners that turn the pages turn with their page, and are lighter under the mouse. A click on a tab while a page turns turns the next one at once.
 - In battle the realms that filter the spells are in a row over the book.
 
 ## For artists
