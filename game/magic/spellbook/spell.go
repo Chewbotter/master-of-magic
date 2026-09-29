@@ -1888,7 +1888,9 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         */
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             // FIXME: do the whole page flipping thing with distorted pages
-            vector.FillRect(screen, 0, 0, float32(screen.Bounds().Dx()), float32(screen.Bounds().Dy()), color.RGBA{R: 0, G: 0, B: 0, A: 128}, false)
+            // the dark behind the book comes and goes with the book, see bookdim.go
+            dark := noteCastBookDark(getAlpha())
+            vector.FillRect(screen, 0, 0, float32(screen.Bounds().Dx()), float32(screen.Bounds().Dy()), color.RGBA{R: 0, G: 0, B: 0, A: uint8(dark * 255)}, false)
 
             background, _ := imageCache.GetImage("spells.lbx", 0, 0)
             var options ebiten.DrawImageOptions
