@@ -187,7 +187,10 @@ func (game *Game) setMapCursor(picture *ebiten.Image, hot image.Point) {
         // while the map is panned the cursor glides between pixels on a small picture of its own
         // (mouse/smooth.go), where the pixels of the map are not known
         onScreen := screen.Bounds().Dx() > scale.Scale(mapCursorCanvasLimit)
-        if onScreen {
+        // not while the camera moves: the pixels of the map go by under the mouse then, and a
+        // cursor that is put on them goes along with one for a moment and jumps back to the
+        // next, again and again (user, 2026-09-29)
+        if onScreen && !cameraMoves {
             useCamera := game.Camera
             game.roundToPixel(&useCamera)
             startX := float64(display.ContentOffsetX()) - useCamera.GetZoomedX() * float64(game.Model.CurrentMap().TileWidth()) * pixel

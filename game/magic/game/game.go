@@ -3917,11 +3917,6 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
         leftClick = false
     }
 
-    if rightClick {
-        // what a right click opens has the cursor of always
-        game.resetWorldCursor()
-    }
-
     if leftClick {
         // modern controls: a click on a stack of the player selects it, see worldselect.go
         picked := game.stackToSelect(player, mouseX, mouseY)
@@ -4072,6 +4067,11 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
             if rightClick {
                 city := player.FindCity(tileX, tileY, game.Model.Plane)
                 if city != nil {
+                    // what a right click opens has the cursor of always. only then: set back at
+                    // every right click, the cursor of the map was the plain one for a moment
+                    // also when the click only moved the camera, another size at another place
+                    // (user, 2026-09-29: "the cursor will spasm a bit")
+                    game.resetWorldCursor()
                     if city.Outpost {
                         game.showOutpost(yield, city, player.FindStack(city.X, city.Y, city.Plane), player, false)
                     } else {
@@ -4091,6 +4091,7 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
 
                             city := otherPlayer.FindCity(tileX, tileY, game.Model.Plane)
                             if city != nil {
+                                game.resetWorldCursor()
                                 if player.Admin {
                                     game.doCityScreen(yield, city, otherPlayer, buildinglib.BuildingNone)
                                 } else {
@@ -4099,6 +4100,7 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
                             } else if player.IsVisible(tileX, tileY, game.Model.Plane) {
                                 enemyStack := otherPlayer.FindStack(tileX, tileY, game.Model.Plane)
                                 if enemyStack != nil {
+                                    game.resetWorldCursor()
                                     quit := false
                                     clicked := func(unit unitview.UnitView){
                                         quit = true
