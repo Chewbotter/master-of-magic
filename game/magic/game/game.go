@@ -1625,6 +1625,12 @@ func (game *Game) showMovement(yield coroutine.YieldFunc, oldX int, oldY int, st
 
     game.MovingStack = stack
 
+    // modern controls: the camera goes to where the stack of the player will stop, see walkcamera.go
+    toDestination := center && walkCamera.Walking
+    if toDestination {
+        center = false
+    }
+
     if center {
         // the unit is still drawn on its old tile while the camera pans over to it, if it is elsewhere.
         // see cameramove.go
@@ -1641,6 +1647,9 @@ func (game *Game) showMovement(yield coroutine.YieldFunc, oldX int, oldY int, st
         if center {
             // the camera moves with the unit instead of jumping a tile after it
             game.followMovingStack(stack.X(), stack.Y(), dx * interpolate, dy * interpolate)
+        }
+        if toDestination {
+            game.stepWalkCamera()
         }
         game.DoViewInput(yield)
         yield()
@@ -3689,6 +3698,9 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
 
     entityInfo := game.Model.ComputeCityStackInfo()
 
+    // modern controls: one move of the camera, to where the stack will stop. see walkcamera.go
+    game.startWalkCamera(yield, player, stack, mapUse, getStack)
+
     quitMoving:
     for i, step := range stack.CurrentPath {
         if stack.AnyOutOfMoves() {
@@ -3826,6 +3838,8 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
             break
         }
     }
+
+    game.endWalkCamera(yield, stack)
 
     if stopMoving {
         stack.CurrentPath = nil

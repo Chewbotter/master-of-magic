@@ -18,6 +18,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 ## World map
 - Smooth panning with the middle mouse button (modern controls): the map glides, keeps moving for a moment after release, and the cursor glides with it.
 - Camera moves are eased: a right click, the jump to the next unit, and following a unit that walks.
+- When you send a stack walking, the camera makes one move to where the stack will stop and waits for it there (modern controls).
 - Fog as in the original: land is unexplored (black) or shown as it is. Explored land that no unit or city sees at the moment is not darkened.
 - The start of a game reveals the original's area around the first city, 5 by 5 tiles without the corners.
 - Newly revealed land fades in, one art pixel at a time.
