@@ -189,6 +189,9 @@ func (game *MagicGame) updateFastPlay(menu *mainview.MainScreen) (mainview.MainS
                 unitPickerExpanded[race] = true
             }
         }
+        // and the rollouts of the ground and of the coast
+        unitPickerGroundOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "biome")
+        unitPickerCoastOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "coast")
         capture.UnitPicker = ""
         unitPickerOpen = true
     }
@@ -526,10 +529,13 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
             defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(unit, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
         }
 
-        landscape = combat.CombatLandscapeGrass
-        zone = combat.ZoneType{}
+        // the ground that was picked with the unit, see unitpicker.go
+        landscape, zone = testBattleZone()
+        if capture.BattleGround != "" {
+            landscape, zone.Ground = randomBattleGround(landscape, false)
+        }
 
-        log.Printf("Test battle: %v %v against %v of their kind", TestBattleUnits * armyScale, unitFullName(&unit), TestBattleUnits * armyScale)
+        log.Printf("Test battle: %v %v against %v of their kind, landscape %v, ground %+v", TestBattleUnits * armyScale, unitFullName(&unit), TestBattleUnits * armyScale, landscape, zone.Ground)
     } else if cityBattle {
         // a city of another race, held by its starting units
         cityRace := randomChoose(randomBattleRaces...)
