@@ -1,9 +1,11 @@
-package combat
+package aura
 
 import (
     "image"
     "image/color"
     "testing"
+
+    "github.com/kazzmir/master-of-magic/game/magic/data"
 )
 
 func TestAura(test *testing.T) {
@@ -20,7 +22,7 @@ func TestAura(test *testing.T) {
     picture.SetColorIndex(0, 0, 10)
 
     got := make(map[image.Point]bool)
-    for _, pixel := range auraPixels(picture) {
+    for _, pixel := range Pixels(picture) {
         got[pixel] = true
     }
 
@@ -35,7 +37,7 @@ func TestAura(test *testing.T) {
     }
 
     // the numbers of the original: the step grows by one a pixel, so 0 0 1 3 6 2 7 5, then 4 4 ...
-    picks := auraPicks(18)
+    picks := Picks(18)
     wantPicks := []int{0, 0, 1, 3, 6, 2, 7, 5, 4, 4, 5, 7, 2, 6, 3, 1, 0, 0}
     for index, pick := range wantPicks {
         if picks[index] != pick {
@@ -43,14 +45,30 @@ func TestAura(test *testing.T) {
         }
     }
 
-    // a stage later every list of the original starts one further
-    out := withAura(func(original *image.Paletted) image.Image { return original }, auraLife, 1)(picture)
-    r, _, _, _ := out.At(1, 2).RGBA()
-    if r == 0 {
+    out := image.NewNRGBA(picture.Bounds())
+    Paint(out, Pixels(picture), Life, 1)
+    _, _, _, alpha := out.At(1, 2).RGBA()
+    if alpha == 0 {
         test.Errorf("the outline has no color")
     }
-    _, _, _, alpha := out.At(4, 4).RGBA()
+    _, _, _, alpha = out.At(4, 4).RGBA()
     if alpha != 0 {
         test.Errorf("a pixel away from the figure is not empty")
+    }
+}
+
+func TestAuraOrder(test *testing.T) {
+    // the first of the original's order decides, not the first of the list
+    realm := Of([]data.UnitEnchantment{data.UnitEnchantmentBless, data.UnitEnchantmentFlameBlade, data.UnitEnchantmentRegeneration})
+    if realm != Nature {
+        test.Errorf("realm is %v, want nature", realm)
+    }
+
+    if Of([]data.UnitEnchantment{data.UnitEnchantmentBless, data.UnitEnchantmentInvisibility}) != None {
+        test.Errorf("an invisible unit has an outline")
+    }
+
+    if Of([]data.UnitEnchantment{data.UnitEnchantmentChaosChannelsDemonSkin}) != None {
+        test.Errorf("chaos channels give an outline")
     }
 }

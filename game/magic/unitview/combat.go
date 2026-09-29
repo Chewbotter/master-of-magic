@@ -4,6 +4,7 @@ import (
     "image"
     "math"
 
+    "github.com/kazzmir/master-of-magic/game/magic/aura"
     "github.com/kazzmir/master-of-magic/game/magic/util"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
@@ -148,9 +149,8 @@ func renderCombatUnitGrey(screen *ebiten.Image, use *ebiten.Image, options ebite
             colorm.DrawImage(screen, use, *lostColor, &dyingOptions)
         } else if i < count {
             colorm.DrawImage(screen, use, greyScale, &greyOptions)
-            if enchantment != data.UnitEnchantmentNone {
-                util.DrawOutline(screen, imageCache, use, greyOptions.GeoM, options.ColorScale, timeCounter/10, enchantment.Color())
-            }
+            // the outline of the original, see the package aura
+            aura.DrawUnit(screen, use, greyOptions.GeoM, options.ColorScale, []data.UnitEnchantment{enchantment})
         }
     }
 }
@@ -192,9 +192,8 @@ func renderCombatUnit(screen *ebiten.Image, use *ebiten.Image, options ebiten.Dr
             colorm.DrawImage(screen, use, *lostColor, &dyingOptions)
         } else if i < count {
             screen.DrawImage(use, &options)
-            if enchantment != data.UnitEnchantmentNone {
-                util.DrawOutline(screen, imageCache, use, options.GeoM, options.ColorScale, timeCounter/10, enchantment.Color())
-            }
+            // the outline of the original, see the package aura
+            aura.DrawUnit(screen, use, options.GeoM, options.ColorScale, []data.UnitEnchantment{enchantment})
         }
     }
 }

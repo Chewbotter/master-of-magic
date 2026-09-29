@@ -41,7 +41,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The bar at the bottom matches the original: text, names, health bars.
 - What is known of the unit under the mouse stands in the upper right corner of the window, also in widescreen, in the original's letters and pictures without a panel: the name, the health bar under it and one column of attack, defense, resistance and moves, all ending on one edge.
 - The outline of the unit under the mouse pulses to a soft gray for your units and to red for the enemy's.
-- A unit with a spell on it has the original's outline in battles: a rim of one pixel in the shades of the realm of the spell, which run around the figure.
+- A unit with a spell on it, and an item with powers, has the original's outline everywhere: a rim of one pixel in the shades of the realm of the spell, which run around the figure.
 - While Tab is held, units whose turn is over are gray.
 - Zoom in whole steps and smooth panning. The field reaches across a wide window, with darkening ground around it.
 - Ground made as the original makes it: grass and dirt in patches, the roads of the world map crossing the field (enchanted roads in gold), a forest with many more trees.

@@ -12,6 +12,7 @@ import (
     uilib "github.com/kazzmir/master-of-magic/game/magic/ui"
     herolib "github.com/kazzmir/master-of-magic/game/magic/hero"
     fontslib "github.com/kazzmir/master-of-magic/game/magic/fonts"
+    "github.com/kazzmir/master-of-magic/game/magic/aura"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/artifact"
@@ -441,10 +442,8 @@ func MakeSmallListView(cache *lbx.LbxCache, ui *uilib.UI, stack []UnitView, titl
                 unitOptions.GeoM.Translate(1, 1)
                 screen.DrawImage(unitImage, scale.ScaleOptions(unitOptions))
 
-                for _, enchantment := range unit.GetEnchantments() {
-                    util.DrawOutline(screen, &imageCache, unitImage, scale.ScaleGeom(unitOptions.GeoM), options.ColorScale, ui.Counter/10, enchantment.Color())
-                    break
-                }
+                // the outline of the original, see the package aura
+                aura.DrawUnit(screen, unitImage, scale.ScaleGeom(unitOptions.GeoM), options.ColorScale, unit.GetEnchantments())
 
                 x, y = unitOptions.GeoM.Apply(float64(unitBack.Bounds().Dx() + 2), 5)
                 fonts.Medium.PrintOptions(screen, x, y, font.FontOptions{Options: &options, Scale: scale.ScaleAmount}, unit.GetName())

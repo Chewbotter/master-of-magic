@@ -8,6 +8,7 @@ import (
 
     "github.com/kazzmir/master-of-magic/lib/lbx"
     "github.com/kazzmir/master-of-magic/lib/font"
+    "github.com/kazzmir/master-of-magic/game/magic/aura"
     "github.com/kazzmir/master-of-magic/game/magic/util"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/units"
@@ -367,10 +368,8 @@ func (view *ArmyScreen) MakeUI() *uilib.UI {
 
                             colorm.DrawImage(screen, pic, matrix, &options)
 
-                            enchantment := util.First(unit.GetEnchantments(), data.UnitEnchantmentNone)
-                            if enchantment != data.UnitEnchantmentNone {
-                                util.DrawOutline(screen, &view.ImageCache, pic, options.GeoM, ebiten.ColorScale{}, ui.Counter/10, enchantment.Color())
-                            }
+                            // the outline of the original, see the package aura
+                            aura.DrawUnit(screen, pic, options.GeoM, ebiten.ColorScale{}, unit.GetEnchantments())
 
                         },
                     }

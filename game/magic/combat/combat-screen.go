@@ -21,6 +21,7 @@ import (
     "github.com/kazzmir/master-of-magic/lib/set"
     "github.com/kazzmir/master-of-magic/lib/functional"
     fontslib "github.com/kazzmir/master-of-magic/game/magic/fonts"
+    "github.com/kazzmir/master-of-magic/game/magic/aura"
     "github.com/kazzmir/master-of-magic/game/magic/audio"
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
     "github.com/kazzmir/master-of-magic/game/magic/units"
@@ -2420,7 +2421,22 @@ func (combat *CombatScreen) ProcessEvents(yield coroutine.YieldFunc) CombatUpdat
     }
 }
 
+// the unit under the mouse. wherever the clock of the battle moves, so the outline of a unit is
+// plain again as soon as the mouse has left it, also while a unit walks or strikes (user,
+// 2026-09-29: a unit that was attacked kept its red outline until the attack was over)
+func (combat *CombatScreen) updateHighlightedUnit() {
+    if combat.UI == nil || combat.UI.GetHighestLayerValue() != 0 {
+        return
+    }
+
+    mouseX, mouseY := inputmanager.MousePosition()
+    tileX, tileY := combat.ScreenToTile(float64(mouseX), float64(mouseY))
+    combat.Model.HighlightedUnit = combat.Model.GetUnit(int(math.Round(tileX)), int(math.Round(tileY)))
+}
+
 func (combat *CombatScreen) UpdateAnimations(){
+    combat.updateHighlightedUnit()
+
     // particles and what else goes with spells, see spelleffects.go
     combat.updateSpellEffects()
 
@@ -3855,10 +3871,8 @@ func (combat *CombatScreen) ShowCombatInfo(screen *ebiten.Image) {
                 options.ColorScale.ScaleAlpha(float32(alpha) / 255)
                 scale.DrawScaled(subScreen, unitImage, &options)
 
-                for _, enchantment := range unit.GetEnchantments() {
-                    util.DrawOutline(subScreen, &combat.ImageCache, unitImage, scale.ScaleGeom(options.GeoM), options.ColorScale, combat.Counter/8, enchantment.Color())
-                    break
-                }
+                // the outline of the original, see the package aura
+                aura.Draw(subScreen, unitImage, scale.ScaleGeom(options.GeoM), options.ColorScale, unitAura(unit))
 
                 combat.DrawHealthBar(subScreen, unitX + unitImage.Bounds().Dx() + 2, unitY + unitImage.Bounds().Dy() / 2, alpha, unit)
                 unitY += unitImage.Bounds().Dy() + 2
@@ -4127,14 +4141,14 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             imageTransform = withScannedOutline(imageTransform, step, own)
         }
         // a unit with a spell on it: the outline of the original, see aura.go
-        aura := auraNone
+        realm := aura.None
         if OriginalAura {
-            aura = unitAura(unit)
+            realm = unitAura(unit)
         }
-        if aura != auraNone {
+        if realm != aura.None {
             stage := combat.auraStage()
-            imageKey = auraKey(imageKey, aura, stage)
-            imageTransform = withAura(imageTransform, aura, stage)
+            imageKey = auraKey(imageKey, realm, stage)
+            imageTransform = withAura(imageTransform, realm, stage)
         }
         combatImages, _ := combat.ImageCache.GetImagesTransform(unit.Unit.GetCombatLbxFile(), unit.Unit.GetCombatIndex(unit.Facing), imageKey, imageTransform)
 

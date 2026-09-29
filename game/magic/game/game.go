@@ -18,6 +18,7 @@ import (
     "bufio"
     "compress/gzip"
 
+    "github.com/kazzmir/master-of-magic/game/magic/aura"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/setup"
     "github.com/kazzmir/master-of-magic/game/magic/keybinds"
@@ -1589,11 +1590,8 @@ func (game *Game) showOutpost(yield coroutine.YieldFunc, city *citylib.City, sta
                         scale.DrawScaled(screen, pic, &stackOptions)
                     }
 
-                    // draw the first enchantment on the unit
-                    for _, enchantment := range unit.GetEnchantments() {
-                        util.DrawOutline(screen, &game.ImageCache, pic, scale.ScaleGeom(stackOptions.GeoM), stackOptions.ColorScale, game.Counter/8, enchantment.Color())
-                        break
-                    }
+                    // the outline of the original, see the package aura
+                    aura.DrawUnit(screen, pic, scale.ScaleGeom(stackOptions.GeoM), stackOptions.ColorScale, unit.GetEnchantments())
                 },
             })
 
@@ -6606,11 +6604,8 @@ func (game *Game) MakeHudUI() *uilib.UI {
                                 scale.DrawScaled(screen, unitImage, &options)
                             }
 
-                            // draw the first enchantment on the unit
-                            for _, enchantment := range unit.GetEnchantments() {
-                                util.DrawOutline(screen, &game.ImageCache, unitImage, scale.ScaleGeom(options.GeoM), options.ColorScale, game.Counter/8, enchantment.Color())
-                                break
-                            }
+                            // the outline of the original, see the package aura
+                            aura.DrawUnit(screen, unitImage, scale.ScaleGeom(options.GeoM), options.ColorScale, unit.GetEnchantments())
                         }
 
                         if unit.GetHealth() < unit.GetMaxHealth() {
@@ -8532,10 +8527,8 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
                         scale.DrawScaled(screen, pic, &options)
                     }
 
-                    enchantment := util.First(leader.GetEnchantments(), data.UnitEnchantmentNone)
-                    if enchantment != data.UnitEnchantmentNone {
-                        util.DrawOutline(screen, overworld.ImageCache, pic, scale.ScaleGeom(options.GeoM), options.ColorScale, overworld.Counter/8, enchantment.Color())
-                    }
+                    // the outline of the original, see the package aura
+                    aura.DrawUnit(screen, pic, scale.ScaleGeom(options.GeoM), options.ColorScale, leader.GetEnchantments())
                 }
             }
         }

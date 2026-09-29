@@ -8,6 +8,7 @@ import (
     "strings"
 
     "github.com/kazzmir/master-of-magic/lib/font"
+    "github.com/kazzmir/master-of-magic/game/magic/aura"
     "github.com/kazzmir/master-of-magic/game/magic/util"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
@@ -35,7 +36,8 @@ func RenderArtifactImage(screen *ebiten.Image, imageCache *util.ImageCache, arti
 
     enchanted := artifact.HasAbilities()
     if enchanted {
-        util.DrawOutline(screen, imageCache, itemImage, scale.ScaleGeom(options.GeoM), options.ColorScale, counter, data.GetMagicColor(artifact.FirstAbility().MagicType()))
+        // the outline of the original, see the package aura
+        aura.Draw(screen, itemImage, scale.ScaleGeom(options.GeoM), options.ColorScale, aura.OfMagic(artifact.FirstAbility().MagicType()))
     }
 
     return itemImage

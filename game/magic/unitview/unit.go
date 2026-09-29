@@ -9,6 +9,7 @@ import (
     "image"
     "image/color"
 
+    "github.com/kazzmir/master-of-magic/game/magic/aura"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/util"
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -51,7 +52,8 @@ func RenderUnitViewImage(screen *ebiten.Image, imageCache *util.ImageCache, unit
         if unit.IsInvisible() {
             RenderCombatSemiInvisible(screen, use, options, unit.VisibleFigures(), 0, nil, counter, imageCache)
         } else {
-            first := util.First(unit.GetEnchantments(), data.UnitEnchantmentNone)
+            // the one that decides about the outline, see the package aura
+            first := aura.Deciding(unit.GetEnchantments())
             if grey {
                 RenderCombatUnitGrey(screen, use, options, unit.VisibleFigures(), 0, nil, first, counter, imageCache)
             } else {

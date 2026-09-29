@@ -3,6 +3,7 @@ package game
 // Development: open a screen by name, so a frame capture can show it without clicking.
 
 import (
+    "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "fmt"
     "image"
@@ -79,6 +80,23 @@ func (game *Game) CaptureOpenScreen(name string) bool {
         case "spellbook": event = &GameEventCastSpellBook{}
         case "surveyor": event = &GameEventSurveyor{}
         case "cartographer": event = &GameEventCartographer{}
+        case "auras", "unitaura":
+            // a spell of another realm on every unit of the player, for their outlines; and
+            // the window of the first unit of the selected stack. see the package aura
+            player := game.Model.GetHumanPlayer()
+            if player == nil {
+                return false
+            }
+            spells := []data.UnitEnchantment{data.UnitEnchantmentBless, data.UnitEnchantmentStoneSkin, data.UnitEnchantmentFlight, data.UnitEnchantmentFlameBlade, data.UnitEnchantmentCloakOfFear}
+            index := 0
+            for unit := range player.Units() {
+                unit.AddEnchantment(spells[index % len(spells)])
+                index += 1
+            }
+            if name == "unitaura" && player.SelectedStack != nil && len(player.SelectedStack.Units()) > 0 {
+                game.HudUI.AddGroup(unitview.MakeUnitContextMenu(game.Cache, game.HudUI, player.SelectedStack.Units()[0], func(){}))
+            }
+            return true
         case "unit":
             // the window of the first unit of the selected stack, as a right click on it in the panel opens
             player := game.Model.GetHumanPlayer()
