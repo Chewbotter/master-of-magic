@@ -39,7 +39,9 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 ## Battles
 - The battlefield, the places of figures, deployment, timing, trees, rocks, houses and walls follow the original.
 - The bar at the bottom matches the original: text, names, health bars.
-- The box of the unit under the mouse has the original's look, arranged anew: the name and one column of attack, defense, resistance and moves end at its right edge.
+- The box of the unit under the mouse has the original's look, arranged anew: the name, the health bar under it and one column of attack, defense, resistance and moves end at its right edge. It sits in the corner of the window, also in widescreen.
+- The outline of the unit under the mouse pulses to a light gray, not to red.
+- While Tab is held, units whose turn is over are gray.
 - Zoom in whole steps and smooth panning. The field reaches across a wide window, with darkening ground around it.
 - Ground made as the original makes it: grass and dirt in patches, the roads of the world map crossing the field (enchanted roads in gold), a forest with many more trees.
 - Movement costs of the original: trees and mud slow a unit down, a road is faster than grass.
