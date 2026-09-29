@@ -105,6 +105,9 @@ func (combat *CombatScreen) coastPictures(name string, number int, count int, lb
 
 // the frames of the picture of a tree, a rock or a house
 func (combat *CombatScreen) sceneryPictures(piece *SceneryPiece) []*ebiten.Image {
+    if piece.Kind == SceneryFence {
+        return combat.fencePictures(piece)
+    }
     if piece.Number > 0 {
         pictures := combat.addedPictures(piece.Set, piece.Name, piece.Number)
         if len(pictures) > 0 {

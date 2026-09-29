@@ -185,6 +185,8 @@ type BattleGround struct {
     Farmland int
     Crops []int
     Built []bool
+    // its plots of crops, for the fences around them. see fences.go
+    Plots []farmPlot
     FarmSet string
     // the pools of a swamp, nil without them. see swamp.go
     Pools *swampPools

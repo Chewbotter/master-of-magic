@@ -20,7 +20,8 @@ package combat
 // tiles more than grass in this sub-biome"). The ground is laid out in squares of one size for the battle, farmPlotMin to
 // farmPlotMax cells, with one row of grass between them. A square is a plot of crops or is left
 // as grass, by chance. A plot shows one picture of crops in all of its cells, so it looks
-// ploughed one way. No plot lies on a road, a coast or a river: a square they run through has a
+// of one crop. The pictures of crops come in kinds of 4 (crop 1 to 4, 5 to 8, ...): a plot
+// is of one kind and shows its 4 pictures by chance. No plot lies on a road, a coast or a river: a square they run through has a
 // smaller plot beside them, or none. The ground is flat.
 //
 // BUILDINGS. Houses of the race of the town stand one by one on the grass between and beside the
@@ -71,6 +72,10 @@ const farmHousesFar = 3
 // landscape, and how many the game makes
 const groundCropFirst = 80
 const groundCropCount = 4
+// the pictures of one kind of crops
+const cropsOfKind = 4
+// props of the folder of the farmland on the original's screen. beyond it as many for its size
+const farmProps = 6
 
 const farmSet = mod.FeatureFarmland
 const farmCropName = "crop"
@@ -125,7 +130,9 @@ func (ground *BattleGround) makeFarmland(landscape CombatLandscape, zone ZoneTyp
 
     size := farmPlotMin + rand.N(farmPlotMax - farmPlotMin + 1)
     step := size + 1
-    pictures := groundCropCount + ground.Extras[groundCropFirst]
+    // the kinds of crops: every 4 pictures are one kind (user, 2026-09-29: "Every group of 4
+    // (1-4, 5-8, 9-12) is a different type of crop and should be grouped together in a field")
+    kinds := max(1, (groundCropCount + ground.Extras[groundCropFirst]) / cropsOfKind)
 
     // the squares, from a corner by chance
     startX := ground.MinX - rand.N(step)
@@ -143,7 +150,9 @@ func (ground *BattleGround) makeFarmland(landscape CombatLandscape, zone ZoneTyp
                 continue
             }
 
-            picture := cropPicture(rand.N(pictures))
+            // a plot is of one kind of crops, its cells show the pictures of the kind by chance
+            kind := rand.N(kinds)
+            ground.Plots = append(ground.Plots, farmPlot{X: plotX, Y: plotY, Size: plot})
             for dy := range plot {
                 for dx := range plot {
                     if !ground.contains(plotX + dx, plotY + dy) {
@@ -151,7 +160,7 @@ func (ground *BattleGround) makeFarmland(landscape CombatLandscape, zone ZoneTyp
                     }
                     index := ground.index(plotX + dx, plotY + dy)
                     ground.Group[index] = TerrainCrop
-                    ground.Crops[index] = picture
+                    ground.Crops[index] = cropPicture(kind * cropsOfKind + rand.N(cropsOfKind))
                 }
             }
         }
@@ -298,6 +307,47 @@ func makeFarmHouses(width int, height int, zone ZoneType, ground *BattleGround) 
 
     out = append(out, scatterFarmHouses(count, pool, zone, originalArea(), ground)...)
     out = append(out, scatterFarmHouses(count * sceneryBeyondScreen(width, height), pool, zone, beyondArea(width, height), ground)...)
+    return out
+}
+
+// the number of the kind of crops a picture of the ground is of, from 0. -1 for what is no crop
+func cropKind(picture int) int {
+    number := groundVariant(picture, groundCropFirst, groundCropCount)
+    if number < 0 {
+        return -1
+    }
+    return number / cropsOfKind
+}
+
+// the props of the folder of the farmland (prop 1, prop 2, ...), scattered one by one as the
+// props of a landscape are (props.go), on the grass and the dirt between the plots
+func makeFarmProps(width int, height int, zone ZoneType, ground *BattleGround) []SceneryPiece {
+    var out []SceneryPiece
+    if !Props || ground == nil || ground.Farmland == FarmlandNone {
+        return out
+    }
+
+    pool := makeSceneryPool(ground.FarmSet, propStandingName, "", 0, 0)
+    if pool.Count + pool.Extras <= 0 {
+        return out
+    }
+
+    scatter := func(count int, area sceneryArea) {
+        tries := 0
+        placed := 0
+        for placed < count && tries < sceneryMaxTries {
+            cgx, cgy := area.randomCell()
+            screenX, screenY := cellScreen(cgx, cgy, roll(propSubcellMax), roll(propSubcellMax))
+            if ground.builtAt(cgx, cgy) || !ground.houseAllowed(cgx, cgy) || sceneryCellTaken(zone, cgx, cgy, true) || !area.Accept(screenX, screenY) {
+                tries += 1
+                continue
+            }
+            out = append(out, pool.piece(SceneryProp, screenX, screenY))
+            placed += 1
+        }
+    }
+    scatter(farmProps, originalArea())
+    scatter(farmProps * sceneryBeyondScreen(width, height), beyondArea(width, height))
     return out
 }
 

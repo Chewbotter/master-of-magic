@@ -138,8 +138,8 @@ func TestFarmland(test *testing.T) {
                         if around && group != TerrainGrass && group != TerrainDirt && group != TerrainSand && group != TerrainWater {
                             test.Fatalf("%v beside the plot at %v, %v", group, x, y)
                         }
-                        if !around && ground.Picture[ground.index(x, y)] != picture {
-                            test.Fatalf("a plot of more than one picture at %v, %v", x, y)
+                        if !around && cropKind(ground.Picture[ground.index(x, y)]) != cropKind(picture) {
+                            test.Fatalf("a plot of more than one kind of crops at %v, %v", x, y)
                         }
                     }
                 }
@@ -201,5 +201,66 @@ func TestFarmHouses(test *testing.T) {
     ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, ZoneType{})
     if houses := makeFarmHouses(BattlefieldWidth, BattlefieldHeight, ZoneType{}, ground); len(houses) != 0 {
         test.Fatalf("houses without a town")
+    }
+}
+
+// fences stand on sides of cells, once on a side, not where the armies start and not across a
+// road, and most of them along a plot, a road or a house
+func TestFences(test *testing.T) {
+    if cellSide(3, 4, 2) != cellSide(3, 5, 0) || cellSide(3, 4, 1) != cellSide(4, 4, 3) {
+        test.Fatalf("the sides of cells side by side")
+    }
+    // the NE side runs down to the right on the screen, the NW side up to the right
+    x, y := cellCenterScreen(3, 4)
+    if neX, neY := (fencePlace{Cgx: 3, Cgy: 4, Side: fenceNE}).screen(); neX != x + 8 || neY != y - 4 {
+        test.Fatalf("the NE side is at %v, %v", neX, neY)
+    }
+    if nwX, nwY := (fencePlace{Cgx: 3, Cgy: 4, Side: fenceNW}).screen(); nwX != x - 8 || nwY != y - 4 {
+        test.Fatalf("the NW side is at %v, %v", nwX, nwY)
+    }
+
+    total := 0
+    for range 10 {
+        zone := ZoneType{}
+        zone.Ground.Farmland = FarmlandNear
+        zone.Ground.Roads = [9]bool{false, true, false, false, true, false, false, true, false}
+        ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, zone)
+        makeFarmHouses(BattlefieldWidth, BattlefieldHeight, zone, ground)
+        if len(ground.Plots) == 0 {
+            test.Fatalf("no plots")
+        }
+
+        seen := make(map[fencePlace]bool)
+        for _, place := range ground.fencePlaces(zone) {
+            if seen[place] {
+                test.Fatalf("two fences at %+v", place)
+            }
+            seen[place] = true
+            total += 1
+
+            x1, y1, x2, y2 := place.cells()
+            if armyStartsOf(x1, y1, false) || armyStartsOf(x2, y2, false) {
+                test.Fatalf("a fence where an army starts, at %+v", place)
+            }
+            if ground.RoadAt(x1, y1) != 0 && ground.RoadAt(x2, y2) != 0 {
+                test.Fatalf("a fence across a road at %+v", place)
+            }
+
+            crop := ground.GroupAt(x1, y1) == TerrainCrop || ground.GroupAt(x2, y2) == TerrainCrop
+            road := ground.RoadAt(x1, y1) != 0 || ground.RoadAt(x2, y2) != 0
+            house := ground.builtAt(x1, y1) || ground.builtAt(x2, y2)
+            if !crop && !road && !house {
+                test.Fatalf("a fence at %+v with no plot, road or house beside it", place)
+            }
+        }
+    }
+    if total < 100 {
+        test.Fatalf("%v fences", total)
+    }
+
+    // no farmland, no fences
+    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, ZoneType{})
+    if len(makeFences(ZoneType{}, ground)) != 0 {
+        test.Fatalf("fences without farmland")
     }
 }

@@ -30,6 +30,8 @@ const (
     // props that stand and props that lie on the ground, see props.go
     SceneryProp
     SceneryFlat
+    // a fence of farmland, see fences.go
+    SceneryFence
 )
 
 type SceneryPiece struct {
@@ -497,6 +499,9 @@ func makeScenery(width int, height int, landscape CombatLandscape, plane data.Pl
 
     // the houses of the fields of a town, see farmland.go
     out = append(out, makeFarmHouses(width, height, zone, ground)...)
+    // its fences and its props, see fences.go and farmland.go
+    out = append(out, makeFences(zone, ground)...)
+    out = append(out, makeFarmProps(width, height, zone, ground)...)
 
     // the pictures that are added are the ones of the biome, see mod/biomes.go
     set := mod.BiomeFolder(zone.Ground.Biome, mod.EnvironmentSet(lbx))
@@ -533,6 +538,7 @@ func (piece *SceneryPiece) anchor(width int, height int) (int, int) {
         case SceneryStructure: return structureAnchorX, height - structureAnchorBelow
         case SceneryProp: return width / 2, height - propAnchorBelow
         case SceneryFlat: return width / 2, height / 2
+        case SceneryFence: return width / 2, height - fenceAnchorBelow
     }
     return 0, 0
 }

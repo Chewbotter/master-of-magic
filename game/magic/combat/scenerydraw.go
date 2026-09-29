@@ -62,7 +62,7 @@ func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawab
         layer := layerStructure
         switch piece.Kind {
             case SceneryTree: layer = layerTree
-            case SceneryRock, SceneryProp: layer = layerRock
+            case SceneryRock, SceneryProp, SceneryFence: layer = layerRock
         }
 
         // darker on the border, and under a cloud (weather.go)
