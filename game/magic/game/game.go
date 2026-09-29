@@ -6928,7 +6928,8 @@ func (game *Game) MakeHudUI() *uilib.UI {
         elements = append(elements, &uilib.UIElement{
             Draw: func(element *uilib.UIElement, screen *ebiten.Image){
                 if !minMoves.IsZero() {
-                    game.Fonts.WhiteFont.PrintOptions(screen, 246, 167, font.FontOptions{DropShadow: true, Scale: scale.ScaleAmount}, fmt.Sprintf("Moves:%v", minMoves.ToFloat()))
+                    // a border of one art pixel right and below, as the reserves have it. see panel.go
+                    game.Fonts.WhiteFont.PrintOutlined(screen, 246, 167, font.FontOptions{Scale: scale.ScaleAmount}, PanelMovesOutline, fmt.Sprintf("Moves:%v", minMoves.ToFloat()))
 
                     sailingIcon, _ := game.ImageCache.GetImage("main.lbx", 18, 0)
                     swimmingIcon, _ := game.ImageCache.GetImage("main.lbx", 19, 0)

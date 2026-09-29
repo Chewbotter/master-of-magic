@@ -16,6 +16,9 @@ import (
 var PanelIncomeOutline = font.OutlineFull
 // the GP and MP reserves at the top of the panel: black border right and below
 var PanelReserveOutline = font.OutlineBottomRight
+// the moves of the selected stack under its units: the same. the original prints it with a shadow
+// below and right and once more a pixel lower (ReMoM MainScr.c Main_Screen_Draw_Movement_Bar)
+var PanelMovesOutline = font.OutlineBottomRight
 
 // the panel's text area runs from 245 (after the dark left border) up to 314 (where the light right
 // border starts), in original pixels, measured from a capture. the surveyor centers its helper messages

@@ -9,11 +9,12 @@ import (
     "log"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
+    "github.com/kazzmir/master-of-magic/game/magic/unitview"
     "github.com/kazzmir/master-of-magic/lib/coroutine"
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"unit", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -77,6 +78,14 @@ func (game *Game) CaptureOpenScreen(name string) bool {
         case "spellbook": event = &GameEventCastSpellBook{}
         case "surveyor": event = &GameEventSurveyor{}
         case "cartographer": event = &GameEventCartographer{}
+        case "unit":
+            // the window of the first unit of the selected stack, as a right click on it in the panel opens
+            player := game.Model.GetHumanPlayer()
+            if player == nil || player.SelectedStack == nil || len(player.SelectedStack.Units()) == 0 {
+                return false
+            }
+            game.HudUI.AddGroup(unitview.MakeUnitContextMenu(game.Cache, game.HudUI, player.SelectedStack.Units()[0], func(){}))
+            return true
         case "nextunit":
             // selects the next unit with moves and moves the camera to it, as after Next Turn
             player := game.Model.GetHumanPlayer()
