@@ -16,7 +16,6 @@ import (
 // pictures of the water the game has, copied into the folders of the biomes of water to look at:
 // from which folder, and the files that start with what
 var waterReference = map[string][][2]string{
-    mod.BiomeRiver: {{"Other", "river "}},
     mod.BiomeLake: {{"Water", "water "}},
 }
 
@@ -42,6 +41,37 @@ const coastNote = "Shore\r\n\r\n" +
     "Where ground meets sand and sand meets water the game lays the pixels of a tile of sand over a\r\n" +
     "part of the tile of the ground or of the water, with a ragged edge. There is nothing to paint\r\n" +
     "for it. Such a tile counts as what is under the sand.\r\n"
+
+const riverNote = "River\r\n\r\n" +
+    "The river: a feature, not a kind of a landscape. Not in the original game as it is here.\r\n" +
+    "It lies on whatever the landscape of the battle is: the game draws the ground of the landscape\r\n" +
+    "and lays shallow water over it, 2 to 3 tiles wide, with banks that are part water. There is\r\n" +
+    "nothing to paint for the water.\r\n" +
+    "A tile of the river is rough ground, a step into it costs twice what grass costs. A bank counts\r\n" +
+    "as the ground. A battlefield with a river has no roads.\r\n\r\n" +
+    "GLINTS go to mod\\environment\\River:\r\n" +
+    "glint 1_0.png, glint 1_1.png, ...   the frames of the first glint\r\n" +
+    "glint 2_0.png, ...                  the second, and on without a gap\r\n" +
+    "Any size, any number of frames. The middle of the picture lies on its place, about one for\r\n" +
+    "every two tiles of water, each at a time of its own. A picture with see-through frames is a\r\n" +
+    "glint that is gone for a while.\r\n\r\n" +
+    "The files \"_game river ...\" are the pictures the original has of a river (Other), to look at.\r\n" +
+    "The game does not use them.\r\n"
+
+// writes the folder of the river. after the folders of the landscapes are written
+func exportRiver(outPath string) int {
+    environment := filepath.Join(outPath, "environment")
+    folder := filepath.Join(environment, mod.FeatureRiver)
+    err := os.MkdirAll(folder, 0755)
+    if err != nil {
+        log.Printf("%v", err)
+        return 0
+    }
+
+    count := copyPictures(filepath.Join(environment, "Other"), folder, "river ", "_game ")
+    os.WriteFile(filepath.Join(folder, sourceFile), []byte(riverNote), 0644)
+    return count
+}
 
 // writes the folder of the coast. after the folders of the landscapes are written
 func exportCoast(outPath string) int {

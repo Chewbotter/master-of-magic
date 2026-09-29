@@ -48,6 +48,19 @@ func TestTestBattleGround(test *testing.T) {
         }
     }
 
+    // and the river
+    river := testBattleRiver
+    defer func() {
+        testBattleRiver = river
+    }()
+    for _, course := range testRivers {
+        testBattleRiver = course
+        _, zone := testBattleZone()
+        if zone.Ground.River != course || testRiverByName(course.String()) != course || testRiverNames[course] == "" {
+            test.Fatalf("river %v: %+v", course, zone.Ground)
+        }
+    }
+
     if testGroundByName("what is not there") != 0 || testCoastByName("nowhere") != combat.CoastNone {
         test.Fatalf("names that are not there")
     }

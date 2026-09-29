@@ -192,6 +192,7 @@ func (game *MagicGame) updateFastPlay(menu *mainview.MainScreen) (mainview.MainS
         // and the rollouts of the ground and of the coast
         unitPickerGroundOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "biome")
         unitPickerCoastOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "coast")
+        unitPickerRiverOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "river")
         capture.UnitPicker = ""
         unitPickerOpen = true
     }
@@ -296,6 +297,7 @@ type randomCity struct {
 // hills, and roads, always in a town. one in this many
 const RandomBattleBiomeChance = 2
 const RandomBattleCoastChance = 3
+const RandomBattleRiverChance = 3
 const RandomBattleRoadChance = 2
 const RandomBattleRoadSideChance = 3
 const RandomBattleEnchantedRoadChance = 4
@@ -314,6 +316,11 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
     // the sea beside the battle, on a side by chance
     if rand.N(RandomBattleCoastChance) == 0 {
         ground.Coast = combat.CoastAny
+    }
+
+    // a river, which takes the place of the roads. not in a town, see combat/river.go
+    if rand.N(RandomBattleRiverChance) == 0 {
+        ground.River = combat.RiverAny
     }
 
     if town || rand.N(RandomBattleRoadChance) == 0 {
@@ -350,6 +357,9 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
                 case word == "coast=west": ground.Coast = combat.CoastWest
                 case word == "coast=south": ground.Coast = combat.CoastSouth
                 case word == "coast=any": ground.Coast = combat.CoastAny
+                case word == "river=across": ground.River = combat.RiverAcross
+                case word == "river=beside": ground.River = combat.RiverBeside
+                case word == "river=any": ground.River = combat.RiverAny
                 case strings.HasPrefix(word, "road="):
                     side, err := strconv.Atoi(strings.TrimPrefix(word, "road="))
                     if err == nil && side >= 0 && side < len(ground.Roads) {

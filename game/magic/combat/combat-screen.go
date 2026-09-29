@@ -226,6 +226,11 @@ type CombatScreen struct {
     shoreMade bool
     shoreX int
     shoreY int
+    // the water of a river, the same. see river.go
+    riverWater *ebiten.Image
+    riverMade bool
+    riverX int
+    riverY int
     // the large pieces the game makes, see large.go
     largeMade [][]*ebiten.Image
     // the pictures the replacement folder adds to the ground, trees, rocks and houses, see terraindraw.go
@@ -3903,6 +3908,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
     // the sand where a coast starts and ends, see shore.go
     combat.drawShore(screen)
+    // the water of a river, see river.go
+    combat.drawRiver(screen)
     // pieces of 2 by 2 tiles over the ground, see large.go
     combat.drawLargePieces(screen, animationIndex)
     // props that lie on the ground, see props.go

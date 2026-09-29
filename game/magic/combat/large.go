@@ -88,7 +88,7 @@ func (ground *BattleGround) largeAllowed(zone ZoneType, cgx int, cgy int) bool {
     if !ground.contains(cgx, cgy) || ground.Covered[ground.index(cgx, cgy)] {
         return false
     }
-    if ground.GroupAt(cgx, cgy) != TerrainGrass || ground.RoadAt(cgx, cgy) != 0 || ground.HeightAt(cgx, cgy) != 0 || ground.shoreAt(cgx, cgy) {
+    if ground.GroupAt(cgx, cgy) != TerrainGrass || ground.RoadAt(cgx, cgy) != 0 || ground.HeightAt(cgx, cgy) != 0 || ground.shoreAt(cgx, cgy) || ground.riverAt(cgx, cgy) != riverLand {
         return false
     }
     if plateauKeepsOut(zone, cgx, cgy) {

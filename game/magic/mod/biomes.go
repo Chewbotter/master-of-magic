@@ -46,7 +46,6 @@ const (
     BiomeHills = "Hills"
     BiomeVolcano = "Volcano"
     BiomeSnowyMountain = "Snowy Mountain"
-    BiomeRiver = "River"
     BiomeLake = "Lake"
 )
 
@@ -54,6 +53,8 @@ const (
 // coast (combat/coast.go), and what water and the nearness of towns are to add. A feature has a
 // folder of its own, which holds what it adds and nothing of a landscape
 const FeatureShore = "Shore"
+// the river (combat/river.go)
+const FeatureRiver = "River"
 
 var Biomes = []Biome{
     {Name: BiomeForest, Base: "Grass", Note: "a forest of the world map, and a node of nature"},
@@ -61,7 +62,6 @@ var Biomes = []Biome{
     {Name: BiomeHills, Base: "Grass", Note: "hills of the world map"},
     {Name: BiomeVolcano, Base: "Mountain", Note: "a volcano of the world map"},
     {Name: BiomeSnowyMountain, Base: "Mountain", Note: "a mountain of the world map with tundra next to it"},
-    {Name: BiomeRiver, Base: "Grass", Note: "a river of the world map", Planned: true},
     {Name: BiomeLake, Base: "Grass", Note: "a lake of the world map", Planned: true},
 }
 

@@ -8,8 +8,9 @@ package main
 //
 // Above the races are the ground of the battle and its coast (user, 2026-09-29), rollouts as the
 // races are: a landscape or one of its biomes (combat/biomes.go), and the side the sea lies on
-// (combat/coast.go). A click on one of them picks it, the battle starts with the click on a unit.
-// Both are kept for the next battle and the next run of the game, see debugsaved.go.
+// (combat/coast.go), and its river (combat/river.go). A click on one of them picks it, the battle
+// starts with the click on a unit.
+// They are kept for the next battle and the next run of the game, see debugsaved.go.
 
 import (
     "fmt"
@@ -85,13 +86,25 @@ var testCoastNames = map[combat.CoastSide]string{
     combat.CoastWest: "West, upper left",
 }
 
-// the ground and the coast of the test battles: which of testGrounds, and the side
+// the courses of a river with their names in the list, in the order of the list
+var testRivers = []combat.RiverCourse{combat.RiverNone, combat.RiverAny, combat.RiverAcross, combat.RiverBeside}
+var testRiverNames = map[combat.RiverCourse]string{
+    combat.RiverNone: "None",
+    combat.RiverAny: "Any, a course by chance",
+    combat.RiverAcross: "Between the armies",
+    combat.RiverBeside: "Beside the armies",
+}
+
+// the ground, the coast and the river of the test battles: which of testGrounds, the side, the
+// course
 var testBattleGround = 0
 var testBattleCoast = combat.CoastNone
+var testBattleRiver = combat.RiverNone
 
-// the rollouts of the ground and of the coast
+// the rollouts of the ground, of the coast and of the river
 var unitPickerGroundOpen bool
 var unitPickerCoastOpen bool
+var unitPickerRiverOpen bool
 
 func testGroundByName(name string) int {
     for index, ground := range testGrounds {
@@ -111,12 +124,22 @@ func testCoastByName(name string) combat.CoastSide {
     return combat.CoastNone
 }
 
+func testRiverByName(name string) combat.RiverCourse {
+    for _, course := range testRivers {
+        if strings.EqualFold(course.String(), name) {
+            return course
+        }
+    }
+    return combat.RiverNone
+}
+
 // the ground of a test battle as it was picked
 func testBattleZone() (combat.CombatLandscape, combat.ZoneType) {
     ground := testGrounds[testBattleGround]
     var zone combat.ZoneType
     zone.Ground.SetBiome(ground.Biome)
     zone.Ground.Coast = testBattleCoast
+    zone.Ground.River = testBattleRiver
     return ground.Landscape, zone
 }
 
@@ -142,8 +165,13 @@ type unitPickerRow struct {
     Ground int
     Coast combat.CoastSide
     IsCoast bool
+    RiverTitle bool
+    River combat.RiverCourse
+    IsRiver bool
     // the one that is picked
     Picked bool
+    // an empty row lies above it
+    Apart bool
 
     // in art pixels of the picture of the window
     X float64
@@ -154,7 +182,7 @@ type unitPickerRow struct {
 
 // a row that stands under the title of its rollout
 func (row unitPickerRow) indented() bool {
-    return row.Unit != nil || row.Ground > 0 || row.IsCoast
+    return row.Unit != nil || row.Ground > 0 || row.IsCoast || row.IsRiver
 }
 
 func (row unitPickerRow) contains(x float64, y float64) bool {
@@ -229,7 +257,15 @@ func unitPickerRows() []unitPickerRow {
             rows = append(rows, unitPickerRow{Text: testCoastNames[side], IsCoast: true, Coast: side, Picked: side == testBattleCoast})
         }
     }
+    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v River: %v", mark(unitPickerRiverOpen), testRiverNames[testBattleRiver]), RiverTitle: true})
+    if unitPickerRiverOpen {
+        for _, course := range testRivers {
+            rows = append(rows, unitPickerRow{Text: testRiverNames[course], IsRiver: true, River: course, Picked: course == testBattleRiver})
+        }
+    }
 
+    // the races stand apart from what the battle is fought on
+    apart := true
     for _, race := range unitPickerRaces {
         list := unitsOfRace(race)
         if len(list) == 0 {
@@ -240,7 +276,8 @@ func unitPickerRows() []unitPickerRow {
         if unitPickerExpanded[race] {
             mark = "-"
         }
-        rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v %v (%v)", mark, race, len(list)), Race: race})
+        rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v %v (%v)", mark, race, len(list)), Race: race, Apart: apart})
+        apart = false
 
         if unitPickerExpanded[race] {
             for _, unit := range list {
@@ -260,6 +297,9 @@ func unitPickerRows() []unitPickerRow {
         row.Height = height
         row.Width = unitPickerFont().TextWidth(row.Text, options)
 
+        if row.Apart && y > top {
+            y += height + unitPickerRowGap
+        }
         if y + height > unitPickerBottom {
             x += columnWidth + unitPickerColumnGap
             y = top
@@ -315,6 +355,12 @@ func updateUnitPicker() bool {
             unitPickerGroundOpen = !unitPickerGroundOpen
         case row.CoastTitle:
             unitPickerCoastOpen = !unitPickerCoastOpen
+        case row.RiverTitle:
+            unitPickerRiverOpen = !unitPickerRiverOpen
+        case row.IsRiver:
+            testBattleRiver = row.River
+            unitPickerRiverOpen = false
+            saveDebugSaved()
         case row.Ground > 0:
             testBattleGround = row.Ground - 1
             unitPickerGroundOpen = false
@@ -342,7 +388,7 @@ func drawUnitPicker(screen *ebiten.Image) {
     offsetY := float64(display.ContentOffsetY()) / scale.ScaleAmount
     options := unitPickerOptions()
 
-    unitPickerFont().PrintOutlined(screen, unitPickerLeft + offsetX, unitPickerTop + offsetY, options, font.OutlineFull, "Test Battle: pick a unit. It fights its own kind, on the biome and with the coast picked here.")
+    unitPickerFont().PrintOutlined(screen, unitPickerLeft + offsetX, unitPickerTop + offsetY, options, font.OutlineFull, "Test Battle: pick a unit. It fights its own kind, on the biome and with the coast and the river picked here.")
 
     for index, row := range unitPickerRows() {
         rowOptions := options

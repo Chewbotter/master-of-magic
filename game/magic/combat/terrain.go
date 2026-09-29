@@ -57,6 +57,8 @@ type ZoneGround struct {
     Biome string
     // the side of the field the sea lies on, see coast.go
     Coast CoastSide
+    // the river of the battle, see river.go
+    River RiverCourse
     // an army of the battle has more units than the original's 12 places: the armies take more of
     // the field. set when the battle is made
     LargeArmy bool
@@ -161,6 +163,11 @@ type BattleGround struct {
     SandFirst int
     WaterLbx string
     WaterFirst int
+    // the river: its course, its banks along it, and what every cell is of it, nil without one.
+    // see river.go
+    River RiverCourse
+    Stream *coastLines
+    Banks []riverPart
     // the large pieces, and the cells that lie under one. see large.go
     Large []LargePiece
     Covered []bool
@@ -225,8 +232,8 @@ func (ground *BattleGround) TreesAt(cgx int, cgy int) int {
     return ground.Trees[ground.index(cgx, cgy)]
 }
 
-// trees and rocks stand on grass without a road only, not on a large piece and not where the beach
-// starts
+// trees and rocks stand on grass without a road only, not on a large piece, not where the beach
+// starts and not in a river or on its banks
 func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if ground == nil {
         return true
@@ -234,7 +241,7 @@ func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if !ground.contains(cgx, cgy) {
         return false
     }
-    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy) && !ground.shoreAt(cgx, cgy)
+    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy) && !ground.shoreAt(cgx, cgy) && ground.riverAt(cgx, cgy) == riverLand
 }
 
 func insideOriginalGrid(cgx int, cgy int) bool {
@@ -269,6 +276,7 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
         Width: height + BattlefieldBorder * 2,
         Height: width + BattlefieldBorder * 2,
         EnchantedRoads: zone.Ground.EnchantedRoads,
+        River: riverCourse(zone),
     }
     cells := ground.Width * ground.Height
     ground.Group = make([]TerrainGroup, cells)
@@ -301,7 +309,10 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     ground.scatterPatches(TerrainDirt, dirtPatches, dirtSpan, dirtBase, true)
     ground.scatterPatches(TerrainDirt, dirtPatches * beyond, dirtSpan, dirtBase, false)
 
-    ground.buildRoads(zone)
+    // a battlefield with a river has no roads, see river.go
+    if ground.River == RiverNone {
+        ground.buildRoads(zone)
+    }
     ground.removeRough(zone)
     ground.mergeDirt()
 
@@ -312,6 +323,7 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     ground.Extras[groundSandFirst] = min(mod.CountExtras(ground.CoastSet, coastSandName, groundSandCount), groundExtraStep)
     ground.Extras[groundWaterFirst] = min(mod.CountExtras(ground.CoastSet, coastWaterName, groundWaterCount), groundExtraStep)
     ground.makeCoast(zone)
+    ground.makeRiver(zone)
 
     ground.choosePictures()
     // pieces of 2 by 2 tiles, see large.go
