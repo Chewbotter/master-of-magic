@@ -32,7 +32,7 @@ func TestSplashCount(test *testing.T) {
 // the drops of a splash go up, come down and are gone
 func TestSplashDrops(test *testing.T) {
     var system particleSystem
-    system.emitSplash(100, 100, 20)
+    system.emitSplash(100, 100, 20, splashColors)
     if len(system.Particles) != 20 {
         test.Fatalf("%v drops", len(system.Particles))
     }

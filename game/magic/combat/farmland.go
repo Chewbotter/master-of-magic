@@ -240,7 +240,12 @@ func (ground *BattleGround) builtAt(cgx int, cgy int) bool {
 
 // the cells the armies start in, of the largest armies
 func armyStarts(cgx int, cgy int) bool {
-    firstX, lastX, firstY, lastY := armyPlaces(true)
+    return armyStartsOf(cgx, cgy, true)
+}
+
+// the cells the armies start in: of the original's 12 units, or of more
+func armyStartsOf(cgx int, cgy int, large bool) bool {
+    firstX, lastX, firstY, lastY := armyPlaces(large)
     if cgy < firstY || cgy > lastY {
         return false
     }

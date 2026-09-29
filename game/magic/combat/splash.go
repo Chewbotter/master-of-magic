@@ -50,6 +50,12 @@ var splashColors = []color.RGBA{
     {R: 186, G: 214, B: 244, A: 255},
     {R: 120, G: 164, B: 216, A: 255},
 }
+// and of the water of a swamp (user, 2026-09-29: green tinted)
+var splashSwampColors = []color.RGBA{
+    {R: 214, G: 228, B: 150, A: 255},
+    {R: 160, G: 178, B: 84, A: 255},
+    {R: 108, G: 122, B: 44, A: 255},
+}
 
 // how many drops a unit of so many figures throws. part is 1 for a unit that walks into the
 // water, splashWade for one that wades on
@@ -61,7 +67,7 @@ func splashCount(figures int, part float64) int {
 }
 
 // drops that are thrown up from a place on the water and fall back into it, where they are gone
-func (system *particleSystem) emitSplash(x float64, y float64, count int) {
+func (system *particleSystem) emitSplash(x float64, y float64, count int, colors []color.RGBA) {
     for range count {
         angle := rand.Float64() * 2 * math.Pi
         own := splashSpeed * randomPart(0.3, 1)
@@ -75,7 +81,7 @@ func (system *particleSystem) emitSplash(x float64, y float64, count int) {
             Gravity: splashGravity,
             // up and down again
             Life: 2 * lift / splashGravity,
-            Colors: splashColors,
+            Colors: colors,
         })
     }
 }
@@ -129,10 +135,16 @@ func (combat *CombatScreen) splashTick() {
             }
             screenX, screenY := field.Apply(unit.MoveX, unit.MoveY)
 
+            colors := splashColors
+            cgx, cgy := TileToCell(tile.X, tile.Y)
+            if ground.poolAt(cgx, cgy) == poolWater {
+                colors = splashSwampColors
+            }
+
             // drop by drop, from figures by chance
             for range splashCount(figures, part) {
                 point := points[rand.N(len(points))]
-                effects.Particles.emitSplash(screenX + float64(point.X), screenY + float64(point.Y), 1)
+                effects.Particles.emitSplash(screenX + float64(point.X), screenY + float64(point.Y), 1, colors)
             }
         }
     }

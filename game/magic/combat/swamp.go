@@ -4,11 +4,12 @@ package combat
 // which are only a couple tiles in area. Tint these brackish green."
 //
 // A pool is shallow water over the ground of the swamp, as a river is (river.go): a tint that is
-// laid over the tiles, with a ragged edge and wet ground along it. Its shape is two or three
+// laid over the tiles, with a ragged edge and wet ground along it. Its shape is a number of
 // rounds that run into each other, so no two pools are alike.
 //
-// Pools lie all over the ground, apart from each other, away from slopes and roads. Not where
-// the armies start, not in a town or at a lair, not on a coast or in a river. Trees, rocks and
+// Pools are of different sizes, from a couple of cells to some 20. They lie all over the ground,
+// apart from each other, off the roads, up to the places the armies start in. Not
+// in a town or at a lair, not on a coast or in a river. Trees, rocks and
 // large pieces keep off them.
 //
 // RULES, the ones of the water of a river: a cell whose middle is in the water is rough ground, a
@@ -16,10 +17,12 @@ package combat
 // only reaches into costs what the ground costs.
 
 import (
+    "cmp"
     "image"
     "image/color"
     "math"
     "math/rand/v2"
+    "slices"
 
     "github.com/kazzmir/master-of-magic/game/magic/mod"
 
@@ -30,14 +33,46 @@ import (
 var SwampPools = true
 
 // one pool for this many cells of the ground
-const swampPoolCells = 32
-// the rounds of a pool: how many, how large in cells, and how far from the first the others lie
-const swampRoundsMin = 2
-const swampRoundsMax = 3
-const swampRadiusMin = 0.55
-const swampRadiusMax = 0.9
-const swampRoundAwayMin = 0.5
-const swampRoundAwayMax = 0.9
+const swampPoolCells = 45
+// places that are tried for a pool
+const swampTries = 12
+// how far from a round before it a round of a pool lies, as a share of the two radiuses together
+const swampRoundAwayMin = 0.45
+const swampRoundAwayMax = 0.75
+
+// pools are of different sizes (user, 2026-09-29: "pools of varying size, some of which are bigger
+// than this"): of so many pools, by chance, with so many rounds of such a size in cells
+type poolSize struct {
+    Chance int
+    RoundsMin int
+    RoundsMax int
+    RadiusMin float64
+    RadiusMax float64
+}
+
+var swampSizes = []poolSize{
+    // a couple of cells
+    {Chance: 6, RoundsMin: 2, RoundsMax: 3, RadiusMin: 0.55, RadiusMax: 0.9},
+    // 5 to 10 cells
+    {Chance: 3, RoundsMin: 3, RoundsMax: 5, RadiusMin: 0.8, RadiusMax: 1.3},
+    // 12 to 25 cells
+    {Chance: 1, RoundsMin: 5, RoundsMax: 8, RadiusMin: 1.1, RadiusMax: 1.7},
+}
+
+func randomPoolSize() poolSize {
+    all := 0
+    for _, size := range swampSizes {
+        all += size.Chance
+    }
+    pick := rand.N(all)
+    for _, size := range swampSizes {
+        if pick < size.Chance {
+            return size
+        }
+        pick -= size.Chance
+    }
+    return swampSizes[0]
+}
 // what a pool reaches beyond its rounds, in cells: the scatter of its edge and the wet ground
 const swampBeyond = coastScatter + riverWetWidth
 
@@ -108,6 +143,8 @@ func (ground *BattleGround) makePools(zone ZoneType) {
     }
     ground.Pools = pools
 
+    placed := make(map[int]bool)
+
     free := func(cgx int, cgy int) bool {
         if !ground.contains(cgx, cgy) {
             return false
@@ -120,36 +157,40 @@ func (ground *BattleGround) makePools(zone ZoneType) {
         if ground.coastAt(cgx, cgy) != coastLand || ground.riverAt(cgx, cgy) != riverLand {
             return false
         }
-        // no slope in it or beside it: on low ground, or on the top of a plateau
-        for dy := -1; dy <= 1; dy++ {
-            for dx := -1; dx <= 1; dx++ {
-                if ground.HeightAt(cgx + dx, cgy + dy) != ground.HeightAt(cgx, cgy) {
-                    return false
-                }
-            }
-        }
-        return !armyStarts(cgx, cgy) && !sceneryCellTaken(zone, cgx, cgy, true)
+        // up to the places the armies of the battle start in
+        return !armyStartsOf(cgx, cgy, zone.Ground.LargeArmy) && !sceneryCellTaken(zone, cgx, cgy, true)
     }
 
+    // the sizes of the pools, the large ones first, which find room less easily
     count := ground.Width * ground.Height / swampPoolCells
-    for range count * 4 {
-        if count <= 0 {
-            break
-        }
+    sizes := make([]poolSize, count)
+    for index := range sizes {
+        sizes[index] = randomPoolSize()
+    }
+    slices.SortStableFunc(sizes, func(a poolSize, b poolSize) int {
+        return cmp.Compare(b.RadiusMax, a.RadiusMax)
+    })
 
-        first := poolRound{
+    for try := range count * swampTries {
+        size := sizes[try / swampTries]
+        if placed[try / swampTries] {
+            continue
+        }
+        rounds := []poolRound{{
             X: float64(ground.MinX + rand.N(ground.Width)) + randomPart(0.3, 0.7),
             Y: float64(ground.MinY + rand.N(ground.Height)) + randomPart(0.3, 0.7),
-            Radius: randomPart(swampRadiusMin, swampRadiusMax),
-        }
-        rounds := []poolRound{first}
-        for range swampRoundsMin - 1 + rand.N(swampRoundsMax - swampRoundsMin + 1) {
+            Radius: randomPart(size.RadiusMin, size.RadiusMax),
+        }}
+        for range size.RoundsMin - 1 + rand.N(size.RoundsMax - size.RoundsMin + 1) {
+            // beside one of the rounds that are there, so a large pool has arms
+            from := rounds[rand.N(len(rounds))]
+            radius := randomPart(size.RadiusMin, size.RadiusMax)
             angle := rand.Float64() * 2 * math.Pi
-            away := randomPart(swampRoundAwayMin, swampRoundAwayMax)
+            away := randomPart(swampRoundAwayMin, swampRoundAwayMax) * (from.Radius + radius)
             rounds = append(rounds, poolRound{
-                X: first.X + math.Cos(angle) * away,
-                Y: first.Y + math.Sin(angle) * away,
-                Radius: randomPart(swampRadiusMin, swampRadiusMax),
+                X: from.X + math.Cos(angle) * away,
+                Y: from.Y + math.Sin(angle) * away,
+                Radius: radius,
             })
         }
 
@@ -189,7 +230,33 @@ func (ground *BattleGround) makePools(zone ZoneType) {
                 }
             }
         }
-        count -= 1
+        placed[try / swampTries] = true
+    }
+
+    // the ground is flat under a pool and beside it, as it is at a river
+    if ground.Heights != nil {
+        flatten := func(reach int) {
+            for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
+                for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
+                    if ground.poolAt(cgx, cgy) == poolNone {
+                        continue
+                    }
+                    for dy := -reach; dy <= reach; dy++ {
+                        for dx := -reach; dx <= reach; dx++ {
+                            if ground.contains(cgx + dx, cgy + dy) {
+                                ground.Heights[ground.index(cgx + dx, cgy + dy)] = 0
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for range 2 {
+            flatten(1)
+            // which raises a cell here and there, so once more after it
+            ground.breakLongRuns(zone)
+        }
+        flatten(0)
     }
 }
 

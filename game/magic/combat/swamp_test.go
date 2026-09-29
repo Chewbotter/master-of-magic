@@ -16,8 +16,12 @@ func TestSwampPools(test *testing.T) {
 
     for range 5 {
         ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, zone)
-        if ground.Pools == nil || len(ground.Pools.Rounds) < 80 {
-            test.Fatalf("the pools of the swamp: %+v", ground.Pools)
+        if ground.Pools == nil || len(ground.Pools.Rounds) < 60 {
+            rounds := 0
+            if ground.Pools != nil {
+                rounds = len(ground.Pools.Rounds)
+            }
+            test.Fatalf("the pools of the swamp have %v rounds", rounds)
         }
 
         water, onField := 0, 0
@@ -27,7 +31,7 @@ func TestSwampPools(test *testing.T) {
                 if part == poolNone {
                     continue
                 }
-                if armyStarts(cgx, cgy) || ground.RoadAt(cgx, cgy) != 0 || ground.isSlope(cgx, cgy, cgx + 1, cgy) || ground.isSlope(cgx, cgy, cgx, cgy + 1) || ground.sceneryAllowed(cgx, cgy) {
+                if armyStartsOf(cgx, cgy, false) || ground.RoadAt(cgx, cgy) != 0 || ground.HeightAt(cgx, cgy) != 0 || ground.sceneryAllowed(cgx, cgy) {
                     test.Fatalf("a pool at %v, %v: army %v, road %v, height %v, trees %v", cgx, cgy, armyStarts(cgx, cgy), ground.RoadAt(cgx, cgy), ground.HeightAt(cgx, cgy), ground.sceneryAllowed(cgx, cgy))
                 }
                 if part == poolWater {
@@ -39,10 +43,8 @@ func TestSwampPools(test *testing.T) {
                 }
             }
         }
-        // a pool is a couple of cells
-        pools := len(ground.Pools.Rounds) * 2 / (swampRoundsMin + swampRoundsMax)
-        if water < pools || water > pools * 5 || onField < 8 {
-            test.Fatalf("%v cells of water in about %v pools, %v of them on the field", water, pools, onField)
+        if water < 150 || water > ground.Width * ground.Height / 3 || onField < 20 {
+            test.Fatalf("%v cells of water, %v of them on the field", water, onField)
         }
 
         picture, left, top := makePoolWater(ground)
