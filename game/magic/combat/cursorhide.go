@@ -14,7 +14,7 @@ import (
     "github.com/hajimehoshi/ebiten/v2"
 )
 
-// false: the cursor stays
+// false: the cursor stays, whatever the setting "Hide cursor on attack" says (display/cursorhide.go)
 const CursorHidesOnAttack = true
 // seconds the cursor takes to fade out
 const cursorHideTime = 0.12
@@ -28,7 +28,7 @@ type cursorHide struct {
 
 // the click that starts a strike or a shot
 func (combat *CombatScreen) hideCursor() {
-    if !CursorHidesOnAttack || !display.ModernControls() {
+    if !CursorHidesOnAttack || !display.ModernControls() || !display.HideCursorOnAttack() {
         return
     }
 

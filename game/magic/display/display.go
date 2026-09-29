@@ -39,6 +39,8 @@ type Settings struct {
     ControlType ControlType `json:"control-type"`
     // the setting "Single strikes", see strikes.go
     SingleStrikesOn bool `json:"single-strikes"`
+    // the opposite of the setting "Hide cursor on attack", see cursorhide.go
+    CursorStaysOnAttack bool `json:"cursor-stays-on-attack"`
 }
 
 // the preferences in use by the running game

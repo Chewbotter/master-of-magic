@@ -33,6 +33,7 @@ const ResolutionBoxHeight = 13
 // the rows of the settings, see textsize.go. left column: upstream's four checkboxes on the rows
 // 0 to 3, then these
 const SingleStrikesRow = 4
+const HideCursorRow = 5
 // right column
 const FullscreenRow = 0
 const WidescreenRow = 1
@@ -246,6 +247,14 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
         func() bool { return displaySettings.SingleStrikes() },
         func(value bool) {
             displaySettings.SetSingleStrikes(value)
+        },
+    )
+
+    // the cursor of a battle after a click that starts an attack, see display/cursorhide.go
+    addCheckbox(group, fonts, &getAlpha, SettingsLeftColumnX, SettingsRowY(HideCursorRow), "Hide cursor on attack",
+        func() bool { return displaySettings.HideCursorOnAttack() },
+        func(value bool) {
+            displaySettings.SetHideCursorOnAttack(value)
         },
     )
 

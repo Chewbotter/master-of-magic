@@ -14,6 +14,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - One settings screen for the whole game, with small text and room for many settings, and tips for them.
 - Controls setting: Modern (default) or Classic. Classic is the controls of the original; everything listed under "modern controls" below is off there.
 - Setting "Single strikes": the look of strikes in battle, see Battles.
+- Setting "Hide cursor on attack", on at first: see the cursors of Battles.
 
 ## World map
 - Smooth panning with the middle mouse button (modern controls): the map glides, keeps moving for a moment after release, and the cursor glides with it.

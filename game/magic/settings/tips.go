@@ -50,6 +50,7 @@ var settingTips = map[string]string{
     "Strategic Combat Only": "Your battles are decided at once, without the battlefield.",
     "Background Music": "Plays music.",
     "Random Events": "Events such as plagues and conjunctions can start. Events under way run their course when this is turned off.",
+    "Hide cursor on attack": "In a battle the cursor fades away when you click to attack or shoot, and is back when you move the mouse. With the modern controls.",
     "Single strikes": "How units attack in a battle. On: one heavy swing per attack. Off: fast strikes again and again.",
     "Resolution": "The size of the window. Not used in fullscreen.",
     "Fullscreen": "Fills the desktop, without a window border.",
