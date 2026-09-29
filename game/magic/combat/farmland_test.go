@@ -248,13 +248,52 @@ func TestFences(test *testing.T) {
 
             crop := ground.GroupAt(x1, y1) == TerrainCrop || ground.GroupAt(x2, y2) == TerrainCrop
             road := ground.RoadAt(x1, y1) != 0 || ground.RoadAt(x2, y2) != 0
-            house := ground.builtAt(x1, y1) || ground.builtAt(x2, y2)
-            if !crop && !road && !house {
-                test.Fatalf("a fence at %+v with no plot, road or house beside it", place)
+            if !crop && !road {
+                test.Fatalf("a fence at %+v with no plot or road beside it", place)
+            }
+            // not behind a house
+            if ground.builtAt(place.Cgx, place.Cgy) {
+                test.Fatalf("a fence behind the house at %+v", place)
+            }
+        }
+
+        // no boxes: no cell has fences on more than two of its sides, no plot on more than two
+        for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
+            for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
+                sides := 0
+                for side := range 4 {
+                    if seen[cellSide(cgx, cgy, side)] {
+                        sides += 1
+                    }
+                }
+                if sides > fenceCellSides {
+                    test.Fatalf("the cell %v, %v has fences on %v sides", cgx, cgy, sides)
+                }
+            }
+        }
+        for _, plot := range ground.Plots {
+            sides := 0
+            for side := range 4 {
+                fenced := false
+                for along := range plot.Size {
+                    switch side {
+                        case 0: fenced = fenced || seen[cellSide(plot.X + along, plot.Y, 0)]
+                        case 1: fenced = fenced || seen[cellSide(plot.X + plot.Size - 1, plot.Y + along, 1)]
+                        case 2: fenced = fenced || seen[cellSide(plot.X + along, plot.Y + plot.Size - 1, 2)]
+                        case 3: fenced = fenced || seen[cellSide(plot.X, plot.Y + along, 3)]
+                    }
+                }
+                if fenced {
+                    sides += 1
+                }
+            }
+            // a row along a road or the side of the plot next to it can add to its two
+            if sides > fencePlotSides + 2 {
+                test.Fatalf("the plot at %v, %v has fences on %v sides", plot.X, plot.Y, sides)
             }
         }
     }
-    if total < 100 {
+    if total < 60 {
         test.Fatalf("%v fences", total)
     }
 

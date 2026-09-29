@@ -9,10 +9,19 @@ package combat
 // picture is used for the sides that run as it does (mod/fences.go).
 //
 // WHERE, by chance:
-//   around the plots of crops: a side of a plot as a whole, with a gap here and there
+//   along the plots of crops: a side of a plot as a whole, with a gap here and there, on no more
+//   than fencePlotSides of the sides of a plot
 //   along the roads: short rows beside them
-//   at the houses: on the two near sides of a house
 // Never where the armies start, never across a road, and never twice on one side.
+//
+// NO BOXES (user, 2026-09-29: "prevent fences from having too many adjacent pieces (such as making
+// a closed box or three edges of a closed box) since this looks unintentional"): no cell has
+// fences on more than fenceCellSides of its four sides.
+//
+// NOT BEHIND A HOUSE (user: "fences appear over the top of houses"): a fence on one of the two far
+// sides of the cell of a house would be drawn over the house, which is drawn from the far corner
+// of its cell. There is none there. Houses have no fences of their own (first they had them on
+// their two near sides; user: "no special rule about fences being near houses").
 //
 // Fences are for the look: they cost nothing and block nothing.
 
@@ -58,8 +67,9 @@ const fenceGapShare = 0.15
 const fenceRoadCells = 9
 const fenceRoadMin = 2
 const fenceRoadMax = 4
-// of the houses this share has fences
-const fenceHouseShare = 0.6
+// the most sides of a plot that have a fence, and the most sides of any cell
+const fencePlotSides = 2
+const fenceCellSides = 2
 
 // the point of the picture of a fence that is put on the middle of its side: the middle of its
 // width, this far above its bottom edge
@@ -109,9 +119,28 @@ func (fences *fenceSet) open(cgx int, cgy int) bool {
     return group != TerrainSand && group != TerrainWater && ground.coastAt(cgx, cgy) == coastLand && ground.riverAt(cgx, cgy) == riverLand
 }
 
+// how many sides of a cell have a fence
+func (fences *fenceSet) sidesOf(cgx int, cgy int) int {
+    count := 0
+    for side := range 4 {
+        if fences.Places[cellSide(cgx, cgy, side)] {
+            count += 1
+        }
+    }
+    return count
+}
+
 func (fences *fenceSet) add(place fencePlace) bool {
     x1, y1, x2, y2 := place.cells()
     if !fences.open(x1, y1) || !fences.open(x2, y2) || fences.Places[place] {
+        return false
+    }
+    // no boxes
+    if fences.sidesOf(x1, y1) >= fenceCellSides || fences.sidesOf(x2, y2) >= fenceCellSides {
+        return false
+    }
+    // not behind a house: the sides are kept under the cell they are the far sides of
+    if fences.ground.builtAt(place.Cgx, place.Cgy) {
         return false
     }
     // not across a road
@@ -128,10 +157,12 @@ func (ground *BattleGround) fencePlaces(zone ZoneType) []fencePlace {
 
     // around the plots
     for _, plot := range ground.Plots {
-        for side := range 4 {
-            if rand.Float64() >= fencePlotSideShare {
+        sides := 0
+        for _, side := range rand.Perm(4) {
+            if sides >= fencePlotSides || rand.Float64() >= fencePlotSideShare {
                 continue
             }
+            sides += 1
             for along := range plot.Size {
                 if rand.Float64() < fenceGapShare {
                     continue
@@ -180,16 +211,6 @@ func (ground *BattleGround) fencePlaces(zone ZoneType) []fencePlace {
                 place.Cgx += 1
             } else {
                 place.Cgy += 1
-            }
-        }
-    }
-
-    // at the houses: the two near sides
-    for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
-        for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
-            if ground.builtAt(cgx, cgy) && rand.Float64() < fenceHouseShare {
-                fences.add(cellSide(cgx, cgy, 1))
-                fences.add(cellSide(cgx, cgy, 2))
             }
         }
     }
