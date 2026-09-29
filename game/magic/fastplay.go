@@ -474,6 +474,13 @@ func captureSpell(screen *combat.CombatScreen, model *combat.CombatModel, attack
                     SelectTarget: func(unit *combat.ArmyUnit) {},
                 }
                 return
+            case "auras":
+                // a spell of every realm on the units, for their outlines. see combat/aura.go
+                spells := []data.UnitEnchantment{data.UnitEnchantmentBless, data.UnitEnchantmentStoneSkin, data.UnitEnchantmentFlight, data.UnitEnchantmentFlameBlade, data.UnitEnchantmentCloakOfFear}
+                for index, unit := range append(defenders.GetUnits(), attackers.GetUnits()...) {
+                    unit.AddEnchantment(spells[index % len(spells)])
+                }
+                return
             case "flamestrike":
                 for _, unit := range defenders.GetUnits() {
                     model.AddProjectile(screen.CreateFlameStrikeProjectile(unit))

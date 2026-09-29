@@ -4119,10 +4119,22 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             imageTransform = withDoneLook(imageTransform)
         }
         if combat.Model.HighlightedUnit == unit {
-            // the unit under the cursor: the outline of its figures pulses, see animation.go
+            // the unit under the cursor: the outline of its figures pulses, to gray for a unit
+            // of the player and to red for one of the enemy. see animation.go
             step := combat.scannedOutlineStep()
-            imageKey = scannedOutlineKey(imageKey, step)
-            imageTransform = withScannedOutline(imageTransform, step)
+            own := combat.Model.GetArmy(unit).Player.IsHuman()
+            imageKey = scannedOutlineKey(imageKey, step, own)
+            imageTransform = withScannedOutline(imageTransform, step, own)
+        }
+        // a unit with a spell on it: the outline of the original, see aura.go
+        aura := auraNone
+        if OriginalAura {
+            aura = unitAura(unit)
+        }
+        if aura != auraNone {
+            stage := combat.auraStage()
+            imageKey = auraKey(imageKey, aura, stage)
+            imageTransform = withAura(imageTransform, aura, stage)
         }
         combatImages, _ := combat.ImageCache.GetImagesTransform(unit.Unit.GetCombatLbxFile(), unit.Unit.GetCombatIndex(unit.Facing), imageKey, imageTransform)
 
@@ -4195,6 +4207,10 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
             // _ = index
             use := util.First(unit.GetEnchantments(), data.UnitEnchantmentNone)
+            if OriginalAura {
+                // the outline is in the picture of the figure, see aura.go
+                use = data.UnitEnchantmentNone
+            }
 
             figureLost := figure >= unit.VisibleFigures()
             fallen := FigureFall && figure >= 0 && figure < figureCount

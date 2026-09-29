@@ -54,11 +54,13 @@ const cellOutlineScannedIndex = 67
 const cellOutlineActiveIndex = 68
 const cellOutlineFrames = 3
 
-// the outline of the figures of the unit under the cursor pulses from black to a light gray and
-// back, over 8 steps each way as the original's. the original pulses to red, 55 of 63 (user,
-// 2026-09-29: "black to light gray instead of red")
+// the outline of the figures of the unit under the cursor pulses from black to a color and back,
+// over 8 steps each way as the original's. a unit of the enemy to the original's red, 55 of 63;
+// a unit of the player to a gray (user, 2026-09-29: gray for the player's, red for enemies;
+// the gray was 0.75 first, "the full brightness cycle is too much")
 const scannedOutlinePaletteIndex = 1
-const scannedOutlineLight = 0.75
+const scannedOutlineRed = 55.0 / 63.0
+const scannedOutlineGray = 0.4
 const scannedOutlineSteps = 8
 
 // how many of the original's redraws one step of an animation lasts. the original steps all of them
@@ -134,7 +136,7 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase fl
     return min(frame, frameCount - 1)
 }
 
-// how far the outline of the unit under the cursor is from black to its light gray, 0 to scannedOutlineSteps
+// how far the outline of the unit under the cursor is from black to its color, 0 to scannedOutlineSteps
 func (combat *CombatScreen) scannedOutlineStep() int {
     position := int(combat.originalTick() / scannedOutlineTicksPerStep % (scannedOutlineSteps * 2))
     if position > scannedOutlineSteps {
@@ -144,22 +146,27 @@ func (combat *CombatScreen) scannedOutlineStep() int {
 }
 
 // recolors the outline of a figure picture, after the banner colors have been applied
-func withScannedOutline(base util.ImageTransformFunc, step int) util.ImageTransformFunc {
-    light := uint8(math.Round(255 * scannedOutlineLight * float64(step) / scannedOutlineSteps))
+func withScannedOutline(base util.ImageTransformFunc, step int, own bool) util.ImageTransformFunc {
+    part := float64(step) / scannedOutlineSteps
+    outline := color.RGBA{R: uint8(math.Round(255 * scannedOutlineRed * part)), A: 0xff}
+    if own {
+        gray := uint8(math.Round(255 * scannedOutlineGray * part))
+        outline = color.RGBA{R: gray, G: gray, B: gray, A: 0xff}
+    }
 
     return func(original *image.Paletted) image.Image {
         out := base(original)
         paletted, ok := out.(*image.Paletted)
         if ok && len(paletted.Palette) > scannedOutlinePaletteIndex {
             paletted.Palette = util.ClonePalette(paletted.Palette)
-            paletted.Palette[scannedOutlinePaletteIndex] = color.RGBA{R: light, G: light, B: light, A: 0xff}
+            paletted.Palette[scannedOutlinePaletteIndex] = outline
         }
         return out
     }
 }
 
-func scannedOutlineKey(bannerKey string, step int) string {
-    return fmt.Sprintf("%v-scanned%v", bannerKey, step)
+func scannedOutlineKey(bannerKey string, step int, own bool) string {
+    return fmt.Sprintf("%v-scanned%v-%v", bannerKey, step, own)
 }
 
 // draws the outline of a cell: under the cursor, or under the selected unit
