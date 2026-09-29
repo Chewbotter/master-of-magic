@@ -43,12 +43,12 @@ func colorsOf(body color.RGBA) nameColors {
 }
 
 // under the mouse
-var hoverColors = colorsOf(color.RGBA{R: 24, G: 62, B: 164, A: 255})
+var hoverColors = colorsOf(color.RGBA{R: 40, G: 100, B: 232, A: 255})
 // ticks one pulse takes. upstream's red took 31
 const hoverPulseTicks = 80
 // how much of its own colors the name has when the pulse is at its lowest and at its height, 0 to 1
 const hoverLow = 0.35
-const hoverHigh = 0.9
+const hoverHigh = 1
 
 // the spell that is being cast: lighter than the page. the pulse is upstream's
 var castingColors = colorsOf(color.RGBA{R: 216, G: 196, B: 156, A: 255})

@@ -423,7 +423,23 @@ func MakeCityScreen(cache *lbx.LbxCache, city *citylib.City, player *playerlib.P
 
     if CaptureBuild != "" && cityScreen != nil {
         // development: the build screen at once, see buildstyle.go
+        // "cityunit" and "citybuilding": what the city builds is set and the build screen stays shut
+        open := CaptureBuild != "cityunit" && CaptureBuild != "citybuilding"
         switch CaptureBuild {
+            case "cityunit":
+                possible := city.ComputePossibleUnits()
+                if len(possible) > 0 {
+                    city.ProducingBuilding = buildinglib.BuildingNone
+                    city.ProducingUnit = possible[0]
+                }
+            case "citybuilding":
+                for _, building := range city.ComputePossibleBuildings(false).Values() {
+                    if building != buildinglib.BuildingHousing && building != buildinglib.BuildingTradeGoods {
+                        city.ProducingBuilding = building
+                        city.ProducingUnit = units.UnitNone
+                        break
+                    }
+                }
             case "unit":
                 possible := city.ComputePossibleUnits()
                 if len(possible) > 0 {
@@ -439,7 +455,9 @@ func MakeCityScreen(cache *lbx.LbxCache, city *citylib.City, player *playerlib.P
                     }
                 }
         }
-        cityScreen.BuildScreen = MakeBuildScreen(cityScreen.LbxCache, cityScreen.City)
+        if open {
+            cityScreen.BuildScreen = MakeBuildScreen(cityScreen.LbxCache, cityScreen.City)
+        }
     }
 
     return cityScreen
@@ -2428,12 +2446,17 @@ func (cityScreen *CityScreen) Draw(screen *ebiten.Image, mapView func (screen *e
             }
         }
 
-        fontUse := cityScreen.Fonts.ProducingFont
-        bottom := 179 + fontUse.Height()
-        top := bottom - len(lines) * fontUse.Height()
-        fontOptions := font.FontOptions{Justify: font.FontJustifyCenter, DropShadow: true, Scale: scale.ScaleAmount}
-        for i, line := range lines {
-            fontUse.PrintOptions(screen, 237, float64(top + i * fontUse.Height()), fontOptions, line)
+        if infoStyle != nil {
+            // the text of the original, see infostyle.go
+            infoStyle.drawProduct(screen, cityScreen.City.BuildingInfo.Name(cityScreen.City.ProducingBuilding))
+        } else {
+            fontUse := cityScreen.Fonts.ProducingFont
+            bottom := 179 + fontUse.Height()
+            top := bottom - len(lines) * fontUse.Height()
+            fontOptions := font.FontOptions{Justify: font.FontJustifyCenter, DropShadow: true, Scale: scale.ScaleAmount}
+            for i, line := range lines {
+                fontUse.PrintOptions(screen, 237, float64(top + i * fontUse.Height()), fontOptions, line)
+            }
         }
 
         // for all buildings besides trade goods and housing, show amount of work required to build
@@ -2452,7 +2475,16 @@ func (cityScreen *CityScreen) Draw(screen *ebiten.Image, mapView func (screen *e
                 case buildinglib.BuildingHousing: description = "Increases population growth rate."
             }
 
-            cityScreen.Fonts.ProducingFont.PrintWrap(screen, 285, 155, 60, font.FontOptions{Justify: font.FontJustifyCenter, DropShadow: true, Scale: scale.ScaleAmount}, description)
+            if infoStyle != nil {
+                if cityScreen.City.ProducingBuilding == buildinglib.BuildingTradeGoods {
+                    description = cityTradeGoodsText
+                } else {
+                    description = cityHousingText
+                }
+                infoStyle.drawDescription(screen, description)
+            } else {
+                cityScreen.Fonts.ProducingFont.PrintWrap(screen, 285, 155, 60, font.FontOptions{Justify: font.FontJustifyCenter, DropShadow: true, Scale: scale.ScaleAmount}, description)
+            }
         } else {
             showWork = true
             workRequired = cityScreen.City.BuildingInfo.ProductionCost(cityScreen.City.ProducingBuilding)
@@ -2466,7 +2498,11 @@ func (cityScreen *CityScreen) Draw(screen *ebiten.Image, mapView func (screen *e
             options.GeoM.Translate(238, 168)
             unitview.RenderCombatTile(screen, &cityScreen.ImageCache, options)
             unitview.RenderCombatUnit(screen, use, options, cityScreen.City.ProducingUnit.Count, 0, nil, data.UnitEnchantmentNone, 0, nil)
-            cityScreen.Fonts.ProducingFont.PrintOptions(screen, 237, 179, font.FontOptions{Justify: font.FontJustifyCenter, DropShadow: true, Scale: scale.ScaleAmount}, cityScreen.City.ProducingUnit.Name)
+            if infoStyle != nil {
+                infoStyle.drawProduct(screen, cityScreen.City.ProducingUnit.Name)
+            } else {
+                cityScreen.Fonts.ProducingFont.PrintOptions(screen, 237, 179, font.FontOptions{Justify: font.FontJustifyCenter, DropShadow: true, Scale: scale.ScaleAmount}, cityScreen.City.ProducingUnit.Name)
+            }
         }
 
         showWork = true
@@ -2482,7 +2518,11 @@ func (cityScreen *CityScreen) Draw(screen *ebiten.Image, mapView func (screen *e
             turn = fmt.Sprintf("%v Turns", int(math.Ceil(turns)))
         }
 
-        cityScreen.Fonts.DescriptionFont.PrintOptions(screen, 318, 140, font.FontOptions{Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, turn)
+        if infoStyle != nil {
+            infoStyle.drawTurns(screen, max(1, int(math.Ceil(turns))))
+        } else {
+            cityScreen.Fonts.DescriptionFont.PrintOptions(screen, 318, 140, font.FontOptions{Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, turn)
+        }
 
         workEmpty, err1 := cityScreen.ImageCache.GetImage("backgrnd.lbx", 11, 0)
         workFull, err2 := cityScreen.ImageCache.GetImage("backgrnd.lbx", 12, 0)

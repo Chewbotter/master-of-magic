@@ -32,7 +32,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Of the selected stack only the colored square blinks, the unit stays visible (modern controls). The blinking starts anew with every selection.
 - Text of the panel (gold, mana, income, moves) with the original's black outlines.
 - The screen that picks what a city builds has the original's look: the names in the lists, the text and the places in the window. 
-- The screen of a city shows the race and the population in the original's text.
+- The screen of a city has the original's text and places for the name of the city, the race, the population, and in the field of what it builds the turns, the name and the description.
 - The window of a unit has the original's text: outlined letters in its colors, at its places, on the world map and in battles. The list of abilities is in smaller letters.
 - Surveyor, cartographer and chancellor's scroll keep the wide map beneath them.
 
