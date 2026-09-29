@@ -2930,6 +2930,11 @@ func (game *Game) ShowHistorian(yield coroutine.YieldFunc) {
         var options ebiten.DrawImageOptions
         mainImage.DrawImage(background, &options)
 
+        // the text and the graph of the original, see historianstyle.go
+        if game.drawHistorianOriginal(mainImage, append(game.Model.GetHumanPlayer().GetKnownPlayers(), game.Model.GetHumanPlayer())) {
+            return mainImage
+        }
+
         fonts.Title.PrintOptions(mainImage, float64(mainImage.Bounds().Dx() / 2), 10, font.FontOptions{DropShadow: true, Scale: 1, Justify: font.FontJustifyCenter, Options: &options}, "History Of Wizards Power")
 
         fonts.Date.PrintOptions(mainImage, float64(mainImage.Bounds().Dx() - 8), 11, font.FontOptions{DropShadow: true, Scale: 1, Justify: font.FontJustifyRight, Options: &options}, game.TurnDate())
@@ -3062,6 +3067,10 @@ func (game *Game) ShowAstrologer(yield coroutine.YieldFunc) {
 
     background, _ := game.ImageCache.GetImage("reload.lbx", 1, 0)
     rect := util.ImageRect(10, 10, background)
+    if OriginalAstrologer {
+        // where the original has it, see astrologerstyle.go
+        rect = util.ImageRect(astrologerX, astrologerY, background)
+    }
 
     fade := group.MakeFadeIn(7)
 
@@ -3094,6 +3103,11 @@ func (game *Game) ShowAstrologer(yield coroutine.YieldFunc) {
         mainImage := ebiten.NewImage(background.Bounds().Dx(), background.Bounds().Dy())
         var options ebiten.DrawImageOptions
         mainImage.DrawImage(background, &options)
+
+        // the text and the bars of the original, see astrologerstyle.go
+        if game.drawAstrologerOriginal(mainImage, append(game.Model.GetHumanPlayer().GetKnownPlayers(), game.Model.GetHumanPlayer())) {
+            return mainImage
+        }
 
         x, y := options.GeoM.Apply(float64(background.Bounds().Dx()) / 2, 9)
         fonts.Title.PrintOptions(mainImage, x, y, font.FontOptions{DropShadow: true, Scale: 1, Justify: font.FontJustifyCenter, Options: &options}, "Current Status Of Wizards")
