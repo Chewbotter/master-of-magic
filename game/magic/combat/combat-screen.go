@@ -231,6 +231,11 @@ type CombatScreen struct {
     riverMade bool
     riverX int
     riverY int
+    // the water of the pools of a swamp, the same. see swamp.go
+    poolWater *ebiten.Image
+    poolsMade bool
+    poolX int
+    poolY int
     // the pictures of crops the game makes, by their number. see farmland.go
     cropsMade map[int][]*ebiten.Image
     // the pictures of ice the game makes, by their number. see terraindraw.go
@@ -3920,6 +3925,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
     combat.drawShore(screen)
     // the water of a river, see river.go
     combat.drawRiver(screen)
+    // and of the pools of a swamp, see swamp.go
+    combat.drawPools(screen)
     // pieces of 2 by 2 tiles over the ground, see large.go
     combat.drawLargePieces(screen, animationIndex)
     // props that lie on the ground, see props.go

@@ -184,6 +184,8 @@ type BattleGround struct {
     Crops []int
     Built []bool
     FarmSet string
+    // the pools of a swamp, nil without them. see swamp.go
+    Pools *swampPools
     // the large pieces, and the cells that lie under one. see large.go
     Large []LargePiece
     Covered []bool
@@ -257,7 +259,7 @@ func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if !ground.contains(cgx, cgy) {
         return false
     }
-    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy) && !ground.shoreAt(cgx, cgy) && ground.riverAt(cgx, cgy) == riverLand && !ground.builtAt(cgx, cgy)
+    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy) && !ground.shoreAt(cgx, cgy) && ground.riverAt(cgx, cgy) == riverLand && !ground.builtAt(cgx, cgy) && ground.poolAt(cgx, cgy) == poolNone
 }
 
 func insideOriginalGrid(cgx int, cgy int) bool {
@@ -349,6 +351,8 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     ground.FarmSet = mod.BiomeFolder(farmSet, ground.BaseSet)
     ground.Extras[groundCropFirst] = min(mod.CountExtras(ground.FarmSet, farmCropName, groundCropCount), groundExtraStep)
     ground.makeFarmland(landscape, zone)
+    // the pools of a swamp, see swamp.go
+    ground.makePools(zone)
 
     ground.choosePictures()
     // pieces of 2 by 2 tiles, see large.go

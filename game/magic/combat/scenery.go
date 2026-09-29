@@ -230,13 +230,19 @@ func treeCount(landscape CombatLandscape, ground ZoneGround) int {
     return roll(20)
 }
 
+// on the original's screen. mountains and hills have more than the original, which has 1 to 12
+// on a mountain and hills as grass land (user, 2026-09-29: "Mountain and hills should have a
+// higher density of rocks")
 func rockCount(landscape CombatLandscape, ground ZoneGround) int {
     if ground.Forest {
         return roll(8)
     }
+    if ground.Hills {
+        return 8 + roll(8)
+    }
     switch landscape {
         case CombatLandscapeDesert: return roll(8) - 1
-        case CombatLandscapeMountain: return roll(12)
+        case CombatLandscapeMountain: return 12 + roll(12)
         case CombatLandscapeTundra: return roll(12) + 4
     }
     return roll(5) - 1

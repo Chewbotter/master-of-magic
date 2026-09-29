@@ -371,10 +371,10 @@ func (ground *BattleGround) riverAt(cgx int, cgy int) riverPart {
     return ground.Banks[ground.index(cgx, cgy)]
 }
 
-// true if the tile is water of a river as a whole
+// true if the tile is shallow water as a whole: of a river, or of a pool of a swamp (swamp.go)
 func (model *CombatModel) IsRiverTile(x int, y int) bool {
     cgx, cgy := TileToCell(x, y)
-    return model.Ground.riverAt(cgx, cgy) == riverWater
+    return model.Ground.riverAt(cgx, cgy) == riverWater || model.Ground.poolAt(cgx, cgy) == poolWater
 }
 
 // how far a point lies inside of the water, in cells from its nearer edge. below 0 it is that far

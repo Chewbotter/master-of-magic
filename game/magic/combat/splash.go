@@ -91,7 +91,7 @@ func (combat *CombatScreen) splashTick() {
     effects := &combat.effects
     ground := combat.Model.Ground
     // ice does not splash
-    if !RiverSplash || ground == nil || ground.Banks == nil || ground.Frozen {
+    if !RiverSplash || ground == nil || (ground.Banks == nil && ground.Pools == nil) || ground.Frozen {
         return
     }
     if effects.Wading == nil {

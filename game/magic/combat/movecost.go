@@ -59,7 +59,7 @@ func (model *CombatModel) cellMoveHalves(x int, y int, flying bool) int {
     if tile.Ground == TerrainSand {
         halves = moveHalvesRough
     }
-    // and so is the water of a river, see river.go
+    // and so is the water of a river and of the pools of a swamp, see river.go and swamp.go
     if model.IsRiverTile(x, y) {
         halves = moveHalvesRough
     }
