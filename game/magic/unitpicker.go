@@ -15,6 +15,7 @@ package main
 import (
     "fmt"
     "image/color"
+    "math"
     "slices"
     "strings"
 
@@ -45,6 +46,18 @@ const unitPickerColumnGap = 8.0
 const unitPickerIndent = 5.0
 // how dark the start screen behind the list is, of 255
 const unitPickerShade = 215
+
+// the button "Test": art pixels between its rim and its text, left and right, above and below
+const unitPickerButtonPadX = 4.0
+const unitPickerButtonPadY = 2.0
+// its rim, in art pixels
+const unitPickerButtonRim = 1.0
+// its face, the rim above and left, the rim below and right; and the same under the mouse
+var unitPickerButtonFace = color.RGBA{R: 0x6a, G: 0x42, B: 0x0c, A: 0xff}
+var unitPickerButtonLight = color.RGBA{R: 0xc7, G: 0x82, B: 0x1b, A: 0xff}
+var unitPickerButtonDark = color.RGBA{R: 0x2e, G: 0x1c, B: 0x04, A: 0xff}
+var unitPickerButtonFaceOver = color.RGBA{R: 0x9a, G: 0x62, B: 0x14, A: 0xff}
+var unitPickerButtonLightOver = color.RGBA{R: 0xf2, G: 0xb4, B: 0x4a, A: 0xff}
 
 // units of each army of a test battle, times the army size of the debug list
 const TestBattleUnits = 4
@@ -254,10 +267,12 @@ func unitPickerRows() []unitPickerRow {
     var rows []unitPickerRow
     // the unit of before once more on what is picked here, without the way back to the debug list
     // (user, 2026-09-29). not there before the first test battle
-    if testBattleLast != nil {
-        rows = append(rows, unitPickerRow{Text: fmt.Sprintf("Test: %v", testBattleLast.Name), Test: true})
-    }
+    // the way back is the first row, the button stands apart from it (user, 2026-09-29)
     rows = append(rows, unitPickerRow{Text: "Back", Back: true})
+    hasTest := testBattleLast != nil
+    if hasTest {
+        rows = append(rows, unitPickerRow{Text: fmt.Sprintf("Test: %v", testBattleLast.Name), Test: true, Apart: true})
+    }
 
     // the ground and the coast of the battle
     mark := func(open bool) string {
@@ -266,7 +281,7 @@ func unitPickerRows() []unitPickerRow {
         }
         return "+"
     }
-    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Biome: %v", mark(unitPickerGroundOpen), testGrounds[testBattleGround].Name), GroundTitle: true})
+    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Biome: %v", mark(unitPickerGroundOpen), testGrounds[testBattleGround].Name), GroundTitle: true, Apart: true})
     if unitPickerGroundOpen {
         for index, ground := range testGrounds {
             rows = append(rows, unitPickerRow{Text: ground.Name, Ground: index + 1, Picked: index == testBattleGround})
@@ -314,8 +329,7 @@ func unitPickerRows() []unitPickerRow {
     }
 
     x := unitPickerLeft
-    // under the title
-    y := unitPickerTop + height + unitPickerRowGap * 3
+    y := unitPickerTop
     top := y
     columnWidth := 0.0
 
@@ -323,6 +337,11 @@ func unitPickerRows() []unitPickerRow {
         row := &rows[index]
         row.Height = height
         row.Width = unitPickerFont().TextWidth(row.Text, options)
+        if row.Test {
+            // a button: its text with room around it
+            row.Height += 2 * (unitPickerButtonPadY + unitPickerButtonRim)
+            row.Width += 2 * (unitPickerButtonPadX + unitPickerButtonRim)
+        }
 
         if row.Apart && y > top {
             y += height + unitPickerRowGap
@@ -338,9 +357,13 @@ func unitPickerRows() []unitPickerRow {
             row.X += unitPickerIndent
         }
         row.Y = y
+        if row.Test {
+            // its rims are art pixels
+            row.Y = math.Round(y)
+        }
 
         columnWidth = max(columnWidth, row.X - x + row.Width)
-        y += height + unitPickerRowGap
+        y = row.Y + row.Height + unitPickerRowGap
     }
 
     return rows
@@ -425,10 +448,13 @@ func drawUnitPicker(screen *ebiten.Image) {
     offsetY := float64(display.ContentOffsetY()) / scale.ScaleAmount
     options := unitPickerOptions()
 
-    unitPickerFont().PrintOutlined(screen, unitPickerLeft + offsetX, unitPickerTop + offsetY, options, font.OutlineFull, "Test Battle: pick a unit. It fights its own kind, on the ground that is picked here.")
-
     for index, row := range unitPickerRows() {
         rowOptions := options
+
+        if row.Test {
+            drawUnitPickerButton(screen, row, offsetX, offsetY, index == unitPickerHover)
+            continue
+        }
 
         // titles, the row under the cursor and what is picked are white, the rest is in the color of
         // the debug list
@@ -440,6 +466,26 @@ func drawUnitPicker(screen *ebiten.Image) {
 
         unitPickerFont().PrintOutlined(screen, row.X + offsetX, row.Y + offsetY, rowOptions, font.OutlineFull, row.Text)
     }
+}
+
+// the button "Test": a face with a light rim above and left and a dark one below and right, all
+// lighter under the mouse
+func drawUnitPickerButton(screen *ebiten.Image, row unitPickerRow, offsetX float64, offsetY float64, over bool) {
+    face, light := unitPickerButtonFace, unitPickerButtonLight
+    if over {
+        face, light = unitPickerButtonFaceOver, unitPickerButtonLightOver
+    }
+
+    fill := func(x float64, y float64, width float64, height float64, use color.Color) {
+        vector.FillRect(screen, float32((x + offsetX) * scale.ScaleAmount), float32((y + offsetY) * scale.ScaleAmount), float32(width * scale.ScaleAmount), float32(height * scale.ScaleAmount), use, false)
+    }
+
+    rim := unitPickerButtonRim
+    fill(row.X, row.Y, row.Width, row.Height, unitPickerButtonDark)
+    fill(row.X, row.Y, row.Width - rim, row.Height - rim, light)
+    fill(row.X + rim, row.Y + rim, row.Width - 2 * rim, row.Height - 2 * rim, face)
+
+    unitPickerFont().PrintOutlined(screen, row.X + rim + unitPickerButtonPadX + offsetX, row.Y + rim + unitPickerButtonPadY + offsetY, unitPickerOptions(), font.OutlineFull, row.Text)
 }
 
 // the name of a unit with its race, as the folders of its pictures are named
