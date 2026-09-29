@@ -3,7 +3,7 @@ package combat
 // Corpses do not pile up without end. Not in the original, which has no corpses.
 //
 // Every figure that falls stays as a corpse (figurefall.go). Where many fall on one tile they
-// cover each other and the ground. A tile keeps its newest corpses, corpsesPerTile of them; once
+// cover each other and the ground. A tile keeps its newest corpses, corpsesPerTile of them (4; 6 was the first try); once
 // it has more, its oldest fade out, slowly, and are gone (user, 2026-09-28).
 
 import (
@@ -16,7 +16,7 @@ import (
 // false: all corpses stay
 const CorpseFade = true
 // corpses a tile keeps
-const corpsesPerTile = 6
+const corpsesPerTile = 4
 // seconds a corpse takes to fade out
 const corpseFadeTime = 3.0
 
