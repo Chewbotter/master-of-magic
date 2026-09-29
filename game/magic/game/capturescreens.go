@@ -4,6 +4,7 @@ package game
 
 import (
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
+    "fmt"
     "image"
     "log"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
@@ -39,6 +40,22 @@ func (game *Game) CaptureWalk(deltaX int, deltaY int) bool {
     }
     log.Printf("capture walk: stack at %v, %v with %v steps, active units %v, out of moves %v", stack.X(), stack.Y(), len(path), len(stack.ActiveUnits()), stack.AnyOutOfMoves())
     return true
+}
+
+// development: plans a move of the selected stack to the tile dx,dy away, as a first click on it does.
+// returns the number of points of the path and how many of them the stack reaches in this turn
+func (game *Game) CapturePlan(deltaX int, deltaY int) string {
+    player := game.Model.GetHumanPlayer()
+    if player == nil || player.SelectedStack == nil {
+        return "no stack is selected"
+    }
+
+    stack := player.SelectedStack
+    targetX := game.Model.CurrentMap().WrapX(stack.X() + deltaX)
+    targetY := stack.Y() + deltaY
+    walks := game.clickMoves(player, stack, targetX, targetY)
+    path := game.plannedPath(stack)
+    return fmt.Sprintf("walks at once %v, points of the path %v, reached in this turn %v", walks, len(path), game.pathReach(player, stack, path))
 }
 
 // development: the tile the surveyor looks at in a capture, nil to follow the mouse

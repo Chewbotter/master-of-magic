@@ -14,7 +14,6 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     "github.com/kazzmir/master-of-magic/lib/coroutine"
-    "github.com/kazzmir/master-of-magic/lib/fraction"
 
     "github.com/hajimehoshi/ebiten/v2"
 )
@@ -47,37 +46,7 @@ func walkCameraToDestination(player *playerlib.Player) bool {
 
 // the tile the stack will stop on in this turn if nothing stops it before: as far along its path as its moves go
 func (game *Game) walkDestination(player *playerlib.Player, stack *playerlib.UnitStack, mapUse *maplib.Map, getStack func(int, int) (playerlib.PathStack, bool)) (int, int, bool) {
-    moves := stack.GetRemainingMoves()
-    x := stack.X()
-    y := stack.Y()
-    found := false
-
-    for _, step := range stack.CurrentPath {
-        if step.X == x && step.Y == y {
-            continue
-        }
-
-        if !moves.GreaterThan(fraction.Zero()) {
-            break
-        }
-
-        cost, canMove := game.Model.ComputeTerrainCost(stack, x, y, step.X, step.Y, mapUse, getStack)
-        if !canMove {
-            break
-        }
-        cost = debugMoveCost(player, cost)
-
-        x = step.X
-        y = step.Y
-        found = true
-        moves = moves.Subtract(cost)
-
-        if mapUse.GetEncounter(mapUse.WrapX(step.X), step.Y) != nil {
-            // the stack stops there
-            break
-        }
-    }
-
+    _, x, y, found := game.reachAlong(player, stack, worldPath(stack.CurrentPath), mapUse, getStack)
     return x, y, found
 }
 

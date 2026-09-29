@@ -99,6 +99,8 @@ type frameCapture struct {
     CameraMove string
     // dx,dy in tiles
     Walk string
+    // dx,dy in tiles: the move is planned as by a first click, and not walked
+    Plan string
     TraceWide bool
     // development: describes what is on screen, for the layout trace
     Describe func() string

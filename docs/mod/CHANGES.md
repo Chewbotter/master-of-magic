@@ -24,6 +24,8 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Newly revealed land fades in, one art pixel at a time, and starts to when a unit sets out for the next tile, not when it has arrived.
 - A left click on one of your stacks selects it (modern controls). Shift and a left click sends the selected stack there.
 - A move of more than one tile takes two clicks (modern controls): the first shows the path, the second on the same tile sends the stack. A tile next to the stack takes one click.
+- The path of a stack shows boots as far as it gets in this turn, and flags in the color of your wizard on the tiles it will walk in later turns.
+- A stack that goes on along its path when a turn starts is shown for a moment before it walks.
 - The cursor is a red X over a tile the selected stack can not go to, and a click there does nothing (modern controls). No red flash of the screen.
 - Of the selected stack only the colored square blinks, the unit stays visible (modern controls). The blinking starts anew with every selection.
 - Text of the panel (gold, mana, income) with the original's black outlines.
@@ -63,6 +65,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The folder can ADD pictures: more ground tiles, trees, rocks, houses, large pieces, and props that lie or stand. Added ground tiles are sprinkled in among the game's own, which stay the most, and the same one does not show twice close together; of the others every picture is used once before any comes again.
 - Biomes and the coast have folders of their own in the replacement folder. A biome only needs the pictures that differ from its landscape.
 - Figures can have more frames: a longer strike, dying and lying.
+- The flag of the paths on the world map can be repainted.
 - Values of spell effects and blood in a text file that is read again while the game runs.
 - A tool that writes the game's pictures as png files, the surroundings of battles under names that say what each picture is for, and Aseprite files for figures and spells with an export back into the replacement folder.
 

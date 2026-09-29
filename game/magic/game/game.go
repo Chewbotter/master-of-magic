@@ -286,6 +286,8 @@ type GameEventShowRandomEvent struct {
 
 type GameEventMoveUnit struct {
     Player *playerlib.Player
+    // the stack goes on along its path by itself: the camera rests on it for a moment first, see worldmarker.go
+    Hold bool
 }
 
 func StartingCityEvent(city *citylib.City) *GameEventCityName {
@@ -2851,6 +2853,9 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                         }
                     case *GameEventMoveUnit:
                         moveUnit := event.(*GameEventMoveUnit)
+                        if moveUnit.Hold {
+                            game.holdBeforeAutoMove(yield)
+                        }
                         game.doMoveSelectedUnit(yield, moveUnit.Player)
                 }
 
@@ -7149,7 +7154,7 @@ func (game *Game) DoNextUnit(player *playerlib.Player){
         if player.SelectedStack != nil {
             if len(player.SelectedStack.CurrentPath) > 0 {
                 select {
-                    case game.Events<- &GameEventMoveUnit{Player: player}:
+                    case game.Events<- &GameEventMoveUnit{Player: player, Hold: true}:
                     default:
                 }
             }
@@ -8349,6 +8354,8 @@ type Overworld struct {
     FogBlack *ebiten.Image
     // the path of a move of the selected stack that is not confirmed yet
     PlannedPath worldPath
+    // the number of points of the path that is shown the stack reaches in this turn
+    PathReach int
 }
 
 func (overworld *Overworld) ToCameraCoordinates(x int, y int) (int, int) {
@@ -8546,19 +8553,38 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
         bootGeom.Translate(float64(boot.Bounds().Dx()) / -2, float64(boot.Bounds().Dy()) / -2)
         bootGeom.Concat(geom)
 
+        // a flag on the tiles the stack only reaches in a later turn, see worldmarker.go
+        var flag *ebiten.Image
+        var flagGeom ebiten.GeoM
+        if overworld.PathReach < len(shownPath) && overworld.SelectedStack.Leader() != nil {
+            flag = flagPicture(overworld.ImageCache, overworld.SelectedStack.Leader().GetBanner())
+            if flag != nil {
+                flagGeom.Translate(float64(tileWidth) / 2, float64(tileHeight) / 2)
+                flagGeom.Translate(float64(flag.Bounds().Dx() / -2), float64(flag.Bounds().Dy() / -2))
+                flagGeom.Concat(geom)
+            }
+        }
+
         for pointI, point := range shownPath {
+            marker := boot
+            markerGeom := bootGeom
+            if flag != nil && pointI >= overworld.PathReach {
+                marker = flag
+                markerGeom = flagGeom
+            }
+
             for _, offset := range mapXOffsets {
                 cx, cy := overworld.ToCameraCoordinates(point.X, point.Y)
                 x, y := convertTileCoordinates(cx + offset, cy)
                 options.GeoM.Reset()
                 options.ColorScale.Reset()
                 options.GeoM.Translate(float64(x), float64(y))
-                options.GeoM.Concat(bootGeom)
+                options.GeoM.Concat(markerGeom)
 
                 v := float32(1 + (math.Sin(float64(overworld.Counter * 4 + uint64(pointI) * 60) * math.Pi / 180) / 2 + 0.5) / 2)
                 options.ColorScale.Scale(v, v, v, 1)
 
-                scale.DrawScaled(screen, boot, &options)
+                scale.DrawScaled(screen, marker, &options)
             }
         }
     }
@@ -8680,6 +8706,14 @@ func (game *Game) DrawGame(screen *ebiten.Image){
         ShowAnimation: game.State == GameStateUnitMoving,
         FogBlack: game.GetFogImage(),
         PlannedPath: game.plannedPath(selectedStack),
+    }
+
+    if selectedStack != nil {
+        shown := worldPath(selectedStack.CurrentPath)
+        if len(overworld.PlannedPath) > 0 {
+            shown = overworld.PlannedPath
+        }
+        overworld.PathReach = game.pathReach(game.Model.GetHumanPlayer(), selectedStack, shown)
     }
 
     if game.WatchMode {
