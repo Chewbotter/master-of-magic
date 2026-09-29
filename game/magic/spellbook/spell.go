@@ -1482,9 +1482,11 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 textColorScale.SetG(float32(v))
                 textColorScale.SetB(float32(v))
             } else if highlightedSpell.Name == spell.Name {
-                // spellOptions.ColorScale.Scale(1.5, 1, 1, 1)
-                r := math.Cos(float64(ui.Counter) / 5) * 128 + 128
-                textColorScale.SetR(float32(r))
+                // a slow pulse to blue, see hover.go. upstream's went to bright red
+                red, green, blue := hoverTint(ui.Counter)
+                textColorScale.SetR(red)
+                textColorScale.SetG(green)
+                textColorScale.SetB(blue)
             }
 
             // if spell is too expensive in combat then it is not castable

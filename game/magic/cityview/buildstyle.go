@@ -103,8 +103,10 @@ const (
     buildDescriptionSpace = 2
 )
 
-// the descriptions of the settings that are no buildings (Housing, Trade Goods) are long. they are
-// printed smaller than the original has them and in the middle of their field (user, 2026-09-29)
+// true: the descriptions of the settings that are no buildings (Housing, Trade Goods) are printed
+// smaller than the original has them, every line in the middle of their field. TRIED AND TAKEN BACK
+// by the user (2026-09-29): "in this case the text was better large"
+const BuildSettingsCompact = false
 var BuildSettingTextSize = font.TextSizeCompact
 // true: the descriptions of all buildings are printed that way
 const BuildAllDescriptionsCompact = false
@@ -278,7 +280,7 @@ func (style *buildStyle) drawBuilding(screen *ebiten.Image, name string, cost in
 func (style *buildStyle) drawDescription(screen *ebiten.Image, description string, setting bool) {
     text := withSpace(style.Title, buildDescriptionSpace)
 
-    if !setting && !BuildAllDescriptionsCompact {
+    if !(setting && BuildSettingsCompact) && !BuildAllDescriptionsCompact {
         // as the original has it
         for index, line := range text.Wrap(description, buildDescriptionWidth, 1) {
             printBuild(text, screen, buildDescriptionX, buildDescriptionY + index * (text.Height() + 1), line)

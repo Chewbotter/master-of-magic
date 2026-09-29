@@ -31,7 +31,8 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The cursor is a red X over a tile the selected stack can not go to, and a click there does nothing (modern controls). No red flash of the screen.
 - Of the selected stack only the colored square blinks, the unit stays visible (modern controls). The blinking starts anew with every selection.
 - Text of the panel (gold, mana, income, moves) with the original's black outlines.
-- The screen that picks what a city builds has the original's look: the names in the lists, the text and the places in the window. The descriptions of Housing and Trade Goods are in smaller letters, in the middle of their field.
+- The screen that picks what a city builds has the original's look: the names in the lists, the text and the places in the window. 
+- The screen of a city shows the race and the population in the original's text.
 - The window of a unit has the original's text: outlined letters in its colors, at its places, on the world map and in battles. The list of abilities is in smaller letters.
 - Surveyor, cartographer and chancellor's scroll keep the wide map beneath them.
 
@@ -68,6 +69,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The tip that says how many turns a spell takes to cast is solid and has a shadow of whole pixels, as all tips have now.
 - The page turn is made by the game from the pages as they are, forward and back. The folded corners that turn the pages turn with their page, and are lighter under the mouse. A click on a tab while a page turns turns the next one at once.
 - In battle the realms that filter the spells are in a row over the book.
+- The name of the spell under the mouse pulses to a soft blue, not to red.
 - The dark behind the spellbook fades in and out with it, and in a battle it covers the whole width of the window.
 
 ## For artists
