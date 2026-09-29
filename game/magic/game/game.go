@@ -5588,66 +5588,46 @@ func (game *Game) ShowGrandVizierUI(){
 func (game *Game) ShowTaxCollectorUI(cornerX int, cornerY int){
     player := game.Model.GetHumanPlayer()
 
-    // put a * on the value that is currently selected
-    selected := func(s string, use bool) string {
-        if use {
-            return fmt.Sprintf("%v*", s)
-        }
-
-        return s
-    }
-
+    // the text of the original (ReMoM AdvsrScr.c TaxCollector_Window): the gold, and the unrest
+    // in a column of its own, 59, 54 or 52 from where the gold starts. a * after the rate that
+    // is set. upstream had both in one text with a space between
     update := func(rate fraction.Fraction){
         player.UpdateTaxRate(rate)
         game.RefreshUI()
     }
 
-    taxes := []uilib.Selection{
-        uilib.Selection{
-            Name: selected("0 gold, 0% unrest", player.TaxRate.IsZero()),
-            Action: func(){
-                update(fraction.Zero())
-            },
-        },
-        uilib.Selection{
-            Name: selected("0.5 gold, 10% unrest", player.TaxRate.Equals(fraction.Make(1, 2))),
-            Action: func(){
-                update(fraction.Make(1, 2))
-            },
-        },
-        uilib.Selection{
-            Name: selected("1 gold, 20% unrest", player.TaxRate.Equals(fraction.Make(1, 1))),
-            Action: func(){
-                update(fraction.Make(1, 1))
-            },
-        },
-        uilib.Selection{
-            Name: selected("1.5 gold, 30% unrest", player.TaxRate.Equals(fraction.Make(3, 2))),
-            Action: func(){
-                update(fraction.Make(3, 2))
-            },
-        },
-        uilib.Selection{
-            Name: selected("2 gold, 45% unrest", player.TaxRate.Equals(fraction.Make(2, 1))),
-            Action: func(){
-                update(fraction.Make(2, 1))
-            },
-        },
-        uilib.Selection{
-            Name: selected("2.5 gold, 60% unrest", player.TaxRate.Equals(fraction.Make(5, 2))),
-            Action: func(){
-                update(fraction.Make(5, 2))
-            },
-        },
-        uilib.Selection{
-            Name: selected("3 gold, 75% unrest", player.TaxRate.Equals(fraction.Make(3, 1))),
-            Action: func(){
-                update(fraction.Make(3, 1))
-            },
-        },
+    rates := []struct{
+        Gold string
+        Unrest string
+        Column int
+        Rate fraction.Fraction
+    }{
+        {"0 gold,", "0% unrest", 59, fraction.Zero()},
+        {".5 gold,", "10% unrest", 54, fraction.Make(1, 2)},
+        {"1 gold,", "20% unrest", 52, fraction.Make(1, 1)},
+        {"1.5 gold,", "30% unrest", 52, fraction.Make(3, 2)},
+        {"2 gold,", "45% unrest", 52, fraction.Make(2, 1)},
+        {"2.5 gold,", "60% unrest", 52, fraction.Make(5, 2)},
+        {"3 gold,", "75% unrest", 52, fraction.Make(3, 1)},
     }
 
-    game.HudUI.AddElements(uilib.MakeSelectionUI(game.HudUI, game.Cache, &game.ImageCache, cornerX, cornerY, "Tax Per Population", taxes, true))
+    var taxes []uilib.Selection
+    for _, rate := range rates {
+        unrest := rate.Unrest
+        if player.TaxRate.Equals(rate.Rate) {
+            unrest += "*"
+        }
+        taxes = append(taxes, uilib.Selection{
+            Name: rate.Gold,
+            Hotkey: unrest,
+            HotkeyX: rate.Column,
+            Action: func(){
+                update(rate.Rate)
+            },
+        })
+    }
+
+    game.HudUI.AddElements(uilib.MakeSelectionUICentered(game.HudUI, game.Cache, &game.ImageCache, " Tax Per Population ", taxes, true, cornerX, cornerY))
 }
 
 func (game *Game) ShowApprenticeUI(yield coroutine.YieldFunc, player *playerlib.Player){
@@ -5795,7 +5775,8 @@ func (game *Game) MakeInfoUI(cornerX int, cornerY int) []*uilib.UIElement {
         },
     }
 
-    return uilib.MakeSelectionUI(game.HudUI, game.Cache, &game.ImageCache, cornerX, cornerY, "Select An Advisor", advisors, true)
+    // in the middle of the screen, as the original has it
+    return uilib.MakeSelectionUICentered(game.HudUI, game.Cache, &game.ImageCache, "Select An Advisor", advisors, true, cornerX, cornerY)
 }
 
 func (game *Game) doDefaultItemEditor(yield coroutine.YieldFunc) {
