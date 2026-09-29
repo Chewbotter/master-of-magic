@@ -606,6 +606,9 @@ func main() {
 
     if *onlyMarkers && *outPath != "" {
         fmt.Printf("markers: %v\n", exportMarkers(*outPath))
+        if *dataPath != "" {
+            fmt.Println("tabs:", exportTabs(*dataPath, *outPath))
+        }
         return
     }
 
@@ -630,6 +633,7 @@ func main() {
     environmentPictures += exportRiver(*outPath)
     environmentPictures += exportFarmland(*outPath)
     exportMarkers(*outPath)
+    exportTabs(*dataPath, *outPath)
 
     err = exportPalette(*outPath)
     if err != nil {

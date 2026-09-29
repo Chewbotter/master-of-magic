@@ -17,3 +17,25 @@ func exportMarkers(outPath string) int {
 
     return 1
 }
+
+// the tabs of the spellbooks as they look under the mouse, made from the pictures of the game
+func exportTabs(dataPath string, outPath string) int {
+    count := 0
+    for _, tab := range mod.TabPictures {
+        archive, err := openArchive(dataPath, tab.Archive)
+        if err != nil {
+            continue
+        }
+
+        frames, err := readPictures(archive, tab.Entry)
+        if err != nil || len(frames) == 0 {
+            continue
+        }
+
+        if writePng(filepath.Join(outPath, "markers", mod.TabHoverName(tab.Name) + ".png"), mod.MakeTabHover(frames[0])) == nil {
+            count += 1
+        }
+    }
+
+    return count
+}

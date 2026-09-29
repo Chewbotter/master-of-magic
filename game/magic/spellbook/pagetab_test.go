@@ -17,12 +17,17 @@ func TestTurnIsClearOfTheTabs(test *testing.T) {
         }
 
         for _, mirror := range []bool{false, true} {
-            // from the first tick to the last but one no part of the leaf is under a tab
+            // from the first tick on no part of the leaf is under the tab of the side it leaves
             for tick := 0; tick < PageTurnTicks; tick++ {
                 turned := turnedAt(pageTurnPart(uint64(tick), PageTurnTicks), book.Width, book.Reach)
                 for _, strip := range leafStrips(book.Width, turned, mirror) {
-                    if strip.Column >= book.Width - book.Reach || strip.Column < -(book.Width - book.Reach) {
-                        test.Fatalf("width %v, mirror %v, tick %v: column %v of the leaf is under a tab", book.Width, mirror, tick, strip.Column)
+                    // the side the leaf leaves: the right one, in a mirror the left one
+                    column := strip.Column
+                    if mirror {
+                        column = -strip.Column - 1
+                    }
+                    if column >= book.Width - book.Reach {
+                        test.Fatalf("width %v, mirror %v, tick %v: column %v of the leaf is under the tab it leaves", book.Width, mirror, tick, strip.Column)
                     }
                 }
             }
@@ -41,5 +46,19 @@ func TestTurnIsClearOfTheTabs(test *testing.T) {
             }
             last = turned
         }
+    }
+}
+
+func TestNewTurnEndsTheOneThatRuns(test *testing.T) {
+    var turn runningTurn
+    ended := 0
+
+    turn.finish = func() {
+        ended += 1
+    }
+    turn.end()
+    turn.end()
+    if ended != 1 {
+        test.Errorf("a turn ended %v times", ended)
     }
 }

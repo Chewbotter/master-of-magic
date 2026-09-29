@@ -9,8 +9,11 @@ package mod
 // takes its place; it can have any size and is put with its middle on the middle of the tile.
 
 import (
+    "fmt"
     "image"
     "image/color"
+    "image/png"
+    "os"
     "path/filepath"
 )
 
@@ -71,4 +74,92 @@ func MarkerFlag(palette color.Palette) *image.Paletted {
     }
 
     return DefaultFlag(palette)
+}
+
+// The tabs in the corners of the spellbooks that turn the pages, as they look under the mouse.
+// The game makes that look from the tab: lifted by TabHoverLift art pixels over a shadow of
+// itself. A picture `markers/<name> hover.png` in the replacement folder takes its place, as it
+// is (any colors, see-through pixels stay so). It is put with its lower left corner on the lower
+// left corner of the tab, so a picture that is higher than the tab reaches up.
+const TabCastLeft = "tab cast left"
+const TabCastRight = "tab cast right"
+const TabResearchLeft = "tab research left"
+const TabResearchRight = "tab research right"
+
+const TabHoverLift = 1
+const TabHoverShadow = 0.35
+
+// the archive and entry of the picture of a tab
+type TabPicture struct {
+    Name string
+    Archive string
+    Entry int
+}
+
+var TabPictures = []TabPicture{
+    {Name: TabCastLeft, Archive: "spells.lbx", Entry: 1},
+    {Name: TabCastRight, Archive: "spells.lbx", Entry: 2},
+    {Name: TabResearchLeft, Archive: "scroll.lbx", Entry: 7},
+    {Name: TabResearchRight, Archive: "scroll.lbx", Entry: 8},
+}
+
+func TabHoverName(name string) string {
+    return name + " hover"
+}
+
+// a picture of the markers folder as it is, nil when there is none
+func ReadMarker(name string) image.Image {
+    if folder == "" || name == "" {
+        return nil
+    }
+
+    path := filepath.Join(folder, markersFolder, name + ".png")
+    // the files of the folder are looked up anew
+    delete(folderLists, filepath.Dir(path))
+    if !hasFile(path) {
+        return nil
+    }
+
+    file, err := os.Open(path)
+    if err != nil {
+        return nil
+    }
+    picture, err := png.Decode(file)
+    file.Close()
+    if err != nil {
+        reportOnce(fmt.Sprintf("Replacement picture %v can not be read: %v", path, err))
+        return nil
+    }
+
+    reportOnce(fmt.Sprintf("Replacement picture %v", path))
+    return picture
+}
+
+// the look of a tab under the mouse as the game makes it
+func MakeTabHover(tab image.Image) image.Image {
+    bounds := tab.Bounds()
+    out := image.NewNRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy() + TabHoverLift))
+
+    shadow := float64(TabHoverShadow) * 255
+
+    for y := 0; y < bounds.Dy(); y++ {
+        for x := 0; x < bounds.Dx(); x++ {
+            _, _, _, alpha := tab.At(bounds.Min.X + x, bounds.Min.Y + y).RGBA()
+            if alpha != 0 {
+                out.Set(x, y + TabHoverLift, color.NRGBA{A: uint8(shadow)})
+            }
+        }
+    }
+
+    for y := 0; y < bounds.Dy(); y++ {
+        for x := 0; x < bounds.Dx(); x++ {
+            pixel := tab.At(bounds.Min.X + x, bounds.Min.Y + y)
+            _, _, _, alpha := pixel.RGBA()
+            if alpha != 0 {
+                out.Set(x, y, pixel)
+            }
+        }
+    }
+
+    return out
 }
