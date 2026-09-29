@@ -167,6 +167,8 @@ type unitPickerRow struct {
     Text string
     // what a click does: one of these is set
     Back bool
+    // the battle of the unit of the last test battle, on what is picked in the list now
+    Test bool
     Race data.Race
     Unit *units.Unit
     // the rollouts of the ground and of the coast, and what is in them: a ground by its number
@@ -250,6 +252,11 @@ func unitPickerRows() []unitPickerRow {
     height := float64(unitPickerFont().Height()) * font.RelativeTextSize(scale.ScaleAmount, UnitPickerTextSize)
 
     var rows []unitPickerRow
+    // the unit of before once more on what is picked here, without the way back to the debug list
+    // (user, 2026-09-29). not there before the first test battle
+    if testBattleLast != nil {
+        rows = append(rows, unitPickerRow{Text: fmt.Sprintf("Test: %v", testBattleLast.Name), Test: true})
+    }
     rows = append(rows, unitPickerRow{Text: "Back", Back: true})
 
     // the ground and the coast of the battle
@@ -369,6 +376,10 @@ func updateUnitPicker() bool {
 
     row := rows[unitPickerHover]
     switch {
+        case row.Test:
+            testBattleUnit = testBattleLast
+            unitPickerOpen = false
+            return true
         case row.Back:
             unitPickerOpen = false
         case row.GroundTitle:
