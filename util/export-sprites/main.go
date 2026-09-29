@@ -192,9 +192,14 @@ func exportUnits(dataPath string, outPath string) (int, int) {
 }
 
 func exportArchives(dataPath string, outPath string) int {
+    return exportArchivesNamed(dataPath, outPath, battleArchives)
+}
+
+// writes every picture of the archives with these names
+func exportArchivesNamed(dataPath string, outPath string, names []string) int {
     pictureCount := 0
 
-    for _, name := range battleArchives {
+    for _, name := range names {
         archive, err := openArchive(dataPath, name)
         if err != nil {
             log.Printf("%v", err)
@@ -575,7 +580,23 @@ func main() {
     dataPath := flag.String("data", "", "the folder of the game's LBX files")
     outPath := flag.String("out", "", "the folder to write to. outside of the repository")
     onlyMarkers := flag.Bool("markers", false, "write only the markers the mod makes by itself, which needs no data")
+    onlyArchives := flag.String("archives", "", "write only the pictures of these archives, names with commas between them: help.lbx,spells.lbx")
     flag.Parse()
+
+    if *onlyArchives != "" && *dataPath != "" && *outPath != "" {
+        var names []string
+        for _, name := range strings.Split(*onlyArchives, ",") {
+            name = strings.ToLower(strings.TrimSpace(name))
+            if name != "" && !strings.HasSuffix(name, ".lbx") {
+                name += ".lbx"
+            }
+            if name != "" {
+                names = append(names, name)
+            }
+        }
+        fmt.Println("pictures of archives:", exportArchivesNamed(*dataPath, *outPath, names))
+        return
+    }
 
     if *onlyMarkers && *outPath != "" {
         fmt.Printf("markers: %v\n", exportMarkers(*outPath))
