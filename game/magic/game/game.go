@@ -1320,9 +1320,19 @@ func (game *Game) showScroll(yield coroutine.YieldFunc, title string, text strin
 
     wrappedText := fonts.SmallFont.CreateWrappedText(float64(180), 1, text)
 
+    // the text of the original, see scrollstyle.go
+    style := game.getScrollStyle()
+    var styleLines []string
+    if style != nil {
+        styleLines = style.lines(text)
+    }
+
     scrollImages, _ := game.ImageCache.GetImages("scroll.lbx", 2)
 
     totalImages := int((wrappedText.TotalHeight + float64(fonts.BigFont.Height())) / float64(5)) + 1
+    if style != nil {
+        totalImages = (style.height(title, styleLines) + scrollHeadingStep) / 5 + 1
+    }
 
     if totalImages < 3 {
         totalImages = 3
@@ -1366,13 +1376,17 @@ func (game *Game) showScroll(yield coroutine.YieldFunc, title string, text strin
         textScale := options.ColorScale
         textScale.ScaleAlpha(getAlpha())
 
-        x, y := options.GeoM.Apply(float64(pageBackground.Bounds().Dx()) / 2, float64(middleY) - wrappedText.TotalHeight / 2 - float64(fonts.BigFont.Height()) / 2 + 5)
-        fonts.BigFont.PrintCenter(screen, x, y, scale.ScaleAmount, textScale, title)
-        y += float64(fonts.BigFont.Height()) + 1
+        if style != nil {
+            style.draw(screen, textScale, title, styleLines)
+        } else {
+            x, y := options.GeoM.Apply(float64(pageBackground.Bounds().Dx()) / 2, float64(middleY) - wrappedText.TotalHeight / 2 - float64(fonts.BigFont.Height()) / 2 + 5)
+            fonts.BigFont.PrintCenter(screen, x, y, scale.ScaleAmount, textScale, title)
+            y += float64(fonts.BigFont.Height()) + 1
 
-        var textOptions ebiten.DrawImageOptions
-        textOptions.ColorScale = textScale
-        fonts.SmallFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount, Options: &textOptions})
+            var textOptions ebiten.DrawImageOptions
+            textOptions.ColorScale = textScale
+            fonts.SmallFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount, Options: &textOptions})
+        }
 
         scrollOptions := options
         scrollOptions.GeoM.Translate(float64(-63), float64(-20))
@@ -7311,7 +7325,7 @@ func (game *Game) DisbandUnits(player *playerlib.Player) []string {
                 // disband the unit for the right reason
                 if goldIssue && unit.GetUpkeepGold() > 0 {
                     log.Printf("Disband %v due to lack of gold", unit)
-                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v disbanded due to lack of gold", unit.GetName()))
+                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v - deserted: lack of gold.", unit.GetName()))
                     player.RemoveUnit(unit)
                     disbanded = true
                     break
@@ -7319,7 +7333,7 @@ func (game *Game) DisbandUnits(player *playerlib.Player) []string {
 
                 if foodIssue && unit.GetUpkeepFood() > 0 {
                     log.Printf("Disband %v due to lack of food", unit)
-                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v disbanded due to lack of food", unit.GetName()))
+                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v - deserted: lack of food.", unit.GetName()))
                     player.RemoveUnit(unit)
                     disbanded = true
                     break
@@ -7327,7 +7341,7 @@ func (game *Game) DisbandUnits(player *playerlib.Player) []string {
 
                 if manaIssue && unit.GetUpkeepMana() > 0 {
                     log.Printf("Disband %v due to lack of mana", unit)
-                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v disbanded due to lack of mana", unit.GetName()))
+                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v - dispelled: lack of mana.", unit.GetName()))
                     player.RemoveUnit(unit)
                     disbanded = true
                     break
@@ -7489,7 +7503,8 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
 
     if player.IsHuman() && len(disbandedMessages) > 0 {
         select {
-            case game.Events<- &GameEventScroll{Title: "", Text: strings.Join(disbandedMessages, "\n")}:
+            // the heading and the words of the original (ReMoM REPORT.c), see scrollstyle.go
+            case game.Events<- &GameEventScroll{Title: "UNITS DISBANDED", Text: strings.Join(disbandedMessages, "\n")}:
             default:
         }
     }
@@ -7588,14 +7603,16 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
                     if player.IsHuman() {
                         growthEvent := event.(*citylib.CityEventPopulationGrowth)
 
-                        verb := "grown"
-                        if !growthEvent.Grow {
-                            verb = "shrunk"
-                        }
-
+                        // the headings and the words of the original (ReMoM REPORT.c)
                         scrollEvent := GameEventScroll{
                             Title: "CITY GROWTH",
-                            Text: fmt.Sprintf("%v has %v to a population of %v.", city.Name, verb, city.Citizens()),
+                            Text: fmt.Sprintf("%v has grown to a population of %v", city.Name, city.Citizens()),
+                        }
+                        if !growthEvent.Grow {
+                            scrollEvent = GameEventScroll{
+                                Title: "CITY DEATHS",
+                                Text: fmt.Sprintf("%v now has a population of %v", city.Name, city.Citizens()),
+                            }
                         }
 
                         select {
