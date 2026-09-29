@@ -95,8 +95,10 @@ func gameBlood(part string) BloodValues {
                 Colors: colors("ffffff c8e8ff 88b8e8 5078b0"),
             }
         case sparksPart:
+            // 9 sparks first; user, 2026-09-29: "much fewer- about half". a volley of arrows
+            // gives them for every arrow that does nothing, which is most of them
             return BloodValues{
-                Drops: 9, Speed: 60, Lift: 35, Gravity: 240, Life: 0.35, Height: 11, Spread: 75,
+                Drops: 4, Speed: 60, Lift: 35, Gravity: 240, Life: 0.35, Height: 11, Spread: 75,
                 Colors: colors("ffffff fff4b0 ffd040 e08818 804008"),
             }
     }
