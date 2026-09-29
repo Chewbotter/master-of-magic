@@ -69,6 +69,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The tip that says how many turns a spell takes to cast is solid and has a shadow of whole pixels, as all tips have now.
 - The page turn is made by the game from the pages as they are, forward and back. The folded corners that turn the pages turn with their page, and are lighter under the mouse. A click on a tab while a page turns turns the next one at once.
 - In battle the realms that filter the spells are in a row over the book.
+- The letters of both spellbooks have the original's colors: lighter soft edges, and shades in the headers.
 - The name of the spell under the mouse pulses to a soft blue, not to red.
 - The dark behind the spellbook fades in and out with it, and in a battle it covers the whole width of the window.
 

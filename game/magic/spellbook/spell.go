@@ -370,7 +370,8 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
         red, red, red,
     }
 
-    titleFont := font.MakeOptimizedFontWithPalette(fonts[5], redPalette)
+    // the colors of the original, see bookcolors.go
+    titleFont := font.MakeOptimizedFontWithPalette(fonts[5], bookPaletteOr(researchTitleColors, redPalette))
 
     grey := color.RGBA{R: 35, G: 35, B: 35, A: 0xff}
     textPalette := color.Palette{
@@ -407,11 +408,11 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
         greyLight, greyLight, greyLight,
     }
 
-    spellTitleNormalFont := font.MakeOptimizedFontWithPalette(fonts[4], textPalette)
-    spellTextNormalFont := font.MakeOptimizedFontWithPalette(fonts[0], textPaletteLighter)
+    spellTitleNormalFont := font.MakeOptimizedFontWithPalette(fonts[4], bookPaletteOr(researchNameColors, textPalette))
+    spellTextNormalFont := font.MakeOptimizedFontWithPalette(fonts[0], bookPaletteOr(researchTextColors, textPaletteLighter))
 
-    spellTitleAlienFont := font.MakeOptimizedFontWithPalette(fonts[7], textPalette)
-    spellTextAlienFont := font.MakeOptimizedFontWithPalette(fonts[6], textPaletteLighter)
+    spellTitleAlienFont := font.MakeOptimizedFontWithPalette(fonts[7], bookPaletteOr(researchNameColors, textPalette))
+    spellTextAlienFont := font.MakeOptimizedFontWithPalette(fonts[6], bookPaletteOr(researchTextColors, textPaletteLighter))
 
     // showSection := SectionSpecial
     // page N refers to both left and right sides of the book
@@ -1350,7 +1351,11 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
 
     fonts, _ := font.ReadFonts(fontLbx, 0)
 
-    infoFont := font.MakeOptimizedFontWithPalette(fonts[1], paletteBlack)
+    // the colors of the original, see bookcolors.go
+    infoFont := font.MakeOptimizedFontWithPalette(fonts[1], bookPaletteOr(castTextColors, paletteBlack))
+    // letters of one color that is given when they are printed: the name under the mouse, the one
+    // that is being cast, the ones that cost too much
+    tintFont := font.MakeOptimizedFontWithPalette(fonts[1], paletteBlack)
 
     red := color.RGBA{R: 0x5a, G: 0, B: 0, A: 0xff}
     redPalette := color.Palette{
@@ -1375,7 +1380,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
 
     whiteFadeFont := font.MakeOptimizedFontWithPalette(fonts[1], paletteWhite)
 
-    titleFont := font.MakeOptimizedFontWithPalette(fonts[4], redPalette)
+    titleFont := font.MakeOptimizedFontWithPalette(fonts[4], bookPaletteOr(castTitleColors, redPalette))
 
     pageCache := make(map[int]*ebiten.Image)
 
@@ -1475,14 +1480,18 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             spellOptions := options2
 
             textColorScale := spellOptions.ColorScale
+            // the name has a color of its own and not the ones of the page
+            tinted := false
 
             if currentSpell.Name == spell.Name {
+                tinted = true
                 v := math.Cos(float64(ui.Counter) / 5) * 64 + 128
                 textColorScale.SetR(float32(v))
                 textColorScale.SetG(float32(v))
                 textColorScale.SetB(float32(v))
             } else if highlightedSpell.Name == spell.Name {
                 // a slow pulse to blue, see hover.go. upstream's went to bright red
+                tinted = true
                 red, green, blue := hoverTint(ui.Counter)
                 textColorScale.SetR(red)
                 textColorScale.SetG(green)
@@ -1491,6 +1500,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
 
             // if spell is too expensive in combat then it is not castable
             if !overland && !canCast(spell) {
+                tinted = true
                 textColorScale.SetR(60)
                 textColorScale.SetG(60)
                 textColorScale.SetB(60)
@@ -1509,8 +1519,16 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             var textColorOptions ebiten.DrawImageOptions
             textColorOptions.ColorScale = textColorScale
 
-            infoFont.PrintOptions(screen, spellX, spellY, font.FontOptions{Options: &textColorOptions, Scale: scale.ScaleAmount}, spell.Name)
-            infoFont.PrintOptions(screen, spellX + float64(124), spellY, font.FontOptions{Options: &textColorOptions, Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, fmt.Sprintf("%v MP", costRemaining))
+            nameFont := infoFont
+            if tinted || !OriginalBookColors {
+                nameFont = tintFont
+            } else {
+                // the letters have their colors already
+                textColorOptions.ColorScale = spellOptions.ColorScale
+            }
+
+            nameFont.PrintOptions(screen, spellX, spellY, font.FontOptions{Options: &textColorOptions, Scale: scale.ScaleAmount}, spell.Name)
+            nameFont.PrintOptions(screen, spellX + float64(124), spellY, font.FontOptions{Options: &textColorOptions, Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, fmt.Sprintf("%v MP", costRemaining))
             icon := getMagicIcon(spell)
 
             nameLength := infoFont.MeasureTextWidth(spell.Name, 1) + 1
