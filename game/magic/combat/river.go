@@ -101,6 +101,9 @@ const riverWetDark = 0.3
 
 // glints for every cell of water
 const riverGlints = 0.5
+// a frame of a glint is shown this many times as long as a frame of a prop (user, 2026-09-29:
+// "slow the glint motion by half")
+const riverGlintSlow = 2
 const riverSet = mod.FeatureRiver
 const riverGlintName = "glint"
 

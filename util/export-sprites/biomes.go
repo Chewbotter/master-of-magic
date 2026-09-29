@@ -53,7 +53,7 @@ const riverNote = "River\r\n\r\n" +
     "glint 1_0.png, glint 1_1.png, ...   the frames of the first glint\r\n" +
     "glint 2_0.png, ...                  the second, and on without a gap\r\n" +
     "Any size, any number of frames. The middle of the picture lies on its place, about one for\r\n" +
-    "every two tiles of water, each at a time of its own. A picture with see-through frames is a\r\n" +
+    "every two tiles of water, each at a time of its own, a frame for about a quarter of a second. A picture with see-through frames is a\r\n" +
     "glint that is gone for a while.\r\n\r\n" +
     "The files \"_game river ...\" are the pictures the original has of a river (Other), to look at.\r\n" +
     "The game does not use them.\r\n"

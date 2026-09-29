@@ -103,7 +103,12 @@ func (combat *CombatScreen) drawFlatProps(screen *ebiten.Image, animationIndex u
         }
         // each at a time of its own, so they do not move as one
         phase := uint64(slopeCornerHash(piece.ScreenX, piece.ScreenY, 0))
-        picture := pictures[(animationIndex + phase) % uint64(len(pictures))]
+        frame := animationIndex
+        if piece.Name == riverGlintName {
+            // the glints of a river move slower, see river.go
+            frame /= riverGlintSlow
+        }
+        picture := pictures[(frame + phase) % uint64(len(pictures))]
         anchorX, anchorY := piece.anchor(picture.Bounds().Dx(), picture.Bounds().Dy())
         combat.drawOnFieldDimmed(screen, picture, piece.ScreenX - anchorX, piece.ScreenY - anchorY, brightness)
     }
