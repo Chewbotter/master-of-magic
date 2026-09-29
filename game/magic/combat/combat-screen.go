@@ -237,6 +237,8 @@ type CombatScreen struct {
     fieldShift float64
     // figures that were killed, see figurefall.go
     corpses []corpse
+    // the tick of the battle the corpses were last looked at, see corpsefade.go
+    corpseFadeTick uint64
     // see shadows.go
     shadowLayer *ebiten.Image
     // screen pixels per pixel of the shadow picture, and where its first pixel is on the screen

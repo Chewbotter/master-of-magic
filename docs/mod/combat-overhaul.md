@@ -92,6 +92,7 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
   when the spell is over (`combat/spelllight.go`).
 - The figures in the light of a spell have the pixels of their rim that face the spell in the color of its light
   (`combat/rimlight.go`).
+- A tile keeps its 6 newest corpses, its older ones fade out slowly (`combat/corpsefade.go`).
 - Corpses take on a color by what killed the figure: brown for fire, blue for ice, gray for
   lightning and other spells, red for a fight (`corpse-color` in the values of spells).
 - A battle that is won or lost is shown for a moment longer before its result comes up

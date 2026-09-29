@@ -103,6 +103,9 @@ type corpse struct {
     // the color it takes on as it lies, by what killed it
     HasTint bool
     Tint color.RGBA
+    // it fades out, since this tick of the battle: its tile has too many. see corpsefade.go
+    Fading bool
+    FadeStart uint64
 }
 
 // how much of the color of what killed it a corpse takes on, 0 to 1
@@ -260,6 +263,9 @@ func (combat *CombatScreen) corpseTime(body *corpse) float64 {
 func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawable {
     var out []fieldDrawable
 
+    // the oldest of a tile that has too many fade, see corpsefade.go
+    combat.fadeCorpses()
+
     for index := range combat.corpses {
         body := &combat.corpses[index]
 
@@ -327,6 +333,9 @@ func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawabl
                     // toward the color of what killed it, as bright as it was
                     red, green, blue := corpseTintParts(body.Tint, corpseTintStrength * darkened)
                     colors.Scale(red, green, blue, 1)
+                }
+                if shows := corpseShows(body, combat.Counter); shows < 1 {
+                    colors.Scale(shows, shows, shows, shows)
                 }
                 colorm.DrawImage(screen, picture, colors, &options)
             },
