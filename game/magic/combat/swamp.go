@@ -32,6 +32,18 @@ import (
 // turns them off
 var SwampPools = true
 
+// THE FLOODED SWAMP (user, 2026-09-29: "can we give the swamp biome a higher ratio of plateau'd
+// area, but anything that isn't on a plateau is swamp water?"). The swamp has much more raised
+// ground than other land (swampPatches), and all of its low ground is water: the plateaus are
+// islands. The water ends at the foot of their slopes, which are drawn over it. Roads run through
+// the water as fords, and the beach of a coast, a town and a lair stay dry. There are no single
+// pools then. false gives the pools back
+var SwampFlooded = true
+
+// the patches of raised ground of a flooded swamp, on the original's grid: about half of the
+// ground is raised then. other grass land has 5, hills have 20. 38 left a quarter for the water
+const swampPatches = 16
+
 // one pool for this many cells of the ground
 const swampPoolCells = 45
 // places that are tried for a pool
@@ -82,6 +94,8 @@ var swampColor = color.NRGBA{R: 96, G: 108, B: 34, A: 255}
 const swampShallow = 0.6
 const swampDeep = 0.8
 const swampDeepFrom = 0.4
+// the deep places of a flooded swamp are about this many cells across
+const swampDeepPatch = 3.0
 
 type poolRound struct {
     X float64
@@ -101,6 +115,8 @@ const (
 
 // the pools of a ground
 type swampPools struct {
+    // all of the low ground is water, see SwampFlooded
+    Flooded bool
     Rounds []poolRound
     // what every cell is of them, and the rounds that reach into it
     Parts []poolPart
@@ -142,6 +158,29 @@ func (ground *BattleGround) makePools(zone ZoneType) {
         Seed: rand.Uint32(),
     }
     ground.Pools = pools
+
+    if SwampFlooded {
+        pools.Flooded = true
+        for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
+            for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
+                if !ground.floodable(zone, cgx, cgy) {
+                    continue
+                }
+                index := ground.index(cgx, cgy)
+                if ground.Heights[index] == 0 {
+                    pools.Parts[index] = poolWater
+                    // mounds have no place under the water
+                    if ground.Group[index] == TerrainRough {
+                        ground.Group[index] = TerrainGrass
+                    }
+                } else if ground.raisedNeighbors(cgx, cgy) < 8 {
+                    // the water reaches into the cut corners of the rim of a plateau
+                    pools.Parts[index] = poolEdge
+                }
+            }
+        }
+        return
+    }
 
     placed := make(map[int]bool)
 
@@ -260,6 +299,19 @@ func (ground *BattleGround) makePools(zone ZoneType) {
     }
 }
 
+// true if a cell of a flooded swamp can be under water: not the beach and the sea of a coast, not
+// a town or a lair
+func (ground *BattleGround) floodable(zone ZoneType, cgx int, cgy int) bool {
+    if !ground.contains(cgx, cgy) || ground.Heights == nil {
+        return false
+    }
+    group := ground.Group[ground.index(cgx, cgy)]
+    if group == TerrainSand || group == TerrainWater || ground.coastAt(cgx, cgy) != coastLand {
+        return false
+    }
+    return !plateauKeepsOut(zone, cgx, cgy)
+}
+
 // what a cell is of the pools of the ground. none without pools
 func (ground *BattleGround) poolAt(cgx int, cgy int) poolPart {
     if ground == nil || ground.Pools == nil || !ground.contains(cgx, cgy) {
@@ -281,8 +333,13 @@ func (ground *BattleGround) poolDepth(cgx int, cgy int, cellX float64, cellY flo
 // the water of the pools of a battlefield, to be laid over its ground, and where its top left
 // corner lies on the original's screen. nil without pools
 func makePoolWater(ground *BattleGround) (*image.NRGBA, int, int) {
-    if ground == nil || ground.Pools == nil || len(ground.Pools.Rounds) == 0 {
+    if ground == nil || ground.Pools == nil || (len(ground.Pools.Rounds) == 0 && !ground.Pools.Flooded) {
         return nil, 0, 0
+    }
+
+    var outline *plateauOutline
+    if ground.Pools.Flooded {
+        outline = makePlateauOutline(ground)
     }
 
     // the cells of the ground lie in a diamond on the screen, between the middles of its four
@@ -316,6 +373,14 @@ func makePoolWater(ground *BattleGround) (*image.NRGBA, int, int) {
 
             // a pixel has water of one of two depths over it, or is wet ground, or neither
             depth := ground.poolDepth(cgx, cgy, cellX, cellY) + coastNoise(left + x, top + y, ground.Pools.Seed) * coastScatter
+            if outline != nil {
+                // all that is not the top of a plateau, deeper in places
+                if outline.topAt(cellX, cellY) {
+                    continue
+                }
+                depth = swampDeepFrom + patchNoise(cgx, cgy, swampDeepPatch, ground.Pools.Seed) + coastNoise(left + x, top + y, ground.Pools.Seed) * coastScatter
+                depth = math.Max(depth, 0)
+            }
             pixel := swampColor
             switch {
                 case depth >= swampDeepFrom: pixel.A = uint8(math.Round(swampDeep * 255))
@@ -355,4 +420,30 @@ func (combat *CombatScreen) drawPools(screen *ebiten.Image) {
     }
 
     combat.drawOnField(screen, combat.poolWater, combat.poolX, combat.poolY)
+
+    if !ground.Pools.Flooded {
+        return
+    }
+
+    // the roads of a flooded swamp run through the water: they are drawn again, over it
+    matrix := combat.GetCameraMatrix()
+    var options ebiten.DrawImageOptions
+    for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
+        for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
+            if ground.poolAt(cgx, cgy) == poolNone || ground.RoadAt(cgx, cgy) == 0 {
+                continue
+            }
+            x, y := CellToTile(cgx, cgy)
+            brightness := borderBrightness(borderDepth(float64(x), float64(y)))
+
+            tx, ty := matrix.Apply(float64(x), float64(y))
+            options.GeoM.Reset()
+            options.GeoM.Translate(TerrainOffsetX, TerrainOffsetY)
+            options.GeoM.Scale(combat.CameraScale, combat.CameraScale)
+            options.GeoM.Translate(tx, ty)
+            options.ColorScale.Reset()
+            options.ColorScale.Scale(brightness, brightness, brightness, 1)
+            combat.drawRoad(screen, x, y, &options)
+        }
+    }
 }

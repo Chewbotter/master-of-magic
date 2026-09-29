@@ -10,6 +10,11 @@ import (
 // a swamp has small pools all over its ground, not where the armies start, and they are drawn in
 // the cells they are in
 func TestSwampPools(test *testing.T) {
+    SwampFlooded = false
+    defer func() {
+        SwampFlooded = true
+    }()
+
     zone := ZoneType{}
     zone.Ground.SetBiome(mod.BiomeSwamp)
     zone.Ground.Roads = [9]bool{true, true, true, true, true, true, true, true, true}
@@ -122,5 +127,92 @@ func TestRockCounts(test *testing.T) {
         if count := rockCount(CombatLandscapeGrass, ZoneGround{}); count > 4 {
             test.Fatalf("%v rocks on grass land", count)
         }
+    }
+}
+
+// a flooded swamp: much raised ground, and all that is low is water, but for the beach of a coast
+func TestSwampFlooded(test *testing.T) {
+    zone := ZoneType{}
+    zone.Ground.SetBiome(mod.BiomeSwamp)
+    zone.Ground.Coast = CoastNorth
+    zone.Ground.Roads = [9]bool{true, true, true, true, true, true, true, true, true}
+
+    raised, low := 0, 0
+    for range 5 {
+        ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, zone)
+        if ground.Pools == nil || !ground.Pools.Flooded || len(ground.Pools.Rounds) != 0 {
+            test.Fatalf("the swamp is not flooded")
+        }
+
+        for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
+            for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
+                water := ground.poolAt(cgx, cgy) == poolWater
+                dry := ground.coastAt(cgx, cgy) != coastLand
+                switch {
+                    case dry:
+                        if water {
+                            test.Fatalf("the swamp floods the coast at %v, %v", cgx, cgy)
+                        }
+                    case ground.HeightAt(cgx, cgy) > 0:
+                        raised += 1
+                        if water {
+                            test.Fatalf("water on a plateau at %v, %v", cgx, cgy)
+                        }
+                    default:
+                        low += 1
+                        if !water || ground.sceneryAllowed(cgx, cgy) {
+                            test.Fatalf("low ground at %v, %v: water %v, trees %v", cgx, cgy, water, ground.sceneryAllowed(cgx, cgy))
+                        }
+                }
+            }
+        }
+
+        picture, left, top := makePoolWater(ground)
+        if picture == nil {
+            test.Fatalf("no water")
+        }
+        // the middle of a cell of water has water, the middle of a cell inside of a plateau none
+        for cgy := ground.MinY + 1; cgy < ground.MinY + ground.Height - 1; cgy++ {
+            for cgx := ground.MinX + 1; cgx < ground.MinX + ground.Width - 1; cgx++ {
+                tileX, tileY := CellToTile(cgx, cgy)
+                if ground.coastAt(cgx, cgy) != coastLand || borderBrightness(borderDepth(float64(tileX), float64(tileY))) <= 0.2 {
+                    continue
+                }
+                x, y := cellCenterScreen(cgx, cgy)
+                drawn := picture.NRGBAAt(x - left, y - top).A > 0
+                neighbors := ground.raisedNeighbors(cgx, cgy)
+                if ground.HeightAt(cgx, cgy) == 0 && neighbors == 0 && !drawn {
+                    test.Fatalf("no water is drawn at %v, %v", cgx, cgy)
+                }
+                if ground.HeightAt(cgx, cgy) > 0 && neighbors == 8 && drawn {
+                    test.Fatalf("water is drawn on the plateau at %v, %v", cgx, cgy)
+                }
+            }
+        }
+
+        // a road through the water costs what a road costs
+        tiles := makeTiles(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, zone)
+        ground.applyTo(tiles)
+        model := &CombatModel{Tiles: tiles, Ground: ground}
+        for y := range BattlefieldHeight {
+            for x := range BattlefieldWidth {
+                cgx, cgy := TileToCell(x, y)
+                if ground.poolAt(cgx, cgy) != poolWater {
+                    continue
+                }
+                want := moveHalvesRough
+                if ground.RoadAt(cgx, cgy) != 0 {
+                    want = moveHalvesRoad
+                }
+                if halves := model.cellMoveHalves(x, y, false); halves != want {
+                    test.Fatalf("the water at %v, %v costs %v halves", x, y, halves)
+                }
+            }
+        }
+    }
+
+    // between a third and two thirds of the swamp are islands
+    if raised * 3 < raised + low || raised * 3 > (raised + low) * 2 {
+        test.Fatalf("%v cells of raised ground, %v of low ground", raised, low)
     }
 }

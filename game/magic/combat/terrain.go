@@ -259,7 +259,7 @@ func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if !ground.contains(cgx, cgy) {
         return false
     }
-    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy) && !ground.shoreAt(cgx, cgy) && ground.riverAt(cgx, cgy) == riverLand && !ground.builtAt(cgx, cgy) && ground.poolAt(cgx, cgy) == poolNone
+    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy) && !ground.shoreAt(cgx, cgy) && ground.riverAt(cgx, cgy) == riverLand && !ground.builtAt(cgx, cgy) && ground.poolAt(cgx, cgy) != poolWater && (ground.poolAt(cgx, cgy) == poolNone || ground.Pools.Flooded)
 }
 
 func insideOriginalGrid(cgx int, cgy int) bool {
@@ -268,6 +268,10 @@ func insideOriginalGrid(cgx int, cgy int) bool {
 
 // how many patches of rough ground the original makes on its grid
 func roughPatches(landscape CombatLandscape, ground ZoneGround) int {
+    // a flooded swamp is islands in the water, see swamp.go
+    if SwampPools && SwampFlooded && ground.Biome == mod.BiomeSwamp {
+        return swampPatches
+    }
     switch {
         case ground.Forest: return 5
         case ground.Hills: return 20
