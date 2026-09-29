@@ -497,6 +497,8 @@ func makeScenery(width int, height int, landscape CombatLandscape, plane data.Pl
 
     // what the replacement folder has of props, see props.go
     out = append(out, makeProps(width, height, set, zone, ground)...)
+    // and of glints on the water of a river, see river.go
+    out = append(out, makeGlints(ground)...)
 
     return out
 }

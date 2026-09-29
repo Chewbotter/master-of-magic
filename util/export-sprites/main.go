@@ -600,6 +600,7 @@ func main() {
     // the folders of the biomes start as copies of the folders of their landscapes, see biomes.go
     environmentPictures += exportBiomes(*outPath)
     environmentPictures += exportCoast(*outPath)
+    environmentPictures += exportRiver(*outPath)
     exportMarkers(*outPath)
 
     err = exportPalette(*outPath)

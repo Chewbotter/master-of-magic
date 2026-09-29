@@ -1,7 +1,8 @@
 package main
 
 // What the debug options of the start screen remember between runs of the game: the unit of the
-// last test battle, so "Again" is there after a restart, its ground and coast, and the army size.
+// last test battle, so "Again" is there after a restart, its ground, coast and river, and the army
+// size.
 //
 // Kept in a file of its own beside the settings of the window, in the folder the game runs in.
 // Development runs (-corner, -capture) neither read nor write it, so they do not change what the
@@ -23,6 +24,7 @@ type debugSaved struct {
     // the ground and the coast of the test battles, by their names
     TestBattleGround string `json:"test-battle-ground"`
     TestBattleCoast string `json:"test-battle-coast"`
+    TestBattleRiver string `json:"test-battle-river"`
 }
 
 var debugSavedLoaded bool
@@ -62,6 +64,7 @@ func loadDebugSaved() {
     // what is not there any more is grass without a coast
     testBattleGround = testGroundByName(saved.TestBattleGround)
     testBattleCoast = testCoastByName(saved.TestBattleCoast)
+    testBattleRiver = testRiverByName(saved.TestBattleRiver)
 
     if saved.TestBattleUnit != "" && testBattleLast == nil {
         // a unit that is not there any more is no unit
@@ -78,6 +81,7 @@ func saveDebugSaved() {
     saved.ArmyScale = randomBattleArmyScale
     saved.TestBattleGround = testGrounds[testBattleGround].Name
     saved.TestBattleCoast = testBattleCoast.String()
+    saved.TestBattleRiver = testBattleRiver.String()
     if testBattleLast != nil {
         saved.TestBattleUnit = unitFullName(testBattleLast)
     }

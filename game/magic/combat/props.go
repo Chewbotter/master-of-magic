@@ -8,7 +8,7 @@ package combat
 //   environment/Grass/prop 1_0.png, prop 2_0.png, ...   stands, in one order with units and trees
 //
 // From 1 on without a gap, for every landscape. Any size. More frames (_1, _2, ...) make them
-// move. A flat one lies with its middle on its place. A standing one stands on the middle of its
+// move, each prop at a time of its own. A flat one lies with its middle on its place. A standing one stands on the middle of its
 // width, propAnchorBelow above its bottom edge, as a rock does.
 //
 // They are scattered one by one over grass without a road, outside of the town and the lair and
@@ -101,7 +101,9 @@ func (combat *CombatScreen) drawFlatProps(screen *ebiten.Image, animationIndex u
         if len(pictures) == 0 {
             continue
         }
-        picture := pictures[animationIndex % uint64(len(pictures))]
+        // each at a time of its own, so they do not move as one
+        phase := uint64(slopeCornerHash(piece.ScreenX, piece.ScreenY, 0))
+        picture := pictures[(animationIndex + phase) % uint64(len(pictures))]
         anchorX, anchorY := piece.anchor(picture.Bounds().Dx(), picture.Bounds().Dy())
         combat.drawOnFieldDimmed(screen, picture, piece.ScreenX - anchorX, piece.ScreenY - anchorY, brightness)
     }
