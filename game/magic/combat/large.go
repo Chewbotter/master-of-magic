@@ -34,6 +34,7 @@ import (
     "math/rand/v2"
 
     "github.com/kazzmir/master-of-magic/game/magic/mod"
+    "github.com/kazzmir/master-of-magic/game/magic/scale"
 
     "github.com/hajimehoshi/ebiten/v2"
 )
@@ -311,7 +312,8 @@ func (combat *CombatScreen) drawLargePieces(screen *ebiten.Image, animationIndex
 
         // the ground picture of the top tile lies 16 from the left of the large one. a picture of
         // another size: the middle of its bottom edge on the bottom corner of the four tiles
-        width, height := combat.artSize(picture)
+        width := picture.Bounds().Dx()
+        height := picture.Bounds().Dy()
         left := float64(TerrainOffsetX - largeTilePlaces[0].X) + float64(largeWidth - width) / 2
         top := float64(TerrainOffsetY + largeHeight - height)
 
@@ -322,7 +324,7 @@ func (combat *CombatScreen) drawLargePieces(screen *ebiten.Image, animationIndex
         options.GeoM.Translate(tx, ty)
         options.ColorScale.Reset()
         options.ColorScale.Scale(brightness, brightness, brightness, 1)
-        combat.drawDense(screen, picture, &options)
+        scale.DrawScaled(screen, picture, &options)
     }
 }
 

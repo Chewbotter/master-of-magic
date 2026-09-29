@@ -235,10 +235,6 @@ type CombatScreen struct {
     cropsMade map[int][]*ebiten.Image
     // the pictures of ice the game makes, by their number. see terraindraw.go
     iceMade map[int][]*ebiten.Image
-    // pictures with more pixels than the art, and the entries of archives they are of. see
-    // terraindraw.go
-    dense map[*ebiten.Image]int
-    denseEntries map[string]int
     // the large pieces the game makes, see large.go
     largeMade [][]*ebiten.Image
     // the pictures the replacement folder adds to the ground, trees, rocks and houses, see terraindraw.go
@@ -3912,7 +3908,7 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         options.GeoM.Translate(TerrainOffsetX, TerrainOffsetY)
         options.GeoM.Scale(combat.CameraScale, combat.CameraScale)
         options.GeoM.Translate(tx, ty)
-        combat.drawDense(screen, image, &options)
+        scale.DrawScaled(screen, image, &options)
 
         // roads, see terraindraw.go
         combat.drawRoad(screen, x, y, &options)

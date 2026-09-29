@@ -13,70 +13,6 @@ import (
     "github.com/hajimehoshi/ebiten/v2"
 )
 
-// PICTURES WITH TWICE THE PIXELS, an experiment, see mod/highres.go. The pictures that are taken
-// from the twin of a folder are kept with how dense they are, and whatever draws a picture of the
-// ground or of what stands on it asks for that (density) and draws it that much smaller
-// (drawDense, drawOnFieldDimmed). Its size in pixels of the art is artSize.
-
-// notes how dense pictures are
-func (combat *CombatScreen) noteDensity(pictures []*ebiten.Image, density int) {
-    if density <= 1 {
-        return
-    }
-    if combat.dense == nil {
-        combat.dense = make(map[*ebiten.Image]int)
-    }
-    for _, picture := range pictures {
-        combat.dense[picture] = density
-    }
-}
-
-// how many pixels of a picture lie along one pixel of the art
-func (combat *CombatScreen) density(picture *ebiten.Image) int {
-    if density, ok := combat.dense[picture]; ok {
-        return density
-    }
-    return 1
-}
-
-// the size of a picture in pixels of the art
-func (combat *CombatScreen) artSize(picture *ebiten.Image) (int, int) {
-    density := combat.density(picture)
-    return picture.Bounds().Dx() / density, picture.Bounds().Dy() / density
-}
-
-// draws a picture with options that are made for a picture of the art: a dense one smaller
-func (combat *CombatScreen) drawDense(screen *ebiten.Image, picture *ebiten.Image, options *ebiten.DrawImageOptions) {
-    density := combat.density(picture)
-    if density <= 1 {
-        scale.DrawScaled(screen, picture, options)
-        return
-    }
-
-    dense := *options
-    dense.GeoM.Reset()
-    dense.GeoM.Scale(1 / float64(density), 1 / float64(density))
-    dense.GeoM.Concat(options.GeoM)
-    scale.DrawScaled(screen, picture, &dense)
-}
-
-// the pictures of an entry of an archive, with how dense they are
-func (combat *CombatScreen) archivePictures(lbx string, index int) []*ebiten.Image {
-    pictures, _ := combat.ImageCache.GetImages(lbx, index)
-
-    key := fmt.Sprintf("%v/%v", lbx, index)
-    density, ok := combat.denseEntries[key]
-    if !ok {
-        density = mod.Density(lbx, index)
-        if combat.denseEntries == nil {
-            combat.denseEntries = make(map[string]int)
-        }
-        combat.denseEntries[key] = density
-    }
-    combat.noteDensity(pictures, density)
-    return pictures
-}
-
 // the frames of a picture the replacement folder adds (mod/environment.go). read once a battle
 func (combat *CombatScreen) addedPictures(set string, name string, number int) []*ebiten.Image {
     key := fmt.Sprintf("%v/%v/%v", set, name, number)
@@ -85,17 +21,8 @@ func (combat *CombatScreen) addedPictures(set string, name string, number int) [
     }
 
     var pictures []*ebiten.Image
-    // of the twin of the folder with twice the pixels, if it has the picture
-    if mod.HighRes {
-        for _, source := range mod.ReadExtra(mod.HighResFolder(set), name, number) {
-            pictures = append(pictures, ebiten.NewImageFromImage(source))
-        }
-        combat.noteDensity(pictures, mod.HighResDensity)
-    }
-    if len(pictures) == 0 {
-        for _, source := range mod.ReadExtra(set, name, number) {
-            pictures = append(pictures, ebiten.NewImageFromImage(source))
-        }
+    for _, source := range mod.ReadExtra(set, name, number) {
+        pictures = append(pictures, ebiten.NewImageFromImage(source))
     }
 
     if combat.addedCache == nil {
@@ -134,7 +61,8 @@ func (combat *CombatScreen) groundTilePictures(lbx string, picture int) []*ebite
         picture = role.First
     }
 
-    return combat.archivePictures(lbx, picture)
+    pictures, _ := combat.ImageCache.GetImages(lbx, picture)
+    return pictures
 }
 
 // the frames of a picture of a coast, by its number from 0: of the folder of the coast, or the
@@ -184,7 +112,8 @@ func (combat *CombatScreen) sceneryPictures(piece *SceneryPiece) []*ebiten.Image
         }
     }
 
-    return combat.archivePictures(piece.Lbx, piece.Index)
+    pictures, _ := combat.ImageCache.GetImages(piece.Lbx, piece.Index)
+    return pictures
 }
 
 // the pieces of road of a tile, drawn with the options of its ground picture. the original steps
