@@ -5,6 +5,11 @@ package main
 //
 // The list has a row per race that opens and closes (a rollout), with the units of the race under
 // it. It is drawn in the small text size over the whole window, in as many columns as it needs.
+//
+// Above the races are the ground of the battle and its coast (user, 2026-09-29), rollouts as the
+// races are: a landscape or one of its biomes (combat/biomes.go), and the side the sea lies on
+// (combat/coast.go). A click on one of them picks it, the battle starts with the click on a unit.
+// Both are kept for the next battle and the next run of the game, see debugsaved.go.
 
 import (
     "fmt"
@@ -12,9 +17,11 @@ import (
     "slices"
     "strings"
 
+    "github.com/kazzmir/master-of-magic/game/magic/combat"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/lib/font"
@@ -48,6 +55,70 @@ var unitPickerRaces = []data.Race{
     data.RaceFantastic, data.RaceHero, data.RaceAll,
 }
 
+// a ground a test battle can be fought on: a landscape, or a biome of one
+type testGround struct {
+    Name string
+    Landscape combat.CombatLandscape
+    Biome string
+}
+
+var testGrounds = []testGround{
+    {Name: "Grass", Landscape: combat.CombatLandscapeGrass},
+    {Name: mod.BiomeForest, Landscape: combat.CombatLandscapeGrass, Biome: mod.BiomeForest},
+    {Name: mod.BiomeSwamp, Landscape: combat.CombatLandscapeGrass, Biome: mod.BiomeSwamp},
+    {Name: mod.BiomeHills, Landscape: combat.CombatLandscapeGrass, Biome: mod.BiomeHills},
+    {Name: "Desert", Landscape: combat.CombatLandscapeDesert},
+    {Name: "Mountain", Landscape: combat.CombatLandscapeMountain},
+    {Name: mod.BiomeVolcano, Landscape: combat.CombatLandscapeMountain, Biome: mod.BiomeVolcano},
+    {Name: mod.BiomeSnowyMountain, Landscape: combat.CombatLandscapeMountain, Biome: mod.BiomeSnowyMountain},
+    {Name: "Tundra", Landscape: combat.CombatLandscapeTundra},
+}
+
+// the sides of a coast with their names in the list, in the order of the list
+var testCoasts = []combat.CoastSide{combat.CoastNone, combat.CoastNorth, combat.CoastEast, combat.CoastSouth, combat.CoastWest}
+var testCoastNames = map[combat.CoastSide]string{
+    combat.CoastNone: "None",
+    combat.CoastNorth: "North, upper right",
+    combat.CoastEast: "East, lower right",
+    combat.CoastSouth: "South, lower left",
+    combat.CoastWest: "West, upper left",
+}
+
+// the ground and the coast of the test battles: which of testGrounds, and the side
+var testBattleGround = 0
+var testBattleCoast = combat.CoastNone
+
+// the rollouts of the ground and of the coast
+var unitPickerGroundOpen bool
+var unitPickerCoastOpen bool
+
+func testGroundByName(name string) int {
+    for index, ground := range testGrounds {
+        if strings.EqualFold(ground.Name, name) {
+            return index
+        }
+    }
+    return 0
+}
+
+func testCoastByName(name string) combat.CoastSide {
+    for _, side := range testCoasts {
+        if strings.EqualFold(side.String(), name) {
+            return side
+        }
+    }
+    return combat.CoastNone
+}
+
+// the ground of a test battle as it was picked
+func testBattleZone() (combat.CombatLandscape, combat.ZoneType) {
+    ground := testGrounds[testBattleGround]
+    var zone combat.ZoneType
+    zone.Ground.SetBiome(ground.Biome)
+    zone.Ground.Coast = testBattleCoast
+    return ground.Landscape, zone
+}
+
 var unitPickerOpen bool
 var unitPickerExpanded = make(map[data.Race]bool)
 // the row under the cursor, -1 for none
@@ -63,12 +134,26 @@ type unitPickerRow struct {
     Back bool
     Race data.Race
     Unit *units.Unit
+    // the rollouts of the ground and of the coast, and what is in them: a ground by its number
+    // from 1, a coast by its side
+    GroundTitle bool
+    CoastTitle bool
+    Ground int
+    Coast combat.CoastSide
+    IsCoast bool
+    // the one that is picked
+    Picked bool
 
     // in art pixels of the picture of the window
     X float64
     Y float64
     Width float64
     Height float64
+}
+
+// a row that stands under the title of its rollout
+func (row unitPickerRow) indented() bool {
+    return row.Unit != nil || row.Ground > 0 || row.IsCoast
 }
 
 func (row unitPickerRow) contains(x float64, y float64) bool {
@@ -124,6 +209,26 @@ func unitPickerRows() []unitPickerRow {
     var rows []unitPickerRow
     rows = append(rows, unitPickerRow{Text: "Back", Back: true})
 
+    // the ground and the coast of the battle
+    mark := func(open bool) string {
+        if open {
+            return "-"
+        }
+        return "+"
+    }
+    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Biome: %v", mark(unitPickerGroundOpen), testGrounds[testBattleGround].Name), GroundTitle: true})
+    if unitPickerGroundOpen {
+        for index, ground := range testGrounds {
+            rows = append(rows, unitPickerRow{Text: ground.Name, Ground: index + 1, Picked: index == testBattleGround})
+        }
+    }
+    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Coast: %v", mark(unitPickerCoastOpen), testCoastNames[testBattleCoast]), CoastTitle: true})
+    if unitPickerCoastOpen {
+        for _, side := range testCoasts {
+            rows = append(rows, unitPickerRow{Text: testCoastNames[side], IsCoast: true, Coast: side, Picked: side == testBattleCoast})
+        }
+    }
+
     for _, race := range unitPickerRaces {
         list := unitsOfRace(race)
         if len(list) == 0 {
@@ -161,7 +266,7 @@ func unitPickerRows() []unitPickerRow {
         }
 
         row.X = x
-        if row.Unit != nil {
+        if row.indented() {
             row.X += unitPickerIndent
         }
         row.Y = y
@@ -205,6 +310,18 @@ func updateUnitPicker() bool {
     switch {
         case row.Back:
             unitPickerOpen = false
+        case row.GroundTitle:
+            unitPickerGroundOpen = !unitPickerGroundOpen
+        case row.CoastTitle:
+            unitPickerCoastOpen = !unitPickerCoastOpen
+        case row.Ground > 0:
+            testBattleGround = row.Ground - 1
+            unitPickerGroundOpen = false
+            saveDebugSaved()
+        case row.IsCoast:
+            testBattleCoast = row.Coast
+            unitPickerCoastOpen = false
+            saveDebugSaved()
         case row.Unit != nil:
             testBattleUnit = row.Unit
             unitPickerOpen = false
@@ -224,13 +341,14 @@ func drawUnitPicker(screen *ebiten.Image) {
     offsetY := float64(display.ContentOffsetY()) / scale.ScaleAmount
     options := unitPickerOptions()
 
-    unitPickerFont().PrintOutlined(screen, unitPickerLeft + offsetX, unitPickerTop + offsetY, options, font.OutlineFull, "Test Battle: pick a unit. It fights its own kind.")
+    unitPickerFont().PrintOutlined(screen, unitPickerLeft + offsetX, unitPickerTop + offsetY, options, font.OutlineFull, "Test Battle: pick a unit. It fights its own kind, on the biome and with the coast picked here.")
 
     for index, row := range unitPickerRows() {
         rowOptions := options
 
-        // races and the row under the cursor are white, units are in the color of the debug list
-        if index != unitPickerHover && (row.Unit != nil || row.Back) {
+        // titles, the row under the cursor and what is picked are white, the rest is in the color of
+        // the debug list
+        if index != unitPickerHover && !row.Picked && (row.indented() || row.Back) {
             var tint ebiten.DrawImageOptions
             tint.ColorScale.ScaleWithColor(unitPickerUnitColor)
             rowOptions.Options = &tint
