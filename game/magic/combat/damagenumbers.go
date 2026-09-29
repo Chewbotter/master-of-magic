@@ -24,15 +24,25 @@ const damageOutlineColor = 0
 
 // where a number starts, in art pixels from the middle of the unit's tile
 const damageStartY = -22
-// numbers keep this many art pixels apart. one that would touch another moves away from it, the
-// shorter way of sideways and up or down
+// numbers keep this many art pixels apart
 const damageGap = 4
 // how far from the middle of the unit a number can start, in art pixels each way. a group of
 // numbers is a loose cluster
 const damageSpreadX = 14
 const damageSpreadY = 7
-// how often a number moves away from another before it stays where it is
-const damagePlaceTries = 16
+// A NUMBER GETS ITS PLACE ONCE, when it appears (placeDamageNumber), among the numbers that are
+// there at that moment; after that it only rises, as fast as all others, so numbers that were
+// apart stay apart. Before, every number looked for its place anew in every frame, against the
+// numbers before it in the list: with many numbers at once (a volley of arrows) a number jumped
+// whenever one before it rose past it or ran out (user, 2026-09-29: "several of them spasm and
+// pop out oddly").
+// places by chance that are tried for a new number. the area they are picked from grows to
+// damageSpreadGrowth times the spread over the tries, so a crowd gets wider and not denser
+const damagePlaceTries = 48
+const damageSpreadGrowth = 3.0
+// the size of a number for its place when the font is not there, in art pixels
+const damageWidthGuess = 6
+const damageHeightGuess = 6
 // art pixels around the letters in the picture of a number, room for the border
 const damagePictureMargin = 2
 // ticks the number takes to rise one art pixel
@@ -87,6 +97,50 @@ func (combat *CombatScreen) damagePicture(text string, pixel float64) *ebiten.Im
     return picture
 }
 
+// how far a number has risen, in art pixels
+func (indicator *DamageIndicator) risen() float64 {
+    return float64(indicator.Count) / damageRiseTicks
+}
+
+// the middle of a number on the original's screen, in art pixels
+func (indicator *DamageIndicator) middle() (float64, float64) {
+    matrix := MakeBattlefieldMatrix()
+    x, y := matrix.Apply(float64(indicator.X), float64(indicator.Y))
+    return x + float64(indicator.Offset), y + damageStartY + float64(indicator.OffsetY) - indicator.risen()
+}
+
+// true if the two numbers are closer than they should be
+func (indicator *DamageIndicator) touches(other *DamageIndicator) bool {
+    x, y := indicator.middle()
+    otherX, otherY := other.middle()
+    apartX := float64(indicator.Width + other.Width) / 2 + damageGap
+    apartY := float64(indicator.Height + other.Height) / 2 + damageGap
+    return math.Abs(x - otherX) < apartX && math.Abs(y - otherY) < apartY
+}
+
+// gives a new number its place: by chance around its unit, where it touches no number that is
+// there. pick gives a number from 0 up to but not its argument
+func placeDamageNumber(indicator *DamageIndicator, others []DamageIndicator, pick func(int) int) {
+    for try := range damagePlaceTries {
+        grow := 1 + (damageSpreadGrowth - 1) * float64(try) / damagePlaceTries
+        spreadX := int(damageSpreadX * grow)
+        spreadY := int(damageSpreadY * grow)
+        indicator.Offset = pick(spreadX * 2 + 1) - spreadX
+        indicator.OffsetY = pick(spreadY * 2 + 1) - spreadY
+
+        free := true
+        for index := range others {
+            if indicator.touches(&others[index]) {
+                free = false
+                break
+            }
+        }
+        if free {
+            return
+        }
+    }
+}
+
 func (combat *CombatScreen) drawDamageNumbers(screen *ebiten.Image) {
     hud := combat.Fonts.Hud
     if hud == nil || hud.Damage == nil {
@@ -105,62 +159,26 @@ func (combat *CombatScreen) drawDamageNumbers(screen *ebiten.Image) {
         pixel = math.Max(1, combat.CameraScale * scale.ScaleAmount)
     }
     stretch := pixel / wholePixel
-    gap := damageGap * pixel
 
     type placed struct {
-        // the middle and half the size, in screen pixels
+        // the middle, in screen pixels
         X, Y float64
-        HalfWidth, HalfHeight float64
     }
-    var taken []placed
 
-    for index, indicator := range combat.DamageIndicators {
+    for _, indicator := range combat.DamageIndicators {
         text := fmt.Sprintf("%d", indicator.Damage)
         picture := combat.damagePicture(text, wholePixel)
 
         x, y := matrix.Apply(float64(indicator.X), float64(indicator.Y))
         // from the middle of the tile, in art pixels of the field
         fromX := float64(indicator.Offset)
-        fromY := damageStartY + float64(indicator.OffsetY) - float64(indicator.Count) / damageRiseTicks
+        fromY := damageStartY + float64(indicator.OffsetY) - indicator.risen()
 
+        // its place was found when it appeared, see placeDamageNumber
         place := placed{
             X: x * scale.ScaleAmount + fromX * pixel,
             Y: y * scale.ScaleAmount + fromY * pixel,
-            HalfWidth: float64(hud.Damage.Width(text)) * pixel / 2,
-            HalfHeight: float64(hud.Damage.Height()) * pixel / 2,
         }
-
-        for range damagePlaceTries {
-            moved := false
-            for _, other := range taken {
-                overlapX := place.HalfWidth + other.HalfWidth + gap - math.Abs(place.X - other.X)
-                overlapY := place.HalfHeight + other.HalfHeight + gap - math.Abs(place.Y - other.Y)
-                if overlapX <= 0 || overlapY <= 0 {
-                    continue
-                }
-
-                // away from the other, the shorter way
-                if overlapX <= overlapY {
-                    if place.X < other.X || (place.X == other.X && index % 2 == 0) {
-                        place.X -= overlapX
-                    } else {
-                        place.X += overlapX
-                    }
-                } else {
-                    if place.Y <= other.Y {
-                        place.Y -= overlapY
-                    } else {
-                        place.Y += overlapY
-                    }
-                }
-                moved = true
-                break
-            }
-            if !moved {
-                break
-            }
-        }
-        taken = append(taken, place)
 
         var options ebiten.DrawImageOptions
         if stretch != 1 {

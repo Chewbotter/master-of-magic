@@ -40,7 +40,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The battlefield, the places of figures, deployment, timing, trees, rocks, houses and walls follow the original.
 - The bar at the bottom matches the original: text, names, health bars.
 - What is known of the unit under the mouse stands in the upper right corner of the window, also in widescreen, in the original's letters and pictures without a panel: the name, the health bar under it and one column of attack, defense, resistance and moves, all ending on one edge.
-- The outline of the unit under the mouse pulses to a soft gray for your units and to red for the enemy's.
+- The outline of the unit under the mouse pulses to a soft gray for your units and to red for the enemy's, starting from black each time the mouse comes over a unit.
 - A unit with a spell on it, and an item with powers, has the original's outline everywhere: a rim of one pixel in the shades of the realm of the spell, which run around the figure.
 - While Tab is held, units whose turn is over are gray.
 - Zoom in whole steps and smooth panning. The field reaches across a wide window, with darkening ground around it.
@@ -66,7 +66,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Figures cast shadows.
 - The color of a wizard on figures and units keeps the shading of the art for every color; before, red, blue and yellow were nearly flat.
 - Blood made of particles, dust for the undead and mist for spirits; it stains the ground and the corpses it lands on. Sparks for a blow that does no damage.
-- Damage numbers in the original's style, as large as the field is drawn.
+- Damage numbers in the original's style, as large as the field is drawn. Many at once spread out and keep apart while they rise.
 - Spells play as in the original, and add to it: particles where they hit, marks on the ground, light that darkens the field around it and brightens the ground near it in its color, a lit rim on the figures that face it, corpses in the color of what killed them.
 - A battle that is won or lost is shown for a moment before it ends.
 

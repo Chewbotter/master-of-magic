@@ -137,8 +137,16 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase fl
 }
 
 // how far the outline of the unit under the cursor is from black to its color, 0 to scannedOutlineSteps
+// the pulse starts anew, from black, when the mouse comes over a unit: it ran on the clock of the
+// battle before, so a unit came up at any point of it, bright at once or black for a while (user,
+// 2026-09-29: "not on a clock cycle so it comes up consistently on each unit")
 func (combat *CombatScreen) scannedOutlineStep() int {
-    position := int(combat.originalTick() / scannedOutlineTicksPerStep % (scannedOutlineSteps * 2))
+    tick := combat.originalTick()
+    since := uint64(0)
+    if tick > combat.scannedStart {
+        since = tick - combat.scannedStart
+    }
+    position := int(since / scannedOutlineTicksPerStep % (scannedOutlineSteps * 2))
     if position > scannedOutlineSteps {
         position = scannedOutlineSteps * 2 - position
     }

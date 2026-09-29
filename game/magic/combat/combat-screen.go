@@ -208,6 +208,9 @@ type DamageIndicator struct {
     Damage int // the damage to show
     Life int // how many more frames to show this indicator, counts down to 0
     Count int
+    // the size of the number in art pixels, for its place. see damagenumbers.go
+    Width int
+    Height int
 }
 
 type CombatDrawFunc func(*ebiten.Image)
@@ -335,6 +338,10 @@ type CombatScreen struct {
     ExtraHighlightedUnit *ArmyUnit
     // Tab is held, see unitdone.go
     TabHeld bool
+    // the unit under the mouse and the tick of the original the mouse came over it, for the
+    // pulse of its outline. see animation.go
+    scannedUnit *ArmyUnit
+    scannedStart uint64
     ShowInfoLevel int
 
     DamageIndicators []DamageIndicator
@@ -2432,6 +2439,12 @@ func (combat *CombatScreen) updateHighlightedUnit() {
     mouseX, mouseY := inputmanager.MousePosition()
     tileX, tileY := combat.ScreenToTile(float64(mouseX), float64(mouseY))
     combat.Model.HighlightedUnit = combat.Model.GetUnit(int(math.Round(tileX)), int(math.Round(tileY)))
+
+    // the pulse of its outline starts with the unit, see animation.go
+    if combat.Model.HighlightedUnit != combat.scannedUnit {
+        combat.scannedUnit = combat.Model.HighlightedUnit
+        combat.scannedStart = combat.originalTick()
+    }
 }
 
 func (combat *CombatScreen) UpdateAnimations(){
@@ -2818,15 +2831,21 @@ func (combat *CombatScreen) doMelee(yield coroutine.YieldFunc, attacker *ArmyUni
 }
 
 func (combat *CombatScreen) AddDamageIndicator(unit *ArmyUnit, damage int) {
-    // a loose cluster around the unit, see damagenumbers.go
     indicator := DamageIndicator{
         X: unit.X,
         Y: unit.Y,
-        Offset: rand.N(damageSpreadX * 2 + 1) - damageSpreadX,
-        OffsetY: rand.N(damageSpreadY * 2 + 1) - damageSpreadY,
         Damage: damage,
         Life: 50,
+        Width: damageWidthGuess,
+        Height: damageHeightGuess,
     }
+    if combat.Fonts.Hud != nil && combat.Fonts.Hud.Damage != nil {
+        indicator.Width = combat.Fonts.Hud.Damage.Width(fmt.Sprintf("%d", damage))
+        indicator.Height = combat.Fonts.Hud.Damage.Height()
+    }
+    // a loose cluster around the unit, away from the numbers that are there. its place for all
+    // of its life, see damagenumbers.go
+    placeDamageNumber(&indicator, combat.DamageIndicators, func(count int) int { return rand.N(count) })
 
     combat.DamageIndicators = append(combat.DamageIndicators, indicator)
 
