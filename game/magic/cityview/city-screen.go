@@ -421,6 +421,27 @@ func MakeCityScreen(cache *lbx.LbxCache, city *citylib.City, player *playerlib.P
 
     cityScreen.UI = cityScreen.MakeUI(newBuilding)
 
+    if CaptureBuild != "" && cityScreen != nil {
+        // development: the build screen at once, see buildstyle.go
+        switch CaptureBuild {
+            case "unit":
+                possible := city.ComputePossibleUnits()
+                if len(possible) > 0 {
+                    city.ProducingBuilding = buildinglib.BuildingNone
+                    city.ProducingUnit = possible[0]
+                }
+            case "building":
+                for _, building := range city.ComputePossibleBuildings(false).Values() {
+                    if building != buildinglib.BuildingHousing && building != buildinglib.BuildingTradeGoods {
+                        city.ProducingBuilding = building
+                        city.ProducingUnit = units.UnitNone
+                        break
+                    }
+                }
+        }
+        cityScreen.BuildScreen = MakeBuildScreen(cityScreen.LbxCache, cityScreen.City)
+    }
+
     return cityScreen
 }
 

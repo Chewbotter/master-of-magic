@@ -31,6 +31,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The cursor is a red X over a tile the selected stack can not go to, and a click there does nothing (modern controls). No red flash of the screen.
 - Of the selected stack only the colored square blinks, the unit stays visible (modern controls). The blinking starts anew with every selection.
 - Text of the panel (gold, mana, income, moves) with the original's black outlines.
+- The screen that picks what a city builds has the original's look: the names in the lists, the text and the places in the window. The descriptions of Housing and Trade Goods are in smaller letters, in the middle of their field.
 - The window of a unit has the original's text: outlined letters in its colors, at its places, on the world map and in battles. The list of abilities is in smaller letters.
 - Surveyor, cartographer and chancellor's scroll keep the wide map beneath them.
 
