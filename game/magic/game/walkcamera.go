@@ -82,12 +82,37 @@ func (game *Game) startWalkCamera(yield coroutine.YieldFunc, player *playerlib.P
         return
     }
 
+    // a lair, a ruin or a node asks before the stack enters it, and the stack stands on the tile
+    // before it until then: that is where the camera goes. it went to the lair, and back when the
+    // player did not enter
+    if mapUse.GetEncounter(mapUse.WrapX(x), y) != nil {
+        x, y, found = tileBefore(worldPath(stack.CurrentPath), stack.X(), stack.Y(), x, y)
+        if !found {
+            // the stack stands next to it: the camera stays where it is. if the stack enters,
+            // the battle is shown, and what is left of it is where the camera was
+            return
+        }
+    }
+
     walkCamera.Walking = true
     game.aimWalkCamera(x, y)
 
     if !WalkCameraWithWalk {
         game.finishWalkCamera(yield)
     }
+}
+
+// the tile of a path a stack stands on before it steps on a tile of it. false if that is the tile
+// the stack stands on now, or if the tile is not on the path
+func tileBefore(path worldPath, stackX int, stackY int, x int, y int) (int, int, bool) {
+    beforeX, beforeY := stackX, stackY
+    for _, step := range path {
+        if step.X == x && step.Y == y {
+            return beforeX, beforeY, beforeX != stackX || beforeY != stackY
+        }
+        beforeX, beforeY = step.X, step.Y
+    }
+    return 0, 0, false
 }
 
 // starts the move of the camera to a tile. it goes on with stepWalkCamera
