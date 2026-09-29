@@ -1350,6 +1350,7 @@ func loadGameConfig() GameConfig {
     flag.StringVar(&capture.MouseAt, "capture-mouse-at", "", "development: the game sees the mouse at x,y screen pixels of the picture")
     flag.StringVar(&capture.CursorAt, "capture-cursor-at", "", "development: draw the cursor at x,y screen pixels, fractions allowed")
     flag.BoolVar(&capture.TraceWide, "capture-trace-wide", false, "development: log every change of the widescreen layout and the layers on screen")
+    flag.Float64Var(&gamelib.FogFadeProbe, "capture-fog-fade", -1, "development: hold every fade of the fog this many seconds after its start, the map of the start counts as just revealed")
     flag.StringVar(&capture.Walk, "capture-walk", "", "development: send the selected unit walking dx,dy tiles and log the camera")
     flag.StringVar(&capture.CameraMove, "capture-camera-move", "", "development: move the camera by dx,dy tiles the way a right click does, and log each frame")
     flag.IntVar(&capture.BattleLevel, "capture-battle-level", 0, "development: zoom level of the battlefield, in screen pixels per art pixel")

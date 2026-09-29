@@ -8211,6 +8211,9 @@ func (overworld *Overworld) DrawFog(screen *ebiten.Image, geom ebiten.GeoM){
     darkTransparent := ebiten.ColorScale{}
     darkTransparent.Scale(1, 1, 1, 0.5)
 
+    // tiles whose fog is changing, see fogfade.go
+    fading := overworld.fogFadeFrame()
+
     for x := minX; x < maxX; x++ {
         for y := minY; y < maxY; y++ {
             tileX := overworld.Map.WrapX(x)
@@ -8221,6 +8224,10 @@ func (overworld *Overworld) DrawFog(screen *ebiten.Image, geom ebiten.GeoM){
             options.GeoM.Concat(geom)
 
             if tileX >= 0 && tileY >= 0 && tileX < len(fog) && tileY < len(fog[tileX]) {
+                if fading.DrawTile(screen, tileX, tileY, &options) {
+                    continue
+                }
+
                 switch fog[tileX][tileY] {
                     case data.FogTypeUnexplored:
                         options.ColorScale = black
