@@ -30,9 +30,9 @@ import (
 var FogFade = true
 // seconds over which the art pixels of a tile start to fade, each at a time of its own.
 // 0: all pixels of a tile fade together
-const FogFadeSpread = 0.45
+const FogFadeSpread = 0.22
 // seconds one art pixel takes to fade. 0: a pixel changes at once
-const FogFadePixelTime = 0.25
+const FogFadePixelTime = 0.12
 // false: only fog that gets lighter fades, fog that gets darker (a tile that is no longer seen) changes at once
 const FogFadeWhenCovered = true
 // development: 0 or more holds every fade at this many seconds after its start, and the first
