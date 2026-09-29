@@ -167,11 +167,17 @@ func (game *Game) endWalkCamera(yield coroutine.YieldFunc, stack *playerlib.Unit
     targetY := walkCamera.TargetY
     walkCamera = walkCameraMove{}
 
-    if handed || stack == nil || stack.Plane() != game.Model.Plane {
+    if handed || !stackHasPlace(stack) || stack.Plane() != game.Model.Plane {
         return
     }
 
     if game.Model.CurrentMap().WrapX(stack.X()) != targetX || game.cameraRowFor(stack.X(), stack.Y()) != targetY {
         game.doMoveCamera(yield, stack.X(), stack.Y())
     }
+}
+
+// false for a stack that is gone: one that lost all of its units in a fight says it stands at 0, 0,
+// which sent the camera to the corner of the map after a lost battle
+func stackHasPlace(stack *playerlib.UnitStack) bool {
+    return stack != nil && !stack.IsEmpty()
 }
