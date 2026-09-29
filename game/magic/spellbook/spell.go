@@ -1356,6 +1356,10 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
     // letters of one color that is given when they are printed: the name under the mouse, the one
     // that is being cast, the ones that cost too much
     tintFont := font.MakeOptimizedFontWithPalette(fonts[1], paletteBlack)
+    // names with colors of their own, see hover.go
+    hoverFont := font.MakeOptimizedFontWithPalette(fonts[1], hoverColors.palette())
+    castingFont := font.MakeOptimizedFontWithPalette(fonts[1], castingColors.palette())
+    costlyFont := font.MakeOptimizedFontWithPalette(fonts[1], costlyColors.palette())
 
     red := color.RGBA{R: 0x5a, G: 0, B: 0, A: 0xff}
     redPalette := color.Palette{
@@ -1480,27 +1484,29 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             spellOptions := options2
 
             textColorScale := spellOptions.ColorScale
-            // the name has a color of its own and not the ones of the page
-            tinted := false
+            // the name has colors of its own over the ones of the page, this much of them. see hover.go
+            var ownFont *font.Font
+            own := float32(0)
 
             if currentSpell.Name == spell.Name {
-                tinted = true
+                ownFont = castingFont
+                own = pulse(ui.Counter, castingPulseTicks, castingLow, castingHigh)
+                // upstream's letters of one color
                 v := math.Cos(float64(ui.Counter) / 5) * 64 + 128
                 textColorScale.SetR(float32(v))
                 textColorScale.SetG(float32(v))
                 textColorScale.SetB(float32(v))
             } else if highlightedSpell.Name == spell.Name {
-                // a slow pulse to blue, see hover.go. upstream's went to bright red
-                tinted = true
-                red, green, blue := hoverTint(ui.Counter)
-                textColorScale.SetR(red)
-                textColorScale.SetG(green)
-                textColorScale.SetB(blue)
+                ownFont = hoverFont
+                own = pulse(ui.Counter, hoverPulseTicks, hoverLow, hoverHigh)
+                r := math.Cos(float64(ui.Counter) / 5) * 128 + 128
+                textColorScale.SetR(float32(r))
             }
 
             // if spell is too expensive in combat then it is not castable
             if !overland && !canCast(spell) {
-                tinted = true
+                ownFont = costlyFont
+                own = 1
                 textColorScale.SetR(60)
                 textColorScale.SetG(60)
                 textColorScale.SetB(60)
@@ -1519,16 +1525,27 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             var textColorOptions ebiten.DrawImageOptions
             textColorOptions.ColorScale = textColorScale
 
-            nameFont := infoFont
-            if tinted || !OriginalBookColors {
-                nameFont = tintFont
-            } else {
-                // the letters have their colors already
-                textColorOptions.ColorScale = spellOptions.ColorScale
+            costText := fmt.Sprintf("%v MP", costRemaining)
+            printName := func(use *font.Font, colors ebiten.ColorScale) {
+                var nameOptions ebiten.DrawImageOptions
+                nameOptions.ColorScale = colors
+                use.PrintOptions(screen, spellX, spellY, font.FontOptions{Options: &nameOptions, Scale: scale.ScaleAmount}, spell.Name)
+                use.PrintOptions(screen, spellX + float64(124), spellY, font.FontOptions{Options: &nameOptions, Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, costText)
             }
 
-            nameFont.PrintOptions(screen, spellX, spellY, font.FontOptions{Options: &textColorOptions, Scale: scale.ScaleAmount}, spell.Name)
-            nameFont.PrintOptions(screen, spellX + float64(124), spellY, font.FontOptions{Options: &textColorOptions, Justify: font.FontJustifyRight, Scale: scale.ScaleAmount}, fmt.Sprintf("%v MP", costRemaining))
+            if !OriginalBookColors {
+                printName(tintFont, textColorOptions.ColorScale)
+            } else {
+                // in the colors of the page, and over that in its own
+                if own < 1 {
+                    printName(infoFont, spellOptions.ColorScale)
+                }
+                if ownFont != nil && own > 0 {
+                    over := spellOptions.ColorScale
+                    over.ScaleAlpha(own)
+                    printName(ownFont, over)
+                }
+            }
             icon := getMagicIcon(spell)
 
             nameLength := infoFont.MeasureTextWidth(spell.Name, 1) + 1
