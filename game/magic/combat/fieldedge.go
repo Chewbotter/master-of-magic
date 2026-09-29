@@ -95,8 +95,8 @@ func (combat *CombatScreen) drawFieldBorder(screen *ebiten.Image, animationIndex
                 index = combat.Model.Ground.PictureOfTile(x, y)
             }
 
-            picture := combat.groundFrame(lbx, index, x, y, animationIndex)
-            if picture == nil {
+            pictures := combat.groundTilePictures(lbx, index)
+            if len(pictures) == 0 {
                 continue
             }
 
@@ -106,7 +106,7 @@ func (combat *CombatScreen) drawFieldBorder(screen *ebiten.Image, animationIndex
             options.GeoM.Translate(tx, ty)
             options.ColorScale.Reset()
             options.ColorScale.Scale(brightness, brightness, brightness, 1)
-            scale.DrawScaled(screen, picture, &options)
+            scale.DrawScaled(screen, pictures[animationIndex % uint64(len(pictures))], &options)
             combat.drawRoad(screen, x, y, &options)
         }
     }

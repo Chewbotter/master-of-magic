@@ -427,17 +427,6 @@ func Replace(archive string, entry int, pictures []*image.Paletted) []*image.Pal
         }
     }
 
-    // a picture of 2 by 2 tiles in its quarters, in the shape of the tile. see highres.go
-    shape := pictures[0]
-    if found[0] != nil {
-        shape = found[0]
-    }
-    quarters := readQuarters(archive, entry, shape)
-    if quarters != nil {
-        replaced[key] = map[int]bool{0: true, 1: true, 2: true, 3: true}
-        return quarters
-    }
-
     if len(found) == 0 {
         return pictures
     }

@@ -5,7 +5,6 @@ package combat
 
 import (
     "fmt"
-    "strings"
     "image"
 
     "github.com/kazzmir/master-of-magic/game/magic/mod"
@@ -31,88 +30,6 @@ func (combat *CombatScreen) addedPictures(set string, name string, number int) [
     }
     combat.addedCache[key] = pictures
     return pictures
-}
-
-// PICTURES OF 2 BY 2 TILES, an experiment, see mod/highres.go. The frames of such a picture are
-// its four quarters. A tile shows the quarter of where it lies among the four tiles of its block,
-// the blocks being the cells of the grid two by two. The tiles of a block show the quarters of
-// one picture where they are of one use: the one of the first cell of the block.
-
-// which of the tiles of a block a picture of the ground is for, along the two sides of the grid:
-// the edge of dirt lies on the side of the block it lies on in the tile. -1 for a side that does
-// not matter, where the tile lies in its block then
-func quarterPlace(name string) (int, int) {
-    switch strings.TrimPrefix(name, "dirt ") {
-        case "edge SE": return 1, -1
-        case "edge NW": return 0, -1
-        case "edge SW": return -1, 1
-        case "edge NE": return -1, 0
-        case "edges NE NW", "corner N": return 0, 0
-        case "edges NE SE", "corner E": return 1, 0
-        case "edges SW NW", "corner W": return 0, 1
-        case "edges SE SW", "corner S": return 1, 1
-    }
-    return -1, -1
-}
-
-// true if two pictures of the ground are of one use: both grass, or both dirt
-func sameGroundUse(a int, b int) bool {
-    for _, first := range []int{groundGrassFirst, groundDirtFirst} {
-        if a >= first && a < first + groundGrassCount {
-            return b >= first && b < first + groundGrassCount
-        }
-    }
-    return false
-}
-
-// the picture of the ground of a tile of the field or of its border, at a time
-func (combat *CombatScreen) groundFrame(lbx string, picture int, x int, y int, animationIndex uint64) *ebiten.Image {
-    ground := combat.Model.Ground
-    if ground != nil && picture < groundSandFirst {
-        cgx, cgy := TileToCell(x, y)
-        across := cgx & 1
-        down := cgy & 1
-
-        // the picture of the block, if the tile is of its use
-        first := ground.PictureOfTile(CellToTile(cgx - across, cgy - down))
-        if sameGroundUse(picture, first) {
-            picture = first
-        }
-
-        if combat.quartered(lbx, picture) {
-            pictures := combat.groundTilePictures(lbx, picture)
-            if len(pictures) == mod.Quarters {
-                placeAcross, placeDown := quarterPlace(mod.GroundName(lbx, picture))
-                if placeAcross >= 0 {
-                    across = placeAcross
-                }
-                if placeDown >= 0 {
-                    down = placeDown
-                }
-                return pictures[mod.QuarterFrame(across, down)]
-            }
-        }
-    }
-
-    pictures := combat.groundTilePictures(lbx, picture)
-    if len(pictures) == 0 {
-        return nil
-    }
-    return pictures[animationIndex % uint64(len(pictures))]
-}
-
-// true if the frames of an entry are the quarters of a picture. looked up once a battle
-func (combat *CombatScreen) quartered(lbx string, index int) bool {
-    key := fmt.Sprintf("%v/%v", lbx, index)
-    quartered, ok := combat.quarteredEntries[key]
-    if !ok {
-        quartered = mod.Quartered(lbx, index)
-        if combat.quarteredEntries == nil {
-            combat.quarteredEntries = make(map[string]bool)
-        }
-        combat.quarteredEntries[key] = quartered
-    }
-    return quartered
 }
 
 // the frames of a picture of the ground: of the archive, or one the replacement folder adds

@@ -1,7 +1,6 @@
 package mod
 
 import (
-    "image"
     "os"
     "path/filepath"
     "testing"
@@ -148,42 +147,5 @@ func TestBiomeGoesBeforeLandscape(test *testing.T) {
         if !found || FolderName(biome.Name) != biome.Name {
             test.Fatalf("biome %+v", biome)
         }
-    }
-}
-
-// a picture of 2 by 2 tiles is cut where its tiles lie, and only grass and dirt have one
-func TestQuarters(test *testing.T) {
-    size := image.Pt(60, 32)
-    tile := image.Pt(30, 16)
-    want := map[[2]int]image.Point{{0, 0}: image.Pt(15, 0), {1, 0}: image.Pt(30, 8), {0, 1}: image.Pt(0, 8), {1, 1}: image.Pt(15, 16)}
-    for place, corner := range want {
-        if got := quarterCorner(size, tile, place[0], place[1]); got != corner {
-            test.Fatalf("the tile %v starts at %v", place, got)
-        }
-    }
-    if QuarterFrame(0, 0) != 0 || QuarterFrame(1, 0) != 1 || QuarterFrame(0, 1) != 2 || QuarterFrame(1, 1) != 3 {
-        test.Fatalf("the frames of the quarters")
-    }
-
-    if GroundName("cmbgrass.lbx", 0) != "grass" || GroundName("cmbgrass.lbx", 49) != "tree" || GroundName("cmbtcity.lbx", 2) != "" {
-        test.Fatalf("names: %v, %v, %v", GroundName("cmbgrass.lbx", 0), GroundName("cmbgrass.lbx", 49), GroundName("cmbtcity.lbx", 2))
-    }
-
-    folder = "replace"
-    SetBiome(BiomeForest)
-    defer func() {
-        folder = ""
-        SetBiome("")
-    }()
-    if quartersPath("cmbgrass.lbx", 0) != filepath.Join("replace", "environment", "Forest_highres", "grass 1_0.png") {
-        test.Fatalf("grass: %v", quartersPath("cmbgrass.lbx", 0))
-    }
-    // a tree and raised ground have none
-    if quartersPath("cmbgrass.lbx", 49) != "" || quartersPath("cmbgrass.lbx", 32) != "" {
-        test.Fatalf("a tree: %v, raised ground: %v", quartersPath("cmbgrass.lbx", 49), quartersPath("cmbgrass.lbx", 32))
-    }
-    SetBiome("")
-    if quartersPath("cmbgrass.lbx", 0) != "" {
-        test.Fatalf("without a biome: %v", quartersPath("cmbgrass.lbx", 0))
     }
 }
