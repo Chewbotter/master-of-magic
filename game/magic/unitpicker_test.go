@@ -48,6 +48,20 @@ func TestTestBattleGround(test *testing.T) {
         }
     }
 
+    // the fields of a town
+    farmland := testBattleFarmland
+    defer func() {
+        testBattleFarmland = farmland
+    }()
+    for away := range testFarmlandNames {
+        testBattleFarmland = away
+        _, zone := testBattleZone()
+        if zone.Ground.Farmland != away || away > combat.FarmlandFar {
+            test.Fatalf("farmland %v: %+v", away, zone.Ground)
+        }
+    }
+    testBattleFarmland = farmland
+
     // and the river
     river := testBattleRiver
     defer func() {

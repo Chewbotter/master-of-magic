@@ -42,6 +42,10 @@ func (combat *CombatScreen) groundTilePictures(lbx string, picture int) []*ebite
         if water := groundVariant(picture, groundWaterFirst, groundWaterCount); water >= 0 {
             return combat.coastPictures(coastWaterName, water, groundWaterCount, ground.WaterLbx, ground.WaterFirst)
         }
+        // the crops of farmland, see farmland.go
+        if crop := groundVariant(picture, groundCropFirst, groundCropCount); crop >= 0 {
+            return combat.cropPictures(lbx, crop)
+        }
     }
 
     role, number, added := groundExtra(picture)

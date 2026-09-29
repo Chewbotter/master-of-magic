@@ -5,8 +5,8 @@ package combat
 //
 // "Relatively subtle and scaled for groups entering the water, so all 8 units don't make an
 // enormous amount of splashing while single entities still make a noticeable splash": a unit of
-// one figure throws splashDrops, a unit of more figures that many times the root of their number,
-// so 8 figures throw less than 3 times what one does, from the places of its figures.
+// one figure throws splashDrops (5), a unit of more figures that many times the root of their number,
+// so 8 figures throw less than 3 times what one does (13), from the places of its figures.
 //
 // A unit that comes from the land splashes as a whole. One that wades on from one cell of the
 // river into the next throws splashWade of it. The banks are no water, and units that fly stay
@@ -24,8 +24,9 @@ import (
 // turns them off
 var RiverSplash = true
 
-// the drops of a unit of one figure that walks into the water
-const splashDrops = 9
+// the drops of a unit of one figure that walks into the water (first 9; user, 2026-09-29: "half
+// the water splash particles")
+const splashDrops = 4.5
 // of them, for a step from water into water
 const splashWade = 0.4
 // the drops of a unit are the ones of a figure times its figures to the power of this

@@ -193,6 +193,7 @@ func (game *MagicGame) updateFastPlay(menu *mainview.MainScreen) (mainview.MainS
         unitPickerGroundOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "biome")
         unitPickerCoastOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "coast")
         unitPickerRiverOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "river")
+        unitPickerFarmlandOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "farmland")
         capture.UnitPicker = ""
         unitPickerOpen = true
     }
@@ -298,6 +299,7 @@ type randomCity struct {
 const RandomBattleBiomeChance = 2
 const RandomBattleCoastChance = 3
 const RandomBattleRiverChance = 3
+const RandomBattleFarmlandChance = 4
 const RandomBattleRoadChance = 2
 const RandomBattleRoadSideChance = 3
 const RandomBattleEnchantedRoadChance = 4
@@ -321,6 +323,13 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
     // a river, which takes the place of the roads. not in a town, see combat/river.go
     if rand.N(RandomBattleRiverChance) == 0 {
         ground.River = combat.RiverAny
+    }
+
+    // the fields of a town, beside it or two tiles away. the battle shows them on grass land
+    // that has neither a town nor a lair, see combat/farmland.go
+    if rand.N(RandomBattleFarmlandChance) == 0 {
+        ground.Farmland = randomChoose(combat.FarmlandNear, combat.FarmlandFar)
+        ground.FarmRace = randomChoose(randomBattleRaces...)
     }
 
     if town || rand.N(RandomBattleRoadChance) == 0 {
@@ -357,6 +366,8 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
                 case word == "coast=west": ground.Coast = combat.CoastWest
                 case word == "coast=south": ground.Coast = combat.CoastSouth
                 case word == "coast=any": ground.Coast = combat.CoastAny
+                case word == "farmland=1": ground.Farmland = combat.FarmlandNear
+                case word == "farmland=2": ground.Farmland = combat.FarmlandFar
                 case word == "river=across": ground.River = combat.RiverAcross
                 case word == "river=beside": ground.River = combat.RiverBeside
                 case word == "river=any": ground.River = combat.RiverAny

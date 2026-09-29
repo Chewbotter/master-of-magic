@@ -67,6 +67,36 @@ func (game *Game) coastSide(mapObject *maplib.Map, x int, y int) combat.CoastSid
     return out
 }
 
+// how many tiles a tile is from the nearest town that has it among the tiles it works, 1 or 2, and
+// the race of that town. 0 if there is none. an outpost has no fields. see combat/farmland.go
+func (game *Game) nearTown(mapObject *maplib.Map, x int, y int, plane data.Plane) (int, data.Race) {
+    near := combat.FarmlandNone
+    var race data.Race
+
+    for dy := -2; dy <= 2; dy++ {
+        for dx := -2; dx <= 2; dx++ {
+            away := max(dx, -dx, dy, -dy)
+            // a town works the tiles within 2 of it but for the corners
+            if away == 0 || dx * dx + dy * dy == 8 || y + dy < 0 || y + dy >= mapObject.Height() {
+                continue
+            }
+            if near != combat.FarmlandNone && away >= near {
+                continue
+            }
+
+            for _, player := range game.Model.Players {
+                city := player.FindCity(mapObject.WrapX(x + dx), y + dy, plane)
+                if city != nil && !city.Outpost {
+                    near = away
+                    race = city.Race
+                }
+            }
+        }
+    }
+
+    return near, race
+}
+
 func (game *Game) combatGround(x int, y int, plane data.Plane) combat.ZoneGround {
     mapObject := game.GetMap(plane)
 
@@ -85,6 +115,12 @@ func (game *Game) combatGround(x int, y int, plane data.Plane) combat.ZoneGround
     }
 
     out.Coast = game.coastSide(mapObject, x, y)
+
+    // the fields of a town, on land that can be farmed. the battle decides if it shows them
+    switch mapObject.GetTile(x, y).Tile.TerrainType() {
+        case terrain.Grass, terrain.Forest, terrain.Hill, terrain.Swamp, terrain.River:
+            out.Farmland, out.FarmRace = game.nearTown(mapObject, x, y, plane)
+    }
 
     // a town counts as a road, as it does for the roads of the world map
     hasRoad := func(roadX int, roadY int) bool {

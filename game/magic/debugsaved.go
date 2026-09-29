@@ -10,6 +10,7 @@ package main
 
 import (
     "encoding/json"
+    "github.com/kazzmir/master-of-magic/game/magic/combat"
     "log"
     "os"
 )
@@ -25,6 +26,8 @@ type debugSaved struct {
     TestBattleGround string `json:"test-battle-ground"`
     TestBattleCoast string `json:"test-battle-coast"`
     TestBattleRiver string `json:"test-battle-river"`
+    // how many tiles from a town, 0 to 2
+    TestBattleFarmland int `json:"test-battle-farmland"`
 }
 
 var debugSavedLoaded bool
@@ -65,6 +68,7 @@ func loadDebugSaved() {
     testBattleGround = testGroundByName(saved.TestBattleGround)
     testBattleCoast = testCoastByName(saved.TestBattleCoast)
     testBattleRiver = testRiverByName(saved.TestBattleRiver)
+    testBattleFarmland = min(max(saved.TestBattleFarmland, combat.FarmlandNone), combat.FarmlandFar)
 
     if saved.TestBattleUnit != "" && testBattleLast == nil {
         // a unit that is not there any more is no unit
@@ -82,6 +86,7 @@ func saveDebugSaved() {
     saved.TestBattleGround = testGrounds[testBattleGround].Name
     saved.TestBattleCoast = testBattleCoast.String()
     saved.TestBattleRiver = testBattleRiver.String()
+    saved.TestBattleFarmland = testBattleFarmland
     if testBattleLast != nil {
         saved.TestBattleUnit = unitFullName(testBattleLast)
     }

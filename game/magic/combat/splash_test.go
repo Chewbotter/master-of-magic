@@ -10,7 +10,7 @@ func TestSplashCount(test *testing.T) {
     single := splashCount(1, 1)
     group := splashCount(8, 1)
 
-    if single < 6 {
+    if single < 4 {
         test.Fatalf("a single figure throws %v drops", single)
     }
     if group <= single || group > single * 3 {

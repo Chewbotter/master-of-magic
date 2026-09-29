@@ -8,7 +8,7 @@ package main
 //
 // Above the races are the ground of the battle and its coast (user, 2026-09-29), rollouts as the
 // races are: a landscape or one of its biomes (combat/biomes.go), and the side the sea lies on
-// (combat/coast.go), and its river (combat/river.go). A click on one of them picks it, the battle
+// (combat/coast.go), its river (combat/river.go) and the fields of a town (combat/farmland.go). A click on one of them picks it, the battle
 // starts with the click on a unit.
 // They are kept for the next battle and the next run of the game, see debugsaved.go.
 
@@ -95,6 +95,13 @@ var testRiverNames = map[combat.RiverCourse]string{
     combat.RiverBeside: "Beside the armies",
 }
 
+// the fields of a town with their names in the list, by how far the town is
+var testFarmlandNames = []string{"None", "Next to a town, more houses", "Two tiles from a town"}
+
+// the race of the town of the fields of a test battle: the one of the unit that fights
+var testBattleFarmland = combat.FarmlandNone
+var unitPickerFarmlandOpen bool
+
 // the ground, the coast and the river of the test battles: which of testGrounds, the side, the
 // course
 var testBattleGround = 0
@@ -140,6 +147,10 @@ func testBattleZone() (combat.CombatLandscape, combat.ZoneType) {
     zone.Ground.SetBiome(ground.Biome)
     zone.Ground.Coast = testBattleCoast
     zone.Ground.River = testBattleRiver
+    zone.Ground.Farmland = testBattleFarmland
+    if testBattleUnit != nil {
+        zone.Ground.FarmRace = testBattleUnit.Race
+    }
     return ground.Landscape, zone
 }
 
@@ -166,6 +177,9 @@ type unitPickerRow struct {
     Coast combat.CoastSide
     IsCoast bool
     RiverTitle bool
+    FarmlandTitle bool
+    // from 1
+    Farmland int
     River combat.RiverCourse
     IsRiver bool
     // the one that is picked
@@ -182,7 +196,7 @@ type unitPickerRow struct {
 
 // a row that stands under the title of its rollout
 func (row unitPickerRow) indented() bool {
-    return row.Unit != nil || row.Ground > 0 || row.IsCoast || row.IsRiver
+    return row.Unit != nil || row.Ground > 0 || row.IsCoast || row.IsRiver || row.Farmland > 0
 }
 
 func (row unitPickerRow) contains(x float64, y float64) bool {
@@ -261,6 +275,12 @@ func unitPickerRows() []unitPickerRow {
     if unitPickerRiverOpen {
         for _, course := range testRivers {
             rows = append(rows, unitPickerRow{Text: testRiverNames[course], IsRiver: true, River: course, Picked: course == testBattleRiver})
+        }
+    }
+    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Farmland: %v", mark(unitPickerFarmlandOpen), testFarmlandNames[testBattleFarmland]), FarmlandTitle: true})
+    if unitPickerFarmlandOpen {
+        for index, name := range testFarmlandNames {
+            rows = append(rows, unitPickerRow{Text: name, Farmland: index + 1, Picked: index == testBattleFarmland})
         }
     }
 
@@ -355,6 +375,12 @@ func updateUnitPicker() bool {
             unitPickerGroundOpen = !unitPickerGroundOpen
         case row.CoastTitle:
             unitPickerCoastOpen = !unitPickerCoastOpen
+        case row.FarmlandTitle:
+            unitPickerFarmlandOpen = !unitPickerFarmlandOpen
+        case row.Farmland > 0:
+            testBattleFarmland = row.Farmland - 1
+            unitPickerFarmlandOpen = false
+            saveDebugSaved()
         case row.RiverTitle:
             unitPickerRiverOpen = !unitPickerRiverOpen
         case row.IsRiver:
@@ -388,7 +414,7 @@ func drawUnitPicker(screen *ebiten.Image) {
     offsetY := float64(display.ContentOffsetY()) / scale.ScaleAmount
     options := unitPickerOptions()
 
-    unitPickerFont().PrintOutlined(screen, unitPickerLeft + offsetX, unitPickerTop + offsetY, options, font.OutlineFull, "Test Battle: pick a unit. It fights its own kind, on the biome and with the coast and the river picked here.")
+    unitPickerFont().PrintOutlined(screen, unitPickerLeft + offsetX, unitPickerTop + offsetY, options, font.OutlineFull, "Test Battle: pick a unit. It fights its own kind, on the ground that is picked here.")
 
     for index, row := range unitPickerRows() {
         rowOptions := options

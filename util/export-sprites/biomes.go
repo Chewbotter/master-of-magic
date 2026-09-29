@@ -5,6 +5,7 @@ package main
 
 import (
     "fmt"
+    "image/png"
     "log"
     "os"
     "path/filepath"
@@ -68,6 +69,58 @@ func exportRiver(outPath string) int {
 
     count := copyPictures(filepath.Join(environment, "Other"), folder, "river ", "_game ")
     os.WriteFile(filepath.Join(folder, sourceFile), []byte(riverNote), 0644)
+    return count
+}
+
+const farmlandNote = "Farmland\r\n\r\n" +
+    "The fields around a town: a feature, not a kind of a landscape. Not in the original game.\r\n" +
+    "A battle one or two tiles from a town, on land whose landscape is Grass, is fought on its\r\n" +
+    "fields: grass with square plots of crops, one row of grass between them, and houses of the\r\n" +
+    "race of the town here and there, more of them right beside the town.\r\n\r\n" +
+    "crop 1 to 4    the crops. A plot shows one of them in all of its tiles.\r\n\r\n" +
+    "The game has no pictures of crops. The ones here are the tiles of grass (Grass, grass 1 to 4)\r\n" +
+    "in the colors of ripe grain, as the game makes them until there are painted ones.\r\n" +
+    "A picture that is changed goes to mod\\environment\\Farmland with the same name. Pictures can\r\n" +
+    "be added: crop 5 and on, without a gap. A tile is 30 by 16 pixels.\r\n" +
+    "The houses are the ones of the town, in Town.\r\n"
+
+// writes the folder of the farmland, its crops made of the grass that is in the folder of the
+// landscape. after the folders of the landscapes are written
+func exportFarmland(outPath string) int {
+    environment := filepath.Join(outPath, "environment")
+    folder := filepath.Join(environment, mod.FeatureFarmland)
+    err := os.MkdirAll(folder, 0755)
+    if err != nil {
+        log.Printf("%v", err)
+        return 0
+    }
+
+    count := 0
+    for number := 1; number <= 4; number++ {
+        file, err := os.Open(filepath.Join(environment, "Grass", fmt.Sprintf("grass %v_0.png", number)))
+        if err != nil {
+            log.Printf("%v", err)
+            continue
+        }
+        grass, err := png.Decode(file)
+        file.Close()
+        if err != nil {
+            log.Printf("%v", err)
+            continue
+        }
+
+        out, err := os.Create(filepath.Join(folder, fmt.Sprintf("crop %v_0.png", number)))
+        if err != nil {
+            log.Printf("%v", err)
+            continue
+        }
+        if png.Encode(out, mod.CropTile(grass)) == nil {
+            count += 1
+        }
+        out.Close()
+    }
+
+    os.WriteFile(filepath.Join(folder, sourceFile), []byte(farmlandNote), 0644)
     return count
 }
 

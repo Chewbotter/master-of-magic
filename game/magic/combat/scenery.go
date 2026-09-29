@@ -482,6 +482,9 @@ func makeScenery(width int, height int, landscape CombatLandscape, plane data.Pl
 
     lbx := terrainSetLbx(landscape, plane)
 
+    // the houses of the fields of a town, see farmland.go
+    out = append(out, makeFarmHouses(width, height, zone, ground)...)
+
     // the pictures that are added are the ones of the biome, see mod/biomes.go
     set := mod.BiomeFolder(zone.Ground.Biome, mod.EnvironmentSet(lbx))
     treePool := makeSceneryPool(set, "tree", lbx, sceneryTreeIndex, sceneryPictures)

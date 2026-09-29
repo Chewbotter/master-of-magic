@@ -39,6 +39,8 @@ const (
     // the beach and the water of a coast, see coast.go
     TerrainSand
     TerrainWater
+    // a plot of crops of farmland, see farmland.go
+    TerrainCrop
 )
 
 // what the world map around a battle tells the ground of the battle. the zero value is open grass
@@ -59,6 +61,10 @@ type ZoneGround struct {
     Coast CoastSide
     // the river of the battle, see river.go
     River RiverCourse
+    // the fields of a town: how many tiles of the world map the town is away, 1 or 2, 0 for none,
+    // and the race of the town, for its houses. see farmland.go
+    Farmland int
+    FarmRace data.Race
     // an army of the battle has more units than the original's 12 places: the armies take more of
     // the field. set when the battle is made
     LargeArmy bool
@@ -168,6 +174,12 @@ type BattleGround struct {
     River RiverCourse
     Stream *coastLines
     Banks []riverPart
+    // farmland: how far the town is, the picture of the crops of every cell of a plot, the cells
+    // a house stands in, and the folder of its pictures. see farmland.go
+    Farmland int
+    Crops []int
+    Built []bool
+    FarmSet string
     // the large pieces, and the cells that lie under one. see large.go
     Large []LargePiece
     Covered []bool
@@ -233,7 +245,7 @@ func (ground *BattleGround) TreesAt(cgx int, cgy int) int {
 }
 
 // trees and rocks stand on grass without a road only, not on a large piece, not where the beach
-// starts and not in a river or on its banks
+// starts, not in a river or on its banks and not where a house of the farmland stands
 func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if ground == nil {
         return true
@@ -241,7 +253,7 @@ func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if !ground.contains(cgx, cgy) {
         return false
     }
-    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy) && !ground.shoreAt(cgx, cgy) && ground.riverAt(cgx, cgy) == riverLand
+    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy) && !ground.shoreAt(cgx, cgy) && ground.riverAt(cgx, cgy) == riverLand && !ground.builtAt(cgx, cgy)
 }
 
 func insideOriginalGrid(cgx int, cgy int) bool {
@@ -324,6 +336,10 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     ground.Extras[groundWaterFirst] = min(mod.CountExtras(ground.CoastSet, coastWaterName, groundWaterCount), groundExtraStep)
     ground.makeCoast(zone)
     ground.makeRiver(zone)
+    // the fields of a town, see farmland.go
+    ground.FarmSet = mod.BiomeFolder(farmSet, ground.BaseSet)
+    ground.Extras[groundCropFirst] = min(mod.CountExtras(ground.FarmSet, farmCropName, groundCropCount), groundExtraStep)
+    ground.makeFarmland(zone)
 
     ground.choosePictures()
     // pieces of 2 by 2 tiles, see large.go
@@ -634,6 +650,9 @@ func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
     }
 
     switch ground.GroupAt(cgx, cgy) {
+        case TerrainCrop:
+            return ground.cropAt(cgx, cgy)
+
         case TerrainSand:
             return ground.variant(cgx, cgy, groundSandFirst, groundSandCount)
 
