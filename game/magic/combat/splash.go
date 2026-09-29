@@ -90,7 +90,8 @@ func wadingTile(unit *ArmyUnit) image.Point {
 func (combat *CombatScreen) splashTick() {
     effects := &combat.effects
     ground := combat.Model.Ground
-    if !RiverSplash || ground == nil || ground.Banks == nil {
+    // ice does not splash
+    if !RiverSplash || ground == nil || ground.Banks == nil || ground.Frozen {
         return
     }
     if effects.Wading == nil {

@@ -117,7 +117,7 @@ func (combat *CombatScreen) sandTiles() []image.Image {
 
     archive, err := combat.Cache.GetLbxFile(ground.SandLbx)
     for number := 1; number <= groundSandCount + ground.Extras[groundSandFirst]; number++ {
-        added := mod.ReadExtra(ground.CoastSet, coastSandName, number)
+        added := mod.ReadExtra(ground.SandSet, coastSandName, number)
         if len(added) > 0 {
             out = append(out, added[0])
             continue

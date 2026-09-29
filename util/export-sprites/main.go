@@ -581,8 +581,14 @@ func main() {
     outPath := flag.String("out", "", "the folder to write to. outside of the repository")
     onlyMarkers := flag.Bool("markers", false, "write only the markers the mod makes by itself, which needs no data")
     onlyArchives := flag.String("archives", "", "write only the pictures of these archives, names with commas between them: help.lbx,spells.lbx")
+    onlyShores := flag.Bool("shores", false, "write only the folders of the beaches of the landscapes, from the folder Shore that was written before. needs no data")
     onlyFarmland := flag.Bool("farmland", false, "write only the folder of the farmland, from the grass that is in the folder that was written before. needs no data")
     flag.Parse()
+
+    if *onlyShores && *outPath != "" {
+        fmt.Printf("pictures of the beaches of the landscapes: %v\n", exportShores(*outPath))
+        return
+    }
 
     if *onlyFarmland && *outPath != "" {
         fmt.Printf("pictures of the farmland: %v\n", exportFarmland(*outPath))
@@ -630,6 +636,7 @@ func main() {
     // the folders of the biomes start as copies of the folders of their landscapes, see biomes.go
     environmentPictures += exportBiomes(*outPath)
     environmentPictures += exportCoast(*outPath)
+    environmentPictures += exportShores(*outPath)
     environmentPictures += exportRiver(*outPath)
     environmentPictures += exportFarmland(*outPath)
     exportMarkers(*outPath)

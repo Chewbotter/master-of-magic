@@ -164,7 +164,11 @@ type BattleGround struct {
     Lines *coastLines
     // what every cell is of the coast, nil without one
     Shore []coastPart
-    CoastSet string
+    // the folders of the sand and of the water, of the landscape or of all landscapes
+    SandSet string
+    WaterSet string
+    // the water is ice: tundra. see mod/shore.go
+    Frozen bool
     SandLbx string
     SandFirst int
     WaterLbx string
@@ -289,6 +293,8 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
         Height: width + BattlefieldBorder * 2,
         EnchantedRoads: zone.Ground.EnchantedRoads,
         River: riverCourse(zone),
+        Coast: coastSideOf(zone),
+        Frozen: landscape == CombatLandscapeTundra,
     }
     cells := ground.Width * ground.Height
     ground.Group = make([]TerrainGroup, cells)
@@ -329,11 +335,14 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     ground.mergeDirt()
 
     // the sea beside the battle, see coast.go
-    ground.CoastSet = mod.BiomeFolder(coastSet, ground.BaseSet)
+    ground.SandSet = shoreSet(ground.BaseSet, coastSandName, false)
+    ground.WaterSet = shoreSet(ground.BaseSet, coastWaterName, ground.Frozen)
     ground.SandLbx, ground.SandFirst = sandPictures(plane)
     ground.WaterLbx, ground.WaterFirst = waterPictures(plane)
-    ground.Extras[groundSandFirst] = min(mod.CountExtras(ground.CoastSet, coastSandName, groundSandCount), groundExtraStep)
-    ground.Extras[groundWaterFirst] = min(mod.CountExtras(ground.CoastSet, coastWaterName, groundWaterCount), groundExtraStep)
+    ground.Extras[groundSandFirst] = min(mod.CountExtras(ground.SandSet, coastSandName, groundSandCount), groundExtraStep)
+    ground.Extras[groundWaterFirst] = min(mod.CountExtras(ground.WaterSet, coastWaterName, groundWaterCount), groundExtraStep)
+    // the river is planned before the coast, which comes in to meet it, and laid after it
+    ground.planRiver(zone)
     ground.makeCoast(zone)
     ground.makeRiver(zone)
     // the fields of a town, see farmland.go

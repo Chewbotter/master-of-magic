@@ -40,7 +40,9 @@ package combat
 // ocean): what flies, swims or sails. All others can not enter it.
 //
 // PICTURES. The beach is the sand of the desert, the water the water of the battles on the ocean.
-// The folder Shore of the replacement folder can take their places and add to them:
+// On tundra the water is ice, which the game makes of its water (mod/shore.go).
+// The folder Shore of the replacement folder can take their places and add to them, and a folder
+// for a landscape (Shore Grass, Shore Mountain, Shore Tundra, Shore Desert) the places of those:
 //
 //   environment/Shore/sand 1_0.png ... sand 4_0.png     in place of the game's, sand 5 on are added
 //   environment/Shore/water 1_0.png ... water 4_0.png   the same. the game's have 5 frames
@@ -50,6 +52,7 @@ import (
     "math/rand/v2"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
 )
 
 // turns it off
@@ -96,6 +99,8 @@ const coastNarrowLengthMin = 3
 const coastNarrowLengthMax = 6
 const coastNarrowMin = 1
 const coastNarrowMax = 2
+// the bay at the mouth of a river is this many columns wider than the river to each side
+const coastMouthBeside = 1
 // plateaus end this many cells before the beach, so their edge is not drawn along it
 const coastFlatBefore = 1
 
@@ -113,6 +118,28 @@ const groundSandCount = 4
 const groundWaterCount = 4
 
 const coastSet = "Shore"
+
+// the folder of the sand or of the water of a landscape, by the folder of the landscape: its own
+// if it has any of them, else the one of all landscapes. own: never the one of all landscapes
+func shoreSet(base string, name string, own bool) string {
+    folder := mod.ShoreFolder(base)
+    if own || mod.CountExtras(folder, name, 0) > 0 {
+        return folder
+    }
+    return mod.BiomeFolder(coastSet, base)
+}
+
+// the side of the coast of a battle: one of the four by chance for any
+func coastSideOf(zone ZoneType) CoastSide {
+    side := zone.Ground.Coast
+    if !CoastGround {
+        return CoastNone
+    }
+    if side == CoastAny {
+        return []CoastSide{CoastEast, CoastNorth, CoastWest, CoastSouth}[rand.N(4)]
+    }
+    return side
+}
 const coastSandName = "sand"
 const coastWaterName = "water"
 
@@ -263,12 +290,9 @@ func (coast *coastLines) sandIn(part coastPart, cellX float64, cellY float64, pi
 
 // lays the coast over the ground: beach and water, flat, without roads into the water
 func (ground *BattleGround) makeCoast(zone ZoneType) {
-    side := zone.Ground.Coast
-    if !CoastGround || side == CoastNone {
+    side := ground.Coast
+    if side == CoastNone {
         return
-    }
-    if side == CoastAny {
-        side = []CoastSide{CoastEast, CoastNorth, CoastWest, CoastSouth}[rand.N(4)]
     }
 
     firstX, lastX, firstY, lastY := armyPlaces(zone.Ground.LargeArmy)
@@ -289,9 +313,23 @@ func (ground *BattleGround) makeCoast(zone ZoneType) {
 
     start := rand.N(coastWander + 1)
     width := coastBeachMin + rand.N(coastBeachMax - coastBeachMin + 1)
+    // where a river runs into the sea the sea comes in to meet it, see river.go
+    mouthFirst, mouthLast, mouth := ground.riverMouth(coast)
+
     narrowLeft := 0
     narrowWidth := 0
     for along := range coast.Starts {
+        cell := along + coast.FirstAlong
+        if mouth && cell >= mouthFirst - coastBeachMax && cell <= mouthLast + coastMouthBeside {
+            // a bay: the beach gets narrow before the river and stays so beyond it
+            if width > coastNarrowMin {
+                width -= 1
+            }
+            coast.Starts[along] = start
+            coast.Waters[along] = start + width + 1
+            continue
+        }
+
         if narrowLeft == 0 && rand.N(coastNarrowChance) == 0 {
             narrowLeft = coastNarrowLengthMin + rand.N(coastNarrowLengthMax - coastNarrowLengthMin + 1)
             narrowWidth = coastNarrowMin + rand.N(coastNarrowMax - coastNarrowMin + 1)

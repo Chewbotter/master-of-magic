@@ -70,7 +70,7 @@ func TestRiver(test *testing.T) {
 
                         // the ground under the water is the one of the landscape
                         group := ground.GroupAt(cgx, cgy)
-                        if group != TerrainGrass && group != TerrainDirt {
+                        if group != TerrainGrass && group != TerrainDirt && group != TerrainSand {
                             test.Fatalf("river %v: %v under the river at %v, %v", course, group, cgx, cgy)
                         }
                         if ground.HeightAt(cgx, cgy) != 0 {
@@ -111,10 +111,63 @@ func TestRiver(test *testing.T) {
     ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, zone)
     for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
         for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
-            if ground.GroupAt(cgx, cgy) == TerrainWater && ground.riverAt(cgx, cgy) != riverLand {
+            if ground.coastAt(cgx, cgy) == coastWater && ground.riverAt(cgx, cgy) != riverLand {
                 test.Fatalf("the river runs on in the sea at %v, %v", cgx, cgy)
             }
         }
+    }
+}
+
+// a river that runs toward a coast runs into the sea, and the sea comes in to meet it: the beach
+// is narrow where the river is
+func TestRiverMouth(test *testing.T) {
+    for _, pair := range []struct{River RiverCourse; Coast CoastSide}{
+        {RiverAcross, CoastNorth}, {RiverAcross, CoastSouth}, {RiverBeside, CoastEast}, {RiverBeside, CoastWest},
+    } {
+        for range 10 {
+            zone := ZoneType{}
+            zone.Ground.River = pair.River
+            zone.Ground.Coast = pair.Coast
+            ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, zone)
+
+            first, last, mouth := ground.riverMouth(ground.Lines)
+            if !mouth || last < first {
+                test.Fatalf("river %v, coast %v: no mouth", pair.River, pair.Coast)
+            }
+            for cell := first; cell <= last; cell++ {
+                beach := ground.Lines.at(ground.Lines.Waters, cell) - ground.Lines.at(ground.Lines.Starts, cell) - 1
+                if beach != coastNarrowMin {
+                    test.Fatalf("river %v, coast %v: %v cells of beach at the mouth, cell %v of %v to %v", pair.River, pair.Coast, beach, cell, first, last)
+                }
+            }
+
+            // the river reaches the cells the sea starts in
+            reached := false
+            for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
+                for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
+                    if ground.coastAt(cgx, cgy) == coastWaterEdge && ground.riverAt(cgx, cgy) == riverWater {
+                        reached = true
+                    }
+                }
+            }
+            if !reached {
+                test.Fatalf("river %v, coast %v: the river does not reach the sea", pair.River, pair.Coast)
+            }
+        }
+    }
+
+    // a river along the coast has no mouth
+    zone := ZoneType{}
+    zone.Ground.River = RiverAcross
+    zone.Ground.Coast = CoastEast
+    ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, zone)
+    if _, _, mouth := ground.riverMouth(ground.Lines); mouth {
+        test.Fatalf("a mouth of a river that runs along the coast")
+    }
+
+    // the tundra is frozen
+    if !makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeTundra, 0, zone).Frozen || ground.Frozen {
+        test.Fatalf("frozen: tundra and grass")
     }
 }
 

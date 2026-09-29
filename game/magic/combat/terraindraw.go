@@ -5,6 +5,7 @@ package combat
 
 import (
     "fmt"
+    "image"
 
     "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
@@ -65,9 +66,15 @@ func (combat *CombatScreen) groundTilePictures(lbx string, picture int) []*ebite
 }
 
 // the frames of a picture of a coast, by its number from 0: of the folder of the coast, or the
-// game's. an added one that can not be read is the first of the game
+// game's, as ice on tundra. an added one that can not be read is the first of the game
 func (combat *CombatScreen) coastPictures(name string, number int, count int, lbx string, first int) []*ebiten.Image {
-    pictures := combat.addedPictures(combat.Model.Ground.CoastSet, name, number + 1)
+    ground := combat.Model.Ground
+    set := ground.SandSet
+    if name == coastWaterName {
+        set = ground.WaterSet
+    }
+
+    pictures := combat.addedPictures(set, name, number + 1)
     if len(pictures) > 0 {
         return pictures
     }
@@ -75,7 +82,25 @@ func (combat *CombatScreen) coastPictures(name string, number int, count int, lb
         number = 0
     }
     pictures, _ = combat.ImageCache.GetImages(lbx, first + number)
-    return pictures
+
+    if name != coastWaterName || !ground.Frozen || len(pictures) == 0 {
+        return pictures
+    }
+
+    // ice, made of the water as it lies still. see mod/shore.go
+    if made, ok := combat.iceMade[number]; ok {
+        return made
+    }
+    bounds := pictures[0].Bounds()
+    pixels := image.NewRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
+    pictures[0].ReadPixels(pixels.Pix)
+    made := []*ebiten.Image{ebiten.NewImageFromImage(mod.IceTile(pixels))}
+
+    if combat.iceMade == nil {
+        combat.iceMade = make(map[int][]*ebiten.Image)
+    }
+    combat.iceMade[number] = made
+    return made
 }
 
 // the frames of the picture of a tree, a rock or a house

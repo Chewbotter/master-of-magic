@@ -72,6 +72,68 @@ func exportRiver(outPath string) int {
     return count
 }
 
+const shoreNote = "%v\r\n\r\n" +
+    "The beach and the water of a coast of the landscape %v. Not in the original game.\r\n" +
+    "A battle of that landscape takes the sand of this folder if mod\\environment\\%v has any,\r\n" +
+    "else the sand of Shore, else the game's. The same for the water.\r\n\r\n" +
+    "sand 1 to 4    the beach. Here: the sand of the desert, as in Shore, to be painted over\r\n" +
+    "water 1 to 4   the water. Here: %v\r\n\r\n" +
+    "Pictures can be added: sand 5, water 5 and on, without a gap. A tile is 30 by 16 pixels.\r\n" +
+    "Where ground meets sand and sand meets water the game makes the edge from these tiles.\r\n"
+
+// writes the folders of the beaches of the landscapes, from the folder Shore. after it is written
+func exportShores(outPath string) int {
+    environment := filepath.Join(outPath, "environment")
+    shore := filepath.Join(environment, mod.FeatureShore)
+
+    count := 0
+    for _, landscape := range mod.ShoreLandscapes {
+        name := mod.ShoreFolder(landscape)
+        folder := filepath.Join(environment, name)
+        err := os.MkdirAll(folder, 0755)
+        if err != nil {
+            log.Printf("%v", err)
+            continue
+        }
+
+        count += copyPictures(shore, folder, "sand ", "")
+
+        water := "the water of the battles on the ocean, as in Shore, 5 frames each"
+        if landscape != mod.ShoreFrozen {
+            count += copyPictures(shore, folder, "water ", "")
+        } else {
+            // frozen: the water as it lies still, as ice
+            water = "ice, as the game makes it of its water. The tundra is frozen, its rivers too"
+            for number := 1; number <= 4; number++ {
+                file, err := os.Open(filepath.Join(shore, fmt.Sprintf("water %v_0.png", number)))
+                if err != nil {
+                    log.Printf("%v", err)
+                    continue
+                }
+                picture, err := png.Decode(file)
+                file.Close()
+                if err != nil {
+                    log.Printf("%v", err)
+                    continue
+                }
+                out, err := os.Create(filepath.Join(folder, fmt.Sprintf("water %v_0.png", number)))
+                if err != nil {
+                    log.Printf("%v", err)
+                    continue
+                }
+                if png.Encode(out, mod.IceTile(picture)) == nil {
+                    count += 1
+                }
+                out.Close()
+            }
+        }
+
+        os.WriteFile(filepath.Join(folder, sourceFile), []byte(fmt.Sprintf(shoreNote, name, landscape, name, water)), 0644)
+    }
+
+    return count
+}
+
 const farmlandNote = "Farmland\r\n\r\n" +
     "The fields around a town: a feature, not a kind of a landscape. Not in the original game.\r\n" +
     "A battle one or two tiles from a town has houses of the race of the town here and there, more\r\n" +

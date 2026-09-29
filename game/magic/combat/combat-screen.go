@@ -233,6 +233,8 @@ type CombatScreen struct {
     riverY int
     // the pictures of crops the game makes, by their number. see farmland.go
     cropsMade map[int][]*ebiten.Image
+    // the pictures of ice the game makes, by their number. see terraindraw.go
+    iceMade map[int][]*ebiten.Image
     // the large pieces the game makes, see large.go
     largeMade [][]*ebiten.Image
     // the pictures the replacement folder adds to the ground, trees, rocks and houses, see terraindraw.go

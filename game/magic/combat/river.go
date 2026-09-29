@@ -26,6 +26,13 @@ package combat
 // RULES. A cell of the river is rough ground: a step into it costs twice what grass costs. Flying
 // units pay as everywhere. A bank costs what the ground costs.
 //
+// INTO THE SEA. A river that runs toward a coast runs into it: over the beach and the sand of
+// the cells the sea starts in. The sea comes in to meet it, the beach is narrow there (makeCoast),
+// and over its last cells the water of the river turns into the water of the sea, in steps.
+//
+// ON TUNDRA THE RIVER IS FROZEN, as the sea is (mod/shore.go): ice over the ground, without
+// glints and splashes. The rules are the ones of water.
+//
 // NO ROADS (user, 2026-09-29: "avoid having rivers and roads in the same battle scene", "favor
 // rivers over roads if both are feasible"): a battlefield with a river has no roads. A town has
 // roads and houses where the river would run, so a battle of a town has no river.
@@ -90,11 +97,30 @@ const riverWidthChance = 4
 const riverFlatBefore = 1
 
 // the water: its color, and how much of it lies over the ground near the banks and in the middle,
-// 0 to 1. the middle starts this many cells from the edge of the water
-var riverColor = color.NRGBA{R: 38, G: 92, B: 160, A: 255}
-const riverShallow = 0.38
-const riverDeep = 0.52
+// 0 to 1, and where it runs into the sea, in the color of the sea
+type riverLook struct {
+    Color color.NRGBA
+    Shallow float64
+    Deep float64
+    Sea color.NRGBA
+    Mouth float64
+}
+
+var riverWaterLook = riverLook{
+    Color: color.NRGBA{R: 38, G: 92, B: 160, A: 255}, Shallow: 0.38, Deep: 0.52,
+    Sea: color.NRGBA{R: 24, G: 56, B: 120, A: 255}, Mouth: 0.85,
+}
+// a river of the tundra is frozen, as its sea is (user, 2026-09-29)
+var riverIceLook = riverLook{
+    Color: color.NRGBA{R: 160, G: 200, B: 232, A: 255}, Shallow: 0.5, Deep: 0.66,
+    Sea: color.NRGBA{R: 186, G: 212, B: 232, A: 255}, Mouth: 0.9,
+}
+
+// the middle of a river starts this many cells from the edge of the water
 const riverDeepFrom = 0.55
+// the water turns into the water of the sea over this many cells before it, in this many steps
+const riverMouthLength = 3.0
+const riverMouthSteps = 3
 // the wet ground along the water: how many cells wide, and how dark
 const riverWetWidth = 0.14
 const riverWetDark = 0.3
@@ -161,8 +187,9 @@ func (walk riverWalk) next(low int, high int) riverWalk {
     return out
 }
 
-// lays the river over the ground, after the coast. the course was picked when the ground was made
-func (ground *BattleGround) makeRiver(zone ZoneType) {
+// where the river runs along the ground, before the coast is made. the course was picked when
+// the ground was made
+func (ground *BattleGround) planRiver(zone ZoneType) {
     if ground.River == RiverNone {
         return
     }
@@ -233,13 +260,60 @@ func (ground *BattleGround) makeRiver(zone ZoneType) {
     }
 
     ground.Stream = stream
+}
+
+// the cells of the grid a river takes across itself at a place along it, with its banks: the
+// first and the last
+func (stream *coastLines) span(along int) (int, int) {
+    near := stream.at(stream.Starts, along)
+    far := stream.at(stream.Waters, along)
+    switch stream.Side {
+        case CoastWest, CoastNorth: return stream.First - far, stream.First - near
+    }
+    return stream.First + near, stream.First + far
+}
+
+// true if a coast runs across the grid as the columns of x do
+func (coast *coastLines) acrossX() bool {
+    return coast.Side == CoastEast || coast.Side == CoastWest
+}
+
+// where along a coast the river of the ground runs into the sea: the first and the last cell.
+// false if it does not, which is without a river and with one that runs along the coast
+func (ground *BattleGround) riverMouth(coast *coastLines) (int, int, bool) {
+    stream := ground.Stream
+    if stream == nil || stream.acrossX() == coast.acrossX() {
+        return 0, 0, false
+    }
+
+    // from where the beach can start to where the water starts at the farthest
+    out := 1
+    if coast.Side == CoastWest || coast.Side == CoastNorth {
+        out = -1
+    }
+    first, last := stream.span(coast.First)
+    for depth := 1; depth <= coastWander + coastBeachMax + 1; depth++ {
+        low, high := stream.span(coast.First + out * depth)
+        first = min(first, low)
+        last = max(last, high)
+    }
+    return first, last, true
+}
+
+// lays the river over the ground, after the coast
+func (ground *BattleGround) makeRiver(zone ZoneType) {
+    stream := ground.Stream
+    if stream == nil {
+        return
+    }
     ground.Banks = make([]riverPart, ground.Width * ground.Height)
 
     for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
         for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
             index := ground.index(cgx, cgy)
-            // the river ends where the sea starts
-            if ground.Group[index] == TerrainWater {
+            // the river ends in the sea: it runs on over the sand of the cells where the water
+            // starts
+            if ground.coastAt(cgx, cgy) == coastWater {
                 continue
             }
 
@@ -340,11 +414,20 @@ func makeRiverWater(ground *BattleGround) (*image.NRGBA, int, int) {
     out := image.NewNRGBA(image.Rect(0, 0, width, height))
     any := false
 
+    look := riverWaterLook
+    if ground.Frozen {
+        look = riverIceLook
+    }
+
     for y := range height {
         for x := range width {
             cellX, cellY := screenToCell(float64(left + x) + 0.5, float64(top + y) + 0.5)
             cgx, cgy := int(math.Floor(cellX)), int(math.Floor(cellY))
             if ground.riverAt(cgx, cgy) == riverLand {
+                continue
+            }
+            // where the sea starts the river lies on the sand, the sea takes it from there
+            if ground.coastAt(cgx, cgy) == coastWaterEdge && !ground.Lines.sandIn(coastWaterEdge, cellX, cellY, left + x, top + y) {
                 continue
             }
 
@@ -361,10 +444,10 @@ func makeRiverWater(ground *BattleGround) (*image.NRGBA, int, int) {
                 // the ragged edge is for the banks: a cell of the river is water as a whole
                 depth = math.Max(depth, 0)
             }
-            pixel := riverColor
+            pixel := look.Color
             switch {
-                case depth >= riverDeepFrom: pixel.A = uint8(math.Round(riverDeep * 255))
-                case depth >= 0: pixel.A = uint8(math.Round(riverShallow * 255))
+                case depth >= riverDeepFrom: pixel = ground.mouthPixel(look, look.Deep, cellX, cellY, left + x, top + y)
+                case depth >= 0: pixel = ground.mouthPixel(look, look.Shallow, cellX, cellY, left + x, top + y)
                 case depth >= -riverWetWidth: pixel = color.NRGBA{A: uint8(math.Round(riverWetDark * 255))}
                 default: continue
             }
@@ -383,10 +466,36 @@ func makeRiverWater(ground *BattleGround) (*image.NRGBA, int, int) {
     return out, left, top
 }
 
-// the glints on the water of a river, of the pictures of the replacement folder
+// a pixel of the water of a river, of which so much lies over the ground: near the sea more of
+// it, and in the color of the sea, in steps
+func (ground *BattleGround) mouthPixel(look riverLook, share float64, cellX float64, cellY float64, pixelX int, pixelY int) color.NRGBA {
+    pixel := look.Color
+    coast := ground.Lines
+
+    if coast != nil && ground.Stream.acrossX() != coast.acrossX() {
+        depth, along := coast.depth(cellX, cellY)
+        column := int(math.Floor(along))
+        sea := float64(coast.at(coast.Waters, column)) + coast.edgeIn(coast.Waters, along)
+
+        // 0 far from the sea, 1 at it
+        near := 1 - (sea - depth) / riverMouthLength + coastNoise(pixelX, pixelY, ground.Stream.Seed + 1) * 0.5 / riverMouthSteps
+        step := min(max(math.Floor(near * riverMouthSteps + 0.5), 0), riverMouthSteps) / riverMouthSteps
+
+        mix := func(from uint8, to uint8) uint8 {
+            return uint8(math.Round(float64(from) + (float64(to) - float64(from)) * step))
+        }
+        pixel = color.NRGBA{R: mix(look.Color.R, look.Sea.R), G: mix(look.Color.G, look.Sea.G), B: mix(look.Color.B, look.Sea.B), A: 255}
+        share += (look.Mouth - share) * step
+    }
+
+    pixel.A = uint8(math.Round(share * 255))
+    return pixel
+}
+
+// the glints on the water of a river, of the pictures of the replacement folder. ice has none
 func makeGlints(ground *BattleGround) []SceneryPiece {
     var out []SceneryPiece
-    if ground == nil || ground.Banks == nil {
+    if ground == nil || ground.Banks == nil || ground.Frozen {
         return out
     }
 
