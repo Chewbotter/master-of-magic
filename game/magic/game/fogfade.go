@@ -16,6 +16,7 @@ package game
 
 import (
     "bytes"
+    "log"
     "image"
     "time"
 
@@ -37,6 +38,9 @@ const FogFadeWhenCovered = true
 // development: 0 or more holds every fade at this many seconds after its start, and the first
 // look at a map counts as revealed from nothing, so a capture shows the fade. see -capture-fog-fade
 var FogFadeProbe float64 = -1
+
+// development: logs the number of fading tiles every frame they are drawn
+var FogFadeTrace = false
 
 // how much fog of the last frame and of tiles that fade is kept before it is thrown away
 const fogFadeMapsKept = 8
@@ -310,6 +314,10 @@ func (state *fogFadeState) update(fog data.FogMap, pictures *fogPictures, wrapX 
         return
     }
 
+    if FogFadeTrace {
+        log.Printf("fog fade: the fog changed, %v tiles touched", len(touched))
+    }
+
     // what they show now, by the map of before
     shown := make(map[image.Point][]uint8, len(touched))
     for key := range touched {
@@ -474,6 +482,9 @@ func (overworld *Overworld) fogFadeFrame() fogFadeFrame {
 
     if len(keys) == 0 {
         return fogFadeFrame{}
+    }
+    if FogFadeTrace {
+        log.Printf("fog fade: %v tiles fading in view, %v in all", len(keys), len(state.Tiles))
     }
 
     // all of them next to each other on one picture, one pixel per art pixel

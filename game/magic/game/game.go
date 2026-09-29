@@ -3717,6 +3717,8 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
         }
 
         terrainCost, canMove := game.Model.ComputeTerrainCost(stack, stack.X(), stack.Y(), step.X, step.Y, mapUse, getStack)
+        // debug option, see debug.go
+        terrainCost = debugMoveCost(player, terrainCost)
 
         if canMove {
 

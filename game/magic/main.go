@@ -1136,6 +1136,19 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
                 yield()
                 runRandomBattle(yield, game, state == mainview.MainScreenStateRandomCityBattle)
                 game.Music.PlaySong(musiclib.SongTitle)
+            case mainview.MainScreenStateDebugWorldMap:
+                // a quick start game for testing the world map, with the debug options that help there
+                game.Music.Stop()
+                yield()
+                gamelib.DebugUnlimitedMoves = true
+                err := startQuickGame(yield, game, gameLoader)
+                gamelib.DebugUnlimitedMoves = false
+                if err != nil {
+                    game.Drawer = shutdown
+                    yield()
+                    return err
+                }
+                game.Music.PlaySong(musiclib.SongTitle)
             case mainview.MainScreenStateQuickGame:
                 game.Music.Stop()
                 yield()
@@ -1351,6 +1364,8 @@ func loadGameConfig() GameConfig {
     flag.StringVar(&capture.CursorAt, "capture-cursor-at", "", "development: draw the cursor at x,y screen pixels, fractions allowed")
     flag.BoolVar(&capture.TraceWide, "capture-trace-wide", false, "development: log every change of the widescreen layout and the layers on screen")
     flag.Float64Var(&gamelib.FogFadeProbe, "capture-fog-fade", -1, "development: hold every fade of the fog this many seconds after its start, the map of the start counts as just revealed")
+    flag.BoolVar(&gamelib.FogFadeTrace, "capture-fog-trace", false, "development: log the number of tiles whose fog fades, every frame")
+    flag.BoolVar(&gamelib.DebugUnlimitedMoves, "capture-unlimited-moves", false, "development: turn on the Unlimited Moves debug option")
     flag.StringVar(&capture.Walk, "capture-walk", "", "development: send the selected unit walking dx,dy tiles and log the camera")
     flag.StringVar(&capture.CameraMove, "capture-camera-move", "", "development: move the camera by dx,dy tiles the way a right click does, and log each frame")
     flag.IntVar(&capture.BattleLevel, "capture-battle-level", 0, "development: zoom level of the battlefield, in screen pixels per art pixel")

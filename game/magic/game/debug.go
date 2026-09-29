@@ -10,6 +10,8 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     fontslib "github.com/kazzmir/master-of-magic/game/magic/fonts"
+    playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
+    "github.com/kazzmir/master-of-magic/lib/fraction"
     uilib "github.com/kazzmir/master-of-magic/game/magic/ui"
     "github.com/kazzmir/master-of-magic/lib/font"
 
@@ -40,6 +42,18 @@ const DebugMenuStateGap = "   "
 
 // draw the world map as if every tile were explored and visible. nothing about the game changes
 var DebugRevealAll = false
+
+// steps of the human player's units on the world map cost no moves, so a unit walks as far as its path goes.
+// terrain a unit can not enter stays closed
+var DebugUnlimitedMoves = false
+
+func debugMoveCost(player *playerlib.Player, cost fraction.Fraction) fraction.Fraction {
+    if DebugUnlimitedMoves && player != nil && player.IsHuman() {
+        return fraction.Zero()
+    }
+
+    return cost
+}
 
 var debugButtons = map[*Game]*uilib.UIElement{}
 var debugFont *font.Font
@@ -151,6 +165,13 @@ func (game *Game) makeDebugMenu() []*uilib.UIElement {
             Hotkey: DebugMenuStateGap + onOffText(DebugRevealAll),
             Action: func(){
                 DebugRevealAll = !DebugRevealAll
+            },
+        },
+        uilib.Selection{
+            Name: "Unlimited Moves",
+            Hotkey: DebugMenuStateGap + onOffText(DebugUnlimitedMoves),
+            Action: func(){
+                DebugUnlimitedMoves = !DebugUnlimitedMoves
             },
         },
     }

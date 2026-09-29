@@ -78,6 +78,8 @@ func (entry fastPlayEntry) text() string {
 }
 
 var fastPlayEntries = []fastPlayEntry{
+    // a quick start game in which the player's units walk as far as their path goes. see runGame
+    {Label: "World Map", State: mainview.MainScreenStateDebugWorldMap},
     {Label: "Random Battle", State: mainview.MainScreenStateRandomBattle},
     {Label: "Random City Battle", State: mainview.MainScreenStateRandomCityBattle},
     {
