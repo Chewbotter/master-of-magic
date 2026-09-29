@@ -35,7 +35,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Movement costs of the original: trees and mud slow a unit down, a road is faster than grass.
 - Raised ground forms plateaus and small hills with shaded slopes and rounded outlines, most of them in hills and mountains. Only going up or down a slope costs more, the top is ground as any other. The original's raised ground is left as short mounds, for the look only.
 - Biomes: a battle in a forest, in a swamp, in hills, on a volcano or on a mountain beside tundra can have pictures of its own. The game has none yet, so until an artist adds some they look as their landscape does. A volcano is fought on the ground of the mountains.
-- A coast on the side of the field where the sea lies on the world map: a beach, then water. The armies stand on land. The beach is rough ground and costs twice as much to cross; only units that fly, swim or sail can go into the water.
+- A coast on the side of the field where the sea lies on the world map: a wide beach, then water, with ragged edges where grass runs into sand and sand into water. The armies stand on land. The beach is rough ground and costs twice as much to cross; only units that fly, swim or sail can go into the water. A tile on an edge counts as what lies under the sand: ground or water.
 - Large pieces of ground over 2 by 2 tiles, such as a cluster of rocks or a patch of dirt, each once per battle at most. For the look only.
 - Units the computer controls act at the same time, and decide as they would in turn.
 - Space toggles auto combat; the AUTO button is lit while it is on.
@@ -65,7 +65,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - A tool that writes the game's pictures as png files, the surroundings of battles under names that say what each picture is for, and Aseprite files for figures and spells with an export back into the replacement folder.
 
 ## For testing (debug)
-- A Debug list on the start screen: World Map, Random Battle, Random City Battle, Test Battle of a unit picked from a list (with its biome and coast), Army Size. Random battles have a landscape, a biome, a coast and roads by chance.
+- A Debug list on the start screen: World Map, Random Battle, Random City Battle, Test Battle of a unit picked from a list (with its biome and coast, or a coast on a side by chance), Army Size. Random battles have a landscape, a biome, a coast and roads by chance.
 - World Map: a quick game with unlimited moves, no greetings of rival wizards, 3 more units around the city, and units that are never disbanded.
 - In debug battles the player knows every spell and does not run out of mana; Escape goes back to the start screen.
 - A Debug menu on the world map: Reveal All, Unlimited Moves, No Greetings.

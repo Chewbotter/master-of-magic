@@ -29,7 +29,7 @@ var coastPictures = [][3]string{
 
 const coastNote = "Shore\r\n\r\n" +
     "The coast: a feature, not a kind of a landscape. Not in the original game.\r\n" +
-    "A battle on land with the sea beside it on the world map has a strip of beach and then water on\r\n" +
+    "A battle on land with the sea beside it on the world map has a wide beach and then water on\r\n" +
     "that side of the field, whatever its landscape is. North of the world map is the upper right of\r\n" +
     "the screen, east the lower right, south the lower left, west the upper left.\r\n" +
     "The beach is rough ground, a step onto it costs twice what grass costs. Into the water go only\r\n" +
@@ -39,8 +39,9 @@ const coastNote = "Shore\r\n\r\n" +
     "               ocean (Water, water 1 to 4)\r\n\r\n" +
     "A picture that is changed goes to mod\\environment\\Shore with the same name. Pictures can be\r\n" +
     "added: sand 5, water 5 and on, without a gap. A tile is 30 by 16 pixels.\r\n" +
-    "There are no pictures for where grass meets sand and sand meets water: the tiles lie side by\r\n" +
-    "side.\r\n"
+    "Where ground meets sand and sand meets water the game lays the pixels of a tile of sand over a\r\n" +
+    "part of the tile of the ground or of the water, with a ragged edge. There is nothing to paint\r\n" +
+    "for it. Such a tile counts as what is under the sand.\r\n"
 
 // writes the folder of the coast. after the folders of the landscapes are written
 func exportCoast(outPath string) int {

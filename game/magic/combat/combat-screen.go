@@ -221,6 +221,11 @@ type CombatScreen struct {
     Landscape CombatLandscape
     // picks the pictures of the ground around the field, see fieldedge.go
     borderSeed uint32
+    // the sand over the transitions of a coast and where it lies on the original's screen, see shore.go
+    shoreSand *ebiten.Image
+    shoreMade bool
+    shoreX int
+    shoreY int
     // the large pieces the game makes, see large.go
     largeMade [][]*ebiten.Image
     // the pictures the replacement folder adds to the ground, trees, rocks and houses, see terraindraw.go
@@ -3896,6 +3901,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         // vector.DrawFilledCircle(screen, float32(tx), float32(ty), 2, color.RGBA{R: 0xff, G: 0, B: 0, A: 0xff}, false)
     }
 
+    // the sand where a coast starts and ends, see shore.go
+    combat.drawShore(screen)
     // pieces of 2 by 2 tiles over the ground, see large.go
     combat.drawLargePieces(screen, animationIndex)
     // props that lie on the ground, see props.go

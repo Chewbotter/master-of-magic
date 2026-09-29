@@ -153,6 +153,9 @@ type BattleGround struct {
     // the coast: its side, the folder of its pictures, and the archives and first pictures of the
     // sand and the water of the game. see coast.go
     Coast CoastSide
+    Lines *coastLines
+    // what every cell is of the coast, nil without one
+    Shore []coastPart
     CoastSet string
     SandLbx string
     SandFirst int
@@ -222,7 +225,8 @@ func (ground *BattleGround) TreesAt(cgx int, cgy int) int {
     return ground.Trees[ground.index(cgx, cgy)]
 }
 
-// trees and rocks stand on grass without a road only, and not on a large piece
+// trees and rocks stand on grass without a road only, not on a large piece and not where the beach
+// starts
 func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if ground == nil {
         return true
@@ -230,7 +234,7 @@ func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if !ground.contains(cgx, cgy) {
         return false
     }
-    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy)
+    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy) && !ground.shoreAt(cgx, cgy)
 }
 
 func insideOriginalGrid(cgx int, cgy int) bool {

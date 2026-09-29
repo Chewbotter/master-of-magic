@@ -75,9 +75,10 @@ var testGrounds = []testGround{
 }
 
 // the sides of a coast with their names in the list, in the order of the list
-var testCoasts = []combat.CoastSide{combat.CoastNone, combat.CoastNorth, combat.CoastEast, combat.CoastSouth, combat.CoastWest}
+var testCoasts = []combat.CoastSide{combat.CoastNone, combat.CoastAny, combat.CoastNorth, combat.CoastEast, combat.CoastSouth, combat.CoastWest}
 var testCoastNames = map[combat.CoastSide]string{
     combat.CoastNone: "None",
+    combat.CoastAny: "Any, a side by chance",
     combat.CoastNorth: "North, upper right",
     combat.CoastEast: "East, lower right",
     combat.CoastSouth: "South, lower left",

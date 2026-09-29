@@ -313,7 +313,7 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
 
     // the sea beside the battle, on a side by chance
     if rand.N(RandomBattleCoastChance) == 0 {
-        ground.Coast = randomChoose(combat.CoastEast, combat.CoastNorth, combat.CoastWest, combat.CoastSouth)
+        ground.Coast = combat.CoastAny
     }
 
     if town || rand.N(RandomBattleRoadChance) == 0 {
@@ -349,6 +349,7 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
                 case word == "coast=north": ground.Coast = combat.CoastNorth
                 case word == "coast=west": ground.Coast = combat.CoastWest
                 case word == "coast=south": ground.Coast = combat.CoastSouth
+                case word == "coast=any": ground.Coast = combat.CoastAny
                 case strings.HasPrefix(word, "road="):
                     side, err := strconv.Atoi(strings.TrimPrefix(word, "road="))
                     if err == nil && side >= 0 && side < len(ground.Roads) {
