@@ -7,7 +7,7 @@ import (
 )
 
 // a coast on every side: the places of the armies are land, and every column along the coast has
-// land, one transition, 3 to 5 cells of beach, one transition and water, with the transitions of
+// land, one transition, 1 to 5 cells of beach, one transition and water, with the transitions of
 // columns side by side touching
 func TestCoast(test *testing.T) {
     for _, side := range []CoastSide{CoastEast, CoastNorth, CoastWest, CoastSouth} {
@@ -38,7 +38,7 @@ func TestCoast(test *testing.T) {
             coast := ground.Lines
             for along := range coast.Starts {
                 beach := coast.Waters[along] - coast.Starts[along] - 1
-                if coast.Starts[along] < 0 || coast.Starts[along] > coastWander || beach < coastBeachMin || beach > coastBeachMax {
+                if coast.Starts[along] < 0 || coast.Starts[along] > coastWander || beach < coastNarrowMin || beach > coastBeachMax {
                     test.Fatalf("coast %v: column %v starts at %v with %v cells of beach", side, along, coast.Starts[along], beach)
                 }
                 if along == 0 {

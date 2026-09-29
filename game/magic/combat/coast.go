@@ -89,6 +89,13 @@ const coastWanderChance = 3
 // how many cells of beach lie between the two transitions
 const coastBeachMin = 3
 const coastBeachMax = 5
+// the beach is narrow in places: a stretch starts at one column in this many, has this many cells
+// of beach and keeps them for this many columns. the beach gets there and back a cell a column
+const coastNarrowChance = 14
+const coastNarrowLengthMin = 3
+const coastNarrowLengthMax = 6
+const coastNarrowMin = 1
+const coastNarrowMax = 2
 // plateaus end this many cells before the beach, so their edge is not drawn along it
 const coastFlatBefore = 1
 
@@ -282,13 +289,32 @@ func (ground *BattleGround) makeCoast(zone ZoneType) {
 
     start := rand.N(coastWander + 1)
     width := coastBeachMin + rand.N(coastBeachMax - coastBeachMin + 1)
+    narrowLeft := 0
+    narrowWidth := 0
     for along := range coast.Starts {
-        if rand.N(coastWanderChance) == 0 {
-            if rand.N(2) == 0 {
-                start = min(max(start + rand.N(3) - 1, 0), coastWander)
-            } else {
-                width = min(max(width + rand.N(3) - 1, coastBeachMin), coastBeachMax)
-            }
+        if narrowLeft == 0 && rand.N(coastNarrowChance) == 0 {
+            narrowLeft = coastNarrowLengthMin + rand.N(coastNarrowLengthMax - coastNarrowLengthMin + 1)
+            narrowWidth = coastNarrowMin + rand.N(coastNarrowMax - coastNarrowMin + 1)
+        }
+
+        switch {
+            case narrowLeft > 0:
+                // a narrow stretch: the water comes nearer, the start stays. its length counts
+                // from where the beach is as narrow as it gets, so it is never a single notch
+                if width > narrowWidth {
+                    width -= 1
+                } else {
+                    narrowLeft -= 1
+                }
+            case width < coastBeachMin:
+                // back to the width of the beach after it
+                width += 1
+            case rand.N(coastWanderChance) == 0:
+                if rand.N(2) == 0 {
+                    start = min(max(start + rand.N(3) - 1, 0), coastWander)
+                } else {
+                    width = min(max(width + rand.N(3) - 1, coastBeachMin), coastBeachMax)
+                }
         }
         coast.Starts[along] = start
         coast.Waters[along] = start + width + 1
