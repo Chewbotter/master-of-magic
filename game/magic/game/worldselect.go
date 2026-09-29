@@ -61,3 +61,26 @@ func selectionBlinkOn(stack *playerlib.UnitStack, counter uint64, moving bool) b
 
     return (counter - selectionBlinkStart) / SelectionBlinkTicks % 2 == 0
 }
+
+// the space bar is a key for the next turn, besides the one of the key bindings (N). false, and with the
+// classic controls: space puts the camera on the selected stack, as upstream. Home does that with both
+const SpaceEndsTurn = true
+
+// called when space was pressed on the world map. true if the key was taken as the key for the next turn.
+// the turn ends as it does with the key of the key bindings: only when no stack is selected or the
+// selected stack has no moves left
+func (game *Game) spaceEndsTurn() bool {
+    if !SpaceEndsTurn || !display.ModernControls() {
+        return false
+    }
+
+    stack := game.Model.GetHumanPlayer().SelectedStack
+    if stack == nil || stack.OutOfMoves() {
+        select {
+            case game.Events <- &GameEventNextTurn{}:
+            default:
+        }
+    }
+
+    return true
+}
