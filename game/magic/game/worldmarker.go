@@ -6,6 +6,7 @@ package game
 
 import (
     "image"
+    "image/color"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
@@ -84,9 +85,10 @@ func (game *Game) pathReach(player *playerlib.Player, stack *playerlib.UnitStack
 // the flag in the color of a wizard. made from the picture of the boot only to have the palette of
 // the game and a place in the image cache, which is made anew with the pictures of the replacement folder
 func flagPicture(imageCache *util.ImageCache, banner data.BannerType) *ebiten.Image {
-    recolor := units.MakeUpdateUnitColorsFunc(banner)
     picture, err := imageCache.GetImageTransform("compix.lbx", 72, 0, "path-flag-" + banner.String(), func (boot *image.Paletted) image.Image {
-        return recolor(mod.MarkerFlag(boot.Palette))
+        flag := mod.MarkerFlag(boot.Palette)
+        flag.Palette = bannerShades(flag.Palette, banner)
+        return flag
     })
     if err != nil {
         return nil
@@ -104,4 +106,49 @@ func (game *Game) holdBeforeAutoMove(yield coroutine.YieldFunc) {
             return
         }
     }
+}
+
+// the colors of the palette that carry the color of a wizard, and how many of them there are
+const bannerColorFirst = 215
+const bannerColorCount = 4
+
+// the palette with the four greens of the wizard's color turned into shades of the color of the banner.
+// every shade keeps how light and how pale its green is, so four greens give four tones of any color.
+// figures are colored by units.MakeUpdateUnitColorsFunc, which gives tones that are nearly one for the
+// strong colors (red, blue, yellow)
+func bannerShades(palette color.Palette, banner data.BannerType) color.Palette {
+    out := util.ClonePalette(palette)
+    if len(out) < bannerColorFirst + bannerColorCount {
+        return out
+    }
+
+    // the color of the banner as the figures have it: their second shade is the color itself
+    probe := image.NewPaletted(image.Rect(0, 0, 1, 1), util.ClonePalette(palette))
+    colored, ok := units.MakeUpdateUnitColorsFunc(banner)(probe).(*image.Paletted)
+    if !ok {
+        return out
+    }
+    baseRed, baseGreen, baseBlue, _ := colored.Palette[bannerColorFirst + 1].RGBA()
+    base := [3]float64{float64(baseRed >> 8), float64(baseGreen >> 8), float64(baseBlue >> 8)}
+    strongest := max(base[0], base[1], base[2], 1)
+
+    for index := bannerColorFirst; index < bannerColorFirst + bannerColorCount; index++ {
+        red, green, blue, _ := palette[index].RGBA()
+        shade := [3]float64{float64(red >> 8), float64(green >> 8), float64(blue >> 8)}
+        light := max(shade[0], shade[1], shade[2])
+        if light <= 0 {
+            out[index] = color.RGBA{A: 0xff}
+            continue
+        }
+        pale := min(shade[0], shade[1], shade[2]) / light
+
+        var channels [3]uint8
+        for channel := range channels {
+            full := base[channel] / strongest
+            channels[channel] = uint8(min(255, light * (pale + (1 - pale) * full) + 0.5))
+        }
+        out[index] = color.RGBA{R: channels[0], G: channels[1], B: channels[2], A: 0xff}
+    }
+
+    return out
 }

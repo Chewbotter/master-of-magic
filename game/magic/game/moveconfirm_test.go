@@ -1,8 +1,10 @@
 package game
 
 import (
+    "image/color"
     "testing"
 
+    "github.com/kazzmir/master-of-magic/game/magic/data"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
 )
 
@@ -43,5 +45,28 @@ func TestStackWithoutUnitsHasNoPlace(test *testing.T) {
 
     if stackHasPlace(nil) {
         test.Errorf("no stack has no place")
+    }
+}
+
+// four greens of a picture give four tones of the color of any wizard
+func TestBannerShadesAreApart(test *testing.T) {
+    palette := make(color.Palette, 256)
+    for index := range palette {
+        palette[index] = color.RGBA{A: 0xff}
+    }
+    palette[215] = color.RGBA{R: 116, G: 228, B: 112, A: 0xff}
+    palette[216] = color.RGBA{R: 0, G: 188, B: 0, A: 0xff}
+    palette[217] = color.RGBA{R: 0, G: 164, B: 0, A: 0xff}
+    palette[218] = color.RGBA{R: 0, G: 124, B: 0, A: 0xff}
+
+    for _, banner := range []data.BannerType{data.BannerBlue, data.BannerGreen, data.BannerPurple, data.BannerRed, data.BannerYellow, data.BannerBrown} {
+        shades := bannerShades(palette, banner)
+        seen := make(map[color.Color]bool)
+        for index := 215; index <= 218; index++ {
+            seen[shades[index]] = true
+        }
+        if len(seen) != 4 {
+            test.Errorf("%v: the four shades are %v, %v, %v, %v", banner, shades[215], shades[216], shades[217], shades[218])
+        }
     }
 }
