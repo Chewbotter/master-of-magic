@@ -293,6 +293,8 @@ type CombatScreen struct {
     moveLayer *ebiten.Image
     // what is marked on the ground, for the corpses. see groundmarks.go
     marks groundMarks
+    // the cursor is gone after a click that starts a strike, see cursorhide.go
+    cursorHidden cursorHide
     // buttons of the combat bar with words of their own, see hudbuttons.go
     madeButtons map[string]*madeButton
     // ticks the battle has been shown after its end, see combatend.go
@@ -3271,6 +3273,11 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
     if units := combat.togetherUnits(); len(units) > 0 {
         combat.runTogether(yield, units)
         return CombatStateRunning
+    }
+
+    if leftClick && combat.MouseState == CombatMeleeAttackOk && inputmanager.LeftClick() {
+        // the cursor is out of the way of the fight, see cursorhide.go
+        combat.hideCursor()
     }
 
     combat.Model.Update(combat, combatActions, leftClick, selectTileX, selectTileY)

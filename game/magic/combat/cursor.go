@@ -120,6 +120,12 @@ func (combat *CombatScreen) setCursor(picture *ebiten.Image, hot image.Point) {
         }
 
         use.ColorScale = options.ColorScale
+        // gone after a click that starts a strike, see cursorhide.go
+        shows := combat.cursorShows()
+        if shows <= 0 {
+            return
+        }
+        use.ColorScale.ScaleAlpha(shows)
         scale.DrawScaled(screen, picture, &use)
     })
 }
