@@ -28,7 +28,8 @@ var castTabRight = image.Pt(268, 14)
 var researchTabLeft = image.Pt(15, 9)
 var researchTabRight = image.Pt(289, 9)
 
-// with the mouse over it a tab is this much lighter, 0 for not at all. it does not move and has no
+// with the mouse over it the FACE of a tab, the light paper inside of its dark folds (mod.TabFace),
+// is this much lighter, 0 for not at all. it does not move and has no
 // shadow: a tab lifted over a shadow of itself looked like a sticker on the page, not like a fold of
 // it (user, 2026-09-29: "brighten"). there is no look for a tab that is pressed.
 // KEEP IN STEP with mod.TabHoverLight, which the export makes the pictures with
@@ -102,11 +103,31 @@ func drawPageTab(screen *ebiten.Image, imageCache *util.ImageCache, name string,
             return
         }
 
-        light := float32(1 + pageTabLight)
-        options.ColorScale.Scale(light, light, light, 1)
+        // the face of the tab is lighter, its folds are not (user, 2026-09-29, from a paintover)
+        made := madeHoverTab(imageCache, name)
+        if made != nil {
+            tab = made
+        }
     }
 
     scale.DrawScaled(screen, tab, &options)
+}
+
+// the look of a tab under the mouse as the game makes it, from the picture of the tab
+func madeHoverTab(imageCache *util.ImageCache, name string) *ebiten.Image {
+    for _, tab := range mod.TabPictures {
+        if tab.Name == name {
+            picture, err := imageCache.GetImageTransform(tab.Archive, tab.Entry, 0, "tab-hover", func (plain *image.Paletted) image.Image {
+                return mod.MakeTabHover(plain)
+            })
+            if err != nil {
+                return nil
+            }
+            return picture
+        }
+    }
+
+    return nil
 }
 
 // draws the tab of a page on the picture of the page a leaf shows, so it turns with the leaf.
