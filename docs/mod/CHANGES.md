@@ -63,7 +63,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 ## Spellbook
 - Descriptions and the info window of a spell in smaller, sharp text.
 - The tip that says how many turns a spell takes to cast is solid and has a shadow of whole pixels, as all tips have now.
-- The page turn is made by the game from the pages as they are, forward and back. It starts and ends clear of the tabs in the corners, and a tab lifts a little under the mouse.
+- The page turn is made by the game from the pages as they are, forward and back. It starts clear of the tab in the corner, and a tab lifts a little under the mouse. A click on a tab while a page turns turns the next one at once.
 - In battle the realms that filter the spells are in a row over the book.
 
 ## For artists
@@ -71,7 +71,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The folder can ADD pictures: more ground tiles, trees, rocks, houses, large pieces, and props that lie or stand. Added ground tiles are sprinkled in among the game's own, which stay the most, and the same one does not show twice close together; of the others every picture is used once before any comes again.
 - Biomes, the coast and the river have folders of their own in the replacement folder. The river takes glints: small animated pictures that are scattered over its water. A biome only needs the pictures that differ from its landscape.
 - Figures can have more frames: a longer strike, dying and lying.
-- The flag of the paths on the world map can be repainted.
+- The flag of the paths on the world map and the tabs of the spellbooks under the mouse can be repainted.
 - Values of spell effects and blood in a text file that is read again while the game runs.
 - A tool that writes the game's pictures as png files, the surroundings of battles under names that say what each picture is for, and Aseprite files for figures and spells with an export back into the replacement folder.
 
