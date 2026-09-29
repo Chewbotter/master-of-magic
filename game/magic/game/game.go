@@ -3912,6 +3912,7 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
 
     // modern controls: a red X over a tile the selected stack can not go to, and no click there. see worldcursor.go
     overInvalid := invalidMoveCursor() && game.overInvalidMove(player, mouseX, mouseY)
+    // and a cursor as large as the map is drawn
     game.updateMoveCursor(overInvalid)
     clicked := leftClick
     if overInvalid {
@@ -3920,7 +3921,7 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
 
     if rightClick {
         // what a right click opens has the cursor of always
-        game.updateMoveCursor(false)
+        game.resetWorldCursor()
     }
 
     if leftClick {

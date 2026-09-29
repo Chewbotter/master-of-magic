@@ -27,6 +27,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The path of a stack shows boots as far as it gets in this turn, and flags in the color of your wizard on the tiles it will walk in later turns.
 - A stack that goes on along its path when a turn starts is shown for a moment before it walks.
 - Space ends the turn (modern controls), as N does. Home puts the camera on the selected stack.
+- Over the map the cursor is as large as the map is drawn, at every zoom level (modern controls).
 - The cursor is a red X over a tile the selected stack can not go to, and a click there does nothing (modern controls). No red flash of the screen.
 - Of the selected stack only the colored square blinks, the unit stays visible (modern controls). The blinking starts anew with every selection.
 - Text of the panel (gold, mana, income) with the original's black outlines.
