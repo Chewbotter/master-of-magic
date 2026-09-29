@@ -338,7 +338,7 @@ type CombatScreen struct {
     ExtraHighlightedUnit *ArmyUnit
     // Tab is held, see unitdone.go
     TabHeld bool
-    // the unit under the mouse and the tick of the original the mouse came over it, for the
+    // the unit under the mouse and the tick of the battle the mouse came over it, for the
     // pulse of its outline. see animation.go
     scannedUnit *ArmyUnit
     scannedStart uint64
@@ -1555,10 +1555,11 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
 
                 rightImage, _ := combat.ImageCache.GetImageTransform(combat.Model.SelectedUnit.Unit.GetCombatLbxFile(), combat.Model.SelectedUnit.Unit.GetCombatIndex(units.FacingRight), 0, player.GetWizard().Banner.String(), units.MakeUpdateUnitColorsFunc(player.GetWizard().Banner))
                 options.GeoM.Reset()
-                options.GeoM.Translate(85, 170)
+                options.GeoM.Translate(hudUnitFigureX, hudUnitFigureY)
                 scale.DrawScaled(screen, rightImage, &options)
 
-                combat.Fonts.Hud.UnitName.Print(screen, hudUnitNameX, hudUnitNameY, hudOptionsCenter(), combat.Model.SelectedUnit.Unit.GetName())
+                unitName := combat.Model.SelectedUnit.Unit.GetName()
+                combat.Fonts.Hud.UnitName.Print(screen, hudUnitNameMiddle(combat.Fonts.Hud.UnitName.Width(unitName)), hudUnitNameY, hudOptionsCenter(), unitName)
 
                 plainAttack, _ := combat.ImageCache.GetImage("compix.lbx", 29, 0)
                 options.GeoM.Reset()
@@ -2443,7 +2444,7 @@ func (combat *CombatScreen) updateHighlightedUnit() {
     // the pulse of its outline starts with the unit, see animation.go
     if combat.Model.HighlightedUnit != combat.scannedUnit {
         combat.scannedUnit = combat.Model.HighlightedUnit
-        combat.scannedStart = combat.originalTick()
+        combat.scannedStart = combat.Counter
     }
 }
 

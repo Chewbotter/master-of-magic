@@ -17,7 +17,6 @@ import (
     "github.com/kazzmir/master-of-magic/lib/lbx"
 
     "github.com/hajimehoshi/ebiten/v2"
-    "github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // the picture of the combat bar, which carries the palette colors 224 and up that the bar's text uses
@@ -69,26 +68,42 @@ const (
     hudManaY = 181
     hudRangeY = 190
 
-    hudUnitNameX = 112
+    // THE PANEL OF THE SELECTED UNIT is arranged anew (user, 2026-09-29): the figure further
+    // left, its name in the middle above it, the bar of its hits under the name as in the box of
+    // the unit under the mouse (unitinfo.go), and the column of numbers with more room between
+    // its rows. the original's places are behind each value
+
+    // the inside of the panel, which the name stays in
+    hudUnitPanelLeft = 83
+    hudUnitPanelRight = 140
+
+    // the picture of the figure, and its middle: of the name and of the bar too
+    hudUnitFigureX = 83 // 85. 81 first: the widest figures touched the rim of the panel
+    hudUnitFigureY = 170
+    hudUnitMiddleX = hudUnitFigureX + 14
+
+    hudUnitNameX = hudUnitMiddleX // 112
     hudUnitNameY = 167
     // the space between the words of a unit's name
     hudUnitNameSpaceWidth = 1
 
     hudStatValueX = 126
     hudStatIconX = 128
-    hudMeleeValueY = 174
-    hudMeleeIconY = 172
-    hudRangedValueY = 181
-    hudRangedIconY = 179
-    hudMovesValueY = 188
-    hudMovesIconY = 186
+    // the rows are 8 apart, the original's 7
+    hudMeleeValueY = 176 // 174
+    hudMeleeIconY = 174 // 172
+    hudRangedValueY = 184 // 181
+    hudRangedIconY = 182 // 179
+    hudMovesValueY = 192 // 188
+    hudMovesIconY = 190 // 186
 
-    // the track of the health bar is its own small picture
+    // the track of the health bar is its own small picture. not drawn any more: the bar has the
+    // look of the one of the unit under the mouse
     hudHealthTrackX = 117
     hudHealthTrackY = 194
     hudHealthTrackIndex = 18
-    hudHealthBarX = 118
-    hudHealthBarY = 195
+    hudHealthBarX = hudUnitMiddleX - hudHealthBarLength / 2 // 118
+    hudHealthBarY = 175 // 195
     // the bar is up to this many pixels long
     hudHealthBarLength = 20
     // bars at least this long are green, then yellow, shorter ones are red
@@ -170,24 +185,30 @@ func hudOptionsCenter() font.FontOptions {
     return font.FontOptions{Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}
 }
 
-// the health bar of the selected unit in the combat bar: a line on its track
-func (combat *CombatScreen) drawHudHealthBar(screen *ebiten.Image, unit *ArmyUnit) {
-    track, err := combat.ImageCache.GetImage("compix.lbx", hudHealthTrackIndex, 0)
-    if err == nil {
-        var options ebiten.DrawImageOptions
-        options.GeoM.Translate(hudHealthTrackX, hudHealthTrackY)
-        scale.DrawScaled(screen, track, &options)
-    }
+// where the name of the selected unit has its middle: over its figure, and no further left or
+// right than the panel has room for a name this wide
+func hudUnitNameMiddle(width int) int {
+    half := width / 2
+    middle := max(hudUnitNameX, hudUnitPanelLeft + half)
+    return min(middle, max(hudUnitPanelRight - (width - half) + 1, hudUnitPanelLeft + half))
+}
 
+// the health bar of the selected unit in the combat bar, under its name: as the one of the unit
+// under the mouse, see unitinfo.go. the original's is a line of one pixel on a track of its own
+// at the bottom of the panel
+func (combat *CombatScreen) drawHudHealthBar(screen *ebiten.Image, unit *ArmyUnit) {
     hud := combat.Fonts.Hud
     if hud == nil {
         return
     }
+
+    fillUnitInfo(screen, hudHealthBarX, hudHealthBarY, hudHealthBarLength, unitInfoBarHeight, unitInfoBlack(unitInfoTrackDark))
+    fillUnitInfo(screen, hudHealthBarX, hudHealthBarY + unitInfoBarHeight, hudHealthBarLength, 1, hud.Palette[unitInfoBarLine])
 
     length, barColor, ok := hud.healthBar(unit)
     if !ok {
         return
     }
 
-    vector.FillRect(screen, float32(scale.Scale(hudHealthBarX)), float32(scale.Scale(hudHealthBarY)), float32(scale.Scale(length)), float32(scale.Scale(1)), barColor, false)
+    fillUnitInfo(screen, hudHealthBarX, hudHealthBarY, length, unitInfoBarHeight, barColor)
 }

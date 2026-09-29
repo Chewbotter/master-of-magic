@@ -68,7 +68,8 @@ const scannedOutlineSteps = 8
 // only how fast its frames alternate
 const cellOutlineTicksPerFrame = 2
 const walkTicksPerFrame = 2
-const scannedOutlineTicksPerStep = 2
+// 2 first, as the other animations; user, 2026-09-29: "cycle a little faster"
+const scannedOutlineTicksPerStep = 1.5
 const attackTicksPerFrame = 2
 
 // the same counter for a figure whose frames are out of step, see figurevariety.go
@@ -141,12 +142,13 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase fl
 // battle before, so a unit came up at any point of it, bright at once or black for a while (user,
 // 2026-09-29: "not on a clock cycle so it comes up consistently on each unit")
 func (combat *CombatScreen) scannedOutlineStep() int {
-    tick := combat.originalTick()
-    since := uint64(0)
-    if tick > combat.scannedStart {
-        since = tick - combat.scannedStart
+    // in ticks of the game, so a step can last a part of a redraw of the original
+    since := 0.0
+    if combat.Counter > combat.scannedStart {
+        since = float64(combat.Counter - combat.scannedStart)
     }
-    position := int(since / scannedOutlineTicksPerStep % (scannedOutlineSteps * 2))
+    tps := float64(max(1, ebiten.TPS()))
+    position := int(since * OriginalTicksPerSecond / tps / scannedOutlineTicksPerStep) % (scannedOutlineSteps * 2)
     if position > scannedOutlineSteps {
         position = scannedOutlineSteps * 2 - position
     }

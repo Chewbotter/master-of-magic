@@ -38,7 +38,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 
 ## Battles
 - The battlefield, the places of figures, deployment, timing, trees, rocks, houses and walls follow the original.
-- The bar at the bottom matches the original: text, names, health bars.
+- The bar at the bottom matches the original in its text and names. The panel of the selected unit is arranged anew: the name over the figure, the health bar under the name, the numbers in a column with more room.
 - What is known of the unit under the mouse stands in the upper right corner of the window, also in widescreen, in the original's letters and pictures without a panel: the name, the health bar under it and one column of attack, defense, resistance and moves, all ending on one edge.
 - The outline of the unit under the mouse pulses to a soft gray for your units and to red for the enemy's, starting from black each time the mouse comes over a unit.
 - A unit with a spell on it, and an item with powers, has the original's outline everywhere: a rim of one pixel in the shades of the realm of the spell, which run around the figure.
