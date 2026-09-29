@@ -2,12 +2,13 @@ package display
 
 // The setting "Single strikes": how units strike in a battle.
 //
-// On, which it is unless it was turned off: an attack is one swing, the figures step back, wind
-// up, rush forward and stay where their blow lands. Off: the figures strike again and again, fast,
-// for as long as the attack lasts. See game/magic/combat/strikeswing.go and strikeclassic.go.
+// On: an attack is one swing, the figures step back, wind up, rush forward and stay where their
+// blow lands. Off, which it is unless it was turned on (user, 2026-09-28; it was on at first): the
+// figures strike again and again, fast, for as long as the attack lasts. See
+// game/magic/combat/strikeswing.go and strikeclassic.go.
 //
-// The file of the settings keeps whether it was turned OFF, so that a file that says nothing of
-// it, as every file from before the setting, means on.
+// A file of settings that says nothing of it means off. The first days of the setting the file
+// kept it as "repeated-strikes"; that is not read any more, so everybody starts with off.
 
 // true when an attack is one swing
 func SingleStrikes() bool {
@@ -15,10 +16,10 @@ func SingleStrikes() bool {
 }
 
 func (settings *Settings) SingleStrikes() bool {
-    return !settings.RepeatedStrikes
+    return settings.SingleStrikesOn
 }
 
 func (settings *Settings) SetSingleStrikes(single bool) {
-    settings.RepeatedStrikes = !single
+    settings.SingleStrikesOn = single
     settings.Save()
 }

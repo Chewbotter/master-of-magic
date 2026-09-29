@@ -33,18 +33,21 @@ const ResolutionLabelY = 40
 const ResolutionBoxY = 50
 const ResolutionBoxWidth = 84
 const ResolutionBoxHeight = 13
-// y of the fullscreen checkbox
-const FullscreenCheckboxY = 84
-// y of the widescreen checkbox
-const WidescreenCheckboxY = 106
+// the rows of the settings, see textsize.go. left column: upstream's four checkboxes on the rows
+// 0 to 3, then these
+const SingleStrikesRow = 4
+// right column
+const FullscreenRow = 0
+const WidescreenRow = 1
 // the control type row: caption, and a box that switches between Modern and Classic when clicked
-const ControlsRowY = 128
-const ControlsBoxX = DisplayColumnX + 45
-const ControlsBoxWidth = 50
-// the checkbox of how units strike in a battle: in the left column under upstream's checkboxes,
-// the right column is full down to "Aggressive AI" at 150
-const SingleStrikesCheckboxX = 30
-const SingleStrikesCheckboxY = 172
+const ControlsRow = 2
+// upstream's
+const AggressiveRow = 3
+const ControlsBoxX = DisplayColumnX + 32
+const ControlsBoxWidth = 40
+// the button of the keys, on the row of the controls and right of their box
+const KeysBoxX = ControlsBoxX + ControlsBoxWidth + 4
+const KeysBoxWidth = 26
 // opacity of the resolution box while fullscreen makes it meaningless
 const DisplayDisabledAlpha = 0.4
 // ticks for the fade, matches upstream's settings screen
@@ -86,6 +89,14 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
         }
         vector.FillRect(screen, float32(scale.Scale(rect.Min.X)), float32(scale.Scale(rect.Min.Y)), float32(scale.Scale(rect.Dx())), float32(scale.Scale(rect.Dy())), fill, false)
         util.DrawRect(screen, scale.ScaleRect(rect), color.NRGBA{R: 255, G: 200, B: 100, A: uint8(255 * alpha)})
+    }
+
+    // text at the middle of the height of a box or a row
+    printInBox := func(screen *ebiten.Image, x int, rect image.Rectangle, alpha float32, text string) {
+        var options ebiten.DrawImageOptions
+        options.ColorScale.ScaleAlpha(alpha)
+        middle := float64(rect.Min.Y + rect.Max.Y) / 2
+        fonts.OptionFont.PrintOptions(screen, float64(x), settingsTextMiddleY(fonts.OptionFont, middle), settingsText(&options), text)
     }
 
     printText := func(screen *ebiten.Image, x int, y int, alpha float32, text string) {
@@ -145,7 +156,7 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
                 },
                 Draw: func(element *uilib.UIElement, screen *ebiten.Image){
                     drawBox(screen, rect, getAlpha(), inside || windowScale == displaySettings.WindowScale)
-                    printText(screen, rect.Min.X + 6, rect.Min.Y + 3, getAlpha(), display.ResolutionName(windowScale))
+                    printInBox(screen, rect.Min.X + 6, rect, getAlpha(), display.ResolutionName(windowScale))
                 },
             })
             y += ResolutionBoxHeight
@@ -165,6 +176,9 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
             }
             openRollout()
         },
+        Inside: func(element *uilib.UIElement, x int, y int){
+            hoverTip("Resolution", element, x, y)
+        },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             alpha := getAlpha()
             text := display.ResolutionName(displaySettings.WindowScale)
@@ -173,18 +187,18 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
                 text = "Desktop"
             }
             drawBox(screen, resolutionRect, alpha, false)
-            printText(screen, resolutionRect.Min.X + 6, resolutionRect.Min.Y + 3, alpha, text)
+            printInBox(screen, resolutionRect.Min.X + 6, resolutionRect, alpha, text)
         },
     })
 
-    addCheckbox(group, fonts, &getAlpha, DisplayColumnX, FullscreenCheckboxY, "Fullscreen",
+    addCheckbox(group, fonts, &getAlpha, DisplayColumnX, SettingsRowY(FullscreenRow), "Fullscreen",
         func() bool { return displaySettings.Fullscreen },
         func(value bool) {
             displaySettings.SetFullscreen(value)
         },
     )
 
-    addCheckbox(group, fonts, &getAlpha, DisplayColumnX, WidescreenCheckboxY, "Widescreen",
+    addCheckbox(group, fonts, &getAlpha, DisplayColumnX, SettingsRowY(WidescreenRow), "Widescreen",
         func() bool { return displaySettings.Widescreen },
         func(value bool) {
             displaySettings.SetWidescreen(value)
@@ -195,11 +209,14 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
     group.AddElement(&uilib.UIElement{
         Layer: settingsLayer,
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
-            printText(screen, DisplayColumnX, ControlsRowY, getAlpha(), "Controls")
+            // at the height of a checkbox of the row
+            row := image.Rect(DisplayColumnX, SettingsRowY(ControlsRow), DisplayColumnX, SettingsRowY(ControlsRow) + SettingsCheckboxSize)
+            printInBox(screen, DisplayColumnX, row, getAlpha(), "Controls")
         },
     })
 
-    controlsRect := image.Rect(ControlsBoxX, ControlsRowY - 2, ControlsBoxX + ControlsBoxWidth, ControlsRowY - 2 + ResolutionBoxHeight)
+    controlsTop := settingsRowBoxTop(ControlsRow)
+    controlsRect := image.Rect(ControlsBoxX, controlsTop, ControlsBoxX + ControlsBoxWidth, controlsTop + SettingsRowBoxHeight)
     controlsInside := false
     group.AddElement(&uilib.UIElement{
         Layer: settingsLayer,
@@ -216,18 +233,19 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
         },
         Inside: func(element *uilib.UIElement, x int, y int){
             controlsInside = true
+            hoverTip("Controls", element, x, y)
         },
         NotInside: func(element *uilib.UIElement){
             controlsInside = false
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             drawBox(screen, controlsRect, getAlpha(), controlsInside)
-            printText(screen, controlsRect.Min.X + 6, controlsRect.Min.Y + 3, getAlpha(), displaySettings.Controls().Name())
+            printInBox(screen, controlsRect.Min.X + 5, controlsRect, getAlpha(), displaySettings.Controls().Name())
         },
     })
 
     // how units strike in a battle, see display/strikes.go
-    addCheckbox(group, fonts, &getAlpha, SingleStrikesCheckboxX, SingleStrikesCheckboxY, "Single strikes",
+    addCheckbox(group, fonts, &getAlpha, SettingsLeftColumnX, SettingsRowY(SingleStrikesRow), "Single strikes",
         func() bool { return displaySettings.SingleStrikes() },
         func(value bool) {
             displaySettings.SetSingleStrikes(value)

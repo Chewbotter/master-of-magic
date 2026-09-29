@@ -47,18 +47,18 @@ func TestClassicStrikeFrames(test *testing.T) {
     }
 }
 
-// the setting is on unless it was turned off
+// the setting is off unless it was turned on
 func TestSingleStrikesSetting(test *testing.T) {
-    if !display.MakeDefault().SingleStrikes() {
-        test.Errorf("single strikes are off in new settings")
+    if display.MakeDefault().SingleStrikes() {
+        test.Errorf("single strikes are on in new settings")
     }
 
     settings := display.Settings{}
-    if !settings.SingleStrikes() {
-        test.Errorf("single strikes are off in settings that do not say")
-    }
-    settings.RepeatedStrikes = true
     if settings.SingleStrikes() {
-        test.Errorf("single strikes are on after they were turned off")
+        test.Errorf("single strikes are on in settings that do not say")
+    }
+    settings.SingleStrikesOn = true
+    if !settings.SingleStrikes() {
+        test.Errorf("single strikes are off after they were turned on")
     }
 }

@@ -37,8 +37,8 @@ type Settings struct {
     ScaleIsDrawScale bool `json:"scale-is-draw-scale"`
     // classic or modern, see controls.go
     ControlType ControlType `json:"control-type"`
-    // the setting "Single strikes" was turned off, see strikes.go
-    RepeatedStrikes bool `json:"repeated-strikes"`
+    // the setting "Single strikes", see strikes.go
+    SingleStrikesOn bool `json:"single-strikes"`
 }
 
 // the preferences in use by the running game

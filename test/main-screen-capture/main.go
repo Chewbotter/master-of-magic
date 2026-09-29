@@ -5,6 +5,7 @@ package main
 
 import (
     "flag"
+    "fmt"
     "image/png"
     "log"
     "os"
@@ -81,12 +82,26 @@ func main(){
     var rollout bool
     flag.BoolVar(&options, "options", false, "show the options screen before capturing")
     flag.BoolVar(&rollout, "rollout", false, "open the resolution rollout on the options screen")
+    var mouseAt string
+    flag.StringVar(&mouseAt, "mouse-at", "", "x,y in art pixels: the interface sees the mouse there")
     var drawScale float64
     flag.Float64Var(&drawScale, "scale", 0, "screen pixels per art pixel, instead of 3")
     flag.Parse()
 
     if drawScale > 0 {
         scale.UpdateScale(drawScale)
+    }
+
+    if mouseAt != "" {
+        var x, y int
+        _, err := fmt.Sscanf(mouseAt, "%d,%d", &x, &y)
+        if err != nil {
+            log.Printf("Error: -mouse-at wants x,y: %v", err)
+            return
+        }
+        display.FixedCursor = true
+        display.FixedCursorX = scale.Scale(x)
+        display.FixedCursorY = scale.Scale(y)
     }
 
     cache := lbx.CacheFromPath(dataPath)
