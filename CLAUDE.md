@@ -34,6 +34,8 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
 - Two sessions work on this game at the same time. Each has a LANE: its own checkout (`_work/a`, `_work/b`), branch (`work/a`, `work/b`) and builds (`_build/a`, `_build/b`). `mastermagic_game/` is the PLAY lane, branch master, which NO session edits: it only moves forward by `bash merge.sh <lane>`. Paths in this file that start with `game/magic/` are inside the lane's checkout.
 - In this file every `bash build.sh`, `bash test.sh` and every run of `magic.exe` means the lane's: `bash build.sh <lane>`, `bash test.sh <lane>`, `bash dev.sh <lane> <flags>`.
 
+- CHANGELIST (user 2026-09-29: "an ongoing changelist that can double as a sharable list of feature changes"): `docs/mod/CHANGES.md`, for PLAYERS, one line per feature as it is now, by area. Every change a player can see or use gets its line in the SAME commit: a new line at the end of its section, a changed feature has its line rewritten, a feature taken out loses its line. No constants, file names or history of tries there; those stay here. The file merges by union (`.gitattributes`), so lines both lanes add are both kept.
+
 ## Verify commands (Bash), all from `D:/Work/MasterMagic_open`
 - Build: `bash build.sh <lane>`. Tests, once per change: `bash test.sh <lane>` (expect every line `ok`, no `FAIL`).
 - EVERY DELIVERY ENDS WITH `bash merge.sh <lane>`: it merges master into the lane, tests, moves master forward and builds the play lane, which is what the user starts with `RUN.bat`. Until then he only sees the change with `RUN-<lane>.bat`. (2026-09-28: he judged the plateaus on a stale magic.exe, and a magic.exe held the unfinished files of the other session.)
