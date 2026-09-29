@@ -40,8 +40,10 @@ const (
     // the columns of the face the colors are taken from, left of the word
     madeButtonFaceLeft = 1
     madeButtonFaceColumns = 3
-    // the word has its middle in this column and starts in this row
-    madeButtonMiddle = 13
+    // the word has its middle in this column and starts in this row. 13 first, the middle of the
+    // picture: the words stood a pixel right of the middle of the face, which has its wide rim
+    // on the right (user, 2026-09-29: "could be more centered horizontally")
+    madeButtonMiddle = 12
     madeButtonTextY = 1
 )
 
