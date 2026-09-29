@@ -12,18 +12,43 @@ import (
     "image"
     "math"
 
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
+    uilib "github.com/kazzmir/master-of-magic/game/magic/ui"
 
     "github.com/hajimehoshi/ebiten/v2"
 )
 
 // with the mouse over it a tab is lifted by this many art pixels, and leaves a shadow this dark,
-// 0 to 1, where it lay. there is no look for a tab that is pressed
-const pageTabLift = 1
-const pageTabShadow = 0.35
+// 0 to 1, where it lay. there is no look for a tab that is pressed.
+// KEEP IN STEP with mod.TabHoverLift and mod.TabHoverShadow, which the export makes the pictures with
+const pageTabLift = mod.TabHoverLift
+const pageTabShadow = mod.TabHoverShadow
 
-// draws a tab that turns the pages at a place in art pixels
-func drawPageTab(screen *ebiten.Image, tab *ebiten.Image, place image.Point, alpha float32, over bool) {
+// the pictures of the tabs under the mouse of the replacement folder, by name. nil for none
+var hoverTabs = make(map[string]*ebiten.Image)
+
+// the pictures are read again when they are asked for next
+func forgetHoverTabs() {
+    clear(hoverTabs)
+}
+
+func hoverTab(name string) *ebiten.Image {
+    picture, ok := hoverTabs[name]
+    if ok {
+        return picture
+    }
+
+    read := mod.ReadMarker(mod.TabHoverName(name))
+    if read != nil {
+        picture = ebiten.NewImageFromImage(read)
+    }
+    hoverTabs[name] = picture
+    return picture
+}
+
+// draws a tab that turns the pages at a place in art pixels. name is the one of mod.Tab...
+func drawPageTab(screen *ebiten.Image, tab *ebiten.Image, name string, place image.Point, alpha float32, over bool) {
     if tab == nil {
         return
     }
@@ -33,6 +58,15 @@ func drawPageTab(screen *ebiten.Image, tab *ebiten.Image, place image.Point, alp
     options.GeoM.Translate(float64(place.X), float64(place.Y))
 
     if over {
+        painted := hoverTab(name)
+        if painted != nil {
+            // its lower left corner on the lower left corner of the tab, so a picture that is
+            // higher reaches up
+            options.GeoM.Translate(0, float64(tab.Bounds().Dy() - painted.Bounds().Dy()))
+            scale.DrawScaled(screen, painted, &options)
+            return
+        }
+
         shadow := options
         shadow.ColorScale.Scale(0, 0, 0, pageTabShadow)
         scale.DrawScaled(screen, tab, &shadow)
@@ -43,10 +77,42 @@ func drawPageTab(screen *ebiten.Image, tab *ebiten.Image, place image.Point, alp
     scale.DrawScaled(screen, tab, &options)
 }
 
+// the turn of a leaf that runs. a new turn puts the leaf of the one before down at once, so
+// pages can be turned as fast as the tab is clicked (user, 2026-09-29)
+type runningTurn struct {
+    finish func()
+    number int
+}
+
+// ends the turn that runs, if one does
+func (turn *runningTurn) end() {
+    if turn.finish != nil {
+        finish := turn.finish
+        turn.finish = nil
+        finish()
+    }
+}
+
+// finish is called when the ticks are over, or before that by end
+func (turn *runningTurn) start(ui *uilib.UI, ticks uint64, finish func()) {
+    turn.end()
+    turn.number += 1
+    number := turn.number
+    turn.finish = finish
+
+    ui.AddDelay(ticks, func(){
+        if turn.number == number {
+            turn.end()
+        }
+    })
+}
+
 // false: the turn starts and ends flat on the page, as before
 const PageTurnClearsTabs = true
-// false: only the start of the turn is clear of its tab, the leaf comes down under the other one
-const PageTurnClearsLandingTab = true
+// true: the leaf is put down at once where it reaches the tab of the other side. TRIED AND TAKEN BACK
+// (user, 2026-09-29: "the page landing now has a pop"): the leaf that comes down covers that tab slowly,
+// which hides what happens under it. only the lift was to be faster
+const PageTurnClearsLandingTab = false
 
 // columns from the outer rim of a page that a tab covers, with one to spare. the tabs are 14
 // wide and end 1 before the rim in the book for casting (spells.lbx 1, 2), 16 wide and end 1 or

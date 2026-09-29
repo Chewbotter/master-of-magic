@@ -14,6 +14,7 @@ import (
     "github.com/kazzmir/master-of-magic/lib/coroutine"
     "github.com/kazzmir/master-of-magic/lib/set"
     "github.com/kazzmir/master-of-magic/game/magic/data"
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/util"
     uilib "github.com/kazzmir/master-of-magic/game/magic/ui"
@@ -915,7 +916,11 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
         },
     })
 
+    // a click while a leaf turns puts that leaf down and turns the next, see pagetab.go
+    var turns runningTurn
+
     doLeftPageTurn := func(){
+        turns.end()
         if !flipping && hasPreviousPage(showLeftPage){
             bookFlipIndex = ui.Counter
             bookFlipReverse = true
@@ -925,7 +930,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
             showLeftPage -= 2
             flipping = true
 
-            ui.AddDelay(castTurnTicks(bookFlipSpeed * uint64(len(bookFlip)) - 1), func(){
+            turns.start(ui, castTurnTicks(bookFlipSpeed * uint64(len(bookFlip)) - 1), func(){
                 showRightPage -= 2
                 flipping = false
             })
@@ -933,6 +938,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
     }
 
     doRightPageTurn := func(){
+        turns.end()
         if !flipping && hasNextPage(showRightPage){
             bookFlipIndex = ui.Counter
             bookFlipReverse = false
@@ -943,7 +949,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
 
             flipping = true
 
-            ui.AddDelay(castTurnTicks(bookFlipSpeed * uint64(len(bookFlip)) - 1), func(){
+            turns.start(ui, castTurnTicks(bookFlipSpeed * uint64(len(bookFlip)) - 1), func(){
                 showLeftPage += 2
                 flipping = false
             })
@@ -953,6 +959,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
     // the mouse is over a tab, see pagetab.go
     leftTurnOver := false
     rightTurnOver := false
+    forgetHoverTabs()
 
     // left page turn
     leftTurn, _ := imageCache.GetImage("scroll.lbx", 7, 0)
@@ -970,7 +977,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             if hasPreviousPage(showLeftPage){
-                drawPageTab(screen, leftTurn, leftRect.Min, getAlpha(), leftTurnOver && !flipping)
+                drawPageTab(screen, leftTurn, mod.TabResearchLeft, leftRect.Min, getAlpha(), leftTurnOver)
             }
         },
     })
@@ -991,7 +998,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             if hasNextPage(showRightPage){
-                drawPageTab(screen, rightTurn, rightRect.Min, getAlpha(), rightTurnOver && !flipping)
+                drawPageTab(screen, rightTurn, mod.TabResearchRight, rightRect.Min, getAlpha(), rightTurnOver)
             }
         },
     })
@@ -2074,6 +2081,10 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
     // the mouse is over a tab, see pagetab.go
     pageTurnRightOver := false
     pageTurnLeftOver := false
+    // a click while a leaf turns puts that leaf down and turns the next
+    var castTurns runningTurn
+    // the pictures of the replacement folder are read when the book opens
+    forgetHoverTabs()
 
     pageTurnRight, _ := imageCache.GetImage("spells.lbx", 2, 0)
     pageTurnRightRect := image.Rect(0, 0, pageTurnRight.Bounds().Dx(), pageTurnRight.Bounds().Dy()).Add(image.Pt(268, 14))
@@ -2088,6 +2099,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             pageTurnRightOver = false
         },
         LeftClick: func(this *uilib.UIElement){
+            castTurns.end()
             if *currentPage + 2 < len(spellPages) && !flipping {
                 flipping = true
                 bookFlipReverse = false
@@ -2098,7 +2110,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 pageSideRight = *currentPage + 2
                 showPageLeft = *currentPage
 
-                ui.AddDelay(castTurnTicks(bookFlipSpeed * uint64(len(bookFlip))), func (){
+                castTurns.start(ui, castTurnTicks(bookFlipSpeed * uint64(len(bookFlip))), func (){
                     flipping = false
                     *currentPage += 2
                     setupSpells(*currentPage)
@@ -2107,7 +2119,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             if *currentPage + 2 < len(spellPages) {
-                drawPageTab(screen, pageTurnRight, pageTurnRightRect.Min, getAlpha(), pageTurnRightOver && !flipping)
+                drawPageTab(screen, pageTurnRight, mod.TabCastRight, pageTurnRightRect.Min, getAlpha(), pageTurnRightOver)
             }
         },
     })
@@ -2125,6 +2137,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             pageTurnLeftOver = false
         },
         LeftClick: func(this *uilib.UIElement){
+            castTurns.end()
             if *currentPage >= 2 && !flipping {
                 flipping = true
                 bookFlipReverse = true
@@ -2135,7 +2148,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
                 pageSideLeft = *currentPage - 1
                 pageSideRight = *currentPage
 
-                ui.AddDelay(castTurnTicks(bookFlipSpeed * uint64(len(bookFlip) - 1)), func (){
+                castTurns.start(ui, castTurnTicks(bookFlipSpeed * uint64(len(bookFlip) - 1)), func (){
                     flipping = false
                     *currentPage -= 2
                     setupSpells(*currentPage)
@@ -2144,7 +2157,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             if *currentPage > 0 {
-                drawPageTab(screen, pageTurnLeft, pageTurnLeftRect.Min, getAlpha(), pageTurnLeftOver && !flipping)
+                drawPageTab(screen, pageTurnLeft, mod.TabCastLeft, pageTurnLeftRect.Min, getAlpha(), pageTurnLeftOver)
             }
 
         },
