@@ -74,9 +74,10 @@ func exportRiver(outPath string) int {
 
 const farmlandNote = "Farmland\r\n\r\n" +
     "The fields around a town: a feature, not a kind of a landscape. Not in the original game.\r\n" +
-    "A battle one or two tiles from a town, on land whose landscape is Grass, is fought on its\r\n" +
-    "fields: grass with square plots of crops, one row of grass between them, and houses of the\r\n" +
-    "race of the town here and there, more of them right beside the town.\r\n\r\n" +
+    "A battle one or two tiles from a town has houses of the race of the town here and there, more\r\n" +
+    "of them right beside the town. On plain grass land it is fought on the fields of the town:\r\n" +
+    "large square plots of crops with a row of dirt or grass between them. Other landscapes and\r\n" +
+    "biomes have no crops yet.\r\n\r\n" +
     "crop 1 to 4    the crops. A plot shows one of them in all of its tiles.\r\n\r\n" +
     "The game has no pictures of crops. The ones here are the tiles of grass (Grass, grass 1 to 4)\r\n" +
     "in the colors of ripe grain, as the game makes them until there are painted ones.\r\n" +

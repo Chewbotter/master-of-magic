@@ -7,41 +7,65 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/mod"
 )
 
-// where a battle is fought on the fields of a town, and that the fields take the place of the biome
+// where a battle has farmland, and where the farmland has crops
 func TestFarmGround(test *testing.T) {
     zone := ZoneType{}
     zone.Ground.SetBiome(mod.BiomeForest)
     zone.Ground.Farmland = FarmlandNear
 
+    // the biome stays, and has no crops
     ground := farmGround(CombatLandscapeGrass, zone)
-    if ground.Farmland != FarmlandNear || ground.Biome != "" || ground.Forest {
-        test.Fatalf("fields in a forest: %+v", ground)
+    if ground.Farmland != FarmlandNear || ground.Biome != mod.BiomeForest || !ground.Forest {
+        test.Fatalf("farmland in a forest: %+v", ground)
+    }
+    if farmCrops(CombatLandscapeGrass, zone) {
+        test.Fatalf("crops in a forest")
     }
 
+    plain := ZoneType{}
+    plain.Ground.Farmland = FarmlandFar
+    if !farmCrops(CombatLandscapeGrass, plain) {
+        test.Fatalf("no crops on grass land")
+    }
     for _, landscape := range []CombatLandscape{CombatLandscapeDesert, CombatLandscapeMountain, CombatLandscapeTundra} {
-        plain := ZoneType{}
-        plain.Ground.Farmland = FarmlandNear
-        if ground := farmGround(landscape, plain); ground.Farmland != FarmlandNone {
-            test.Fatalf("fields on landscape %v", landscape)
+        if ground := farmGround(landscape, plain); ground.Farmland != FarmlandFar || farmCrops(landscape, plain) {
+            test.Fatalf("landscape %v: farmland %v, crops %v", landscape, ground.Farmland, farmCrops(landscape, plain))
+        }
+        made := makeBattleGround(BattlefieldWidth, BattlefieldHeight, landscape, 0, plain)
+        if made.Farmland != FarmlandFar || made.Crops != nil || len(makeFarmHouses(BattlefieldWidth, BattlefieldHeight, plain, made)) == 0 {
+            test.Fatalf("landscape %v: the ground has farmland %v, crops %v", landscape, made.Farmland, made.Crops != nil)
         }
     }
-
-    volcano := zone
-    volcano.Ground.SetBiome(mod.BiomeVolcano)
-    if ground := farmGround(CombatLandscapeGrass, volcano); ground.Farmland != FarmlandNone || ground.Biome != mod.BiomeVolcano {
-        test.Fatalf("fields on a volcano: %+v", ground)
+    if ground := farmGround(CombatLandscapeWater, plain); ground.Farmland != FarmlandNone {
+        test.Fatalf("farmland on the sea")
     }
 
     town := zone
     town.City = &citylib.City{}
     if ground := farmGround(CombatLandscapeGrass, town); ground.Farmland != FarmlandNone || ground.Biome != mod.BiomeForest {
-        test.Fatalf("fields in a town: %+v", ground)
+        test.Fatalf("farmland in a town: %+v", ground)
     }
 
     lair := zone
     lair.Encounter = ZoneLair
     if ground := farmGround(CombatLandscapeGrass, lair); ground.Farmland != FarmlandNone {
-        test.Fatalf("fields at a lair: %+v", ground)
+        test.Fatalf("farmland at a lair: %+v", ground)
+    }
+
+    // most of the ground of plain grass land is crops, and of the rest more is dirt than grass
+    crops, dirt, grass := 0, 0, 0
+    for range 10 {
+        made := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, plain)
+        for _, group := range made.Group {
+            switch group {
+                case TerrainCrop: crops += 1
+                case TerrainDirt: dirt += 1
+                case TerrainGrass: grass += 1
+            }
+        }
+    }
+    if crops < dirt + grass || dirt <= grass {
+        test.Fatalf("%v cells of crops, %v of dirt, %v of grass", crops, dirt, grass)
     }
 }
 
@@ -111,7 +135,7 @@ func TestFarmland(test *testing.T) {
                         }
                         around := x < left || x > right || y < top || y > bottom
                         group := ground.GroupAt(x, y)
-                        if around && group != TerrainGrass && group != TerrainSand && group != TerrainWater {
+                        if around && group != TerrainGrass && group != TerrainDirt && group != TerrainSand && group != TerrainWater {
                             test.Fatalf("%v beside the plot at %v, %v", group, x, y)
                         }
                         if !around && ground.Picture[ground.index(x, y)] != picture {
@@ -154,7 +178,7 @@ func TestFarmHouses(test *testing.T) {
                         continue
                     }
                     built += 1
-                    if ground.GroupAt(cgx, cgy) != TerrainGrass || armyStarts(cgx, cgy) || ground.sceneryAllowed(cgx, cgy) {
+                    if ground.GroupAt(cgx, cgy) == TerrainCrop || armyStarts(cgx, cgy) || ground.sceneryAllowed(cgx, cgy) {
                         test.Fatalf("a house on %v at %v, %v, where an army starts: %v", ground.GroupAt(cgx, cgy), cgx, cgy, armyStarts(cgx, cgy))
                     }
                 }

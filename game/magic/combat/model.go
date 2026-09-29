@@ -2394,7 +2394,7 @@ type CombatModel struct {
 }
 
 func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingArmy *Army, landscape CombatLandscape, plane data.Plane, zone ZoneType, influence data.MagicType, overworldX int, overworldY int, events chan CombatEvent) *CombatModel {
-    // on the fields of a town the biome gives way to them, see farmland.go
+    // what has no farmland, see farmland.go
     zone.Ground = farmGround(landscape, zone)
     // the pictures of the battle are the ones of its biome, see biomes.go
     mod.SetBiome(zone.Ground.Biome)

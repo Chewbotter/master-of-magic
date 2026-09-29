@@ -339,7 +339,7 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     // the fields of a town, see farmland.go
     ground.FarmSet = mod.BiomeFolder(farmSet, ground.BaseSet)
     ground.Extras[groundCropFirst] = min(mod.CountExtras(ground.FarmSet, farmCropName, groundCropCount), groundExtraStep)
-    ground.makeFarmland(zone)
+    ground.makeFarmland(landscape, zone)
 
     ground.choosePictures()
     // pieces of 2 by 2 tiles, see large.go

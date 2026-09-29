@@ -116,10 +116,9 @@ func (game *Game) combatGround(x int, y int, plane data.Plane) combat.ZoneGround
 
     out.Coast = game.coastSide(mapObject, x, y)
 
-    // the fields of a town, on land that can be farmed. the battle decides if it shows them
-    switch mapObject.GetTile(x, y).Tile.TerrainType() {
-        case terrain.Grass, terrain.Forest, terrain.Hill, terrain.Swamp, terrain.River:
-            out.Farmland, out.FarmRace = game.nearTown(mapObject, x, y, plane)
+    // the fields of a town. the battle decides what it shows of them
+    if mapObject.GetTile(x, y).Tile.IsLand() {
+        out.Farmland, out.FarmRace = game.nearTown(mapObject, x, y, plane)
     }
 
     // a town counts as a road, as it does for the roads of the world map

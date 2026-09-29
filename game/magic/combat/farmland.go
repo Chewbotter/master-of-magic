@@ -9,11 +9,15 @@ package combat
 // doesn't have walls. The terrain should be a grassland base, with square plots of repeating crop
 // land tiles. 1 row of grass tiles separates the plots so they look like farmed fields."
 //
-// WHERE. On land whose landscape is grass, with no town, lair, node or tower on the tile of the
-// battle itself. The ground is plain grass land then, whatever biome the tile has: fields have
-// taken the place of the forest. Desert, mountains and tundra beside a town stay what they are.
+// WHERE. On land, with no town, lair, node or tower on the tile of the battle itself. The ground
+// keeps its landscape and its biome. PLOTS OF CROPS ARE ON PLAIN GRASS LAND ONLY (user,
+// 2026-09-29: "crop fields only appear in valid tiles that are also grass. We'll add different
+// kinds of crops later for different biome types"): a forest, hills, a swamp, desert, mountains
+// and tundra beside a town have its houses and no crops, until they have crops of their own.
 //
-// THE FIELDS. The ground is laid out in squares of one size for the battle, farmPlotMin to
+// THE FIELDS. They take most of the ground (user: "cover more area so it looks less like a
+// caricature of a crop field"), and what they leave is more dirt than grass (user: "weight dirt
+// tiles more than grass in this sub-biome"). The ground is laid out in squares of one size for the battle, farmPlotMin to
 // farmPlotMax cells, with one row of grass between them. A square is a plot of crops or is left
 // as grass, by chance. A plot shows one picture of crops in all of its cells, so it looks
 // ploughed one way. No plot lies on a road, a coast or a river: a square they run through has a
@@ -29,6 +33,7 @@ package combat
 
 import (
     "image"
+    "math"
     "math/rand/v2"
 
     "github.com/kazzmir/master-of-magic/game/magic/mod"
@@ -47,12 +52,16 @@ const (
 )
 
 // the cells of a side of a plot
-const farmPlotMin = 3
-const farmPlotMax = 5
+const farmPlotMin = 5
+const farmPlotMax = 8
 // a plot beside a road, a coast or a river can be as small as this
 const farmPlotSmall = 2
 // of the squares this share is plots
-const farmPlotShare = 0.6
+const farmPlotShare = 0.85
+// of the ground between and beside the plots about this share is dirt, in patches about this
+// many cells across
+const farmDirtShare = 0.65
+const farmDirtPatch = 4.0
 
 // houses on the original's screen, beside the town and two tiles from it. beyond the screen as
 // many for its size
@@ -67,33 +76,48 @@ const groundCropCount = 4
 const farmSet = mod.FeatureFarmland
 const farmCropName = "crop"
 
-// the ground of a battle as it is fought: on farmland the biome of the tile gives way to the
-// fields, and what is no farmland has none
+// the ground of a battle as it is fought: a town, a lair, a node, a tower and the sea have no
+// farmland
 func farmGround(landscape CombatLandscape, zone ZoneType) ZoneGround {
     ground := zone.Ground
-    if ground.Farmland == FarmlandNone {
-        return ground
-    }
-
-    if !Farmland || zone.City != nil || zone.Encounter != ZoneNone || BiomeLandscape(ground.Biome, landscape) != CombatLandscapeGrass {
+    if !Farmland || zone.City != nil || zone.Encounter != ZoneNone || landscape == CombatLandscapeWater {
         ground.Farmland = FarmlandNone
-        return ground
     }
-
-    ground.SetBiome("")
     return ground
 }
 
+// true if the farmland of a ground has plots of crops: on plain grass land
+func farmCrops(landscape CombatLandscape, zone ZoneType) bool {
+    return zone.Ground.Farmland != FarmlandNone && landscape == CombatLandscapeGrass && zone.Ground.Biome == ""
+}
+
+// a number for a place that changes slowly from place to place, -1 to 1
+func farmNoise(cgx int, cgy int, seed uint32) float64 {
+    x := float64(cgx) / farmDirtPatch
+    y := float64(cgy) / farmDirtPatch
+    beforeX := int(math.Floor(x))
+    beforeY := int(math.Floor(y))
+    partX := slopeSmooth(x - float64(beforeX))
+    partY := slopeSmooth(y - float64(beforeY))
+
+    top := coastNoise(beforeX, beforeY, seed) * (1 - partX) + coastNoise(beforeX + 1, beforeY, seed) * partX
+    bottom := coastNoise(beforeX, beforeY + 1, seed) * (1 - partX) + coastNoise(beforeX + 1, beforeY + 1, seed) * partX
+    return top * (1 - partY) + bottom * partY
+}
+
 // lays the fields over the ground, after the coast and the river
-func (ground *BattleGround) makeFarmland(zone ZoneType) {
+func (ground *BattleGround) makeFarmland(landscape CombatLandscape, zone ZoneType) {
     if zone.Ground.Farmland == FarmlandNone {
         return
     }
     ground.Farmland = zone.Ground.Farmland
 
     cells := ground.Width * ground.Height
-    ground.Crops = make([]int, cells)
     ground.Built = make([]bool, cells)
+    if !farmCrops(landscape, zone) {
+        return
+    }
+    ground.Crops = make([]int, cells)
 
     // fields are flat
     for index := range ground.Heights {
@@ -143,11 +167,25 @@ func (ground *BattleGround) makeFarmland(zone ZoneType) {
         }
     }
 
-    // the grass beside a plot is grass: dirt and mounds would end at the plot without an edge
+    // what the plots leave is more dirt than grass, in patches
+    seed := rand.Uint32()
+    // the share of the numbers of the noise that lie below a value is not the value: most lie
+    // near the middle
+    level := (farmDirtShare - 0.5) * 1.2
+    for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
+        for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
+            if ground.GroupAt(cgx, cgy) == TerrainGrass && free(cgx, cgy) && farmNoise(cgx, cgy, seed) < level {
+                ground.setGroup(cgx, cgy, TerrainDirt)
+            }
+        }
+    }
+    ground.mergeDirt()
+
+    // mounds would end at a plot without an edge
     for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
         for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
             group := ground.GroupAt(cgx, cgy)
-            if group != TerrainDirt && group != TerrainRough {
+            if group != TerrainRough {
                 continue
             }
             for dy := -1; dy <= 1; dy++ {
@@ -219,6 +257,14 @@ func armyStarts(cgx int, cgy int) bool {
     return cgx >= firstX && cgx <= deployDefenderRows[0] || cgx >= deployAttackerRows[0] && cgx <= lastX
 }
 
+// houses stand where trees can, and on the dirt between the fields
+func (ground *BattleGround) houseAllowed(cgx int, cgy int) bool {
+    if ground.sceneryAllowed(cgx, cgy) {
+        return true
+    }
+    return ground.contains(cgx, cgy) && ground.GroupAt(cgx, cgy) == TerrainDirt && ground.Crops != nil && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy)
+}
+
 // houses of one area, one to a cell, on the grass
 func scatterFarmHouses(count int, pool sceneryPool, zone ZoneType, area sceneryArea, ground *BattleGround) []SceneryPiece {
     var out []SceneryPiece
@@ -228,7 +274,7 @@ func scatterFarmHouses(count int, pool sceneryPool, zone ZoneType, area sceneryA
         cgx, cgy := area.randomCell()
         screenX, screenY := cellScreen(cgx, cgy, 0, 0)
 
-        if armyStarts(cgx, cgy) || ground.builtAt(cgx, cgy) || !ground.sceneryAllowed(cgx, cgy) || !area.Accept(screenX, screenY) {
+        if armyStarts(cgx, cgy) || ground.builtAt(cgx, cgy) || !ground.houseAllowed(cgx, cgy) || !area.Accept(screenX, screenY) {
             tries += 1
             continue
         }

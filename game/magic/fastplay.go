@@ -325,8 +325,8 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
         ground.River = combat.RiverAny
     }
 
-    // the fields of a town, beside it or two tiles away. the battle shows them on grass land
-    // that has neither a town nor a lair, see combat/farmland.go
+    // the fields of a town, beside it or two tiles away. crops are on plain grass land, a town
+    // and a lair have none of it, see combat/farmland.go
     if rand.N(RandomBattleFarmlandChance) == 0 {
         ground.Farmland = randomChoose(combat.FarmlandNear, combat.FarmlandFar)
         ground.FarmRace = randomChoose(randomBattleRaces...)
