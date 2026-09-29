@@ -50,6 +50,9 @@ var DebugUnlimitedMoves = false
 // a rival wizard that comes into view is known at once, without the screen of its greeting, and a walk goes on
 var DebugNoGreetings = false
 
+// units of the human player are not disbanded when gold, food or mana run out
+var DebugNoDisband = false
+
 func debugMoveCost(player *playerlib.Player, cost fraction.Fraction) fraction.Fraction {
     if DebugUnlimitedMoves && player != nil && player.IsHuman() {
         return fraction.Zero()

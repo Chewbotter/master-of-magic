@@ -377,6 +377,12 @@ func initializePlayer(game *gamelib.Game, wizard setup.WizardCustom, isHuman boo
         player.LiftFog(cityX, cityY, 3, introCity.Plane)
     }
 
+    if isHuman && debugWorldMap {
+        // the World Map entry of the debug list, see debugworld.go. its units are more than the city pays for
+        gamelib.DebugNoDisband = true
+        addDebugWorldUnits(game, player, cityX, cityY, startingPlane)
+    }
+
     if isHuman {
         // a frame capture wants the plain world map, not the city naming prompt
         if capture.Path == "" || capture.CityPrompt {
@@ -1147,7 +1153,10 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
                 yield()
                 gamelib.DebugUnlimitedMoves = true
                 gamelib.DebugNoGreetings = true
+                debugWorldMap = true
                 err := startQuickGame(yield, game, gameLoader)
+                debugWorldMap = false
+                gamelib.DebugNoDisband = false
                 gamelib.DebugUnlimitedMoves = false
                 gamelib.DebugNoGreetings = false
                 if err != nil {
@@ -1372,6 +1381,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&capture.TraceWide, "capture-trace-wide", false, "development: log every change of the widescreen layout and the layers on screen")
     flag.Float64Var(&gamelib.FogFadeProbe, "capture-fog-fade", -1, "development: hold every fade of the fog this many seconds after its start, the map of the start counts as just revealed")
     flag.BoolVar(&gamelib.FogFadeTrace, "capture-fog-trace", false, "development: log the number of tiles whose fog fades, every frame")
+    flag.BoolVar(&debugWorldMap, "capture-debug-world", false, "development: with -start, the game of the World Map entry of the debug list")
     flag.BoolVar(&gamelib.DebugUnlimitedMoves, "capture-unlimited-moves", false, "development: turn on the Unlimited Moves debug option")
     flag.StringVar(&capture.Walk, "capture-walk", "", "development: send the selected unit walking dx,dy tiles and log the camera")
     flag.StringVar(&capture.CameraMove, "capture-camera-move", "", "development: move the camera by dx,dy tiles the way a right click does, and log each frame")

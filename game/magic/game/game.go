@@ -7227,6 +7227,11 @@ func (game *Game) CheckDisband(player *playerlib.Player) (bool, bool, bool) {
 /* disband units due to lack of resources, return an array of messages about units that were lost
  */
 func (game *Game) DisbandUnits(player *playerlib.Player) []string {
+    if DebugNoDisband && player.IsHuman() {
+        // debug option, see debug.go
+        return nil
+    }
+
     /*
     if 2 > 1 {
         return nil
