@@ -111,6 +111,39 @@ var testRiverNames = map[combat.RiverCourse]string{
 // the fields of a town with their names in the list, by how far the town is
 var testFarmlandNames = []string{"None", "Next to a town, more houses", "Two tiles from a town"}
 
+// the roads of a test battle (user, 2026-09-29): the sides of the tile of the battle a road runs
+// to, as the world map has them, in rows of 3 from the north west
+type testRoad struct {
+    // the name it is kept under, and the one in the list
+    Key string
+    Name string
+    Sides []int
+    Enchanted bool
+    // by chance, as a random battle has them
+    Any bool
+}
+
+var testRoads = []testRoad{
+    {Key: "none", Name: "None"},
+    {Key: "any", Name: "Any, by chance", Any: true},
+    {Key: "straight", Name: "One road, straight through", Sides: []int{3, 5}},
+    {Key: "bend", Name: "One road, with a bend", Sides: []int{1, 5}},
+    {Key: "crossroads", Name: "Crossroads", Sides: []int{1, 3, 5, 7}},
+    {Key: "all", Name: "Roads to all sides", Sides: []int{0, 1, 2, 3, 5, 6, 7, 8}},
+    {Key: "enchanted", Name: "Enchanted crossroads", Sides: []int{1, 3, 5, 7}, Enchanted: true},
+}
+var testBattleRoad = 0
+var unitPickerRoadOpen bool
+
+func testRoadByName(name string) int {
+    for index, road := range testRoads {
+        if strings.EqualFold(road.Key, name) {
+            return index
+        }
+    }
+    return 0
+}
+
 // the weather of a test battle with its names in the list (combat/weather.go)
 var testWeatherNames = map[combat.Weather]string{
     combat.WeatherNone: "None",
@@ -174,6 +207,20 @@ func testBattleZone() (combat.CombatLandscape, combat.ZoneType) {
     zone.Ground.River = testBattleRiver
     zone.Ground.Farmland = testBattleFarmland
     zone.Ground.Weather = testBattleWeather
+
+    road := testRoads[testBattleRoad]
+    if road.Any {
+        _, random := randomBattleGround(ground.Landscape, false)
+        zone.Ground.Roads = random.Roads
+        zone.Ground.EnchantedRoads = random.EnchantedRoads
+    } else if len(road.Sides) > 0 {
+        // the tile of the battle itself has the road
+        zone.Ground.Roads[4] = true
+        for _, side := range road.Sides {
+            zone.Ground.Roads[side] = true
+        }
+        zone.Ground.EnchantedRoads = road.Enchanted
+    }
     if testBattleUnit != nil {
         zone.Ground.FarmRace = testBattleUnit.Race
     }
@@ -206,6 +253,9 @@ type unitPickerRow struct {
     IsCoast bool
     RiverTitle bool
     FarmlandTitle bool
+    RoadTitle bool
+    // from 1
+    Road int
     WeatherTitle bool
     Weather combat.Weather
     IsWeather bool
@@ -227,7 +277,7 @@ type unitPickerRow struct {
 
 // a row that stands under the title of its rollout
 func (row unitPickerRow) indented() bool {
-    return row.Unit != nil || row.Ground > 0 || row.IsCoast || row.IsRiver || row.Farmland > 0 || row.IsWeather
+    return row.Unit != nil || row.Ground > 0 || row.IsCoast || row.IsRiver || row.Farmland > 0 || row.IsWeather || row.Road > 0
 }
 
 func (row unitPickerRow) contains(x float64, y float64) bool {
@@ -319,6 +369,12 @@ func unitPickerRows() []unitPickerRow {
     if unitPickerFarmlandOpen {
         for index, name := range testFarmlandNames {
             rows = append(rows, unitPickerRow{Text: name, Farmland: index + 1, Picked: index == testBattleFarmland})
+        }
+    }
+    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Roads: %v", mark(unitPickerRoadOpen), testRoads[testBattleRoad].Name), RoadTitle: true})
+    if unitPickerRoadOpen {
+        for index, road := range testRoads {
+            rows = append(rows, unitPickerRow{Text: road.Name, Road: index + 1, Picked: index == testBattleRoad})
         }
     }
     rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Weather: %v", mark(unitPickerWeatherOpen), testWeatherNames[testBattleWeather]), WeatherTitle: true})
@@ -431,6 +487,12 @@ func updateUnitPicker() bool {
             unitPickerGroundOpen = !unitPickerGroundOpen
         case row.CoastTitle:
             unitPickerCoastOpen = !unitPickerCoastOpen
+        case row.RoadTitle:
+            unitPickerRoadOpen = !unitPickerRoadOpen
+        case row.Road > 0:
+            testBattleRoad = row.Road - 1
+            unitPickerRoadOpen = false
+            saveDebugSaved()
         case row.WeatherTitle:
             unitPickerWeatherOpen = !unitPickerWeatherOpen
         case row.IsWeather:

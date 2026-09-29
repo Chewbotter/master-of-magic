@@ -48,6 +48,35 @@ func TestTestBattleGround(test *testing.T) {
         }
     }
 
+    // the roads
+    road := testBattleRoad
+    defer func() {
+        testBattleRoad = road
+    }()
+    for index, picked := range testRoads {
+        testBattleRoad = index
+        _, zone := testBattleZone()
+        if testRoadByName(picked.Key) != index || picked.Name == "" {
+            test.Fatalf("the roads %v are not found by their name", picked.Key)
+        }
+        if picked.Any {
+            continue
+        }
+        for side, has := range zone.Ground.Roads {
+            want := len(picked.Sides) > 0 && side == 4
+            for _, of := range picked.Sides {
+                want = want || of == side
+            }
+            if has != want {
+                test.Fatalf("the roads %v: side %v is %v", picked.Key, side, has)
+            }
+        }
+        if zone.Ground.EnchantedRoads != picked.Enchanted {
+            test.Fatalf("the roads %v: enchanted %v", picked.Key, zone.Ground.EnchantedRoads)
+        }
+    }
+    testBattleRoad = road
+
     // the weather
     weather := testBattleWeather
     defer func() {

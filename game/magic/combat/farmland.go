@@ -15,8 +15,9 @@ package combat
 // kinds of crops later for different biome types"): a forest, hills, a swamp, desert, mountains
 // and tundra beside a town have its houses and no crops, until they have crops of their own.
 //
-// THE FIELDS. They take most of the ground (user: "cover more area so it looks less like a
-// caricature of a crop field"), and what they leave is more dirt than grass (user: "weight dirt
+// THE FIELDS. They take about half of the ground (user, first: "cover more area so it looks less
+// like a caricature of a crop field", which was 0.85 of the squares and two thirds of the ground;
+// then: "cover less of the entire play area in crop fields, roughly half"), and what they leave is more dirt than grass (user: "weight dirt
 // tiles more than grass in this sub-biome"). The ground is laid out in squares of one size for the battle, farmPlotMin to
 // farmPlotMax cells, with one row of grass between them. A square is a plot of crops or is left
 // as grass, by chance. A plot shows one picture of crops in all of its cells, so it looks
@@ -57,7 +58,7 @@ const farmPlotMax = 8
 // a plot beside a road, a coast or a river can be as small as this
 const farmPlotSmall = 2
 // of the squares this share is plots
-const farmPlotShare = 0.85
+const farmPlotShare = 0.65
 // of the ground between and beside the plots about this share is dirt, in patches about this
 // many cells across
 const farmDirtShare = 0.65

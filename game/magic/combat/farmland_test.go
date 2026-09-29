@@ -52,7 +52,7 @@ func TestFarmGround(test *testing.T) {
         test.Fatalf("farmland at a lair: %+v", ground)
     }
 
-    // most of the ground of plain grass land is crops, and of the rest more is dirt than grass
+    // about half of the ground of plain grass land is crops, and of the rest more is dirt than grass
     crops, dirt, grass := 0, 0, 0
     for range 10 {
         made := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, plain)
@@ -64,7 +64,7 @@ func TestFarmGround(test *testing.T) {
             }
         }
     }
-    if crops < dirt + grass || dirt <= grass {
+    if crops * 5 < (crops + dirt + grass) * 2 || crops * 5 > (crops + dirt + grass) * 3 || dirt <= grass {
         test.Fatalf("%v cells of crops, %v of dirt, %v of grass", crops, dirt, grass)
     }
 }

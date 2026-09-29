@@ -195,6 +195,7 @@ func (game *MagicGame) updateFastPlay(menu *mainview.MainScreen) (mainview.MainS
         unitPickerRiverOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "river")
         unitPickerFarmlandOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "farmland")
         unitPickerWeatherOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "weather")
+        unitPickerRoadOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "roads")
         capture.UnitPicker = ""
         if testBattleLast == nil {
             // so the capture shows the button of the last test battle
