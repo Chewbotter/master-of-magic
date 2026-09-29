@@ -6349,9 +6349,14 @@ func (game *Game) MakeHudUI() *uilib.UI {
 
                             case ebiten.KeySpace, ebiten.KeyHome:
                                 // modern controls: space is the next turn, see worldselect.go
-                                if key == ebiten.KeySpace && game.spaceEndsTurn() {
-                                    nextTurnFlashUntil = game.Counter + 6
-                                    break
+                                if key == ebiten.KeySpace {
+                                    taken, ended := game.spaceEndsTurn()
+                                    if ended {
+                                        nextTurnFlashUntil = game.Counter + 6
+                                    }
+                                    if taken {
+                                        break
+                                    }
                                 }
 
                                 stack := game.Model.GetHumanPlayer().SelectedStack

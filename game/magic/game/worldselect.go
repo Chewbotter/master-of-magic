@@ -66,21 +66,24 @@ func selectionBlinkOn(stack *playerlib.UnitStack, counter uint64, moving bool) b
 // classic controls: space puts the camera on the selected stack, as upstream. Home does that with both
 const SpaceEndsTurn = true
 
-// called when space was pressed on the world map. true if the key was taken as the key for the next turn.
+// called when space was pressed on the world map. gives whether the key was taken as the key for the next
+// turn, and whether the turn was ended.
 // the turn ends as it does with the key of the key bindings: only when no stack is selected or the
 // selected stack has no moves left
-func (game *Game) spaceEndsTurn() bool {
+func (game *Game) spaceEndsTurn() (bool, bool) {
     if !SpaceEndsTurn || !display.ModernControls() {
-        return false
+        return false, false
     }
 
+    ended := false
     stack := game.Model.GetHumanPlayer().SelectedStack
     if stack == nil || stack.OutOfMoves() {
         select {
             case game.Events <- &GameEventNextTurn{}:
+                ended = true
             default:
         }
     }
 
-    return true
+    return true, ended
 }
