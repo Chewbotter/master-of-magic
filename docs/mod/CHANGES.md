@@ -61,7 +61,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The color of a wizard on figures and units keeps the shading of the art for every color; before, red, blue and yellow were nearly flat.
 - Blood made of particles, dust for the undead and mist for spirits; it stains the ground and the corpses it lands on. Sparks for a blow that does no damage.
 - Damage numbers in the original's style, as large as the field is drawn.
-- Spells play as in the original, and add to it: particles where they hit, marks on the ground, light that darkens the field around it, a lit rim on the figures that face it, corpses in the color of what killed them.
+- Spells play as in the original, and add to it: particles where they hit, marks on the ground, light that darkens the field around it and brightens the ground near it in its color, a lit rim on the figures that face it, corpses in the color of what killed them.
 - A battle that is won or lost is shown for a moment before it ends.
 
 ## Spellbook

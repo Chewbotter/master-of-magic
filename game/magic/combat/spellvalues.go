@@ -78,6 +78,9 @@ type SpellValues struct {
     // and in which color
     RimLight float64
     RimColor color.RGBA
+    // how much lighter the ground in its light gets, in the color of the rims: 0 not at all, 1 by
+    // all of that color. see groundlight.go
+    GroundLight float64
 
     // the color the figures it kills take on as they lie, see figurefall.go. without one they
     // are gray
@@ -177,6 +180,7 @@ func plainValues() SpellValues {
         ShadowReach: 60,
         RimLight: 0.65,
         RimColor: white,
+        GroundLight: 0.45,
     }
 }
 
@@ -351,7 +355,7 @@ var valueNames = []string{
     "hit-stop", "shake", "shake-time",
     "pulse-radius", "pulse-time", "pulse-strength", "pulse-color",
     "decal", "decal-strength",
-    "dark", "light-radius", "light-strength", "light-flicker", "light-linger", "shadow-reach", "rim-light", "rim-color",
+    "dark", "light-radius", "light-strength", "light-flicker", "light-linger", "shadow-reach", "rim-light", "rim-color", "ground-light",
     "corpse-color",
     "dark-color", "resolve", "throw",
 }
@@ -400,6 +404,7 @@ func (values *SpellValues) text(name string) string {
         case "light-linger": return number(values.LightLinger)
         case "shadow-reach": return number(values.ShadowReach)
         case "rim-light": return number(values.RimLight)
+        case "ground-light": return number(values.GroundLight)
         case "rim-color": return colorText(values.RimColor)
         case "corpse-color":
             if !values.HasCorpseColor {
@@ -508,6 +513,7 @@ func (values *SpellValues) set(name string, text string) bool {
         case "light-linger": values.LightLinger = number
         case "shadow-reach": values.ShadowReach = number
         case "rim-light": values.RimLight = number
+        case "ground-light": values.GroundLight = number
         case "throw": values.Throw = number
         default:
             return false
@@ -591,6 +597,8 @@ const effectsTemplateHead = `# The effects of spells in battles.
 #   shadow-reach    units this near to the spell cast their shadows away from it
 #   rim-light       the figures in the light of the spell have the rim that faces it lit,
 #                   this much 0 to 1. 0: not
+#   ground-light    the ground in the light of the spell gets lighter by the color of the rims,
+#                   added to what is there: 0 not at all, 1 by all of that color
 #   rim-color       in which color
 #
 #   dark-color      the dark has a little of this color. 000000: none

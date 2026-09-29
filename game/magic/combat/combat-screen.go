@@ -3954,6 +3954,8 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
     combat.drawGroundSpells(screen)
     // the light that runs over the ground where a spell has hit, see spelleffects.go
     combat.drawGroundPulses(screen)
+    // the light of spells, added to the ground. see groundlight.go
+    combat.drawGroundLight(screen)
 
     drawExtraObject := func(x int, y int, extra TileTop) {
         if extra.Drawer != nil {

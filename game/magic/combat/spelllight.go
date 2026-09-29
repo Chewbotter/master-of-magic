@@ -77,6 +77,8 @@ type spellLightSource struct {
     // rimlight.go
     Rim float64
     RimColor [3]float32
+    // how much lighter the ground in it gets, in that color. see groundlight.go
+    Ground float64
 }
 
 // a light that stays where a spell has hit and goes out
@@ -101,6 +103,8 @@ type spellLighting struct {
     // pictures of lights by their radius
     Pictures map[int]*ebiten.Image
     Layer *ebiten.Image
+    // the light that is added to the ground, see groundlight.go
+    GroundLayer *ebiten.Image
     // what the radius of the lights is changed by now, when they flicker
     Flicker float64
 
@@ -186,6 +190,7 @@ func (combat *CombatScreen) lightOf(projectile *Projectile) (spellLightSource, S
         Reach: values.ShadowReach,
         Rim: values.RimLight,
         RimColor: colorParts(values.RimColor.R, values.RimColor.G, values.RimColor.B),
+        Ground: values.GroundLight,
     }
 
     // where it hits, unless it is in flight
@@ -225,6 +230,7 @@ func (combat *CombatScreen) addGlow(projectile *Projectile, values SpellValues) 
             Reach: values.ShadowReach,
             Rim: values.RimLight,
             RimColor: colorParts(values.RimColor.R, values.RimColor.G, values.RimColor.B),
+            Ground: values.GroundLight,
         },
         Start: combat.effects.Tick,
         Ticks: effectTicks(values.LightLinger),
