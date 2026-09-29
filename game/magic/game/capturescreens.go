@@ -8,13 +8,14 @@ import (
     "image"
     "log"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
+    "github.com/kazzmir/master-of-magic/game/magic/cityview"
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
     "github.com/kazzmir/master-of-magic/game/magic/unitview"
     "github.com/kazzmir/master-of-magic/lib/coroutine"
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"unit", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"unit", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -166,7 +167,12 @@ func (game *Game) CaptureOpenScreen(name string) bool {
         case "advisors":
             game.HudUI.AddElements(game.MakeInfoUI(60, 25))
             return true
-        case "city":
+        case "city", "build", "buildunit", "buildbuilding":
+            switch name {
+                case "build": cityview.CaptureBuild = "setting"
+                case "buildunit": cityview.CaptureBuild = "unit"
+                case "buildbuilding": cityview.CaptureBuild = "building"
+            }
             player := game.Model.GetHumanPlayer()
             if player == nil || len(player.Cities) == 0 {
                 return false

@@ -76,6 +76,8 @@ const (
     // upstream's own lines, which the original does not have in this window
     viewDamageX = 165
     viewBuildCostStep = 7
+    // in the window of what a city builds: the number of the cost
+    viewBuildCostValueX = 73
 )
 
 // the rows of Melee, Range, Armor, Resist, Hits
@@ -335,6 +337,18 @@ func renderUnitInfoBuildOriginal(screen *ebiten.Image, imageCache *util.ImageCac
     upkeep.GeoM.Translate(at(viewUpkeepIconX, viewUpkeepIconY))
     renderUpkeep(screen, imageCache, unit, upkeep)
 
-    // not in the original
-    print(viewNameX, viewUpkeepY + viewBuildCostStep, fmt.Sprintf("Cost %v(%v)", discountedCost, unit.GetProductionCost()))
+    // what it costs in this city, and in brackets what it costs by itself
+    print(viewNameX, viewUpkeepY + viewBuildCostStep, "Cost")
+    print(viewBuildCostValueX, viewUpkeepY + viewBuildCostStep, fmt.Sprintf("%v(%v)", discountedCost, unit.GetProductionCost()))
+}
+
+// the styles of the text of the window of a unit: the name and the names of the statistics, the
+// small lines (Moves, Upkeep, Cost), the names of the list. nil when they can not be made
+func ViewFonts(cache *lbx.LbxCache) (*font.StyledFont, *font.StyledFont, *font.StyledFont) {
+    style := getViewStyle(cache)
+    if style == nil {
+        return nil, nil, nil
+    }
+
+    return style.Title, style.Small, style.List
 }
