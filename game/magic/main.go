@@ -1403,6 +1403,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&debugWorldMap, "capture-debug-world", false, "development: with -start, the game of the World Map entry of the debug list")
     flag.BoolVar(&gamelib.DebugUnlimitedMoves, "capture-unlimited-moves", false, "development: turn on the Unlimited Moves debug option")
     flag.StringVar(&capture.Plan, "capture-plan", "", "development: plan a move of the selected unit dx,dy tiles away as a first click does, to show the markers of its path")
+    flag.BoolVar(&capture.UnitView, "capture-unit-view", false, "development: a battle opens the window of the selected unit")
     flag.StringVar(&capture.Walk, "capture-walk", "", "development: send the selected unit walking dx,dy tiles and log the camera")
     flag.StringVar(&capture.CameraMove, "capture-camera-move", "", "development: move the camera by dx,dy tiles the way a right click does, and log each frame")
     flag.IntVar(&capture.BattleLevel, "capture-battle-level", 0, "development: zoom level of the battlefield, in screen pixels per art pixel")

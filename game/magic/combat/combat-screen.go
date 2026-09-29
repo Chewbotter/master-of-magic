@@ -3118,6 +3118,12 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
         combat.Model.HighlightedUnit = combat.Model.GetUnit(combat.MouseTileX, combat.MouseTileY)
     }
 
+    if CaptureUnitView && combat.UI.GetHighestLayerValue() == 0 && combat.Model.SelectedUnit != nil {
+        // development: the window of the selected unit, for a capture
+        CaptureUnitView = false
+        combat.UI.AddGroup(MakeUnitView(combat.Cache, combat.UI, combat.Model.SelectedUnit))
+    }
+
     if combat.UI.GetHighestLayerValue() == 0 &&
        inputmanager.RightClick() &&
        mouseY < scale.Scale(hudY) {

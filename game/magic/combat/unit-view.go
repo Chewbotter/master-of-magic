@@ -15,6 +15,9 @@ import (
     "github.com/hajimehoshi/ebiten/v2"
 )
 
+// development: open the window of the selected unit once, see -capture-unit-view
+var CaptureUnitView = false
+
 type UnitViewFonts struct {
     DescriptionFont *font.Font
     SmallFont *font.Font
@@ -117,6 +120,11 @@ func RenderUnitInfo(screen *ebiten.Image, imageCache *util.ImageCache, unit *Arm
 
     // FIXME: if the unit is a hero and has a title then the title should show up on the next line after the name
     name := unit.Unit.GetFullName()
+
+    // the text and the places of the original, see unitview/style.go
+    if unitview.RenderUnitInfoBattle(screen, imageCache, name, unit.GetMovementSpeed().ToInt(), unit.IsFlying(), unit.IsSwimmer(), unit.GetDamage(), defaultOptions) {
+        return
+    }
 
     fonts.DescriptionFont.PrintOptions(screen, x, y + float64(2), font.FontOptions{DropShadow: true, Options: &defaultOptions, Scale: scale.ScaleAmount}, name)
 

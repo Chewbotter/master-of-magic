@@ -25,6 +25,9 @@ import (
 // false: the text of upstream
 var OriginalText = true
 
+// the size of the names in the list of what a unit has
+var ViewListTextSize = font.TextSizeCompact
+
 // the picture of the window, which carries the palette colors 224 and up that its text uses
 const viewBackgroundLbx = "unitview.lbx"
 const viewBackgroundIndex = 1
@@ -66,6 +69,9 @@ const (
     // in the window of the things a city can build the lines are closer to the top
     viewBuildNameRaise = 4
     viewBuildLinesRaise = 7
+
+    // in a battle: the number of the damage ends here
+    viewBattleDamageX = 90
 
     // upstream's own lines, which the original does not have in this window
     viewDamageX = 165
@@ -181,7 +187,54 @@ func printList(imageCache *util.ImageCache, plain *font.Font, screen *ebiten.Ima
         return
     }
 
-    printView(style.List, plain, screen, x, y, options, text)
+    // smaller than the original has it, which leaves room for longer names (user, 2026-09-29).
+    // the pictures and the rows of the list stay where they are
+    style.List.PrintSized(screen, x, y, font.FontOptions{Options: &options, Scale: scale.ScaleAmount, TextSize: ViewListTextSize}, text)
+}
+
+// the window of a unit in a battle: the name, Moves, and Damage in the place of the upkeep, as the
+// original has it there. the options are at the place upstream's callers give, callerNameX and
+// callerNameY from the corner of the window. false when the styles can not be made and nothing was drawn
+func RenderUnitInfoBattle(screen *ebiten.Image, imageCache *util.ImageCache, name string, moves int, flying bool, swimmer bool, damage int, options ebiten.DrawImageOptions) bool {
+    style := getViewStyle(imageCache.LbxCache)
+    if style == nil {
+        return false
+    }
+
+    cornerX, cornerY := options.GeoM.Apply(float64(-callerNameX), float64(-callerNameY))
+
+    at := func(x int, y int) (float64, float64) {
+        return cornerX + float64(x), cornerY + float64(y)
+    }
+
+    print := func(styled *font.StyledFont, x int, y int, justify font.FontJustify, text string) {
+        printX, printY := at(x, y)
+        styled.Print(screen, int(math.Round(printX)), int(math.Round(printY)), font.FontOptions{Options: &options, Scale: scale.ScaleAmount, Justify: justify}, text)
+    }
+
+    print(style.Title, viewNameX, viewNameY, font.FontJustifyLeft, name)
+    print(style.Small, viewNameX, viewMovesY, font.FontJustifyLeft, "Moves")
+
+    index := 24
+    if flying {
+        index = 25
+    } else if swimmer {
+        index = 26
+    }
+    picture, err := imageCache.GetImage("unitview.lbx", index, 0)
+    if err == nil {
+        for step := 0; step < moves; step++ {
+            var use ebiten.DrawImageOptions
+            use.ColorScale = options.ColorScale
+            use.GeoM.Translate(at(viewMovesIconX + step * viewMovesIconStep, viewMovesIconY))
+            scale.DrawScaled(screen, picture, &use)
+        }
+    }
+
+    print(style.Small, viewNameX, viewUpkeepY, font.FontJustifyLeft, "Damage")
+    print(style.Small, viewBattleDamageX, viewUpkeepY, font.FontJustifyRight, fmt.Sprintf("%v", damage))
+
+    return true
 }
 
 // the picture of how a unit moves

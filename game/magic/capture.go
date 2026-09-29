@@ -99,6 +99,8 @@ type frameCapture struct {
     CameraMove string
     // dx,dy in tiles
     Walk string
+    // a battle opens the window of the selected unit
+    UnitView bool
     // dx,dy in tiles: the move is planned as by a first click, and not walked
     Plan string
     TraceWide bool
