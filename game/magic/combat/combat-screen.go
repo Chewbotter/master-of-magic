@@ -211,6 +211,8 @@ type DamageIndicator struct {
     // the size of the number in art pixels, for its place. see damagenumbers.go
     Width int
     Height int
+    // the unit is one of the player: its number is less bright
+    Own bool
 }
 
 type CombatDrawFunc func(*ebiten.Image)
@@ -2875,6 +2877,7 @@ func (combat *CombatScreen) AddDamageIndicator(unit *ArmyUnit, damage int) {
         Life: 50,
         Width: damageWidthGuess,
         Height: damageHeightGuess,
+        Own: combat.Model.GetArmy(unit).Player.IsHuman(),
     }
     if combat.Fonts.Hud != nil && combat.Fonts.Hud.Damage != nil {
         indicator.Width = combat.Fonts.Hud.Damage.Width(fmt.Sprintf("%d", damage))

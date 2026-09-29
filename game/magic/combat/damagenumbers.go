@@ -9,6 +9,7 @@ import (
     "image/color"
     "math"
 
+    "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/lib/font"
 
@@ -49,6 +50,11 @@ const damagePictureMargin = 2
 const damageRiseTicks = 5
 // the last ticks of its life the number fades out over
 const damageFadeTicks = 10
+
+// the numbers over units of the player are this much as bright as the ones over units of the
+// enemy, which are the reds as they are (user, 2026-09-29: "leave the enemy damage numbers as
+// bright red while making the friendly damage numbers a dimmer shade of red")
+const damageOwnBrightness = 0.6
 
 // false: the numbers are as large at every zoom
 const DamageNumbersZoom = true
@@ -143,7 +149,8 @@ func placeDamageNumber(indicator *DamageIndicator, others []DamageIndicator, pic
 
 func (combat *CombatScreen) drawDamageNumbers(screen *ebiten.Image) {
     hud := combat.Fonts.Hud
-    if hud == nil || hud.Damage == nil {
+    // the setting "Damage numbers", see display/damagenumbers.go
+    if hud == nil || hud.Damage == nil || !display.DamageNumbers() {
         return
     }
 
@@ -186,6 +193,10 @@ func (combat *CombatScreen) drawDamageNumbers(screen *ebiten.Image) {
             options.Filter = ebiten.FilterLinear
         }
         options.GeoM.Translate(math.Round(place.X - float64(picture.Bounds().Dx()) * stretch / 2), math.Round(place.Y - float64(picture.Bounds().Dy()) * stretch / 2))
+        if indicator.Own {
+            // the border is black and stays so
+            options.ColorScale.Scale(damageOwnBrightness, damageOwnBrightness, damageOwnBrightness, 1)
+        }
         if indicator.Life < damageFadeTicks {
             options.ColorScale.ScaleAlpha(float32(indicator.Life) / damageFadeTicks)
         }

@@ -16,6 +16,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Setting "Single strikes": the look of strikes in battle, see Battles.
 - Setting "Hide cursor on attack", on at first: see the cursors of Battles.
 - Setting "Pulsing spellbook text", on at first: off, nothing in the spellbooks pulses, as in the original.
+- Setting "Damage numbers", on at first: off, no numbers rise from units that are hit, as in the original.
 
 ## World map
 - Smooth panning with the middle mouse button (modern controls): the map glides, keeps moving for a moment after release, and the cursor glides with it.
@@ -71,7 +72,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Figures cast shadows.
 - The color of a wizard on figures and units keeps the shading of the art for every color; before, red, blue and yellow were nearly flat.
 - Blood made of particles, dust for the undead and mist for spirits; it stains the ground and the corpses it lands on. Sparks for a blow that does no damage.
-- Damage numbers in the original's style, as large as the field is drawn. Many at once spread out and keep apart while they rise.
+- Damage numbers in the original's style, as large as the field is drawn. Many at once spread out and keep apart while they rise. Bright red over the enemy's units, darker over yours.
 - Spells play as in the original, and add to it: particles where they hit, marks on the ground, light that darkens the field around it and brightens the ground near it in its color, a lit rim on the figures that face it, corpses in the color of what killed them.
 - A battle that is won or lost is shown for a moment before it ends.
 

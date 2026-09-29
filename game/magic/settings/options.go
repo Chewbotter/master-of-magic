@@ -35,6 +35,7 @@ const ResolutionBoxHeight = 13
 const SingleStrikesRow = 4
 const HideCursorRow = 5
 const SpellbookPulseRow = 6
+const DamageNumbersRow = 7
 // right column
 const FullscreenRow = 0
 const WidescreenRow = 1
@@ -264,6 +265,14 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
         func() bool { return displaySettings.SpellbookPulse() },
         func(value bool) {
             displaySettings.SetSpellbookPulse(value)
+        },
+    )
+
+    // the numbers that rise from units that are hit, see display/damagenumbers.go
+    addCheckbox(group, fonts, &getAlpha, SettingsLeftColumnX, SettingsRowY(DamageNumbersRow), "Damage numbers",
+        func() bool { return displaySettings.DamageNumbers() },
+        func(value bool) {
+            displaySettings.SetDamageNumbers(value)
         },
     )
 

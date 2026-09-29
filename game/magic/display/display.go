@@ -43,6 +43,8 @@ type Settings struct {
     CursorStaysOnAttack bool `json:"cursor-stays-on-attack"`
     // the opposite of the setting "Pulsing spellbook text", see bookpulse.go
     SpellbookTextStill bool `json:"spellbook-text-still"`
+    // the opposite of the setting "Damage numbers", see damagenumbers.go
+    DamageNumbersOff bool `json:"damage-numbers-off"`
 }
 
 // the preferences in use by the running game
