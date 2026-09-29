@@ -20,7 +20,6 @@ import (
     uilib "github.com/kazzmir/master-of-magic/game/magic/ui"
 
     "github.com/hajimehoshi/ebiten/v2"
-    "github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // one switch: false shows no panels
@@ -34,7 +33,8 @@ const SettingsTipFade = 8
 // the panel is from the mouse, and how close it comes to the edge of the screen
 const SettingsTipWidth = 110
 const SettingsTipPadding = 3
-const SettingsTipBesideMouse = 8
+// 16 is the width of the picture of a cursor (8 first, the cursor lay over the panel)
+const SettingsTipBesideMouse = 16
 const SettingsTipBelowMouse = 10
 const SettingsTipScreenEdge = 2
 // drawn after everything else of the screen
@@ -143,11 +143,6 @@ func settingsTextWidth(use *font.Font, text string) int {
     return whole
 }
 
-func fillArtRect(screen *ebiten.Image, rect image.Rectangle, fill color.NRGBA, alpha float32) {
-    fill.A = uint8(float32(fill.A) * alpha)
-    vector.FillRect(screen, float32(scale.Scale(rect.Min.X)), float32(scale.Scale(rect.Min.Y)), float32(scale.Scale(rect.Dx())), float32(scale.Scale(rect.Dy())), fill, false)
-}
-
 // the element that draws the panel
 func addTips(group *uilib.UIElementGroup, fonts *fontslib.SettingsFonts, getAlpha *util.AlphaFadeFunc) {
     settingsTip = settingsTipState{}
@@ -186,10 +181,7 @@ func addTips(group *uilib.UIElementGroup, fonts *fontslib.SettingsFonts, getAlph
             place := settingsTipPlace(settingsTip.Mouse, width + SettingsTipPadding * 2, height + SettingsTipPadding * 2)
             panel := image.Rect(place.X, place.Y, place.X + width + SettingsTipPadding * 2, place.Y + height + SettingsTipPadding * 2)
 
-            // a rim of one art pixel
-            fillArtRect(screen, panel, settingsTipRim, alpha)
-            fillArtRect(screen, panel.Inset(1), color.NRGBA{A: 255}, alpha)
-            fillArtRect(screen, panel.Inset(1), settingsTipFill, alpha)
+            drawArtBox(screen, panel, settingsTipFill, settingsTipRim, alpha)
 
             var options ebiten.DrawImageOptions
             options.ColorScale.ScaleAlpha(alpha)

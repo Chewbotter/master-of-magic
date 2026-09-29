@@ -4,7 +4,7 @@ import (
     "context"
     "fmt"
     "image"
-    "image/color"
+    "math"
 
     "github.com/kazzmir/master-of-magic/lib/lbx"
     "github.com/kazzmir/master-of-magic/lib/coroutine"
@@ -14,7 +14,6 @@ import (
     uilib "github.com/kazzmir/master-of-magic/game/magic/ui"
 
     "github.com/hajimehoshi/ebiten/v2"
-    "github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 const settingsLayer = uilib.UILayer(5)
@@ -38,12 +37,11 @@ func addCheckbox(group *uilib.UIElementGroup, fonts *fontslib.SettingsFonts, get
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             rect := element.Rect
 
-            vector.FillRect(screen, float32(scale.Scale(rect.Min.X)), float32(scale.Scale(rect.Min.Y)), float32(scale.Scale(rect.Dx())), float32(scale.Scale(rect.Dy())), color.NRGBA{R: 32, G: 32, B: 32, A: uint8(200 * (*getAlpha)())}, false)
-            util.DrawRect(screen, scale.ScaleRect(rect), color.NRGBA{R: 255, G: 255, B: 255, A: uint8(200 * (*getAlpha)())})
+            // of art pixels, see artbox.go
+            drawArtBox(screen, rect, settingsDarkFill, settingsLightRim, (*getAlpha)())
 
             if get() {
-                inner := rect.Inset(SettingsCheckboxMark)
-                vector.FillRect(screen, float32(scale.Scale(inner.Min.X)), float32(scale.Scale(inner.Min.Y)), float32(scale.Scale(inner.Dx())), float32(scale.Scale(inner.Dy())), color.NRGBA{R: 255, G: 255, B: 255, A: uint8(220 * (*getAlpha)())}, false)
+                fillArtRect(screen, rect.Inset(SettingsCheckboxMark), settingsMark, (*getAlpha)())
             }
         },
     })
@@ -125,8 +123,7 @@ func MakeSettingsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lb
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             rect := element.Rect
-            vector.FillRect(screen, float32(scale.Scale(rect.Min.X)), float32(scale.Scale(rect.Min.Y)), float32(scale.Scale(rect.Dx())), float32(scale.Scale(rect.Dy())), color.NRGBA{R: 96, G: 60, B: 20, A: uint8(255 * getAlpha())}, false)
-            util.DrawRect(screen, scale.ScaleRect(rect), color.NRGBA{R: 255, G: 200, B: 100, A: uint8(255 * getAlpha())})
+            drawArtBox(screen, rect, settingsBoxFill, settingsBoxRim, getAlpha())
 
             var options ebiten.DrawImageOptions
             options.ColorScale.ScaleAlpha(getAlpha())
@@ -167,12 +164,13 @@ func MakeSettingsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lb
             backgroundRect.Min.X -= 1
             backgroundRect.Min.Y -= 1
 
-            vector.FillRect(screen, float32(scale.Scale(backgroundRect.Min.X)), float32(scale.Scale(backgroundRect.Min.Y)), float32(scale.Scale(backgroundRect.Dx())), float32(scale.Scale(backgroundRect.Dy())), color.NRGBA{R: 32, G: 32, B: 32, A: uint8(200 * getAlpha())}, false)
-            util.DrawRect(screen, scale.ScaleRect(backgroundRect), color.NRGBA{R: 255, G: 255, B: 255, A: uint8(200 * getAlpha())})
+            // of art pixels, see artbox.go
+            drawArtBox(screen, backgroundRect, settingsDarkFill, settingsLightRim, getAlpha())
 
             var options ebiten.DrawImageOptions
             options.ColorScale.ScaleAlpha(getAlpha())
-            options.GeoM.Translate(float64(element.Rect.Min.X) + float64(element.Rect.Dx()) * musicSettings.GetVolume(), float64(element.Rect.Min.Y))
+            // the knob on whole art pixels
+            options.GeoM.Translate(float64(element.Rect.Min.X) + math.Round(float64(element.Rect.Dx()) * musicSettings.GetVolume()), float64(element.Rect.Min.Y))
             options.GeoM.Translate(float64(-slider.Bounds().Dx()/2), 0)
             scale.DrawScaled(screen, slider, &options)
 

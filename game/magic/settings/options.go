@@ -7,7 +7,6 @@ package settings
 import (
     "context"
     "image"
-    "image/color"
 
     "github.com/kazzmir/master-of-magic/lib/lbx"
     "github.com/kazzmir/master-of-magic/lib/coroutine"
@@ -15,11 +14,9 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/display"
     fontslib "github.com/kazzmir/master-of-magic/game/magic/fonts"
     "github.com/kazzmir/master-of-magic/game/magic/util"
-    "github.com/kazzmir/master-of-magic/game/magic/scale"
     uilib "github.com/kazzmir/master-of-magic/game/magic/ui"
 
     "github.com/hajimehoshi/ebiten/v2"
-    "github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // display controls tunables. positions are in original 320x200 pixels.
@@ -83,12 +80,12 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
     }
 
     drawBox := func(screen *ebiten.Image, rect image.Rectangle, alpha float32, highlight bool) {
-        fill := color.NRGBA{R: 96, G: 60, B: 20, A: uint8(255 * alpha)}
+        fill := settingsBoxFill
         if highlight {
-            fill = color.NRGBA{R: 140, G: 90, B: 30, A: uint8(255 * alpha)}
+            fill = settingsBoxLit
         }
-        vector.FillRect(screen, float32(scale.Scale(rect.Min.X)), float32(scale.Scale(rect.Min.Y)), float32(scale.Scale(rect.Dx())), float32(scale.Scale(rect.Dy())), fill, false)
-        util.DrawRect(screen, scale.ScaleRect(rect), color.NRGBA{R: 255, G: 200, B: 100, A: uint8(255 * alpha)})
+        // of art pixels, see artbox.go
+        drawArtBox(screen, rect, fill, settingsBoxRim, alpha)
     }
 
     // text at the middle of the height of a box or a row
