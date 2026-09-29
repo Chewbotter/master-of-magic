@@ -4041,6 +4041,11 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
     combat.drawStains(screen)
     // the marks spells have left on the ground, see decals.go
     combat.drawDecals(screen)
+    // the shadows of clouds, and the rain and snow that have landed: on the ground, under what
+    // stands on it. see weather.go
+    combat.weatherAdvance()
+    combat.drawCloudGround(screen)
+    combat.drawWeatherGround(screen)
     // spells that lie on the ground, see spellanim.go
     combat.drawGroundSpells(screen)
     // the light that runs over the ground where a spell has hit, see spelleffects.go
@@ -4274,6 +4279,10 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
             // for units that teleport
             unitOptions.ColorScale.ScaleAlpha(1 - unit.Fade)
+            // darker under a cloud, see weather.go
+            if shade := combat.cloudShadeOfUnit(unit); shade < 1 {
+                unitOptions.ColorScale.Scale(shade, shade, shade, 1)
+            }
 
             /*
             x, y := unitOptions.GeoM.Apply(0, 0)
@@ -4556,9 +4565,6 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
     // the field is dark while a spell plays. the spell itself, its particles and the numbers are
     // drawn over the dark. see spelllight.go
-    // the shadows of clouds lie on the ground and on what stands on it, see weather.go
-    combat.drawCloudShadows(screen)
-
     combat.drawSpellDark(screen)
 
     projectileOnScreen := originalScreenMatrix(combat.GetCameraMatrix())

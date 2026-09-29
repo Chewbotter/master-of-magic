@@ -65,7 +65,8 @@ func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawab
             case SceneryRock, SceneryProp: layer = layerRock
         }
 
-        brightness := fieldBrightness(piece.ScreenX, piece.ScreenY)
+        // darker on the border, and under a cloud (weather.go)
+        brightness := fieldBrightness(piece.ScreenX, piece.ScreenY) * combat.cloudShade(piece.ScreenX, piece.ScreenY)
         if brightness <= 0 {
             continue
         }

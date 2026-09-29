@@ -286,7 +286,7 @@ func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawabl
 
         darkened := max(0, min(1, (seconds - figureFallTime) / corpseDarkenTime))
         brightness := float32(1 - (1 - corpseBrightness) * darkened)
-        brightness *= fieldBrightness(int(x), int(y))
+        brightness *= fieldBrightness(int(x), int(y)) * combat.cloudShade(int(x), int(y))
         saturation := 1 - (1 - corpseSaturation) * darkened
 
         out = append(out, fieldDrawable{

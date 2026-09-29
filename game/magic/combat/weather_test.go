@@ -2,6 +2,7 @@ package combat
 
 import (
     "image"
+    "math"
     "testing"
 )
 
@@ -73,8 +74,8 @@ func TestWeatherFalls(test *testing.T) {
     }
 }
 
-// the shadows of clouds: a part of the ground is dark, a part is not, every pixel is dark as a
-// whole or not at all, and the picture goes on from its one edge to the other
+// the shadows of clouds: a part of the ground is dark, a part is not, the edges between them are
+// soft, and the picture goes on from its one edge to the other
 func TestCloudShadows(test *testing.T) {
     picture := makeCloudShadows(99)
     bounds := picture.Bounds()
@@ -82,19 +83,36 @@ func TestCloudShadows(test *testing.T) {
         test.Fatalf("the picture is %v", bounds)
     }
 
-    dark := 0
+    full := uint8(cloudDark * 255 + 0.5)
+    dark, soft, none := 0, 0, 0
     for y := range cloudHeight {
         for x := range cloudWidth {
             pixel := picture.NRGBAAt(x, y)
+            if pixel.R != 0 || pixel.G != 0 || pixel.B != 0 || pixel.A > full {
+                test.Fatalf("a pixel %v", pixel)
+            }
             switch {
-                case pixel.A == 0:
-                case pixel.A == uint8(cloudDark * 255 + 0.5) && pixel.R == 0 && pixel.G == 0 && pixel.B == 0: dark += 1
-                default: test.Fatalf("a pixel %v", pixel)
+                case pixel.A == 0: none += 1
+                case pixel.A == full: dark += 1
+                default: soft += 1
+            }
+            if pixel.A * 2 >= full {
+                dark += 0
+            }
+            // from a pixel to the next it changes little
+            if x > 0 {
+                before := picture.NRGBAAt(x - 1, y).A
+                if max(before, pixel.A) - min(before, pixel.A) > full / 4 {
+                    test.Fatalf("a hard edge at %v, %v: %v and %v", x, y, before, pixel.A)
+                }
             }
         }
     }
-    share := float64(dark) / float64(cloudWidth * cloudHeight)
-    if share < cloudCover - 0.1 || share > cloudCover + 0.1 {
+    if dark == 0 || none == 0 || soft == 0 {
+        test.Fatalf("%v pixels in the shadow, %v at its edge, %v outside", dark, soft, none)
+    }
+    share := (float64(dark) + float64(soft) / 2) / float64(cloudWidth * cloudHeight)
+    if share < cloudCover - 0.12 || share > cloudCover + 0.12 {
         test.Fatalf("%v of the ground is in the shadow", share)
     }
 
@@ -142,5 +160,30 @@ func TestWeatherFront(test *testing.T) {
     }
     if len(state.Drops) != 0 {
         test.Fatalf("%v flakes in front are left", len(state.Drops))
+    }
+}
+
+// a flake of snow that falls between the pixels of the art is on the pixel it lands on when it
+// lands, across and down
+func TestSnowLands(test *testing.T) {
+    look := weatherLooks[WeatherHeavySnow]
+    for range 200 {
+        drop := look.drop(100.4, 80.7, 0)
+        if drop.Ground != 80 || drop.LandX != float64(int(drop.LandX)) {
+            test.Fatalf("it lands at %v, %v", drop.LandX, drop.Ground)
+        }
+
+        state := weatherState{Drops: []weatherDrop{drop}}
+        for len(state.Drops) > 0 && state.Drops[0].Landed == 0 {
+            state.step(look, 1.0 / 60)
+        }
+        if len(state.Drops) == 0 {
+            continue
+        }
+        landed := state.Drops[0]
+        x := landed.X + math.Sin(landed.Age * look.SwayRate * 2 * math.Pi + landed.Phase) * look.Sway
+        if landed.Y != 80 || math.Abs(x - landed.LandX - 0.5) > 1.5 {
+            test.Fatalf("it has landed at %v, %v, and was to land at %v", x, landed.Y, landed.LandX)
+        }
     }
 }

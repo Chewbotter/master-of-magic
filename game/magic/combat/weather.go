@@ -17,9 +17,8 @@ package combat
 // down at a place follows a number that changes slowly from place to place and moves with the
 // wind, so rain comes in sheets with thin air between them.
 //
-// CLOUD SHADOWS are one picture of art pixels that is laid over the field and what stands on it,
-// again and again side by side, and moves with the wind. Its edges are made of a pattern of
-// pixels, not of half dark ones.
+// CLOUD SHADOWS lie on the ground as a picture with soft edges that moves with the wind, and
+// what stands on the ground is darker as a whole where it stands in one. See drawCloudGround.
 //
 // Weather is for the look. It changes no rule.
 
@@ -29,6 +28,7 @@ import (
     "math"
     "math/rand/v2"
     "slices"
+    "time"
 
     "github.com/kazzmir/master-of-magic/game/magic/scale"
 
@@ -150,6 +150,9 @@ var rainSplashes = [][]splashPixel{
 const weatherMost = 6000
 // what is seen of the ground, and this many art pixels around it, gets rain and snow
 const weatherAround = 40
+// over its last art pixels above the ground a flake that falls between the pixels of the art goes
+// over to the pixel it lands on, so it does not jump there when it lands
+const weatherSettle = 6.0
 
 // the shadows of clouds: the size of their picture in art pixels, of the clouds in it, how dark
 // they are, how wide their edge of single pixels is, how much of the ground they cover, and how
@@ -158,7 +161,7 @@ const cloudWidth = 512
 const cloudHeight = 256
 const cloudCells = 4
 const cloudDark = 0.3
-const cloudEdge = 0.12
+const cloudEdge = 0.45
 const cloudCover = 0.45
 const cloudSpeedX = -14.0
 const cloudSpeedY = 5.0
@@ -176,6 +179,8 @@ type weatherDrop struct {
     Landed float64
     Phase float64
     Shade float32
+    // the pixel of the art it lands on, across
+    LandX float64
     // a flake in front of everything
     Front bool
 }
@@ -193,6 +198,9 @@ type weatherState struct {
     Filled bool
     Seed uint32
     Clouds *ebiten.Image
+    CloudPixels *image.NRGBA
+    // when it was last moved on
+    Last time.Time
 }
 
 func (combat *CombatScreen) weatherKind() Weather {
@@ -216,6 +224,17 @@ func (look weatherLook) drop(x float64, ground float64, fallen float64) weatherD
     speed := look.Speed * randomPart(1 - look.Spread, 1 + look.Spread)
     wind := look.Wind * randomPart(1 - look.Spread, 1 + look.Spread)
     left := look.Height / speed * (1 - fallen)
+    phase := rand.Float64() * 2 * math.Pi
+
+    // where it will be when it lands, with its sway
+    landX := x
+    if look.Sway > 0 {
+        landX += math.Sin(left * look.SwayRate * 2 * math.Pi + phase) * look.Sway
+    }
+    if look.Smooth {
+        // it lands on a pixel of the art
+        ground = math.Floor(ground)
+    }
 
     return weatherDrop{
         X: x - wind * left,
@@ -223,8 +242,9 @@ func (look weatherLook) drop(x float64, ground float64, fallen float64) weatherD
         SpeedX: wind,
         SpeedY: speed,
         Ground: ground,
-        Phase: rand.Float64() * 2 * math.Pi,
+        Phase: phase,
         Shade: look.Shades[rand.N(len(look.Shades))],
+        LandX: math.Floor(landX),
     }
 }
 
@@ -312,8 +332,25 @@ func (state *weatherState) step(look weatherLook, seconds float64) {
     state.Drops = kept
 }
 
-// one tick of the weather with the clock of the battle. called with the effects, see
-// spelleffects.go
+// the weather does not stand still with the battle: a spell that is cast holds the clock of the
+// battle, and rain that hangs in the air shows it. it goes by the clock on the wall, once for every
+// picture that is drawn of the field
+const weatherStepMost = 0.1
+
+func (combat *CombatScreen) weatherAdvance() {
+    if combat.weatherKind() == WeatherNone {
+        return
+    }
+    state := &combat.weather
+    now := time.Now()
+    if !state.Last.IsZero() {
+        // not all at once after a pause
+        combat.weatherTick(min(now.Sub(state.Last).Seconds(), weatherStepMost))
+    }
+    state.Last = now
+}
+
+// what happens to the weather in a part of a second
 func (combat *CombatScreen) weatherTick(seconds float64) {
     state := &combat.weather
     kind := combat.weatherKind()
@@ -361,21 +398,12 @@ func (combat *CombatScreen) weatherView(screen *ebiten.Image) image.Rectangle {
     return image.Rect(int(math.Floor(min(x1, x2))), int(math.Floor(min(y1, y2))), int(math.Ceil(max(x1, x2))), int(math.Ceil(max(y1, y2))))
 }
 
-// rain and snow, over everything that is on the field
-func (combat *CombatScreen) drawWeather(screen *ebiten.Image) {
-    kind := combat.weatherKind()
-    if kind == WeatherNone {
-        return
-    }
-
+// draws squares of art pixels of the weather at places of the original's screen, which can lie
+// between the pixels of the art
+func (combat *CombatScreen) weatherPainter(screen *ebiten.Image, look weatherLook) func(x float64, y float64, size int, shade float32) {
     state := &combat.weather
     state.View = combat.weatherView(screen)
     state.Seen = !state.View.Empty()
-
-    look, falls := weatherLooks[kind]
-    if !falls {
-        return
-    }
 
     pixel := combat.effectPixel()
     matrix := originalScreenMatrix(combat.GetCameraMatrix())
@@ -384,9 +412,7 @@ func (combat *CombatScreen) drawWeather(screen *ebiten.Image) {
     blue := float32(look.Color.B) / 255
 
     var options ebiten.DrawImageOptions
-    // a square of so many art pixels at a place of the original's screen, which can lie between
-    // the pixels of the art
-    draw := func(x float64, y float64, size int, shade float32) {
+    return func(x float64, y float64, size int, shade float32) {
         if !image.Pt(int(math.Floor(x)), int(math.Floor(y))).In(state.View.Inset(-size)) {
             return
         }
@@ -398,10 +424,56 @@ func (combat *CombatScreen) drawWeather(screen *ebiten.Image) {
         options.ColorScale.Scale(red * shade, green * shade, blue * shade, shade)
         scale.DrawScaled(screen, pixel, &options)
     }
-    // on a pixel of the art
-    drawPixel := func(x int, y int, shade float32) {
-        draw(float64(x), float64(y), 1, shade)
+}
+
+// what has landed: the splashes of rain and the flakes that lie. on the ground, under the units
+// and what else stands on it (user, 2026-09-29: "have rain splashes appear underneath units")
+func (combat *CombatScreen) drawWeatherGround(screen *ebiten.Image) {
+    kind := combat.weatherKind()
+    look, falls := weatherLooks[kind]
+    if !falls {
+        return
     }
+
+    state := &combat.weather
+    draw := combat.weatherPainter(screen, look)
+
+    for index := range state.Drops {
+        each := &state.Drops[index]
+        if each.Front || each.Landed <= 0 {
+            continue
+        }
+        landedY := math.Floor(each.Y)
+
+        if look.Splash > 0 {
+            // the pictures of its splash, one after the other
+            picture := min(int(each.Landed / look.Linger * float64(look.Splash)), look.Splash - 1, len(rainSplashes) - 1)
+            for _, part := range rainSplashes[picture] {
+                draw(each.LandX + float64(part.X), landedY + float64(part.Y), 1, each.Shade * part.Shade)
+            }
+            continue
+        }
+
+        // less of it the longer it has lain
+        draw(each.LandX, landedY, 1, each.Shade * float32(1 - each.Landed / look.Linger))
+    }
+}
+
+// rain and snow that fall, over everything that is on the field
+func (combat *CombatScreen) drawWeather(screen *ebiten.Image) {
+    kind := combat.weatherKind()
+    if kind == WeatherNone {
+        return
+    }
+
+    state := &combat.weather
+    look, falls := weatherLooks[kind]
+    if !falls {
+        state.View = combat.weatherView(screen)
+        state.Seen = !state.View.Empty()
+        return
+    }
+    draw := combat.weatherPainter(screen, look)
 
     swayed := func(each *weatherDrop) float64 {
         if look.Sway <= 0 {
@@ -412,38 +484,22 @@ func (combat *CombatScreen) drawWeather(screen *ebiten.Image) {
 
     for index := range state.Drops {
         each := &state.Drops[index]
-        if each.Front {
+        if each.Front || each.Landed > 0 {
             continue
         }
         x := swayed(each)
 
-        if each.Landed > 0 {
-            landedX := int(math.Floor(x))
-            landedY := int(math.Floor(each.Y))
-
-            if look.Splash > 0 {
-                // the pictures of its splash, one after the other
-                picture := min(int(each.Landed / look.Linger * float64(look.Splash)), look.Splash - 1, len(rainSplashes) - 1)
-                for _, part := range rainSplashes[picture] {
-                    drawPixel(landedX + part.X, landedY + part.Y, each.Shade * part.Shade)
-                }
-                continue
-            }
-
-            // less of it the longer it has lain
-            drawPixel(landedX, landedY, each.Shade * float32(1 - each.Landed / look.Linger))
-            continue
-        }
-
         if look.Smooth {
-            draw(x, each.Y, 1, each.Shade)
+            // over to the pixel it lands on
+            settle := slopeSmooth(min(max((each.Ground - each.Y) / weatherSettle, 0), 1))
+            draw(each.LandX + (x - each.LandX) * settle, each.Y, 1, each.Shade)
             continue
         }
 
         // its pixels, back along its way
         slant := each.SpeedX / each.SpeedY
         for part := range look.Length {
-            drawPixel(int(math.Floor(x - float64(part) * slant)), int(math.Floor(each.Y)) - part, each.Shade)
+            draw(math.Floor(x - float64(part) * slant), math.Floor(each.Y) - float64(part), 1, each.Shade)
         }
     }
 
@@ -481,11 +537,7 @@ func cloudNoise(x int, y int, seed uint32) float64 {
     return at(cloudCells, seed) * 0.7 + at(cloudCells * 2, seed + 7) * 0.3
 }
 
-// the pattern the edge of a shadow is made of: a pixel is dark if there is more shadow at its
-// place than its number of 16
-var cloudPattern = [4][4]int{{0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}}
-
-// the picture of the shadows of the clouds
+// the picture of the shadows of the clouds: black, the more of it the deeper in the shadow
 func makeCloudShadows(seed uint32) *image.NRGBA {
     out := image.NewNRGBA(image.Rect(0, 0, cloudWidth, cloudHeight))
 
@@ -496,51 +548,107 @@ func makeCloudShadows(seed uint32) *image.NRGBA {
             values = append(values, cloudNoise(x, y, seed))
         }
     }
-    sorted := append([]float64(nil), values...)
-    slices.Sort(sorted)
-    level := sorted[int(float64(len(sorted) - 1) * (1 - cloudCover))]
+    slices.Sort(values)
+    level := values[int(float64(len(values) - 1) * (1 - cloudCover))]
 
-    dark := color.NRGBA{A: uint8(math.Round(cloudDark * 255))}
     for y := range cloudHeight {
         for x := range cloudWidth {
             // 0 outside of the shadow, 1 inside, between them along its edge
-            inside := (cloudNoise(x, y, seed) - level) / cloudEdge + 0.5
-            if inside * 16 > float64(cloudPattern[y % 4][x % 4]) + 0.5 {
-                out.SetNRGBA(x, y, dark)
+            inside := min(max((cloudNoise(x, y, seed) - level) / cloudEdge + 0.5, 0), 1)
+            alpha := uint8(math.Round(slopeSmooth(inside) * cloudDark * 255))
+            if alpha > 0 {
+                out.SetNRGBA(x, y, color.NRGBA{A: alpha})
             }
         }
     }
     return out
 }
 
-// the shadows of the clouds, over the ground and what stands on it
-func (combat *CombatScreen) drawCloudShadows(screen *ebiten.Image) {
-    if combat.weatherKind() != WeatherClouds {
-        return
-    }
-
+// the picture of the shadows, made when it is first asked for
+func (combat *CombatScreen) cloudShadows() *weatherState {
     state := &combat.weather
-    if state.Clouds == nil {
+    if state.CloudPixels == nil {
         if state.Seed == 0 {
             state.Seed = rand.Uint32() | 1
         }
-        state.Clouds = ebiten.NewImageFromImage(makeCloudShadows(state.Seed))
+        state.CloudPixels = makeCloudShadows(state.Seed)
+        state.Clouds = ebiten.NewImageFromImage(state.CloudPixels)
     }
+    return state
+}
+
+// how far the shadows have moved, in art pixels
+func (state *weatherState) cloudShift() (float64, float64) {
+    return state.Time * cloudSpeedX, state.Time * cloudSpeedY
+}
+
+// THE SHADOWS OF CLOUDS, SECOND BUILD (user, 2026-09-29). The first was one picture with edges of
+// a pattern of pixels over everything, moved a pixel of the art at a time: the whole pattern
+// jumped with every step ("a lot of popping for something so large"), and the edge of a shadow cut
+// through a unit where it cut the ground behind it ("clearly an overlaid image ... it breaks the
+// illusion of depth"). Now
+//   the ground has the shadows as a picture with soft edges, which moves a pixel of the SCREEN at
+//   a time. it lies under what stands on the ground
+//   what stands on the ground, units, corpses, trees, rocks, houses, is darker AS A WHOLE by the
+//   shadow at the place it stands on. the edge is soft, so it gets darker and lighter slowly
+
+// the shadows of the clouds on the ground
+func (combat *CombatScreen) drawCloudGround(screen *ebiten.Image) {
+    if combat.weatherKind() != WeatherClouds {
+        return
+    }
+    state := combat.cloudShadows()
 
     view := combat.weatherView(screen)
     if view.Empty() {
         return
     }
 
-    // whole art pixels
-    shiftX := int(math.Floor(state.Time * cloudSpeedX))
-    shiftY := int(math.Floor(state.Time * cloudSpeedY))
+    shiftX, shiftY := state.cloudShift()
+    matrix := originalScreenMatrix(combat.GetCameraMatrix())
+    matrix.Concat(scale.ScaledGeom)
 
-    firstX, _ := floorDivide(view.Min.X - shiftX, cloudWidth)
-    firstY, _ := floorDivide(view.Min.Y - shiftY, cloudHeight)
-    for y := firstY * cloudHeight + shiftY; y < view.Max.Y; y += cloudHeight {
-        for x := firstX * cloudWidth + shiftX; x < view.Max.X; x += cloudWidth {
-            combat.drawOnField(screen, state.Clouds, x, y)
+    firstX, _ := floorDivide(view.Min.X - int(math.Ceil(shiftX)), cloudWidth)
+    firstY, _ := floorDivide(view.Min.Y - int(math.Ceil(shiftY)), cloudHeight)
+
+    var options ebiten.DrawImageOptions
+    for tileY := firstY; float64(tileY * cloudHeight) + shiftY < float64(view.Max.Y); tileY++ {
+        for tileX := firstX; float64(tileX * cloudWidth) + shiftX < float64(view.Max.X); tileX++ {
+            options.GeoM.Reset()
+            options.GeoM.Translate(float64(tileX * cloudWidth) + shiftX, float64(tileY * cloudHeight) + shiftY)
+            options.GeoM.Concat(matrix)
+            // on whole pixels of the screen, so the pixels of the picture keep their shape
+            options.GeoM.SetElement(0, 2, math.Round(options.GeoM.Element(0, 2)))
+            options.GeoM.SetElement(1, 2, math.Round(options.GeoM.Element(1, 2)))
+            screen.DrawImage(state.Clouds, &options)
         }
     }
+}
+
+// how bright something that stands at a place of the original's screen is under the clouds: 1
+// without a shadow
+func (combat *CombatScreen) cloudShade(screenX int, screenY int) float32 {
+    if combat.weatherKind() != WeatherClouds {
+        return 1
+    }
+    state := combat.cloudShadows()
+
+    shiftX, shiftY := state.cloudShift()
+    _, x := floorDivide(screenX - int(math.Floor(shiftX)), cloudWidth)
+    _, y := floorDivide(screenY - int(math.Floor(shiftY)), cloudHeight)
+    return 1 - float32(state.CloudPixels.NRGBAAt(x, y).A) / 255
+}
+
+// the same for a unit, by the tile it stands on or walks over
+func (combat *CombatScreen) cloudShadeOfUnit(unit *ArmyUnit) float32 {
+    if combat.weatherKind() != WeatherClouds {
+        return 1
+    }
+    x, y := float64(unit.X), float64(unit.Y)
+    if unit.Moving {
+        x, y = unit.MoveX, unit.MoveY
+    }
+    field := MakeBattlefieldMatrix()
+    screenX, screenY := field.Apply(x, y)
+    return combat.cloudShade(int(math.Round(screenX)), int(math.Round(screenY)))
 }
