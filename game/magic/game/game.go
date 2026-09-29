@@ -3889,6 +3889,19 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
     leftClick := inputmanager.LeftClick()
     rightClick := inputmanager.RightClick()
 
+    // modern controls: a red X over a tile the selected stack can not go to, and no click there. see worldcursor.go
+    overInvalid := invalidMoveCursor() && game.overInvalidMove(player, mouseX, mouseY)
+    game.updateMoveCursor(overInvalid)
+    clicked := leftClick
+    if overInvalid {
+        leftClick = false
+    }
+
+    if rightClick {
+        // what a right click opens has the cursor of always
+        game.updateMoveCursor(false)
+    }
+
     if leftClick {
         // modern controls: a click on a stack of the player selects it, see worldselect.go
         picked := game.stackToSelect(player, mouseX, mouseY)
@@ -3975,7 +3988,7 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
                         } else {
                             path, ok := game.Model.FindPath(oldX, oldY, newX, newY, player, stack, player.GetFog(game.Model.Plane))
                             if !ok {
-                                game.blinkRed(yield)
+                                game.invalidMove(yield, clicked)
                                 if inactiveStack != nil {
                                     player.MergeStacks(stack, inactiveStack)
                                 }
@@ -3998,7 +4011,7 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
                     // make a copy of the unit stack to activate all units, because path finding only checks active units for terrain constraints
                     path, ok := game.Model.FindPath(oldX, oldY, newX, newY, player, playerlib.MakeUnitStackFromUnits(stack.Units()), player.GetFog(game.Model.Plane))
                     if !ok {
-                        game.blinkRed(yield)
+                        game.invalidMove(yield, clicked)
                     } else {
                         stack.CurrentPath = path
                         stack.SetBuildRoadPath(nil)

@@ -12,9 +12,15 @@ import (
 const LeftClickSelects = true
 
 // the stack of the player a left click at this point of the screen selects, nil for none.
-// the stack that is selected already is not one: a click on it clears its path, as always
+// the stack that is selected already is not one: a click on it clears its path, as always.
+// with shift held the click moves the selected stack onto the stack, as every click of the classic controls
 func (game *Game) stackToSelect(player *playerlib.Player, mouseX int, mouseY int) *playerlib.UnitStack {
     if !LeftClickSelects || !display.ModernControls() || !game.InOverworldArea(mouseX, mouseY) {
+        return nil
+    }
+
+    if moveKeyHeld() {
+        // shift and a click: the selected stack goes there, see worldcursor.go
         return nil
     }
 

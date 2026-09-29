@@ -1063,6 +1063,14 @@ func runGame(yield coroutine.YieldFunc, game *MagicGame, config GameConfig) erro
 
     // start a game immediately
     if config.StartGame {
+        if capture.MouseAt != "" {
+            // development: the game sees the mouse at a fixed position, as below
+            fmt.Sscanf(capture.MouseAt, "%d,%d", &inputmanager.FixedMouseX, &inputmanager.FixedMouseY)
+            inputmanager.FixedMouse = true
+            display.FixedCursor = true
+            display.FixedCursorX = inputmanager.FixedMouseX
+            display.FixedCursorY = inputmanager.FixedMouseY
+        }
         return startQuickGame(yield, game, gameLoader)
     }
 
