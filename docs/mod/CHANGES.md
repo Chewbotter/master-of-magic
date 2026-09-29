@@ -7,7 +7,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The game is drawn at the real pixel size of the window, so every art pixel is the same whole number of screen pixels.
 - Zoom of the world map in whole steps only, so the art is never blurred or uneven.
 - Resolution list and Fullscreen in the settings, kept between runs.
-- A frame rate counter in the upper right.
+- F10 shows and hides a counter of frames per second in the upper right corner.
 
 ## Start screen and settings
 - The intro is skipped at the start. The main menu has Quick Start, Continue, Load, New Game, Settings, Credits, Quit.
@@ -39,7 +39,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 ## Battles
 - The battlefield, the places of figures, deployment, timing, trees, rocks, houses and walls follow the original.
 - The bar at the bottom matches the original: text, names, health bars.
-- The box of the unit under the mouse has the original's look, arranged anew: the name, the health bar under it and one column of attack, defense, resistance and moves end at its right edge. It sits in the corner of the window, also in widescreen.
+- What is known of the unit under the mouse stands in the upper right corner of the window, also in widescreen, in the original's letters and pictures without a panel: the name, the health bar under it and one column of attack, defense, resistance and moves, all ending on one edge.
 - The outline of the unit under the mouse pulses to a light gray, not to red.
 - While Tab is held, units whose turn is over are gray.
 - Zoom in whole steps and smooth panning. The field reaches across a wide window, with darkening ground around it.

@@ -1,6 +1,7 @@
 package main
 
-// Frames per second counter in the upper right corner of the real screen.
+// Frames per second counter in the upper right corner of the real screen. Hidden until its key
+// is pressed, and hidden again at the next start of the game (user, 2026-09-29).
 
 import (
     "fmt"
@@ -11,9 +12,19 @@ import (
     "github.com/kazzmir/master-of-magic/lib/font"
 
     "github.com/hajimehoshi/ebiten/v2"
+    "github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
-const ShowFPS = true
+// shown now
+var ShowFPS = false
+// the key that shows and hides it, on every screen
+var FPSKey = ebiten.KeyF10
+
+func updateFPSKey() {
+    if inpututil.IsKeyJustPressed(FPSKey) {
+        ShowFPS = !ShowFPS
+    }
+}
 // distance from the right and top edge of the screen, in original pixels
 const FPSMarginX = 3
 const FPSMarginY = 2

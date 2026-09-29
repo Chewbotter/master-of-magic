@@ -56,6 +56,10 @@ const (
 
 const unitInfoFontIndex = 0
 
+// true: the text stands in the panel of the original, dark with rims. false: on the field with
+// nothing behind it (user, 2026-09-29: "remove the box panel since it's no longer necessary")
+const unitInfoPanel = false
+
 // how dark the box makes what is behind it, 0 to 1. the original maps the colors behind it
 // through a table of its data (remap block 8), which was not read: this is by eye
 const unitInfoDark = 0.5
@@ -212,12 +216,14 @@ func (combat *CombatScreen) showUnitInfoOriginal(screen *ebiten.Image, unit *Arm
     top := unitInfoTop
     bottom := top + height - 1
 
-    fillUnitInfo(screen, left, top, width, height, unitInfoBlack(unitInfoDark))
-    // left and top, then right and bottom, as the original draws its lines
-    fillUnitInfo(screen, left, top, 1, height, hud.Palette[unitInfoRimLight])
-    fillUnitInfo(screen, left, top, width - 1, 1, hud.Palette[unitInfoRimLight])
-    fillUnitInfo(screen, right, top, 1, height, hud.Palette[unitInfoRimDark])
-    fillUnitInfo(screen, left + 1, bottom, width - 1, 1, hud.Palette[unitInfoRimDark])
+    if unitInfoPanel {
+        fillUnitInfo(screen, left, top, width, height, unitInfoBlack(unitInfoDark))
+        // left and top, then right and bottom, as the original draws its lines
+        fillUnitInfo(screen, left, top, 1, height, hud.Palette[unitInfoRimLight])
+        fillUnitInfo(screen, left, top, width - 1, 1, hud.Palette[unitInfoRimLight])
+        fillUnitInfo(screen, right, top, 1, height, hud.Palette[unitInfoRimDark])
+        fillUnitInfo(screen, left + 1, bottom, width - 1, 1, hud.Palette[unitInfoRimDark])
+    }
 
     picture := func(index int, x int, y int) {
         image, err := combat.ImageCache.GetImage("compix.lbx", index, 0)

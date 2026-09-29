@@ -1249,6 +1249,8 @@ func NewMagicGame(config GameConfig) (*MagicGame, error) {
 func (game *MagicGame) Update() error {
     display.FinishStartup(capture.Corner || capture.Path != "")
     inputmanager.Update()
+    // the frames per second counter, see fps.go
+    updateFPSKey()
 
     if ebiten.IsWindowBeingClosed() {
         game.MainCoroutine.Stop()
