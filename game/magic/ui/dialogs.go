@@ -646,6 +646,12 @@ func MakeSelectionUI(ui UIContainer, lbxCache *lbx.LbxCache, imageCache *util.Im
         }
     }
 
+    // the text of the original, see selectstyle.go
+    style := getSelectionStyle(lbxCache)
+    if style != nil {
+        requiredWidth = float64(style.width(selectionTitle, choices))
+    }
+
     totalHeight := buttonBackground1.Bounds().Dy() * len(choices)
 
     elements = append(elements, &UIElement{
@@ -696,7 +702,14 @@ func MakeSelectionUI(ui UIContainer, lbxCache *lbx.LbxCache, imageCache *util.Im
             options.GeoM.Translate((float64(cornerX + left.Bounds().Dx()) + requiredWidth), float64(cornerY + totalHeight))
             scale.DrawScaled(screen, bottomRight, &options)
 
-            fonts.Title.PrintOptions(screen, float64(cornerX + left.Bounds().Dx() + 4), float64(cornerY + 4), font.FontOptions{Options: &options, Scale: scale.ScaleAmount}, selectionTitle)
+            if style != nil {
+                var titleOptions ebiten.DrawImageOptions
+                titleOptions.ColorScale.ScaleAlpha(getAlpha())
+                boxRight := cornerX + left.Bounds().Dx() + int(requiredWidth) + right.Bounds().Dx() - 1
+                style.drawTitle(screen, cornerX, boxRight, cornerY, titleOptions, selectionTitle)
+            } else {
+                fonts.Title.PrintOptions(screen, float64(cornerX + left.Bounds().Dx() + 4), float64(cornerY + 4), font.FontOptions{Options: &options, Scale: scale.ScaleAmount}, selectionTitle)
+            }
         },
     })
 
@@ -742,6 +755,13 @@ func MakeSelectionUI(ui UIContainer, lbxCache *lbx.LbxCache, imageCache *util.Im
 
                 options.GeoM.Translate(float64(use.Bounds().Dx()), 0)
                 scale.DrawScaled(screen, ends[imageIndex], &options)
+
+                if style != nil {
+                    var textOptions ebiten.DrawImageOptions
+                    textOptions.ColorScale.ScaleAlpha(getAlpha())
+                    style.drawChoice(screen, myX, myY, textOptions, choice, imageIndex == 1)
+                    return
+                }
 
                 y := float64(myY + 2)
 

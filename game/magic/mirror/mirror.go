@@ -75,6 +75,13 @@ func MakeMirrorUI(cache *lbx.LbxCache, player *playerlib.Player, ui *uilib.UI, s
     cornerX := 50
     cornerY := 1
 
+    // the text and the places of the original, see style.go
+    style := getMirrorStyle(cache)
+    if style != nil {
+        cornerX = mirrorX
+        cornerY = mirrorY
+    }
+
     fonts := MakeMirrorFonts(cache)
 
     var element *uilib.UIElement
@@ -115,6 +122,38 @@ func MakeMirrorUI(cache *lbx.LbxCache, player *playerlib.Player, ui *uilib.UI, s
             if portrait != nil {
                 options.GeoM.Translate(float64(11), float64(11))
                 scale.DrawScaled(screen, portrait, &options)
+            }
+
+            if style != nil {
+                var textOptions ebiten.DrawImageOptions
+                textOptions.ColorScale.ScaleAlpha(getAlpha())
+                text := mirrorText{Screen: screen, Options: scaledOptions(&textOptions), X: cornerX, Y: cornerY}
+
+                style.drawName(text, player.Wizard.Name)
+                if showResources {
+                    style.drawReserves(text, player.Gold, player.Mana)
+                }
+
+                books := 0
+                for _, book := range player.Wizard.Books {
+                    books += book.Count
+                }
+                var bookOptions ebiten.DrawImageOptions
+                bookOptions.ColorScale.ScaleAlpha(getAlpha())
+                bookOptions.GeoM.Translate(float64(cornerX + mirrorBooksX(books)), float64(cornerY + mirrorBooksY))
+                draw.DrawBooks(screen, bookOptions, &imageCache, player.Wizard.Books, rand.New(rand.NewPCG(player.BookOrderSeed1, player.BookOrderSeed2)))
+
+                if player.GetFame() > 0 {
+                    style.drawFame(text, player.GetFame())
+                }
+                style.drawAbilities(text, player.Wizard.Retorts)
+
+                var heroes []string
+                for _, hero := range player.AliveHeroes() {
+                    heroes = append(heroes, hero.GetFullName())
+                }
+                style.drawHeroes(text, heroes)
+                return
             }
 
             centerOptions := font.FontOptions{Justify: font.FontJustifyCenter, Options: &options, Scale: scale.ScaleAmount, DropShadow: true}

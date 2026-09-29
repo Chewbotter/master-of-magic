@@ -19,6 +19,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Setting "Damage numbers", on at first: off, no numbers rise from units that are hit, as in the original.
 
 ## World map
+- The menus of choices (Info, Game) and the mirror have the original's text: its letters, colors, edges and places.
 - Smooth panning with the middle mouse button (modern controls): the map glides, keeps moving for a moment after release, and the cursor glides with it.
 - Camera moves are eased: a right click, the jump to the next unit, and following a unit that walks.
 - When you send a stack walking, the camera makes one move to where the stack will stop and waits for it there (modern controls).
