@@ -30,9 +30,15 @@ A heavily modified Master of Magic, forked from https://github.com/kazzmir/maste
   `D:/SteamLibrary/steamapps/common/Master of Magic Classic/Master of Magic Official Release` (101 LBX files).
   Sibling folders hold the Community Patch and Caster of Magic data; the code targets the official release.
 
-## Verify commands (Bash)
-- Build: `bash D:/Work/MasterMagic_open/build.sh`. EVERY DELIVERY ENDS WITH IT: the user plays `_build/magic.exe`; a probe exe built for captures (`_build/probe/*.exe`) does not update his game, and another conversation may have built magic.exe from a half-done working tree. (2026-09-28: he judged the plateaus on a stale magic.exe.)
-- Tests, once per change: `bash D:/Work/MasterMagic_open/test.sh` (expect every line `ok`, no `FAIL`)
+## Lanes law (2026-09-29, read `D:/Work/MasterMagic_open/CLAUDE.md` first: it is the whole rule)
+- Two sessions work on this game at the same time. Each has a LANE: its own checkout (`_work/a`, `_work/b`), branch (`work/a`, `work/b`) and builds (`_build/a`, `_build/b`). `mastermagic_game/` is the PLAY lane, branch master, which NO session edits: it only moves forward by `bash merge.sh <lane>`. Paths in this file that start with `game/magic/` are inside the lane's checkout.
+- In this file every `bash build.sh`, `bash test.sh` and every run of `magic.exe` means the lane's: `bash build.sh <lane>`, `bash test.sh <lane>`, `bash dev.sh <lane> <flags>`.
+
+## Verify commands (Bash), all from `D:/Work/MasterMagic_open`
+- Build: `bash build.sh <lane>`. Tests, once per change: `bash test.sh <lane>` (expect every line `ok`, no `FAIL`).
+- EVERY DELIVERY ENDS WITH `bash merge.sh <lane>`: it merges master into the lane, tests, moves master forward and builds the play lane, which is what the user starts with `RUN.bat`. Until then he only sees the change with `RUN-<lane>.bat`. (2026-09-28: he judged the plateaus on a stale magic.exe, and a magic.exe held the unfinished files of the other session.)
+- Runs of Claude's own: `bash dev.sh <lane> -start -capture probe/x.png -capture-frames 150`. It runs in `_build/<lane>` (paths of flags are relative to it, `display-dev.json` there is the lane's own), in the corner window, with `-data`, `-mod` and `-music=false` set. The boot probe and capture commands below are written the old way, with `./magic.exe` in `_build`: read them as flags for `dev.sh`.
+- The build stamp (`game/magic/buildstamp.go`, set by build.sh): lane, commit (`+` when files that are not committed are in the build), time. Under the debug list of the start screen and in the first line of the log.
 - Menu capture (Claude's instrument): `go build -o ../_build/capture.exe ./test/main-screen-capture`, then run as in Current state.
 - Boot probe: `cd D:/Work/MasterMagic_open/_build && timeout 12 ./magic.exe -corner -data "<data path>" -start -music=false > boot.log 2>&1`
   Pass banner: `Loaded data from` followed by `done create neutral player`. Exit code 124 is the timeout, not a failure.

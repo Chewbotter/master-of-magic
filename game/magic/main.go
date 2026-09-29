@@ -1465,6 +1465,7 @@ func setupReplacementPictures() {
 
 func main() {
     log.SetFlags(log.Ldate | log.Lshortfile | log.Lmicroseconds)
+    logBuildStamp()
 
     config := loadGameConfig()
     setupReplacementPictures()

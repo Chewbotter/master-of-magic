@@ -252,6 +252,9 @@ func (game *MagicGame) drawFastPlay(screen *ebiten.Image) {
         }
         print(use, index + 1, entry.text())
     }
+
+    // which build this is, see buildstamp.go
+    print(fastPlayFont, len(shownFastPlayEntries()) + 1 + BuildStampGap, buildStamp)
 }
 
 // low level monsters that hold caves early in a game
