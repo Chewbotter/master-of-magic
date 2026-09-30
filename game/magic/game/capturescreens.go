@@ -16,7 +16,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -161,6 +161,21 @@ func (game *Game) CaptureOpenScreen(name string) bool {
             }
             event = &GameEventSurveyor{}
         case "chancellor":
+            game.DoChancellor()
+            return true
+        case "chancellorevents", "chancellormany":
+            // the scroll with events of several kinds, and with more than it has room for
+            game.Model.ScrollEvents = []*GameEventScroll{
+                {Title: "CITY GROWTH", Text: "Hadrian's Wall has grown to a population of 5"},
+                {Title: "UNITS DISBANDED", Text: "Swordsmen - deserted: lack of gold.\nBowmen - deserted: lack of food."},
+                {Title: "CITY DEATHS", Text: "Rivendell now has a population of 3"},
+                {Title: "CITY GROWTH", Text: "Camelot has grown to a population of 9"},
+            }
+            if name == "chancellormany" {
+                for index := range 14 {
+                    game.Model.ScrollEvents = append(game.Model.ScrollEvents, &GameEventScroll{Title: "CITY GROWTH", Text: fmt.Sprintf("Town %v has grown to a population of %v", index + 1, index + 2)})
+                }
+            }
             game.DoChancellor()
             return true
         case "apprentice": event = &GameEventApprenticeUI{}

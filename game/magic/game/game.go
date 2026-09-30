@@ -257,6 +257,8 @@ type GameEventScroll struct {
     Title string
     Text string
     Old bool // a replayed event, don't add it again
+    // the chancellor: the scroll with all events of the turn, see scrollevents.go
+    All bool
 }
 
 type GameEventCityName struct {
@@ -2762,9 +2764,18 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                         }
                     case *GameEventScroll:
                         scroll := event.(*GameEventScroll)
-                        game.showScroll(yield, scroll.Title, scroll.Text)
-                        if !scroll.Old {
+                        if OneScrollForAllEvents && scroll.All {
+                            // the chancellor, see scrollevents.go
+                            game.showScrollEvents(yield, game.Model.ScrollEvents)
+                        } else if OneScrollForAllEvents && !scroll.Old {
+                            // shown with the others of the turn when no more events wait
                             game.Model.ScrollEvents = append(game.Model.ScrollEvents, scroll)
+                            scrollEventsWait = true
+                        } else {
+                            game.showScroll(yield, scroll.Title, scroll.Text)
+                            if !scroll.Old {
+                                game.Model.ScrollEvents = append(game.Model.ScrollEvents, scroll)
+                            }
                         }
                     case *GameEventLearnedSpell:
                         learnedSpell := event.(*GameEventLearnedSpell)
@@ -2873,10 +2884,24 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
 
                 lastEvent = event
             default:
+                if scrollEventsWait {
+                    // one scroll for the events that were not shown yet, see scrollevents.go
+                    scrollEventsWait = false
+                    from := min(scrollEventsShown, len(game.Model.ScrollEvents))
+                    scrollEventsShown = len(game.Model.ScrollEvents)
+                    if from < scrollEventsShown {
+                        game.showScrollEvents(yield, game.Model.ScrollEvents[from:])
+                    }
+                    continue
+                }
                 return
         }
     }
 }
+
+// events for the scroll have come and are not shown yet, and how many of the turn were shown
+var scrollEventsWait bool
+var scrollEventsShown int
 
 
 // the turn as a readable date, such as June 1450
@@ -5695,7 +5720,13 @@ func (game *Game) ResearchNewSpell(yield coroutine.YieldFunc, player *playerlib.
 
 // show all scroll events for this turn, or a message that no events occurred
 func (game *Game) DoChancellor(){
-    if len(game.Model.ScrollEvents) == 0 {
+    if OneScrollForAllEvents {
+        // one scroll with all of them, see scrollevents.go
+        select {
+            case game.Events <- &GameEventScroll{Old: true, All: true}:
+            default:
+        }
+    } else if len(game.Model.ScrollEvents) == 0 {
         event := &GameEventScroll{
             Title: "NO EVENTS THIS MONTH",
         }
@@ -7490,6 +7521,7 @@ func handleStasis(stack *playerlib.UnitStack) {
 func (game *Game) StartPlayerTurn(player *playerlib.Player) {
     if player.IsHuman() {
         game.Model.ScrollEvents = nil
+        scrollEventsShown = 0
     }
 
     if player.Skip {

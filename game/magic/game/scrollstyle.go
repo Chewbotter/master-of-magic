@@ -14,10 +14,8 @@ package game
 //   no shadow
 //   the text is in the middle of the scroll from top to bottom: around y 101
 //
-// STILL AS UPSTREAM HAS IT: the original shows ONE scroll with all events of a turn under their
-// headings (RANDOM EVENTS, UNITS DISBANDED, UNITS KILLED, CITY GROWTH, CITY DEATHS, ...), with
-// arrows when they do not fit. The fork shows a scroll for every event, one after the other, and
-// how the scroll opens and closes is its own.
+// ONE scroll has all events of a turn under their headings, see scrollevents.go. How the scroll
+// opens and closes is still the fork's.
 
 import (
     fontslib "github.com/kazzmir/master-of-magic/game/magic/fonts"
@@ -38,7 +36,7 @@ const (
     scrollNoEventsX = 158
     scrollLineX = 70
     // lines that are longer are broken, the original does not break them
-    scrollLineWidth = 182
+    scrollLineWidth = 194
     scrollHeadingStep = 11
     scrollLineStep = 7
     // a heading counts this much for the height of the text
