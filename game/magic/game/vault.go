@@ -105,6 +105,9 @@ func (game *Game) showVaultScreen(createdArtifact *artifact.Artifact, player *pl
         Location: fortressLocation,
     }
 
+    // the text of the original, see vaultstyle.go
+    vaultText := game.vaultStyle()
+
     ui := &uilib.UI{
         Cache: game.Cache,
         Draw: func(ui *uilib.UI, screen *ebiten.Image){
@@ -112,6 +115,12 @@ func (game *Game) showVaultScreen(createdArtifact *artifact.Artifact, player *pl
             var options ebiten.DrawImageOptions
             options.GeoM.Translate(float64(data.ScreenWidth / 2 - background.Bounds().Dx() / 2), 2)
             scale.DrawScaled(screen, background, &options)
+
+            if vaultText != nil {
+                vaultText.drawReserves(screen, player.Gold, player.Mana)
+                ui.StandardDraw(screen)
+                return
+            }
 
             fontOptions := font.FontOptions{Justify: font.FontJustifyRight, DropShadow: true, Options: &options, Scale: scale.ScaleAmount}
             fonts.ResourceFont.PrintOptions(screen, 190, 166, fontOptions, fmt.Sprintf("%v GP", player.Gold))
@@ -273,6 +282,11 @@ func (game *Game) showVaultScreen(createdArtifact *artifact.Artifact, player *pl
             Draw: func(element *uilib.UIElement, screen *ebiten.Image){
                 scale.DrawScaled(screen, profile, &options)
                 scale.DrawScaled(screen, frame, &options)
+
+                if vaultText != nil {
+                    vaultText.drawHero(screen, rect.Min.X, rect.Min.Y, hero.Name, selectedItem.Item != nil, isSameLocation())
+                    return
+                }
 
                 nameX := rect.Min.X + profile.Bounds().Dx() + 3
                 nameY := rect.Min.Y - 1

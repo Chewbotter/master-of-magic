@@ -4,6 +4,7 @@ package game
 
 import (
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
+    herolib "github.com/kazzmir/master-of-magic/game/magic/hero"
     "github.com/kazzmir/master-of-magic/game/magic/summon"
     "github.com/kazzmir/master-of-magic/game/magic/artifact"
     "github.com/kazzmir/master-of-magic/game/magic/units"
@@ -20,7 +21,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"summon", "summonitem", "globalcast", "banish", "enemycity", "levelup", "outpost", "outpostnew", "treasure", "treasuremany", "treasurenone", "hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname", "newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"vault", "vaultitem", "summon", "summonitem", "globalcast", "banish", "enemycity", "levelup", "outpost", "outpostnew", "treasure", "treasuremany", "treasurenone", "hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname", "newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -292,6 +293,32 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                         case "enemycity": game.doEnemyCityView(yield, city, player, player)
                     }
                 },
+            }
+        case "vault", "vaultitem":
+            // the screen of the items, with heroes; vaultitem with an item in the hand
+            player := game.Model.GetHumanPlayer()
+            if player == nil || len(player.Cities) == 0 {
+                return false
+            }
+            var city *citylib.City
+            for _, check := range player.Cities {
+                city = check
+                break
+            }
+            player.Gold = 1234
+            player.Mana = 567
+            added := 0
+            for _, hero := range player.HeroPool {
+                if added < 3 && player.AddHero(hero, city.X, city.Y, city.Plane) {
+                    hero.SetStatus(herolib.StatusEmployed)
+                    added += 1
+                }
+            }
+            if name == "vaultitem" {
+                item := artifact.MakeRandomArtifact(game.Cache)
+                event = &GameEventVault{CreatedArtifact: &item, Player: player}
+            } else {
+                event = &GameEventVault{Player: player}
             }
         case "notice":
             // the box of a message
