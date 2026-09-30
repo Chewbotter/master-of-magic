@@ -82,6 +82,10 @@ func TestSpellCost(test *testing.T) {
 
     value = ComputeSpellCost(&wizard, natureSpell, true, false)
     expected := 50*5*(100 - (30 + 15))/100
+    if ClassicSpellCost {
+        // Casting_Cost: the amount of the reduction is rounded down
+        expected = 250 - 250 * 45 / 100
+    }
     if value != expected {
         test.Errorf("casting cost for nature spell was wrong. expected=%v actual=%v", expected, value)
     }
@@ -89,6 +93,10 @@ func TestSpellCost(test *testing.T) {
     // evil omens
     value = ComputeSpellCost(&wizard, natureSpell, true, true)
     expected = int(math.Floor(50.0*5*(100 - (30 + 15))/100 * 3/2))
+    if ClassicSpellCost {
+        // Evil Omens on the table cost first, then five times overland
+        expected = 50 * 3 / 2 * 5 - 50 * 3 / 2 * 5 * 45 / 100
+    }
     if value != expected {
         test.Errorf("casting cost for nature spell with evil omens. expected=%v actual=%v", expected, value)
     }

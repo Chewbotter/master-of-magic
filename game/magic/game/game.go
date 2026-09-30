@@ -2284,6 +2284,11 @@ func (game *Game) doNotice(yield coroutine.YieldFunc, ui *uilib.UI, message stri
 func (game *Game) doNextTurn(yield coroutine.YieldFunc) {
     player := game.Model.GetHumanPlayer()
     goldIssue, foodIssue, manaIssue := game.CheckDisband(player)
+    if playerlib.ClassicEconomy {
+        // Main_Screen: only food is asked, by the food total of the summary
+        goldIssue, manaIssue = false, false
+        foodIssue = player.PlanningFoodPerTurn() < 0 && player.NormalUnits() > 0
+    }
 
     if goldIssue || foodIssue || manaIssue {
 
@@ -7755,7 +7760,10 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
     player.MovedStacksThisTurn = 0
     player.SuppressAutoNextTurn = false
 
-    disbandedMessages := game.DisbandUnits(player)
+    var disbandedMessages []string
+    if !playerlib.ClassicEconomy {
+        disbandedMessages = game.DisbandUnits(player)
+    }
 
     if player.IsHuman() && len(disbandedMessages) > 0 {
         select {
@@ -7771,7 +7779,23 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
         power = 0
     }
 
-    game.DissipateEnchantments(player, power)
+    if playerlib.ClassicEconomy {
+        // the upkeep the human can not pay, the human's research income for the list (economy.go)
+        if player.HasEnchantment(data.EnchantmentTimeStop) {
+            classicTimeStop(player)
+        } else {
+            disbandedMessages = append(disbandedMessages, game.classicUpkeep(player, power)...)
+        }
+        player.SetResearchIncome(player.SpellResearchPerTurn(power))
+        if player.IsHuman() && len(disbandedMessages) > 0 {
+            select {
+                case game.Events<- &GameEventScroll{Title: "UNITS DISBANDED", Text: strings.Join(disbandedMessages, "\n")}:
+                default:
+            }
+        }
+    } else {
+        game.DissipateEnchantments(player, power)
+    }
 
     // timestop may have dissipated by now
     timeStop := player.HasEnchantment(data.EnchantmentTimeStop)
@@ -7785,7 +7809,7 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
         player.Mana += player.ManaPerTurn(power, game.Model)
     }
 
-    if timeStop {
+    if timeStop && !playerlib.ClassicEconomy {
         player.Mana -= data.EnchantmentTimeStop.UpkeepMana()
     }
 
@@ -7801,6 +7825,10 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
             player.CastingSpell = spellbook.Spell{}
             player.CastingSpellProgress = 0
         }
+    } else if playerlib.ClassicEconomy {
+        // the skill of this turn first, then the spell (economy.go)
+        player.CastingSkillPower += player.CastingSkillPerTurn(power)
+        game.classicCasting(player)
     } else if !player.CastingSpell.Invalid() {
         // mana spent on the skill is the minimum of {player's mana, casting skill, remaining cost for spell}
         manaSpent := player.Mana
@@ -7859,10 +7887,14 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
         }
     }
 
-    player.CastingSkillPower += player.CastingSkillPerTurn(power)
+    if !playerlib.ClassicEconomy {
+        player.CastingSkillPower += player.CastingSkillPerTurn(power)
 
-    // reset casting skill for this turn
-    player.RemainingCastingSkill = player.ComputeOverworldCastingSkill()
+        // reset casting skill for this turn
+        player.RemainingCastingSkill = player.ComputeOverworldCastingSkill()
+    } else if returning {
+        player.RemainingCastingSkill = player.ComputeCastingSkill()
+    }
 
     var removeCities []*citylib.City
 

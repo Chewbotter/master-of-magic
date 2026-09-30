@@ -365,6 +365,9 @@ type Player struct {
     // true if the wizard is currently banished
     Banished bool
 
+    // the research income the list of candidates is sorted by (economy.go), not saved
+    researchIncome float64
+
     // the banners of the wizards this one banished or defeated, each once: the score counts them
     // (the original's Defeated_Wizards, conquest.go)
     DefeatedWizards []data.BannerType
@@ -940,6 +943,13 @@ func (player *Player) TotalUnitUpkeepFood() int {
 func (player *Player) TotalUnitUpkeepMana() int {
     total := 0
 
+    if ClassicEconomy {
+        for unit := range player.Units() {
+            total += player.unitManaUpkeep(unit)
+        }
+        return total
+    }
+
     for unit := range player.Units() {
         total += unit.GetUpkeepMana()
 
@@ -956,7 +966,11 @@ func (player *Player) IncreaseCastingSkillProgress(amount int) {
     player.Mana -= amount
 
     if player.AIBehavior != nil && player.CastingSpell.IsSpellOfMastery() {
-        relative := float64(amount) / float64(player.SpellOfMasteryCost)
+        cost := player.SpellOfMasteryCost
+        if ClassicEconomy {
+            cost = max(1, player.ComputeEffectiveSpellCost(player.CastingSpell, true))
+        }
+        relative := float64(amount) / float64(cost)
         player.AIBehavior.SpellOfMasteryProgress(relative)
     }
 }
@@ -964,15 +978,17 @@ func (player *Player) IncreaseCastingSkillProgress(amount int) {
 func (player *Player) LearnSpell(spell spellbook.Spell) {
     player.ResearchCandidateSpells.RemoveSpell(spell)
     player.KnownSpells.AddSpell(spell)
-    player.UpdateResearchCandidates()
 
-    // learned spells reduce the research cost of the spell of mastery
+    // learned spells reduce the research cost of the spell of mastery (before the list is made
+    // anew, which shows the cost)
     if spell.Name != "Spell of Mastery" {
         player.SpellOfMasteryCost -= spell.ResearchCost / 2
         if player.SpellOfMasteryCost < 0 {
             player.SpellOfMasteryCost = 0
         }
     }
+
+    player.UpdateResearchCandidates()
 
     // if the spell learned is the one being researched, then reset the research spell
     if spell.Name == player.ResearchingSpell.Name {
@@ -990,6 +1006,11 @@ func (player *Player) LearnSpell(spell spellbook.Spell) {
  * lower rarity spells first.
  */
 func (player *Player) UpdateResearchCandidates() {
+    if ClassicEconomy {
+        player.classicResearchCandidates()
+        return
+    }
+
     moreSpells := 8 - len(player.ResearchCandidateSpells.Spells)
 
     // find the set of potential spells to add to the research candidates
@@ -1083,10 +1104,11 @@ func (player *Player) InitializeResearchableSpells(spells *spellbook.Spells) {
             return 0
         }
 
-        if books <= 10 {
+        if books <= 9 || (books == 10 && !ClassicEconomy) {
             return books - 2
         }
 
+        // 10 books make every very rare spell researchable (Init_Computer_Players_Spell_Library)
         return 10
     }
 
@@ -1190,6 +1212,14 @@ func (player *Player) ReduceCastingSkill(reduceBy int) int {
 }
 
 func (player *Player) CastingSkillPerTurn(power int) int {
+    if ClassicEconomy {
+        // Players_Apply_Magic_Power: Archmage half again, rounded down
+        _, _, skill := player.classicPowerSplit(power)
+        if player.Wizard.RetortEnabled(data.RetortArchmage) {
+            skill = skill * 3 / 2
+        }
+        return skill
+    }
     bonus := 1.0
 
     if player.Wizard.RetortEnabled(data.RetortArchmage) {
@@ -1258,6 +1288,10 @@ func (player *Player) BaseResearchPerTurn() float64 {
 
 // this returns the raw research production per turn, not accounting for retorts or spellbooks
 func (player *Player) SpellResearchPerTurn(power int) float64 {
+    if ClassicEconomy {
+        _, research, _ := player.classicPowerSplit(power)
+        return player.BaseResearchPerTurn() + float64(research)
+    }
     return player.BaseResearchPerTurn() + float64(power) * player.PowerDistribution.Research
 }
 
@@ -1267,8 +1301,8 @@ func (player *Player) ComputeTurnsToCast(cost int) int {
 }
 
 func (player *Player) ComputeEffectiveSpellCost(spell spellbook.Spell, overland bool) int {
-    // special case for spell of mastery
-    if spell.Name == "Spell of Mastery" {
+    // special case for spell of mastery. the original casts it at its casting cost
+    if spell.Name == "Spell of Mastery" && !ClassicEconomy {
         return player.SpellOfMasteryCost
     }
 
@@ -1301,7 +1335,11 @@ func (player *Player) goldPerTurn(planning bool) int {
 
     gold += 10 * player.GetNobleHeroes()
 
-    gold += player.foodPerTurn(planning) / 2
+    if ClassicEconomy {
+        gold += player.foodSale(planning)
+    } else {
+        gold += player.foodPerTurn(planning) / 2
+    }
 
     return gold
 }
@@ -1373,6 +1411,11 @@ func (player *Player) manaPerTurn(power int, cityEnchantmentsProvider CityEnchan
     }
 
     mana := 0
+
+    if ClassicEconomy {
+        income, _, _ := player.classicPowerSplit(power)
+        return income - player.planningUpkeep(planning, player.classicManaUpkeep(cityEnchantmentsProvider))
+    }
 
     mana -= player.planningUpkeep(planning, player.TotalUnitUpkeepMana() + player.TotalEnchantmentUpkeep(cityEnchantmentsProvider))
 

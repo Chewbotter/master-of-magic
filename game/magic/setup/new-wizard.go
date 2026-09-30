@@ -1525,6 +1525,10 @@ func MakeChooseSpellInfo(allSpells spellbook.Spells, magic data.MagicType, books
 }
 
 func GetStartingSpells(wizard *WizardCustom, allSpells spellbook.Spells) spellbook.Spells {
+    if ClassicStartingSpells {
+        return classicStartingSpells(wizard, allSpells)
+    }
+
     var spellsOut spellbook.Spells
     magicOrder := []data.MagicType{data.LifeMagic, data.DeathMagic, data.ChaosMagic, data.NatureMagic, data.SorceryMagic}
 

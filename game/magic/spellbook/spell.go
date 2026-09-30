@@ -248,7 +248,55 @@ type Wizard interface {
 }
 
 // the casting cost of a spell can be reduced based on retorts/spell books
+// false: upstream's costs in floating point
+var ClassicSpellCost = true
+
+// Casting_Cost and Casting_Cost_Reduction (ReMoM NEXTTURN.c): the table cost, half again for
+// nature and life under Evil Omens, five times overland for a spell of both books, then the
+// reduction in whole percent (books over 7 10 each, the masteries 15, Conjurer 25 on summoning,
+// Artificer 50 on items, Runemaster 25 on arcane), the amount of it rounded down
+func classicSpellCost(wizard Wizard, spell Spell, overland bool, hasEvilOmens bool) int {
+    cost := spell.Cost(overland)
+    if spell.OverrideCost == 0 && hasEvilOmens && (spell.Magic == data.LifeMagic || spell.Magic == data.NatureMagic) {
+        table := spell.BaseCost(false)
+        if overland && spell.BaseCost(true) == table * 5 {
+            cost = table * 3 / 2 * 5
+        } else {
+            cost = spell.BaseCost(overland) * 3 / 2
+        }
+    }
+
+    reduction := 0
+    if wizard.RetortEnabled(data.RetortRunemaster) && spell.Magic == data.ArcaneMagic {
+        reduction += 25
+    }
+    if wizard.RetortEnabled(data.RetortChaosMastery) && spell.Magic == data.ChaosMagic {
+        reduction += 15
+    }
+    if wizard.RetortEnabled(data.RetortNatureMastery) && spell.Magic == data.NatureMagic {
+        reduction += 15
+    }
+    if wizard.RetortEnabled(data.RetortSorceryMastery) && spell.Magic == data.SorceryMagic {
+        reduction += 15
+    }
+    if wizard.RetortEnabled(data.RetortConjurer) && spell.IsSummoning() {
+        reduction += 25
+    }
+    if wizard.RetortEnabled(data.RetortArtificer) && (spell.Name == "Enchant Item" || spell.Name == "Create Artifact") {
+        reduction += 50
+    }
+    if spell.Magic != data.ArcaneMagic {
+        reduction += 10 * max(0, wizard.MagicLevel(spell.Magic) - 7)
+    }
+
+    return max(0, cost - cost * reduction / 100)
+}
+
 func ComputeSpellCost(wizard Wizard, spell Spell, overland bool, hasEvilOmens bool) int {
+    if ClassicSpellCost {
+        return classicSpellCost(wizard, spell, overland, hasEvilOmens)
+    }
+
     base := float64(spell.Cost(overland))
     modifier := float64(0)
 
