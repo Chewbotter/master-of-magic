@@ -18,7 +18,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -165,6 +165,26 @@ func (game *Game) CaptureOpenScreen(name string) bool {
         case "chancellor":
             game.DoChancellor()
             return true
+        case "newbuilding", "event":
+            // the box with the animal of the realm: a building that is finished, an event
+            player := game.Model.GetHumanPlayer()
+            if player == nil || len(player.Cities) == 0 {
+                return false
+            }
+            var city *citylib.City
+            for _, check := range player.Cities {
+                city = check
+                break
+            }
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    if name == "event" {
+                        game.doRandomEvent(yield, MakeDisjunctionEvent(1), true, player.Wizard)
+                    } else {
+                        game.showNewBuilding(yield, city, buildinglib.BuildingArmory, player)
+                    }
+                },
+            }
         case "notice":
             // the box of a message
             event = &GameEventInvokeRoutine{

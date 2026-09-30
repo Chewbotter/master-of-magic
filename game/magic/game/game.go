@@ -1218,6 +1218,13 @@ func (game *Game) showNewBuilding(yield coroutine.YieldFunc, city *citylib.City,
 
     wrappedText := fonts.BigFont.CreateWrappedText(float64(175), 1, fmt.Sprintf("The %s of %s has completed the construction of a %s.", city.GetSize(), city.Name, game.Model.BuildingInfo.Name(building)))
 
+    // the text of the original, see notifystyle.go
+    notify := game.notifyText()
+    var notifyLines []string
+    if notify != nil {
+        notifyLines = notify.Wrap(newBuildingMessage(fmt.Sprintf("%v", city.GetSize()), city.Name, game.Model.BuildingInfo.Name(building)), notifyTextWidth)
+    }
+
     rightSide, _ := game.ImageCache.GetImage("resource.lbx", 41, 0)
 
     getAlpha := util.MakeFadeIn(7, &game.Counter)
@@ -1247,7 +1254,12 @@ func (game *Game) showNewBuilding(yield coroutine.YieldFunc, city *citylib.City,
         scale.DrawScaled(screen, animal, &iconOptions)
 
         x, y := options.GeoM.Apply(80, 9)
-        fonts.BigFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Scale: scale.ScaleAmount, Options: &options})
+        if notify != nil {
+            start := notifyTextStart(player.Wizard)
+            notify.PrintLines(screen, func(int) int { return start }, notifyBuildingY + notifyTextDown, font.FontJustifyLeft, getAlpha(), notifyLines)
+        } else {
+            fonts.BigFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Scale: scale.ScaleAmount, Options: &options})
+        }
 
         options.GeoM.Translate(float64(background.Bounds().Dx()), 0)
         scale.DrawScaled(screen, rightSide, &options)
@@ -2326,6 +2338,15 @@ func (game *Game) doRandomEvent(yield coroutine.YieldFunc, event *RandomEvent, s
     }
     wrappedText := fonts.BigFont.CreateWrappedText(float64(175), 1, message)
 
+    // the text and the place of the original, see notifystyle.go
+    notify := game.notifyText()
+    var notifyLines []string
+    boxY := 60
+    if notify != nil {
+        notifyLines = notify.Wrap(message, notifyTextWidth)
+        boxY = notifyEventY
+    }
+
     rightSide, _ := game.ImageCache.GetImage("resource.lbx", 41, 0)
 
     getAlpha := util.MakeFadeIn(7, &game.Counter)
@@ -2351,7 +2372,7 @@ func (game *Game) doRandomEvent(yield coroutine.YieldFunc, event *RandomEvent, s
 
         var options ebiten.DrawImageOptions
         options.ColorScale.ScaleAlpha(getAlpha())
-        options.GeoM.Translate(float64(8), float64(60))
+        options.GeoM.Translate(float64(8), float64(boxY))
         scale.DrawScaled(screen, background, &options)
         iconOptions := options
         iconOptions.GeoM.Translate(float64(34), float64(28))
@@ -2359,7 +2380,12 @@ func (game *Game) doRandomEvent(yield coroutine.YieldFunc, event *RandomEvent, s
         scale.DrawScaled(screen, animal, &iconOptions)
 
         x, y := options.GeoM.Apply(float64(75), float64(9))
-        fonts.BigFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Scale: scale.ScaleAmount, Options: &options})
+        if notify != nil {
+            start := notifyTextStart(wizard)
+            notify.PrintLines(screen, func(int) int { return start }, boxY + notifyTextDown, font.FontJustifyLeft, getAlpha(), notifyLines)
+        } else {
+            fonts.BigFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Scale: scale.ScaleAmount, Options: &options})
+        }
 
         options.GeoM.Translate(float64(background.Bounds().Dx()), 0)
 
