@@ -32,6 +32,12 @@ cities and the orders of its units. Units of computer players in Stasis that can
 - The clone's new turn still sets the farmers its way before this; its reset of the tax to 1 gold and
   its turning of mana into gold are undone.
 
+## The income it plans with
+
+The glue and the choice of spells read the original's summary of income (Player_Resource_Income_Total),
+where the upkeep of its armies and enchantments is less by the difficulty's maintenance; what it pays
+is full but for the gold cut of its units at Hard and Impossible (difficulty.md).
+
 ## The budget (AI_Disband_To_Balance_Budget)
 
 - While the gold or food income is below 0 (200 tries at most): the weakest normal unit on land goes

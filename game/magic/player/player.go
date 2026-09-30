@@ -910,7 +910,8 @@ func (player *Player) TotalUnitUpkeepGold() int {
     total := 0
 
     for unit := range player.Units() {
-        total += unit.GetUpkeepGold()
+        // Unit_Gold_Upkeep: less for every player but the human at Hard and Impossible
+        total += player.difficultyUnitGold(unit.GetUpkeepGold())
     }
 
     total -= player.GetFame()
@@ -1271,6 +1272,17 @@ func (player *Player) ComputeEffectiveSpellCost(spell spellbook.Spell, overland 
 }
 
 func (player *Player) GoldPerTurn() int {
+    return player.goldPerTurn(false)
+}
+
+// the gold income as the original's summary counts it (Player_Resource_Income_Total): what the
+// computer players plan with and the main screen shows; the upkeep of the armies of every player
+// but the human is less by the maintenance of the difficulty table there, and only there
+func (player *Player) PlanningGoldPerTurn() int {
+    return player.goldPerTurn(true)
+}
+
+func (player *Player) goldPerTurn(planning bool) int {
     if player.HasEnchantment(data.EnchantmentTimeStop) {
         return 0
     }
@@ -1281,11 +1293,11 @@ func (player *Player) GoldPerTurn() int {
         gold += city.GoldSurplus()
     }
 
-    gold -= player.difficultyUpkeep(player.TotalUnitUpkeepGold())
+    gold -= player.planningUpkeep(planning, player.TotalUnitUpkeepGold())
 
     gold += 10 * player.GetNobleHeroes()
 
-    gold += player.FoodPerTurn() / 2
+    gold += player.foodPerTurn(planning) / 2
 
     return gold
 }
@@ -1303,6 +1315,15 @@ func (player *Player) GetNobleHeroes() int {
 }
 
 func (player *Player) FoodPerTurn() int {
+    return player.foodPerTurn(false)
+}
+
+// the food income of the original's summary (see PlanningGoldPerTurn)
+func (player *Player) PlanningFoodPerTurn() int {
+    return player.foodPerTurn(true)
+}
+
+func (player *Player) foodPerTurn(planning bool) int {
     if player.HasEnchantment(data.EnchantmentTimeStop) {
         return 0
     }
@@ -1313,7 +1334,7 @@ func (player *Player) FoodPerTurn() int {
         food += city.SurplusFood()
     }
 
-    food -= player.difficultyUpkeep(player.TotalUnitUpkeepFood())
+    food -= player.planningUpkeep(planning, player.TotalUnitUpkeepFood())
 
     return food
 }
@@ -1334,13 +1355,22 @@ func (player *Player) TotalEnchantmentUpkeep(cityEnchantmentsProvider CityEnchan
 }
 
 func (player *Player) ManaPerTurn(power int, cityEnchantmentsProvider CityEnchantmentsProvider) int {
+    return player.manaPerTurn(power, cityEnchantmentsProvider, false)
+}
+
+// the mana income of the original's summary (see PlanningGoldPerTurn)
+func (player *Player) PlanningManaPerTurn(power int, cityEnchantmentsProvider CityEnchantmentsProvider) int {
+    return player.manaPerTurn(power, cityEnchantmentsProvider, true)
+}
+
+func (player *Player) manaPerTurn(power int, cityEnchantmentsProvider CityEnchantmentsProvider, planning bool) int {
     if player.HasEnchantment(data.EnchantmentTimeStop) {
         return 0
     }
 
     mana := 0
 
-    mana -= player.difficultyUpkeep(player.TotalUnitUpkeepMana() + player.TotalEnchantmentUpkeep(cityEnchantmentsProvider))
+    mana -= player.planningUpkeep(planning, player.TotalUnitUpkeepMana() + player.TotalEnchantmentUpkeep(cityEnchantmentsProvider))
 
     manaFocusingBonus := float64(1)
 

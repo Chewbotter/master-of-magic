@@ -26,8 +26,14 @@ diplomacy).
   (before the upkeep of buildings), mana and research of the city times the table, the upkeep of its
   buildings times the maintenance (Do_City_Calculations).
 - The power of a computer wizard's nodes times the mana, after the masteries (Player_Magic_Power_Income_Total).
-- The gold, food and mana every player but the human pays for its units and all its enchantments
-  (the neutral player's too) times the maintenance (Player_Resource_Income_Total).
+- The gold a unit costs every player but the human (the neutral player too): three quarters at Hard,
+  half at Impossible, each unit rounded down (Unit_Gold_Upkeep). Food and mana are paid in full.
+- The maintenance column counts only in the original's summary of income
+  (Player_Resource_Income_Total): the upkeep of armies and enchantments of every player but the
+  human times it. The computer players plan with that summary (tax, food, the budget, the choice of
+  spells: `PlanningGoldPerTurn`, `PlanningFoodPerTurn`, `PlanningManaPerTurn`); what they really pay
+  is the full upkeep above. (First built taking the maintenance off what they pay, fixed after the
+  rules survey.)
 - Growth of a computer wizard's city times the growth; a NEUTRAL city grows half as fast and not at
   all from (level + 1) x 2 citizens on (City_Growth_Rate).
 - The chance an outpost grows times the outposts column, for EVERY owner, the human's outposts too

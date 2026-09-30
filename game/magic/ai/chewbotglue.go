@@ -202,17 +202,17 @@ func (ai *ChewbotAI) updateIncome(self *playerlib.Player, services playerlib.AIS
         glue.TaxIndex = index
         self.UpdateTaxRate(chewTaxRate(index))
     }
-    if turn / 50 * 75 > self.GoldPerTurn() && glue.TaxIndex < 6 {
+    if turn / 50 * 75 > self.PlanningGoldPerTurn() && glue.TaxIndex < 6 {
         setTax(glue.TaxIndex + 1)
     }
-    if self.GoldPerTurn() > 200 && glue.TaxIndex > 1 {
+    if self.PlanningGoldPerTurn() > 200 && glue.TaxIndex > 1 {
         setTax(glue.TaxIndex - 1)
     }
     if glue.TaxIndex > chewTaxMost {
         setTax(chewTaxMost)
     }
 
-    food := self.FoodPerTurn()
+    food := self.PlanningFoodPerTurn()
     if food >= 0 {
         return
     }
@@ -353,9 +353,9 @@ type chewOwnUnit struct {
 // least 1); while the mana income is below 0 the same with the summoned units and their mana
 func (ai *ChewbotAI) disbandToBudget(self *playerlib.Player, services playerlib.AIServices, world *chewWorld, spells *chewSpellWorld) {
     power := services.ComputePower(self)
-    goldDeficit := max(-self.GoldPerTurn(), 0)
-    foodDeficit := max(-self.FoodPerTurn(), 0)
-    manaDeficit := max(-self.ManaPerTurn(power, services), 0)
+    goldDeficit := max(-self.PlanningGoldPerTurn(), 0)
+    foodDeficit := max(-self.PlanningFoodPerTurn(), 0)
+    manaDeficit := max(-self.PlanningManaPerTurn(power, services), 0)
     if goldDeficit == 0 && foodDeficit == 0 && manaDeficit == 0 {
         return
     }

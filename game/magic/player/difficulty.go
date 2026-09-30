@@ -44,8 +44,33 @@ func (player *Player) DifficultyModifiers() (citylib.DifficultyModifiers, bool) 
     return citylib.DifficultyTable[owner.Level], true
 }
 
-// gold, food and mana every player but the human pays for its units and enchantments, times the
-// maintenance of the table (Player_Resource_Income_Total: the neutral player too)
+// the gold, food and mana every player but the human pays for its units and enchantments, times the
+// maintenance of the table, AS THE ORIGINAL'S SUMMARY COUNTS IT (Player_Resource_Income_Total, the
+// neutral player too): the computer players plan with it; what they really pay is full
+func (player *Player) planningUpkeep(planning bool, upkeep int) int {
+    if !planning {
+        return upkeep
+    }
+    return player.difficultyUpkeep(upkeep)
+}
+
+// Unit_Gold_Upkeep: the gold a unit of any player but the human costs, three quarters at Hard, half
+// at Impossible (and Extreme), per unit, rounded down
+func (player *Player) difficultyUnitGold(upkeep int) int {
+    if !citylib.ClassicDifficulty {
+        return upkeep
+    }
+    owner, ok := player.OwnerDifficulty()
+    if !ok || (!owner.Computer && !owner.Neutral) {
+        return upkeep
+    }
+    switch owner.Level {
+        case 3: return upkeep * 3 / 4
+        case 4: return upkeep / 2
+    }
+    return upkeep
+}
+
 func (player *Player) difficultyUpkeep(upkeep int) int {
     if !citylib.ClassicDifficulty {
         return upkeep

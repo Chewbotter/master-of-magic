@@ -2876,11 +2876,28 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                         }
                     case *GameEventSelectLocationForSpell:
                         selectLocation := event.(*GameEventSelectLocationForSpell)
-                        if selectLocation.Player.IsHuman() {
-                            tileX, tileY, cancel := game.selectLocationForSpell(yield, selectLocation.Spell, selectLocation.Player, selectLocation.LocationType)
-                            if !cancel {
-                                selectLocation.SelectedFunc(yield, tileX, tileY)
+                        returning := selectLocation.Spell.Name == "Spell of Return"
+                        if selectLocation.Player.IsHuman() && returning && (game.headless || game.captureSkipping) {
+                            // a run without the human's input: its city as a computer player's (spellofreturn.go)
+                            game.aiSpellOfReturn(selectLocation, func(x int, y int) {
+                                selectLocation.SelectedFunc(yield, x, y)
+                            })
+                        } else if selectLocation.Player.IsHuman() {
+                            // Cast_Spell_Of_Return: the human can not leave the choice of its new fortress
+                            for {
+                                tileX, tileY, cancel := game.selectLocationForSpell(yield, selectLocation.Spell, selectLocation.Player, selectLocation.LocationType)
+                                if !cancel {
+                                    selectLocation.SelectedFunc(yield, tileX, tileY)
+                                    break
+                                }
+                                if !returning || len(selectLocation.Player.Cities) == 0 {
+                                    break
+                                }
                             }
+                        } else if returning {
+                            game.aiSpellOfReturn(selectLocation, func(x int, y int) {
+                                selectLocation.SelectedFunc(yield, x, y)
+                            })
                         } else {
                             // the AI's square (aicast.go)
                             game.aiSelectLocation(yield, selectLocation)

@@ -119,7 +119,7 @@ func (ai *ChewbotAI) pickSpell(self *playerlib.Player, services playerlib.AIServ
         return spellbook.Spell{}, false
     }
     power := services.ComputePower(self)
-    perTurn := self.Mana / 10 + self.ManaPerTurn(power, services)
+    perTurn := self.Mana / 10 + self.PlanningManaPerTurn(power, services)
     if spell.CastCost / 50 > perTurn {
         chewSpellLog(self, "kind %v, %v is too costly (%v a turn)", kind, name, perTurn)
         return spellbook.Spell{}, false

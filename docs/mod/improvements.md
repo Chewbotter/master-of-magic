@@ -84,9 +84,12 @@ quirk constant where there is one: turning it is the change. New calls go here t
 - The exchange of spells compares the worth of the wizard's spell as a byte
   (`quirkExchangeWorthByte`), so a costly spell may ask little. Suggested: the full worth.
 
-## Difficulty
+## Difficulty and banishment
 
 - The table applies under both Enemy AI settings (kept: a rule of the game).
 - Only growth is scaled; a city that starves shrinks by the fork's rule (the original keeps growth
   at 0 or more and handles starving elsewhere; to be looked at with the game's rules).
 - Extreme counts as Impossible (the original has no Extreme).
+- Spell of Return of a computer wizard: its city with the strongest garrison above the old
+  fortress's (MY CALL: above 0, the old fortress being another's or gone); with none the spell does
+  nothing and the wizard starts it again (MY CALL: the original's spell fails).
