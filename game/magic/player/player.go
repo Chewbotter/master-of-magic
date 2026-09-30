@@ -45,10 +45,6 @@ type AIPurifyDecision struct {
     Units []units.StackUnit
 }
 
-// an AI that wants to know when a player attacks one of its stacks or cities
-type AIAttackedListener interface {
-    WasAttacked(self *Player, attacker *Player)
-}
 
 type AIProduceDecision struct {
     City *citylib.City
@@ -234,89 +230,71 @@ type AIBehavior interface {
     ConfirmEncounter(*UnitStack, *maplib.ExtraEncounter) bool
 }
 
-type Hostility int
-const (
-    HostilityNone Hostility = iota
-    HostilityAnnoyed
-    HostilityWarlike
-    HostilityJihad
-)
-
+// the view one wizard has of another: the original game's diplomacy data of a pair (the ReMoM
+// project's reconstruction, MoX/src/MOM_DAT.h s_WIZ_DIPL, _players[a].Dipl.X[b] is a's view of b).
+// The rules that change it are in diplomacy/rules*.go
 type Relationship struct {
+    // the treaty (Dipl_Status): none, wizard pact, alliance, war
     Treaty data.TreatyType
-    // from -100 to +100, where -100 means this player hates the other, and +100 means this player loves the other
+    // Default_Rel: where the visible relation drifts back to, -100 to 100
     StartingRelation int
+    // Visible_Rel: the relation shown on the magic screen, -100 (Hate) to 100 (Harmony); the same
+    // both ways
     VisibleRelation int
+    // Hidden_Rel: a lasting trust that no drift takes away (broken treaties, spells given)
+    HiddenRelation int
 
-    // these values indicate how likely the player will be to accept a treaty or trade
+    // the original's patience with proposals of each kind (treaty_modifier, exchange_modifier,
+    // peace_modifier): every proposal wears it down, every turn brings some back
     TreatyInterest int
     TradeInterest int
     PeaceInterest int
 
-    // how many turns since a peace treaty has been made with this player. While this value is above 0
-    // the owner will not perform any hostile actions
+    // peace_duration: turns left in which this wizard keeps a peace made with the other
     PeaceCounter int
 
-    // how hostile this player is to the other
-    Hostility Hostility
+    // how hostile this wizard is to the other: 0 none, 2 hostile, 3 war, 4 holy war (the original
+    // never uses 1)
+    Hostility int
 
-    // how many times this player has been warned about their actions
+    // G_Warning_Progress: turns the other's units have stood near this wizard's cities under a treaty
     WarningCounter int
+    // field_126: how often the human was threatened or warned by this wizard of late
+    ThreatCounter int
+
+    // contact_stage: 0 unmet, 1 greeted, 2 known
+    ContactStage int
+    // the treaty that was broken last between the two, for what the wizards say
+    BrokenTreaty data.TreatyType
+
+    // the grievance or order of this turn (DA_Strength, Dipl_Action, DA_Spell, DA_City). In the
+    // human's view of a computer wizard: what that wizard does or says to the human
+    ActionStrength int
+    Action int
+    ActionSpell string
+    ActionCity string
+
+    // what a computer wizard adds to a proposal to the human (offer_gold, offer_spell), the spells
+    // it offers in an exchange and the one it wants (field_A8, niu_au_want_tech)
+    OfferGold int
+    OfferSpell string
+    ExchangeSpells []string
+    WantSpell string
+    // a computer wizard asks its ally, the human, to make war on this one (break_treaty)
+    WarRequest data.BannerType
+    HasWarRequest bool
+    // the spell the human gave as tribute last (field_8A)
+    TributeSpell string
 }
 
-// relationship values go up by a bit each turn
-func (relationship *Relationship) Increment(starting int) int {
-    if starting < 100 {
-        starting += 5
-    }
-
-    if starting < 50 {
-        starting += rand.N(5) + 1
-    }
-
-    if starting < 0 {
-        starting += rand.N(5) + 1
-    }
-
-    return starting
-}
-
-func (relationship *Relationship) UpdateTurn() {
-    relationship.TreatyInterest = relationship.Increment(relationship.TreatyInterest)
-    relationship.TradeInterest = relationship.Increment(relationship.TradeInterest)
-    relationship.PeaceInterest = relationship.Increment(relationship.PeaceInterest)
-
-    abs := func (x int) int {
-        return max(x, -x)
-    }
-
-    // visible relation should gravitate towards starting relation
-    if rand.N(140) > abs(relationship.VisibleRelation) {
-        if relationship.VisibleRelation < relationship.StartingRelation {
-            relationship.VisibleRelation += rand.N(2) + 1
-        // FIXME: the wiki says downward gravitation happens every 3 turns. here we do it every turn
-        } else if relationship.VisibleRelation > relationship.StartingRelation {
-            relationship.VisibleRelation -= rand.N(2) + 1
-        }
-    }
+// the level of a relation shown to the player, 0 (Hate) to 10 (Harmony): (relation + 100) / 20
+func RelationLevel(relation int) int {
+    return max(0, min(10, (relation + 100) / 20))
 }
 
 func (relationship *Relationship) Description() string {
-    switch {
-        case relationship.VisibleRelation >= 100: return "Harmony"
-        case relationship.VisibleRelation >= 80: return "Friendly"
-        case relationship.VisibleRelation >= 60: return "Peaceful"
-        case relationship.VisibleRelation >= 40: return "Calm"
-        case relationship.VisibleRelation >= 20: return "Relaxed"
-        case relationship.VisibleRelation >= 0: return "Neutral"
-        case relationship.VisibleRelation >= -20: return "Unease"
-        case relationship.VisibleRelation >= -40: return "Restless"
-        case relationship.VisibleRelation >= -60: return "Tense"
-        case relationship.VisibleRelation >= -80: return "Troubled"
-        case relationship.VisibleRelation < -80: return "Hate"
-    }
-
-    return "Unknown"
+    names := []string{"Hate", "Troubled", "Tense", "Restless", "Unease", "Neutral", "Relaxed", "Calm", "Peaceful", "Friendly", "Harmony"}
+    return names[RelationLevel(relationship.VisibleRelation)]
 }
 
 type CityEnchantment struct {
@@ -386,6 +364,14 @@ type Player struct {
 
     // true if the wizard is currently banished
     Banished bool
+
+    // what kind of wizard a computer wizard is, picked at the start of a game (personality.go)
+    Personality Personality
+    Objective Objective
+    // turns until the wizard looks at its hostility to the others again (reevaluate_hostility_countdown)
+    HostilityCountdown int
+    // hostility to the neutral player (3 once it looks at its hostility from turn 100 on)
+    RaiderHostility int
 
     // known spells
     KnownSpells spellbook.Spells
@@ -582,33 +568,16 @@ func (player *Player) LatestWizardPower() WizardPower {
     return player.PowerHistory[len(player.PowerHistory) - 1]
 }
 
-func (player *Player) UpdateDiplomaticRelations() {
-    // FIXME: relation value should be adjusted each turn
-    // if aura of majesty is in effect by some rival wizard, then the relation value should go up by 1 for that wizard
-
-    for _, relation := range player.PlayerRelations {
-        relation.UpdateTurn()
-    }
-}
-
-// adjust the diplomacy value between this player and the other player
-func (player *Player) AdjustDiplomaticRelation(other *Player, amount int) {
-    relation, ok := player.PlayerRelations[other]
-    if ok {
-        relation.StartingRelation = max(min(relation.StartingRelation + amount, 100), -100)
-    }
-}
-
 // this player should now be aware of the other player
 func (player *Player) AwarePlayer(other *Player) {
     _, ok := player.PlayerRelations[other]
     if !ok {
+        // the original sets these for every pair at the start of a game (Init_Diplomatic_Relations);
+        // they depend on the books only, so here at the first contact
+        relation := computeStartingRelation(player.Wizard, other.Wizard)
         player.PlayerRelations[other] = &Relationship{
-            StartingRelation: computeStartingRelation(player.Wizard, other.Wizard),
-            VisibleRelation: computeStartingRelation(player.Wizard, other.Wizard),
-            TreatyInterest: 100,
-            TradeInterest: 100,
-            PeaceInterest: 100,
+            StartingRelation: relation,
+            VisibleRelation: relation,
         }
 
         if player.AIBehavior != nil {

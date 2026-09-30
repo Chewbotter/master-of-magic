@@ -47,7 +47,7 @@ var DebugRevealAll = false
 // terrain a unit can not enter stays closed
 var DebugUnlimitedMoves = false
 
-// a rival wizard that comes into view is known at once, without the screen of its greeting, and a walk goes on
+// the greeting of a rival wizard at the end of the turn it was met in is not shown
 var DebugNoGreetings = false
 
 // units of the human player are not disbanded when gold, food or mana run out

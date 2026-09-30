@@ -330,6 +330,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     game.ShowFizzleSpell(spell, player)
                     return false
                 }
+                game.cityCurseReaction(player, spell.Name, city)
                 return true
             }
             game.doCastCityEnchantmentFull(spell, player, LocationTypeEnemyCity, data.CityEnchantmentChaosRift, before, noCityCallback)
@@ -339,6 +340,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     game.ShowFizzleSpell(spell, player)
                     return false
                 }
+                game.cityCurseReaction(player, spell.Name, city)
                 return true
             }
             game.doCastCityEnchantmentFull(spell, player, LocationTypeEnemyCity, data.CityEnchantmentCursedLands, before, noCityCallback)
@@ -348,6 +350,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     game.ShowFizzleSpell(spell, player)
                     return false
                 }
+                game.cityCurseReaction(player, spell.Name, city)
                 return true
             }
             game.doCastCityEnchantmentFull(spell, player, LocationTypeEnemyCity, data.CityEnchantmentFamine, before, noCityCallback)
@@ -357,6 +360,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     game.ShowFizzleSpell(spell, player)
                     return false
                 }
+                game.cityCurseReaction(player, spell.Name, city)
                 return true
             }
             game.doCastCityEnchantmentFull(spell, player, LocationTypeEnemyCity, data.CityEnchantmentPestilence, before, noCityCallback)
@@ -366,6 +370,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     game.ShowFizzleSpell(spell, player)
                     return false
                 }
+                game.cityCurseReaction(player, spell.Name, city)
                 return true
             }
             game.doCastCityEnchantmentFull(spell, player, LocationTypeEnemyCity, data.CityEnchantmentEvilPresence, before, noCityCallback)
@@ -536,6 +541,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
 
                     // FIXME: dispel chance if tile contains a city
 
+                    game.stackSpellReaction(player, owner)
                     game.doCastOnMap(yield, tileX, tileY, 14, spell.Sound, func (x int, y int, animationFrame int) {})
 
                     for _, unit := range stack.Units() {
@@ -661,6 +667,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                         sound.Play()
                     }
 
+                    game.cityCurseReaction(player, spell.Name, city)
                     game.showCityEarthquake(yield, city, owner)
                 }
 
@@ -680,6 +687,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                 }
 
                 enemyStack, enemy := game.Model.FindStack(tileX, tileY, game.Model.Plane)
+                game.stackSpellReaction(player, enemy)
 
                 game.doCastOnMap(yield, tileX, tileY, 10, spell.Sound, func (x int, y int, animationFrame int) {})
 
@@ -703,6 +711,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                 }
 
                 enemyStack, enemy := game.Model.FindStack(tileX, tileY, game.Model.Plane)
+                game.stackSpellReaction(player, enemy)
 
                 game.doCastOnMap(yield, tileX, tileY, 6, spell.Sound, func (x int, y int, animationFrame int) {})
 
@@ -745,6 +754,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     return
                 }
 
+                game.cityCurseReaction(player, spell.Name, chosenCity)
                 // FIXME: verify the animation and sound. The spell index is 102
                 game.doCastOnMap(yield, tileX, tileY, 12, 72, func (x int, y int, animationFrame int) {})
                 game.Model.doCallTheVoid(chosenCity, owner)
@@ -768,6 +778,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     game.ShowFizzleSpell(spell, player)
                     return
                 }
+                game.curseReactionAt(player, spell.Name, tileX, tileY, game.Model.Plane)
                 game.doCastRaiseVolcano(yield, tileX, tileY, player)
             }
 
@@ -785,6 +796,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     game.ShowFizzleSpell(spell, player)
                     return
                 }
+                game.curseReactionAt(player, spell.Name, tileX, tileY, game.Model.Plane)
                 game.doCastCorruption(yield, tileX, tileY)
             }
 
@@ -885,6 +897,8 @@ func (game *Game) castGlobalEnchantment(enchantment data.Enchantment, player *pl
             game.ApplyGlobalEnchantment(enchantment, player)
         }}
         player.GlobalEnchantments.Insert(enchantment)
+        // every other wizard reacts to it (Change_Relations_For_Enchantments)
+        game.Model.RelationRules().EnchantmentCast(player, enchantment, 1)
         game.RefreshUI()
     }
 }
@@ -913,10 +927,8 @@ func (game *Game) ApplyGlobalEnchantment(enchantment data.Enchantment, player *p
                 unit.RemoveEnchantment(data.UnitEnchantmentHolyWeapon)
             }
         case data.EnchantmentAuraOfMajesty:
-            for _, other := range player.GetKnownPlayers() {
-                other.AdjustDiplomaticRelation(player, 10)
-                player.AdjustDiplomaticRelation(other, 10)
-            }
+            // the others' relations change when it is cast, as for every global enchantment
+            // (castGlobalEnchantment, relations.EnchantmentCast)
 
     }
 }
@@ -1415,14 +1427,7 @@ func (game *Game) MakeSubversionUI(caster *playerlib.Player, spell spellbook.Spe
             return false, ""
         }
 
-        for _, player := range game.Model.Players {
-            // ignore the wizard that cast subversion
-            if player == caster {
-                continue
-            }
-
-            player.AdjustDiplomaticRelation(targetPlayer, -25)
-        }
+        game.Model.RelationRules().Subversion(caster, targetPlayer)
 
         return true, fmt.Sprintf("%s has been subverted", targetPlayer.Wizard.Name)
     }

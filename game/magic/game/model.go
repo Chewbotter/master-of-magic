@@ -2,6 +2,8 @@ package game
 
 import (
     "image"
+
+    "github.com/kazzmir/master-of-magic/game/magic/relations"
     "slices"
     "sync"
     "math"
@@ -66,6 +68,9 @@ type GameModel struct {
     // https://masterofmagic.fandom.com/wiki/Event
     RandomEvents []*RandomEvent
     LastEventTurn uint64
+
+    // what computer wizards say to the human at the end of this turn (relations.Message)
+    DiplomacyMessages []relations.Message
 }
 
 func MakeGameModel(terrainData *terrain.TerrainData, settings setup.NewGameSettings,
@@ -138,6 +143,9 @@ func (model *GameModel) AddPlayer(wizard setup.WizardCustom, human bool) *player
     newPlayer := playerlib.MakePlayer(wizard, human, model.CurrentMap().Width(), model.CurrentMap().Height(), useNames, model)
 
     if !human {
+        // the original picks every computer wizard's personality and objective at the start
+        newPlayer.Personality, newPlayer.Objective = relations.PickPersonality(wizard)
+
         newPlayer.AIBehavior = ai.MakeEnemy2AI()
 
         switch model.AIMode {
@@ -1850,6 +1858,19 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
                     player.AIBehavior.InvalidMove(stack)
                     return nil
                 }
+            }
+        }
+
+        // the original: a computer wizard does not attack one it has a pact or alliance with; its units
+        // stop (Combat)
+        for _, other := range model.GetEnemies(player) {
+            relation, ok := player.GetDiplomaticRelation(other)
+            if !ok || (relation.Treaty != data.TreatyPact && relation.Treaty != data.TreatyAlliance) {
+                continue
+            }
+            if other.FindStack(to.X, to.Y, stack.Plane()) != nil || other.FindCity(to.X, to.Y, stack.Plane()) != nil {
+                player.AIBehavior.InvalidMove(stack)
+                return nil
             }
         }
 

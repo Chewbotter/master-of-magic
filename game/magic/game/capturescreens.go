@@ -6,6 +6,9 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
     herolib "github.com/kazzmir/master-of-magic/game/magic/hero"
     "github.com/kazzmir/master-of-magic/game/magic/summon"
+    "github.com/kazzmir/master-of-magic/game/magic/diplomacy"
+    "github.com/kazzmir/master-of-magic/game/magic/relations"
+    playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     "github.com/kazzmir/master-of-magic/game/magic/artifact"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -314,6 +317,38 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                                 }
                             }
                         case "enemycity": game.doEnemyCityView(yield, city, player, player)
+                    }
+                },
+            }
+        case "diplomacy", "diplomacymenu", "diplomacypropose", "diplomacywar", "diplomacygreeting":
+            // development: the talk with the first computer wizard, or what it says at the end of a
+            // turn; the menu and the proposal come after the greeting, which the capture clicks away
+            human := game.Model.GetHumanPlayer()
+            var other *playerlib.Player
+            for _, player := range game.Model.Players {
+                if player != human && !player.IsNeutral() {
+                    other = player
+                    break
+                }
+            }
+            if human == nil || other == nil {
+                return false
+            }
+            game.Model.MakeWizardContact(human, other)
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    switch name {
+                        case "diplomacy": game.showDiplomacy(yield, human, other, nil)
+                        case "diplomacymenu":
+                            diplomacy.CaptureAdvance = 1
+                            game.showDiplomacy(yield, human, other, nil)
+                        case "diplomacypropose":
+                            diplomacy.CaptureAdvance = 1
+                            game.showDiplomacy(yield, human, other, &relations.Message{From: other, Action: relations.ActionProposePact, OfferGold: 100})
+                        case "diplomacywar":
+                            game.showDiplomacy(yield, human, other, &relations.Message{From: other, Action: relations.ActionWarDeclared})
+                        case "diplomacygreeting":
+                            game.showDiplomacy(yield, human, other, &relations.Message{From: other, Action: relations.ActionGreeting + int(other.Personality)})
                     }
                 },
             }

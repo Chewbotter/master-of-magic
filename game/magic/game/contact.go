@@ -65,22 +65,9 @@ func (model *GameModel) DiscoverVisibleWizards() []*GameEventDiplomacy {
     return meetings
 }
 
+// the first meeting opens no screen: as in the original, the wizard greets the human at the end of
+// the turn (relations: the contact is noticed, then the greeting of its personality)
 func (game *Game) playFirstMeeting(yield coroutine.YieldFunc, event *GameEventDiplomacy) {
-    if event == nil {
-        return
-    }
-
-    if yield != nil {
-        game.doDiplomacy(yield, event.Player, event.Enemy)
-        return
-    }
-
-    if game.Events != nil {
-        select {
-            case game.Events <- event:
-            default:
-        }
-    }
 }
 
 func (game *Game) meetWizards(yield coroutine.YieldFunc, a *playerlib.Player, b *playerlib.Player) {
@@ -95,13 +82,9 @@ func (game *Game) discoverWizards(yield coroutine.YieldFunc) bool {
         return false
     }
 
-    meetings := game.Model.DiscoverVisibleWizards()
-    if DebugNoGreetings {
-        // debug option, see debug.go. the wizards are known, their greeting is not shown
-        return false
-    }
-    for _, meeting := range meetings {
+    // a meeting does not stop a walk: the greeting comes at the end of the turn
+    for _, meeting := range game.Model.DiscoverVisibleWizards() {
         game.playFirstMeeting(yield, meeting)
     }
-    return len(meetings) > 0
+    return false
 }

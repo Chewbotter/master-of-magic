@@ -45,6 +45,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The screen of a city has the original's text and places for the name of the city, the race, the population, and in the field of what it builds the turns, the name and the description.
 - The window of a unit has the original's text: outlined letters in its colors, at its places, on the world map and in battles. The list of abilities is in smaller letters.
 - Surveyor, cartographer and chancellor's scroll keep the wide map beneath them.
+- Diplomacy is the original game's: every computer wizard has a personality and an objective, relations rise and fall with what you do (battles, taken cities, curses, enchantments, treaties kept or broken), the wizards make pacts, alliances and wars among themselves, and they speak to you at the start of your turn in the original's words: a greeting when you meet, warnings, broken treaties, declarations of war, offers of peace and proposals you can accept or reject. Talking to a wizard (magic screen) works as in the original: treaties, threats, tribute, exchange of spells, and a wizard that has had enough of you will not talk. Attacking a wizard you have a treaty with asks first.
 
 ## Battles
 - The battlefield, the places of figures, deployment, timing, trees, rocks, houses and walls follow the original.

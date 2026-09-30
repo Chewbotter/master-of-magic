@@ -2,9 +2,8 @@ package ai
 
 // What the overland AI of Chewbot thinks of every landmass, of every other wizard, and which
 // landmass it makes war on. Facts from the ReMoM project's reconstruction (MoM/src/AIMOVE.c:
-// AI_Evaluate_Continents, AI_Reevaluate_Continent, AI_Choose_War_Landmass; MoM/src/AIDATA.c:
-// AI_Evaluate_Hostility; MoM/src/Combat.c: Update_Defender_Hostility; MoM/src/DIPLOMAC.c:
-// Start_Treaty). The code is ours. The rules in words: docs/mod/ai-overland.md.
+// AI_Evaluate_Continents, AI_Reevaluate_Continent, AI_Choose_War_Landmass). Hostility is kept by
+// the rules of diplomacy (relations/). The code is ours. The rules in words: docs/mod/ai-overland.md.
 
 import (
     "image"
@@ -32,10 +31,6 @@ const (
 
 // numbers of the original
 const (
-    // AI_Evaluate_Hostility: from this turn on, every 15 to 24 turns
-    chewHostilityFromTurn = 100
-    chewHostilityEvery = 15
-    chewHostilityRoll = 10
     // AI_Evaluate_Continents: every 25 + 1..10 + 1..10 turns
     chewContinentsEvery = 25
     chewContinentsRoll = 10
@@ -58,9 +53,8 @@ type chewOverland struct {
     SettlerY [2]int
     ContinentsCountdown int
 
-    Hostility map[*playerlib.Player]int
-    HostilityCountdown int
-    Treaties map[*playerlib.Player]data.TreatyType
+    // the wizard whose state this is
+    Self *playerlib.Player
 
     Orders map[chewUnitKey]*chewOrder
     // the move of a unit failed in the last turn: it wants a path to a new target
@@ -69,8 +63,6 @@ type chewOverland struct {
 
 func makeChewOverland() *chewOverland {
     return &chewOverland{
-        Hostility: make(map[*playerlib.Player]int),
-        Treaties: make(map[*playerlib.Player]data.TreatyType),
         Orders: make(map[chewUnitKey]*chewOrder),
         MoveFailed: make(map[chewUnitKey]bool),
     }
@@ -123,8 +115,19 @@ func (overland *chewOverland) fit(world *chewWorld) {
     }
 }
 
+// the wizard's hostility to another (kept by the rules of diplomacy, relations/): to the neutral
+// player RaiderHostility, to a wizard it has not met 0
 func (overland *chewOverland) hostilityOf(player *playerlib.Player) int {
-    return overland.Hostility[player]
+    if overland.Self == nil || player == nil {
+        return 0
+    }
+    if player.IsNeutral() {
+        return overland.Self.RaiderHostility
+    }
+    if relation, ok := overland.Self.PlayerRelations[player]; ok {
+        return relation.Hostility
+    }
+    return 0
 }
 
 func chewTreaty(self *playerlib.Player, other *playerlib.Player) data.TreatyType {
@@ -134,96 +137,8 @@ func chewTreaty(self *playerlib.Player, other *playerlib.Player) data.TreatyType
     return data.TreatyNone
 }
 
-func chewAtPeace(self *playerlib.Player, other *playerlib.Player) bool {
-    if relation, ok := self.PlayerRelations[other]; ok {
-        return relation.PeaceCounter > 0
-    }
-    return false
-}
-
 func chewCastingMastery(player *playerlib.Player) bool {
     return player.CastingSpell.Name == "Spell of Mastery"
-}
-
-// Start_Treaty: a new pact or alliance ends the hostility on both sides (the side of this wizard is
-// what is kept here)
-func (overland *chewOverland) noteTreaties(world *chewWorld) {
-    for _, other := range world.Players {
-        if other == world.Self {
-            continue
-        }
-        treaty := chewTreaty(world.Self, other)
-        if treaty != overland.Treaties[other] && (treaty == data.TreatyPact || treaty == data.TreatyAlliance) {
-            overland.Hostility[other] = 0
-        }
-        overland.Treaties[other] = treaty
-    }
-}
-
-// Update_Defender_Hostility: a wizard that was attacked is hostile to the attacker (2, at war 3, an
-// ally 0) and looks at its hostility again 15 to 24 turns later
-func (overland *chewOverland) wasAttacked(self *playerlib.Player, attacker *playerlib.Player) {
-    hostility := 2
-    switch chewTreaty(self, attacker) {
-        case data.TreatyWar: hostility = 3
-        case data.TreatyAlliance: hostility = 0
-    }
-    overland.Hostility[attacker] = hostility
-    overland.HostilityCountdown = chewHostilityEvery + chewRandom(chewHostilityRoll)
-}
-
-// AI_Evaluate_Hostility: after turn 100, every 15 to 24 turns. The neutral player is 3; a wizard at
-// war 3; one with a pact, an alliance or peace 0 (unless it casts the Spell of Mastery); any other
-// one it has met 2 by a chance that grows the worse the relation is
-func (overland *chewOverland) evaluateHostility(world *chewWorld) {
-    if world.Turn < chewHostilityFromTurn {
-        return
-    }
-    overland.HostilityCountdown -= 1
-    if overland.HostilityCountdown > 0 {
-        return
-    }
-    overland.HostilityCountdown = chewHostilityEvery + chewRandom(chewHostilityRoll)
-
-    for _, other := range world.Players {
-        if other == world.Self {
-            continue
-        }
-        if other.IsNeutral() {
-            overland.Hostility[other] = 3
-            continue
-        }
-        overland.Hostility[other] = 0
-        relation, met := world.Self.PlayerRelations[other]
-        if !met {
-            continue
-        }
-        if relation.Treaty == data.TreatyWar {
-            // the original makes it 4 by a chance of the wizard's personality, which the game
-            // does not have
-            overland.Hostility[other] = 3
-            continue
-        }
-        if relation.Treaty == data.TreatyAlliance || relation.Treaty == data.TreatyPact || relation.PeaceCounter > 0 {
-            if !chewCastingMastery(other) {
-                continue
-            }
-        }
-        var chance int
-        if relation.VisibleRelation < 0 {
-            chance = (50 - relation.VisibleRelation) / 2
-        } else {
-            chance = (100 - relation.VisibleRelation) / 4
-        }
-        // the original adds TBL_AI_PRS_War_Mod of the wizard's personality here (0 without one)
-        chance += relation.StartingRelation
-        if chewCastingMastery(other) {
-            chance += 50
-        }
-        if chewRandom(100) < chance {
-            overland.Hostility[other] = 2
-        }
-    }
 }
 
 // the unit cost of the units of the wizard and of all others on every landmass of a plane,

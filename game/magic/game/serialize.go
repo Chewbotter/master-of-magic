@@ -5,6 +5,7 @@ import (
     "log"
 
     "github.com/kazzmir/master-of-magic/game/magic/ai"
+    "github.com/kazzmir/master-of-magic/game/magic/relations"
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
@@ -204,6 +205,11 @@ func MakeModelFromSerialized(
                 // (model.go AddPlayer) so loading a save doesn't silently drop
                 // back to the legacy EnemyAI
                 player.AIBehavior = ai.MakeChewbotAI(ai.MakeEnemy2AI(), false)
+            }
+            // a save from before personalities: the original never picks a pragmatist, so that
+            // is one that was never picked
+            if player.GetBanner() != data.BannerBrown && player.Objective == playerlib.ObjectivePragmatist {
+                player.Personality, player.Objective = relations.PickPersonality(player.Wizard)
             }
             player.StrategicCombat = true
         }

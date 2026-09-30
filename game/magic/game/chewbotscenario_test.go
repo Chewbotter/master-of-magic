@@ -297,27 +297,31 @@ func TestChewbotArmyLeavesStrongCity(test *testing.T) {
     }
 }
 
-// before turn 100 a wizard leaves the cities of other wizards alone; later, at war, it goes for them
-func TestChewbotWizardCitiesAfterTurn100AtWar(test *testing.T) {
-    for _, turn := range []uint64{50, 150} {
-        scenario := makeChewScenario(test, turn, chewIsland...)
+// a wizard goes for the cities of another only at war (hostility 3, which a declaration of war sets
+// at once; without one, hostility comes from the rules' evaluation, from turn 100 on)
+func TestChewbotWizardCitiesOnlyAtWar(test *testing.T) {
+    for _, war := range []bool{false, true} {
+        scenario := makeChewScenario(test, 50, chewIsland...)
         wizard := scenario.wizard("Merlin", data.BannerRed)
         other := scenario.wizard("Jafar", data.BannerGreen)
         scenario.city(wizard, 4, 5, 4, true)
         scenario.city(other, 15, 7, 2, false)
         scenario.units(other, 15, 7, units.HighMenSpearmen)
-        wizard.WarWithPlayer(other)
-        other.WarWithPlayer(wizard)
+        wizard.AwarePlayer(other)
+        other.AwarePlayer(wizard)
+        if war {
+            scenario.Model.RelationRules().DeclareWar(wizard, other)
+        }
         army := scenario.units(wizard, 8, 5, units.HighMenSwordsmen, units.HighMenSwordsmen, units.HighMenSwordsmen)
 
         decisions := scenario.gatherAndTurn(wizard, army, image.Pt(15, 7))
         to, ok := chewDestinationOf(decisions, army[0])
         attacks := ok && to == image.Pt(15, 7)
-        if turn < 100 && attacks {
-            test.Errorf("turn %v: the army should not attack a wizard before turn 100; orders: %v", turn, chewDescribe(decisions))
+        if !war && attacks {
+            test.Errorf("without war the army should not attack a wizard's city; orders: %v", chewDescribe(decisions))
         }
-        if turn >= 100 && !attacks {
-            test.Errorf("turn %v: the army should attack the city of the wizard it is at war with; orders: %v", turn, chewDescribe(decisions))
+        if war && !attacks {
+            test.Errorf("at war the army should attack the city; orders: %v", chewDescribe(decisions))
         }
     }
 }

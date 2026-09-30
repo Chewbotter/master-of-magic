@@ -8,6 +8,7 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/setup"
     "github.com/kazzmir/master-of-magic/game/magic/diplomacy"
+    "github.com/kazzmir/master-of-magic/game/magic/relations"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     herolib "github.com/kazzmir/master-of-magic/game/magic/hero"
@@ -60,7 +61,9 @@ func NewEngine() (*Engine, error) {
     enemy1.KnownSpells.AddAllSpells(allSpells.GetSpellsByMagic(data.NatureMagic))
     enemy1.AwarePlayer(player)
 
-    logic, draw := diplomacy.ShowDiplomacyScreen(cache, player, enemy1, 1458)
+    player.AwarePlayer(enemy1)
+    rules := &relations.Rules{Players: []*playerlib.Player{player, enemy1}, Turn: 58 * 12}
+    logic, draw := diplomacy.ShowDiplomacyScreen(diplomacy.Setup{Cache: cache, Human: player, Other: enemy1, Rules: rules, Year: 1458})
 
     run := func(yield coroutine.YieldFunc) error {
         logic(yield)

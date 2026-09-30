@@ -47,6 +47,7 @@ import (
     gamelib "github.com/kazzmir/master-of-magic/game/magic/game"
     musiclib "github.com/kazzmir/master-of-magic/game/magic/music"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
+    "github.com/kazzmir/master-of-magic/game/magic/relations"
     settingslib "github.com/kazzmir/master-of-magic/game/magic/settings"
 )
 
@@ -115,6 +116,14 @@ func simName(player *playerlib.Player) string {
     return fmt.Sprintf("%v (%v%v)", player.Wizard.Name, player.GetBanner(), kind)
 }
 
+// the personality and objective of a computer wizard
+func simKind(player *playerlib.Player) string {
+    if player.IsHuman() || player.IsNeutral() {
+        return ""
+    }
+    return fmt.Sprintf("%v %v", player.Personality, player.Objective)
+}
+
 // one player of one run
 type simRow struct {
     Name string
@@ -126,6 +135,9 @@ type simRow struct {
 
 // one run
 type simRun struct {
+    // the treaties and relations of every pair of wizards at the end, and what computer wizards said
+    // to the human
+    Diplomacy string
     Description string
     StartTurn uint64
     EndTurn uint64
@@ -395,6 +407,7 @@ func simPlay(game *gamelib.Game, description string) simRun {
         Elapsed: time.Since(start),
         Stalled: stalled,
     }
+    run.Diplomacy = simDiplomacy(game, players)
     for _, player := range players {
         run.Rows = append(run.Rows, simRow{
             Name: simName(player),
@@ -446,6 +459,8 @@ func simSummary(run simRun) string {
             stats.Think.Round(time.Millisecond), stats.ThinkMost.Round(time.Millisecond))
     }
 
+    out.WriteString(run.Diplomacy)
+
     header := false
     for _, row := range run.Rows {
         if len(row.Orders) == 0 {
@@ -458,6 +473,56 @@ func simSummary(run simRun) string {
         fmt.Fprintf(&out, "%-26s %v\n", row.Name, simOrderText(row.Orders))
     }
     return out.String()
+}
+
+// the diplomacy at the end of a run: personalities, every pair's treaty, relation and hostility, and
+// what computer wizards said to the human
+func simDiplomacy(game *gamelib.Game, players []*playerlib.Player) string {
+    var out strings.Builder
+    fmt.Fprintf(&out, "\nDiplomacy at the end (treaty, relation, hostility of the first to the second)\n")
+    for _, player := range players {
+        if kind := simKind(player); kind != "" {
+            fmt.Fprintf(&out, "%-26s %v\n", simName(player), kind)
+        }
+    }
+    for index, first := range players {
+        for _, second := range players[index + 1:] {
+            relation, ok := first.PlayerRelations[second]
+            if !ok {
+                continue
+            }
+            back := 0
+            if other, ok := second.PlayerRelations[first]; ok {
+                back = other.Hostility
+            }
+            fmt.Fprintf(&out, "  %v - %v: %v, relation %v (%v), hostility %v / %v\n", first.Wizard.Name, second.Wizard.Name, relation.Treaty, relation.VisibleRelation, relation.Description(), relation.Hostility, back)
+        }
+    }
+    if len(game.Stats.Messages) > 0 {
+        var parts []string
+        for action, count := range game.Stats.Messages {
+            parts = append(parts, fmt.Sprintf("%v: %v", simActionName(action), count))
+        }
+        slices.Sort(parts)
+        fmt.Fprintf(&out, "Said to the human: %v\n", strings.Join(parts, ", "))
+    }
+    return out.String()
+}
+
+func simActionName(action int) string {
+    switch {
+        case action >= relations.ActionGreeting && action < relations.ActionGreeting + 6: return "greeting"
+        case action == relations.ActionWarDeclared: return "war declared"
+        case action == relations.ActionChaoticWar: return "chaotic war"
+        case action == relations.ActionSuperiorityWar: return "war, superiority"
+        case action == relations.ActionSuperiorityBreak: return "treaty broken"
+        case action == relations.ActionProposePact: return "pact proposed"
+        case action == relations.ActionProposeAlliance: return "alliance proposed"
+        case action == relations.ActionProposePeace: return "peace proposed"
+        case action == relations.ActionProposeExchange: return "exchange proposed"
+        case action == relations.ActionUnitsNearCity: return "units near a city"
+    }
+    return fmt.Sprintf("action %v", action)
 }
 
 func simOrderText(counts map[string]int) string {

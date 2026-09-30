@@ -25,6 +25,7 @@ import (
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
+    "github.com/kazzmir/master-of-magic/game/magic/relations"
     "github.com/kazzmir/master-of-magic/lib/set"
 )
 
@@ -88,15 +89,6 @@ const (
     chewRowBuilders = 9
 )
 
-// TBL_AI_Realm_OBJ: the chances of the objectives by the realm of most books (nature, sorcery,
-// chaos, life, death)
-var chewRealmObjective = map[data.MagicType][5]int{
-    data.NatureMagic: {0, 2, 2, 4, 2},
-    data.SorceryMagic: {0, 1, 4, 2, 3},
-    data.ChaosMagic: {0, 3, 2, 2, 3},
-    data.LifeMagic: {0, 2, 3, 4, 1},
-    data.DeathMagic: {0, 4, 1, 1, 4},
-}
 
 // numbers of the original
 const (
@@ -132,6 +124,42 @@ type ChewbotAI struct {
     // the overland AI's state from turn to turn (chewbotcontinents.go)
     overland *chewOverland
     services playerlib.AIServices
+    self *playerlib.Player
+}
+
+// Raze_Check: a city of another wizard that Chewbot took is razed by its personality and the units
+// of both on the landmass (relations.RazeCity)
+func (ai *ChewbotAI) ConfirmRazeTown(city *citylib.City) bool {
+    if ai.Neutral || ai.self == nil || ai.services == nil || !display.ChewbotAI() {
+        return ai.AIBehavior.ConfirmRazeTown(city)
+    }
+    _, owner := ai.services.FindCity(city.X, city.Y, city.Plane)
+    if owner == nil || owner == ai.self {
+        return false
+    }
+    mapObject := ai.services.GetMap(city.Plane)
+    continent := mapObject.Map.FindContinent(city.X, city.Y)
+    survivors, own, owners := 0, 0, 0
+    for _, player := range []*playerlib.Player{ai.self, owner} {
+        for _, stack := range player.Stacks {
+            if stack.Plane() != city.Plane {
+                continue
+            }
+            count := len(stack.Units())
+            if continent.Contains(image.Pt(mapObject.WrapX(stack.X()), stack.Y())) {
+                if player == ai.self {
+                    own += count
+                } else {
+                    owners += count
+                }
+            }
+            dx := mapObject.XDistance(city.X, stack.X())
+            if player == ai.self && dx <= 1 && dx >= -1 && stack.Y() - city.Y <= 1 && city.Y - stack.Y() <= 1 {
+                survivors += count
+            }
+        }
+    }
+    return relations.RazeCity(ai.self, owner, survivors, own, owners)
 }
 
 // Chewbot around the clone's AI of a computer wizard or of the neutral player
@@ -165,6 +193,7 @@ func (ai *ChewbotAI) ProducedUnit(city *citylib.City, player *playerlib.Player) 
 
 func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIServices) []playerlib.AIDecision {
     ai.services = services
+    ai.self = self
     decisions := ai.AIBehavior.Update(self, services)
     cities := chewbotCitiesActive()
     // the neutral player's stacks move as the clone moves them
@@ -194,39 +223,10 @@ func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIService
     return out
 }
 
-// the objective of a wizard, picked once as the original does at the start of a game: by the realm
-// of its most books and its retorts
+// the objective of a wizard, picked by the rules of diplomacy at the start of a game
+// (relations.PickPersonality)
 func (ai *ChewbotAI) objective(self *playerlib.Player) chewObjective {
-    if ai.objectiveSet {
-        return ai.Objective
-    }
-    ai.objectiveSet = true
-
-    weights := chewRealmObjective[self.Wizard.MostBooks()]
-    wizard := &self.Wizard
-    if wizard.RetortEnabled(data.RetortWarlord) {
-        weights[chewMilitarist] += 2
-        weights[chewExpansionist] += 3
-    }
-    if wizard.RetortEnabled(data.RetortChaosMastery) || wizard.RetortEnabled(data.RetortNatureMastery) {
-        weights[chewTheurgist] += 1
-    }
-    if wizard.RetortEnabled(data.RetortAlchemy) {
-        weights[chewPerfectionist] += 2
-    }
-    if wizard.RetortEnabled(data.RetortArchmage) {
-        weights[chewTheurgist] += 4
-    }
-    if wizard.RetortEnabled(data.RetortMyrran) {
-        weights[chewExpansionist] += 4
-    }
-    if wizard.RetortEnabled(data.RetortConjurer) {
-        weights[chewMilitarist] += 3
-    }
-
-    ai.Objective = chewObjective(chewWeightedChoice(weights[:]))
-    chewCityLog("%v is a %v", self.Wizard.Name, ai.Objective)
-    return ai.Objective
+    return chewObjective(self.Objective)
 }
 
 // Get_Weighted_Choice: an index by its weight; the first when all are 0

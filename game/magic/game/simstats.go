@@ -30,10 +30,12 @@ type SimPlayerStats struct {
 type SimStats struct {
     lock sync.Mutex
     Players map[*playerlib.Player]*SimPlayerStats
+    // what computer wizards said to the human, by the original's action number
+    Messages map[int]int
 }
 
 func MakeSimStats() *SimStats {
-    return &SimStats{Players: make(map[*playerlib.Player]*SimPlayerStats)}
+    return &SimStats{Players: make(map[*playerlib.Player]*SimPlayerStats), Messages: make(map[int]int)}
 }
 
 func (stats *SimStats) Of(player *playerlib.Player) *SimPlayerStats {

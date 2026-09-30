@@ -637,7 +637,7 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
                 default:
             }
         }
-        if capture.Screen == "nextunit" || capture.Screen == "research" || capture.Screen == "spellinfo" {
+        if capture.Screen == "nextunit" || capture.Screen == "research" || capture.Screen == "spellinfo" || (len(capture.Screen) >= 9 && capture.Screen[:9] == "diplomacy") {
             // a second later, once any pan has settled on screen
             capture.EachFrame = func(frame int) {
                 if frame == CaptureWalkDelayFrames {

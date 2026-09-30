@@ -41,7 +41,6 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/armyview"
     "github.com/kazzmir/master-of-magic/game/magic/citylistview"
     "github.com/kazzmir/master-of-magic/game/magic/magicview"
-    "github.com/kazzmir/master-of-magic/game/magic/diplomacy"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/summon"
     "github.com/kazzmir/master-of-magic/game/magic/cartographer"
@@ -381,6 +380,8 @@ type Game struct {
     Stats *SimStats
     // development: the game runs without a window (SimSkipHuman)
     headless bool
+    // the wizards casting the Spell of Mastery at the last turn (doDiplomacyTurn)
+    masteryNoticed map[*playerlib.Player]bool
 
     Cache *lbx.LbxCache
     ImageCache util.ImageCache
@@ -1050,20 +1051,8 @@ func (game *Game) EnterDiplomacy(player *playerlib.Player, enemy *playerlib.Play
 }
 
 func (game *Game) doDiplomacy(yield coroutine.YieldFunc, player *playerlib.Player, enemy *playerlib.Player) {
-    logic, draw := diplomacy.ShowDiplomacyScreen(game.Cache, player, enemy, 1400 + int(game.Model.TurnNumber / 12))
-
-    game.PushDrawer(func (screen *ebiten.Image){
-        draw(screen)
-    })
-    defer game.PopDrawer()
-
-    game.Music.PushSong(diplomacy.GetSong(player, enemy))
-    defer game.Music.PopSong()
-
-    logic(yield)
-
-    yield()
-    game.RefreshUI()
+    // the talk the human opens (game/relations.go)
+    game.showDiplomacy(yield, player, enemy, nil)
 }
 
 func (game *Game) doMagicView(yield coroutine.YieldFunc) {
@@ -2714,6 +2703,9 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                     case *GameEventDiplomacy:
                         diplomacy := event.(*GameEventDiplomacy)
                         game.doDiplomacy(yield, diplomacy.Player, diplomacy.Enemy)
+                    case *GameEventDiplomacyMessage:
+                        message := event.(*GameEventDiplomacyMessage)
+                        game.showDiplomacyMessage(yield, message.Message)
                     case *GameEventRefreshUI:
                         // compress ui refreshes
                         switch lastEvent.(type) {
@@ -3754,10 +3746,16 @@ func (game *Game) defeatCity(yield coroutine.YieldFunc, attacker *playerlib.Play
     if defeated {
         defender.Defeated = true
         attacker.DidDefeat(defender)
+        // every other wizard minds a conquest (Resolve_Wizard_Conquest)
+        game.Model.RelationRules().Conquered(attacker, defender)
     }
 
     if containedFortress {
         defender.Banished = true
+        if !defeated {
+            // every other wizard minds a banishment (Banish_Wizard)
+            game.Model.RelationRules().Banished(attacker, defender)
+        }
 
         attacker.DidBanish(defender)
 
@@ -3903,6 +3901,15 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
             game.showMovement(yield, oldX, oldY, stack, true)
             player.LiftFogSquare(stack.X(), stack.Y(), stack.GetSightRange(), stack.Plane())
             metWizard := game.discoverWizards(yield)
+
+            // a wizard the human has a treaty with: the original asks first (game/relations.go)
+            if entityInfo.ContainsEnemy(stack.X(), stack.Y(), stack.Plane(), player) && !game.confirmAttackOnPartner(yield, player, entityInfo, stack) {
+                stack.SetX(oldX)
+                stack.SetY(oldY)
+                game.RefreshUI()
+                stopMoving = true
+                break quitMoving
+            }
 
             if entityInfo.ContainsEnemy(stack.X(), stack.Y(), stack.Plane(), player) {
                 // FIXME: this should get all stacks at the given location and merge them into a single stack for combat
@@ -5199,9 +5206,6 @@ func (game *Game) maybeDoNaturesWrath(caster *playerlib.Player) {
  * this also shows the raze city ui so that fame can be incorporated based on whether the city is razed or not
  */
 func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player, attackerStack *playerlib.UnitStack, defender *playerlib.Player, defenderStack *playerlib.UnitStack, zone combat.ZoneType) combat.CombatState {
-    if listener, ok := defender.AIBehavior.(playerlib.AIAttackedListener); ok && attacker != nil {
-        listener.WasAttacked(defender, attacker)
-    }
     landscape := game.GetCombatLandscape(defenderStack.X(), defenderStack.Y(), defenderStack.Plane())
     // forest, hills and roads for the ground of the battlefield, see battleground.go
     zone.Ground = game.combatGround(defenderStack.X(), defenderStack.Y(), defenderStack.Plane())
@@ -5606,6 +5610,15 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     if showHeroNotice {
         game.doNotice(yield, game.HudUI, "One or more heroes died in combat. You must redistribute their equipment.")
     }
+
+    // what the defender thinks of the attacker now (relations.go)
+    var killed []units.StackUnit
+    for _, unit := range defendingArmy.KilledUnits {
+        if stackUnit, ok := unit.Unit.(units.StackUnit); ok {
+            killed = append(killed, stackUnit)
+        }
+    }
+    game.combatRelations(attacker, defender, zone.City, state, killed)
 
     return state
 }
@@ -8268,13 +8281,9 @@ func (game *Game) EndOfTurn() {
         game.Model.DoRandomEvents()
     }
 
-    for _, player := range game.Model.Players {
-        if player.Defeated || player.Banished {
-            continue
-        }
-
-        player.UpdateDiplomaticRelations()
-    }
+    // the original's diplomacy of a turn (relations/)
+    game.Model.DiplomacyMessages = nil
+    game.doDiplomacyTurn()
 
     if game.WatchMode {
         log.Printf("---- End of Year %v Summary ----", game.Model.TurnNumber - 1)

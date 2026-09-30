@@ -1357,6 +1357,14 @@ func (saveGame *SaveGame) convertArtifacts(spells spellbook.Spells) []*artifact.
 }
 
 func setupRelations(player *playerlib.Player, index int, playerData *PlayerData, allPlayers []*playerlib.Player) {
+    // the original's personality, objective and hostility (relations/)
+    player.Personality = playerlib.Personality(playerData.Personality)
+    player.Objective = playerlib.Objective(playerData.Objective)
+    player.HostilityCountdown = int(playerData.ReevaluateHostilityCountdown)
+    if len(playerData.Hostility) > 5 {
+        player.RaiderHostility = int(playerData.Hostility[5])
+    }
+
     const (
         NoTreaty int8 = 0
         Pact int8 = 1
@@ -1395,6 +1403,15 @@ func setupRelations(player *playerlib.Player, index int, playerData *PlayerData,
                 relation.StartingRelation = int(playerData.Diplomacy.DefaultRelations[contactIndex])
                 relation.VisibleRelation = int(playerData.Diplomacy.VisibleRelations[contactIndex])
                 relation.Treaty = convertTreatyType(playerData.Diplomacy.DiplomacyStatus[contactIndex])
+                relation.HiddenRelation = int(playerData.Diplomacy.HiddenRelations[contactIndex])
+                relation.ContactStage = int(playerData.Diplomacy.ContactProgress[contactIndex])
+                relation.BrokenTreaty = convertTreatyType(playerData.Diplomacy.BrokenTreaty[contactIndex])
+                if contactIndex < len(playerData.Hostility) {
+                    relation.Hostility = int(playerData.Hostility[contactIndex])
+                }
+                if contactIndex < len(playerData.PeaceDuration) {
+                    relation.PeaceCounter = int(int8(playerData.PeaceDuration[contactIndex]))
+                }
 
                 /*
                 Treaty data.TreatyType

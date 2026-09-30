@@ -161,11 +161,18 @@ func (capture *frameCapture) laterFrames() int {
         // room for a spell to play and for figures to fall and lie
         return CaptureEffectFrames
     }
+    if len(capture.Screen) >= 9 && capture.Screen[:9] == "diplomacy" {
+        // the fade in and the talk of the wizard
+        return CaptureDiplomacyFrames
+    }
     if capture.NextTurn || capture.Walk != "" || capture.Screen == "nextunit" || capture.Screen == "research" || capture.Screen == "spellinfo" {
         return CaptureNextTurnFrames
     }
     return CaptureLaterFrames
 }
+
+// frames of a screen of diplomacy before the capture: the wizard has faded in and done talking
+const CaptureDiplomacyFrames = 1000
 
 // frames after a simulated drag, enough for a coast to end
 const CaptureCoastFrames = 80

@@ -216,9 +216,8 @@ func (ai *ChewbotAI) moveDecisions(self *playerlib.Player, services playerlib.AI
     world := makeChewWorld(self, services)
     chewLogTurn = world.Turn
     overland.fit(world)
-    overland.noteTreaties(world)
+    overland.Self = self
     overland.pruneOrders(self)
-    overland.evaluateHostility(world)
     if ChewbotMoveLog && world.Turn % 20 == 0 {
         for _, other := range world.Players {
             if other != self {
@@ -528,13 +527,3 @@ func (ai *ChewbotAI) encounterAt(x int, y int, encounter *maplib.ExtraEncounter)
     return false
 }
 
-// Update_Defender_Hostility
-func (ai *ChewbotAI) WasAttacked(self *playerlib.Player, attacker *playerlib.Player) {
-    if ai.Neutral {
-        return
-    }
-    if ai.overland == nil {
-        ai.overland = makeChewOverland()
-    }
-    ai.overland.wasAttacked(self, attacker)
-}

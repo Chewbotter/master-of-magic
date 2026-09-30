@@ -5,50 +5,33 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/data"
 )
 
-// compute an integer value that represents how much the two wizards like each other
-// https://masterofmagic.fandom.com/wiki/Starting_Relation
+// the relation two wizards start with, by their books: Init_Diplomatic_Relations of the original
+// (the ReMoM project's reconstruction, MoM/src/INITGAME.c). Life against death costs the most, chaos
+// costs, books of sorcery, chaos, nature and life both have bring them closer; at least -90
 func computeStartingRelation(wizard1 setup.WizardCustom, wizard2 setup.WizardCustom) int {
-    // 1.50 patch formula
-
-    wizard1Books := make(map[data.MagicType]int)
-    wizard2Books := make(map[data.MagicType]int)
-
+    books1 := make(map[data.MagicType]int)
+    books2 := make(map[data.MagicType]int)
     for _, book := range wizard1.Books {
-        wizard1Books[book.Magic] = book.Count
+        books1[book.Magic] += book.Count
     }
-
     for _, book := range wizard2.Books {
-        wizard2Books[book.Magic] = book.Count
+        books2[book.Magic] += book.Count
     }
 
-    sharedBooks := 0
+    maxDeath := max(books1[data.DeathMagic], books2[data.DeathMagic])
+    sumLife := books1[data.LifeMagic] + books2[data.LifeMagic]
+    maxChaos := max(books1[data.ChaosMagic], books2[data.ChaosMagic])
 
-    allMagic := []data.MagicType{data.LifeMagic, data.SorceryMagic, data.NatureMagic, data.DeathMagic, data.ChaosMagic}
-    wizard1Alignment := 0
-    wizard2Alignment := 0
-
-    for _, magic := range allMagic {
-        if wizard1Books[magic] > 0 && wizard2Books[magic] > 0 {
-            sharedBooks += 1
-        }
-
-        switch magic {
-            case data.LifeMagic, data.NatureMagic:
-                wizard1Alignment += wizard1Books[magic]
-                wizard2Alignment += wizard2Books[magic]
-            case data.ChaosMagic, data.DeathMagic:
-                wizard1Alignment -= wizard1Books[magic]
-                wizard2Alignment -= wizard2Books[magic]
-        }
+    score := 0
+    if sumLife > 0 && maxDeath > 0 {
+        score -= (sumLife + maxDeath) * 5
+    } else {
+        score += sumLife * 2
+        score -= maxDeath * 3
     }
-
-    abs := func (x int) int {
-        if x < 0 {
-            return -x
-        }
-
-        return x
+    score -= maxChaos * 2
+    for _, magic := range []data.MagicType{data.SorceryMagic, data.ChaosMagic, data.NatureMagic, data.LifeMagic} {
+        score += min(books1[magic], books2[magic]) * 2
     }
-
-    return 2 * sharedBooks - 3 * (abs(wizard1Alignment - wizard2Alignment) - 4)
+    return max(score, -90)
 }

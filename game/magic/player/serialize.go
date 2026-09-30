@@ -80,6 +80,10 @@ type SerializedPlayer struct {
     BookOrderSeed1 uint64 `json:"book-order-seed_1"`
     BookOrderSeed2 uint64 `json:"book-order-seed_2"`
     Banished bool `json:"banished"`
+    Personality Personality `json:"personality"`
+    Objective Objective `json:"objective"`
+    HostilityCountdown int `json:"hostility-countdown"`
+    RaiderHostility int `json:"raider-hostility"`
     KnownSpells []string `json:"known-spells"`
     ResearchPoolSpells []string `json:"research-pool-spells"`
     ResearchCandidateSpells []string `json:"research-candidate-spells"`
@@ -235,6 +239,10 @@ func SerializePlayer(player *Player) SerializedPlayer {
         BookOrderSeed1: player.BookOrderSeed1,
         BookOrderSeed2: player.BookOrderSeed2,
         Banished: player.Banished,
+        Personality: player.Personality,
+        Objective: player.Objective,
+        HostilityCountdown: player.HostilityCountdown,
+        RaiderHostility: player.RaiderHostility,
         KnownSpells: spellNames(player.KnownSpells),
         ResearchPoolSpells: spellNames(player.ResearchPoolSpells),
         ResearchCandidateSpells: spellNames(player.ResearchCandidateSpells),
@@ -411,6 +419,10 @@ func ReconstructPlayer(serialized *SerializedPlayer, globalEnchantmentsProvider 
         BookOrderSeed1: serialized.BookOrderSeed1,
         BookOrderSeed2: serialized.BookOrderSeed2,
         Banished: serialized.Banished,
+        Personality: serialized.Personality,
+        Objective: serialized.Objective,
+        HostilityCountdown: serialized.HostilityCountdown,
+        RaiderHostility: serialized.RaiderHostility,
         CastingSpellPage: serialized.CastingSpellPage,
         PowerDistribution: serialized.PowerDistribution,
         SpellOfMasteryCost: serialized.SpellOfMasteryCost,
