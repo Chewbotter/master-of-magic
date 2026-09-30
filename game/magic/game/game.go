@@ -4995,6 +4995,10 @@ func (game *Game) createTreasure(encounterType maplib.EncounterType, budget int,
         allSpells.RemoveSpell(allSpells.FindByName("Spell of Mastery"))
 
         treasure := makeTreasure(game.Cache, encounterType, budget, point, player.Wizard, player.KnownSpells, allSpells, heroes, makeArtifacts)
+        if maplib.ClassicMaps {
+            // the original's hoard (treasureclassic.go)
+            treasure = makeClassicTreasure(encounterType, budget, point, player.Wizard, player.KnownSpells, allSpells, heroes, makeArtifacts)
+        }
         // FIXME: show treasure ui for human, otherwise just apply treasure for AI
         select {
             case game.Events <- &GameEventTreasure{Treasure: treasure, Player: player}:

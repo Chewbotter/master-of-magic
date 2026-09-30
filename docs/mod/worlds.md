@@ -42,12 +42,30 @@ only these grow (`quirkIslandsGrowSouthEast`, kept).
   left, another kind, a share of 1 to (10 less the first count), up to 9 in all. A node or lair
   can end with none (it is then found empty, with its treasure).
 - Treasure budget: the first guardians' cost and half the second's, the difficulty taken back out
-  (not at Impossible), times 50 to 124 percent (Myrror 76 to 174), at least 50. The treasure itself
-  is still rolled by the fork when the place is conquered (`game/treasure.go`), from that budget.
+  (not at Impossible), times 50 to 124 percent (Myrror 76 to 174), at least 50.
 - Costs are the fork's casting costs of the creatures (Guardian Spirit 80, the original's table 50).
-- Not ported: the original's treasure rules (gold and mana for 200 each, items of a value, spells
-  by rarity, the prisoner, the book or retort that replaces all else, a tower's spell), which need
-  the fork's rewards reworked.
+
+## Treasure (Create_Lair's hoard, Lair_Generate_Treasure)
+
+`game/treasureclassic.go`. The original rolls the hoard when the world is made; nobody sees it
+before the place is taken, so it is rolled when it is taken, from the budget above.
+- A tower first has a spell of rarity 1 to 4 (the budget changes by 100 less 50 times the rarity
+  squared).
+- While 50 or more is left, one of 15 by chance: gold (2 in 15) or mana (2 in 15), 10 to 200 in
+  tens, at most what is left, for 200 each time; an item (5 in 15) of 400 to 3000 at most what is
+  left, up to 3, from 300 left; a prisoner (1 in 15) for 1000, from 400 left; a spell (3 in 15) of
+  rarity 1 to 4 for 50 times its square, the rarities of two spells adding up to 4 at most (kept
+  quirk `quirkSpellRaritiesAdd`); a book or retort (2 in 15): from 1000 left one, from 2000 two
+  (from 3000 two by chance too), for 3000. A book or retort takes the place of all else.
+- Given: gold, mana, a hero for the prisoner, a spell of the rarity the wizard does not know (its
+  realms or arcane), and each pick of the book or retort: 3 in 4 a book of the place's realm
+  (nodes their own, dungeon, keep and ruins death, temples life, towers nature: kept quirk
+  `quirkTowerBooksNature`; caves and monster lairs any realm, MY CALL: the reconstruction's roll
+  never gives nature), refused across life and death; else a retort (with two picks one of Warlord,
+  Channeler, Divine Power, Famous, Infernal Power can come). Nothing given: an item of 1200, or 1000
+  mana when there are 3 items.
+- MY CALL: an item of a value is the costliest premade item the wizard can use that is worth no more
+  (the original makes a new item of that value).
 
 ## Minerals (Generate_Terrain_Specials)
 
@@ -105,6 +123,7 @@ only these grow (`quirkIslandsGrowSouthEast`, kept).
 
 The fork put minerals on 6 (Arcanus) or 10 (Myrror) percent of the hills, forest, mountain, swamp
 and desert of every landmass before the cities were placed (so a city could sit on one) and made no
-roads but the one under each home. Its lairs had budgets of its own (up to about 3300), realms mixed for
+roads but the one under each home. Its treasure was rolled from the guardians' budget by rules of its own (books and retorts beside
+other loot, items as premade ones that fit). Its lairs had budgets of its own (up to about 3300), realms mixed for
 every kind, up to 9 of one guardian, nodes always guarded, and towers different on each plane. Its rivers came one per tenth of the land of a landmass
 with a walk in any direction, before the cities, and could run over mountains and nodes.
