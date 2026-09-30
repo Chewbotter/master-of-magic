@@ -375,6 +375,9 @@ const (
 )
 
 type Game struct {
+    // development: a capture lets the human skip turns (CaptureSkipTurns)
+    captureSkipping bool
+
     Cache *lbx.LbxCache
     ImageCache util.ImageCache
 
@@ -2369,6 +2372,10 @@ func MakeRandomEventFonts(cache *lbx.LbxCache) *RandomEventFonts {
 }
 
 func (game *Game) doRandomEvent(yield coroutine.YieldFunc, event *RandomEvent, start bool, wizard setup.WizardCustom) {
+    if game.captureSkipping {
+        // development: nobody is there to close it
+        return
+    }
     fonts := MakeRandomEventFonts(game.Cache)
 
     background, _ := game.ImageCache.GetImage("resource.lbx", 40, 0)
@@ -4479,6 +4486,9 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
                 case *playerlib.AIBuildRoadDecision:
                     build := decision.(*playerlib.AIBuildRoadDecision)
                     roadStack := build.Stack
+                    if len(build.Units) > 0 && len(build.Units) != len(roadStack.Units()) {
+                        roadStack = player.SplitStack(roadStack, build.Units)
+                    }
                     path := game.FindRoadPath(roadStack.X(), roadStack.Y(), build.X, build.Y, player, roadStack, player.GetFog(roadStack.Plane()))
                     if len(path) > 0 {
                         for _, unit := range roadStack.Units() {
@@ -4491,6 +4501,18 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
                 case *playerlib.AIMeldNodeDecision:
                     meld := decision.(*playerlib.AIMeldNodeDecision)
                     game.tryMeldNode(meld.Stack, player)
+                case *playerlib.AIPurifyDecision:
+                    purify := decision.(*playerlib.AIPurifyDecision)
+                    purifyStack := purify.Stack
+                    if len(purify.Units) > 0 && len(purify.Units) != len(purifyStack.Units()) {
+                        purifyStack = player.SplitStack(purifyStack, purify.Units)
+                    }
+                    purifyStack.CurrentPath = nil
+                    for _, unit := range purifyStack.Units() {
+                        if unit.HasAbility(data.AbilityPurify) {
+                            unit.SetBusy(units.BusyStatusPurify)
+                        }
+                    }
                 case *playerlib.AIPlaneShiftDecision:
                     shift := decision.(*playerlib.AIPlaneShiftDecision)
                     if err := game.PlaneShift(shift.Stack, player); err == nil {
@@ -5161,6 +5183,9 @@ func (game *Game) maybeDoNaturesWrath(caster *playerlib.Player) {
  * this also shows the raze city ui so that fame can be incorporated based on whether the city is razed or not
  */
 func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player, attackerStack *playerlib.UnitStack, defender *playerlib.Player, defenderStack *playerlib.UnitStack, zone combat.ZoneType) combat.CombatState {
+    if listener, ok := defender.AIBehavior.(playerlib.AIAttackedListener); ok && attacker != nil {
+        listener.WasAttacked(defender, attacker)
+    }
     landscape := game.GetCombatLandscape(defenderStack.X(), defenderStack.Y(), defenderStack.Plane())
     // forest, hills and roads for the ground of the battlefield, see battleground.go
     zone.Ground = game.combatGround(defenderStack.X(), defenderStack.Y(), defenderStack.Plane())
@@ -5181,6 +5206,10 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     }
     // skip the battle screen entirely and auto-resolve if the human has enabled 'Strategic Combat Only'
     useStrategicCombat := useHuman && !game.WatchMode && wantsStrategicCombat(attacker) && wantsStrategicCombat(defender)
+    // development: while a capture lets the human skip turns, its battles are fought without a screen
+    if useHuman && game.captureSkipping {
+        useStrategicCombat = true
+    }
 
     createArmy := func (player *playerlib.Player, stack *playerlib.UnitStack) *combat.Army {
         army := combat.Army{
@@ -5397,8 +5426,8 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
         zone.City.ResetCitizens()
     }
 
-    // Show end screen
-    if useHuman {
+    // Show end screen (not while a capture lets the human skip turns)
+    if useHuman && !game.captureSkipping {
         result := combat.CombatEndScreenResultLose
         humanAttacker := attacker.IsHuman()
         fame := defenderFame

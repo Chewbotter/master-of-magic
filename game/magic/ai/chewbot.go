@@ -4,7 +4,9 @@ package ai
 // then changed from there. It takes over from the clone's AI one part at a time; what it does
 // not do yet, the clone's AI does (ChewbotAI.AIBehavior).
 //
-// Done here: what the cities of a computer player build and buy, and what neutral cities build.
+// Done here: what the cities of a computer player build and buy, and what neutral cities build;
+// where the armies, settlers, engineers, spirits and ships of a computer wizard go (chewbotmove.go
+// and the files beside it, rules in docs/mod/ai-overland.md).
 // Facts from the ReMoM project's reconstruction (MoM/src/AIBUILD.c: Player_All_Colony_Autobuild,
 // Player_Colony_Autobuild_CP, Player_Colony_Autobuild_NP, AI_Player_City_Buy_Production;
 // MoM/src/NEXTTURN.c: City_Apply_Production; MoM/src/INITGAME.c and NewGame.c: the objective of a
@@ -127,6 +129,10 @@ type ChewbotAI struct {
     lastBuilding map[*citylib.City]buildinglib.Building
     // cities that finished a unit: they pick anew (the original's bt_AUTOBUILD)
     finished map[*citylib.City]bool
+
+    // the overland AI's state from turn to turn (chewbotcontinents.go)
+    overland *chewOverland
+    services playerlib.AIServices
 }
 
 // Chewbot around the clone's AI of a computer wizard or of the neutral player
@@ -159,21 +165,34 @@ func (ai *ChewbotAI) ProducedUnit(city *citylib.City, player *playerlib.Player) 
 }
 
 func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIServices) []playerlib.AIDecision {
+    ai.services = services
     decisions := ai.AIBehavior.Update(self, services)
-    if !chewbotCitiesActive() {
+    cities := chewbotCitiesActive()
+    // the neutral player's stacks move as the clone moves them
+    moves := !ai.Neutral && chewbotMovesActive()
+    if !cities && !moves {
         return decisions
     }
 
-    // the clone's production is Chewbot's now
+    // the clone's production and moves are Chewbot's now
     var out []playerlib.AIDecision
     for _, decision := range decisions {
-        if _, isProduce := decision.(*playerlib.AIProduceDecision); isProduce {
+        if _, isProduce := decision.(*playerlib.AIProduceDecision); isProduce && cities {
+            continue
+        }
+        if moves && chewIsMoveDecision(decision) {
             continue
         }
         out = append(out, decision)
     }
 
-    return append(out, ai.cityDecisions(self, services)...)
+    if cities {
+        out = append(out, ai.cityDecisions(self, services)...)
+    }
+    if moves {
+        out = append(out, ai.moveDecisions(self, services)...)
+    }
+    return out
 }
 
 // the objective of a wizard, picked once as the original does at the start of a game: by the realm

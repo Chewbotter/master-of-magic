@@ -78,6 +78,7 @@ func (game *Game) CaptureSkipTurns(turns int) func() {
     }
     start := game.Model.TurnNumber
     human.Skip = true
+    game.captureSkipping = true
     select {
         case game.Events <- &GameEventNextTurn{}:
         default:
@@ -85,6 +86,7 @@ func (game *Game) CaptureSkipTurns(turns int) func() {
     return func() {
         if human.Skip && game.Model.TurnNumber >= start + uint64(turns) {
             human.Skip = false
+            game.captureSkipping = false
             log.Printf("capture: %v turns have passed", turns)
         }
     }

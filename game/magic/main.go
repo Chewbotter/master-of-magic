@@ -1021,12 +1021,18 @@ func startWatchMode(yield coroutine.YieldFunc, game *MagicGame) error {
     return runGameInstance(realGame, yield, game, gameLoader, 0)
 }
 
+// development: computer wizards of a quick start, 0 for a number by chance
+var captureOpponents int
+
 func startQuickGame(yield coroutine.YieldFunc, game *MagicGame, gameLoader *OriginalGameLoader) error {
     settings := setup.NewGameSettings{
         Opponents: rand.N(4) + 1,
         Difficulty: data.DifficultyAverage,
         Magic: data.MagicSettingNormal,
         LandSize: rand.N(3),
+    }
+    if captureOpponents > 0 {
+        settings.Opponents = captureOpponents
     }
 
     spells, err := spellbook.ReadSpellsFromCache(game.Cache)
@@ -1405,6 +1411,8 @@ func loadGameConfig() GameConfig {
     flag.IntVar(&capture.Leave, "capture-leave", 0, "development: the frame at which a debug battle is left as by Escape, counted from 250 frames before the capture")
     flag.BoolVar(&capture.EnemyMagic, "capture-enemy-magic", false, "development: the defender of a debug battle, when it is a wizard, knows every spell and has the mana to cast them")
     flag.BoolVar(&ai.ChewbotCityLog, "capture-city-log", false, "development: every choice of Chewbot's cities in the log")
+    flag.BoolVar(&ai.ChewbotMoveLog, "capture-move-log", false, "development: the overland orders of Chewbot in the log")
+    flag.IntVar(&captureOpponents, "capture-opponents", 0, "development: the number of computer wizards of a quick start, 0 for 1 to 4 by chance")
     flag.BoolVar(&combat.ChewbotLog, "capture-ai-log", false, "development: every decision of the combat AI of Chewbot in the log")
     flag.BoolVar(&capture.Auto, "capture-auto", false, "development: the army of the player of a random battle is set to auto")
     flag.BoolVar(&capture.DamageNumbers, "capture-damage-numbers", false, "development: keep damage numbers over the units of a random battle")

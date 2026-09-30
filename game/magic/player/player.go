@@ -39,6 +39,17 @@ type AIBuyProductionDecision struct {
     City *citylib.City
 }
 
+// these units of the stack (all when empty) purify the corrupted land they stand on
+type AIPurifyDecision struct {
+    Stack *UnitStack
+    Units []units.StackUnit
+}
+
+// an AI that wants to know when a player attacks one of its stacks or cities
+type AIAttackedListener interface {
+    WasAttacked(self *Player, attacker *Player)
+}
+
 type AIProduceDecision struct {
     City *citylib.City
     Building buildinglib.Building
@@ -105,6 +116,8 @@ type AIBuildRoadDecision struct {
     Stack *UnitStack
     X int
     Y int
+    // only these units of the stack build the road (split off first); all when empty
+    Units []units.StackUnit
 }
 
 func (decision *AIBuildRoadDecision) String() string {

@@ -232,7 +232,7 @@ func chewHasRanged(unit *ArmyUnit) bool {
 }
 
 // thrown, a breath or a gaze: the original's ranged types from srat_Thrown on
-func chewShortRange(unit *ArmyUnit) bool {
+func chewShortRange(unit chewStrengthUnit) bool {
     switch unit.GetRangedAttackDamageType() {
         case units.DamageThrown, units.DamageFire:
             return true
@@ -245,7 +245,7 @@ func chewNoRangedType(unit *ArmyUnit) bool {
     return unit.GetRangedAttackDamageType() == units.DamageNone && !chewShortRange(unit)
 }
 
-func chewGaze(unit *ArmyUnit) int {
+func chewGaze(unit chewStrengthUnit) int {
     count := 0
     for _, gaze := range []data.AbilityType{data.AbilityStoningGaze, data.AbilityDeathGaze, data.AbilityDoomGaze} {
         if unit.HasAbility(gaze) {
@@ -267,7 +267,7 @@ func chewMagicRanged(unit *ArmyUnit) bool {
     return unit.GetRangedAttackDamageType() == units.DamageRangedMagical
 }
 
-func chewMeleeFlags(unit *ArmyUnit) int {
+func chewMeleeFlags(unit chewStrengthUnit) int {
     flags := 0
     add := func(ability data.AbilityType, flag int) {
         if unit.HasAbility(ability) {
@@ -287,7 +287,7 @@ func chewMeleeFlags(unit *ArmyUnit) int {
     return flags
 }
 
-func chewRangedFlags(unit *ArmyUnit) int {
+func chewRangedFlags(unit chewStrengthUnit) int {
     flags := 0
     if unit.HasAbility(data.AbilityArmorPiercing) {
         flags |= chewArmorPiercing
