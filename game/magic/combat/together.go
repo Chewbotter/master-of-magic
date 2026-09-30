@@ -201,7 +201,9 @@ func (combat *CombatScreen) unitRoutine(unit *ArmyUnit, before *ArmyUnit, startD
         }
 
         failed := 0
-        for !stopped && unit.GetHealth() > 0 && unit.MovesLeft.GreaterThan(fraction.FromInt(0)) && model.FinalState() == CombatStateRunning {
+        // a hero of Chewbot may wait for the other units and act again, see aichewbot.go
+        model.chewbotBeginUnit(unit)
+        for !stopped && unit.GetHealth() > 0 && unit.MovesLeft.GreaterThan(fraction.FromInt(0)) && model.FinalState() == CombatStateRunning && !model.chewbotWaits(unit) {
             moves := unit.MovesLeft
             x, y := unit.X, unit.Y
             acted = false
@@ -310,7 +312,7 @@ func (combat *CombatScreen) runTogether(yield coroutine.YieldFunc, units []*Army
     }
 
     for _, unit := range units {
-        if !held[unit] {
+        if !held[unit] && !model.chewbotWaits(unit) {
             unit.LastTurn = model.CurrentTurn
         }
     }

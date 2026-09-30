@@ -59,6 +59,7 @@ var settingTips = map[string]string{
     "Widescreen": "The picture is as wide as the window. Off: the shape of the original, with bars at the sides.",
     "Controls": "Modern: drag with the middle mouse button to move the map. Classic: the controls of the original.",
     "Keys": "Shows and changes the keys.",
+    "Enemy AI": "Chewbot: the original game's AI, ported, then changed (battles so far). Clone original: the AI this remake came with.",
     "Aggressive AI": "Computer wizards settle earlier and attack towns more readily. For this session only.",
 }
 

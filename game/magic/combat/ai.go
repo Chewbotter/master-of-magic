@@ -22,7 +22,55 @@ type AIUnitActionsInterface interface {
     DoProjectiles()
 }
 
+// one unit of a computer player acts: by Chewbot's rules or the clone's, see the setting Enemy AI
+// (display/enemyai.go). confused units under the enemy's control act by the clone's
 func doAI(model *CombatModel, spellSystem SpellSystem, aiActions AIUnitActionsInterface, aiUnit *ArmyUnit) {
+    if chewbotActive() && aiUnit.ConfusionAction != ConfusionActionEnemyControl {
+        doAIChewbot(model, spellSystem, aiActions, aiUnit)
+        return
+    }
+
+    doAIClone(model, spellSystem, aiActions, aiUnit)
+}
+
+// a unit casts one of the spells it carries, one time in five. true if it did, which ends its turn
+func (model *CombatModel) doAIUnitCharges(spellSystem SpellSystem, aiActions AIUnitActionsInterface, aiUnit *ArmyUnit, army *Army) bool {
+    if !army.autoCastsSpells() || !aiUnit.CanCast() || rand.N(100) >= 20 {
+        return false
+    }
+
+    for spell, charges := range aiUnit.SpellCharges {
+        if charges > 0 {
+            casted := false
+            // try to cast this spell
+            // FIXME: what to do if the unit is confused?
+            model.InvokeSpell(spellSystem, army, nil, spell, func(success bool){
+                casted = true
+
+                aiUnit.SpellCharges[spell] -= 1
+
+                if success {
+                    log.Debug("AI unit %v cast %v with strength %v", aiUnit.Unit.GetName(), spell.Name, spell.Cost(false))
+                    spellSystem.PlaySound(spell)
+                }
+            })
+
+            if casted {
+                aiUnit.MovesLeft = fraction.FromInt(0)
+                aiActions.DoProjectiles()
+                return true
+            }
+        }
+    }
+
+    // FIXME: cast a spell if the unit has mana (caster ability)
+    // this can be a little tricky because typically the unit has a choice between a ranged magical attack
+    // and casting a spell, but sometimes the spells might not be as good
+    return false
+}
+
+// the clone's AI
+func doAIClone(model *CombatModel, spellSystem SpellSystem, aiActions AIUnitActionsInterface, aiUnit *ArmyUnit) {
     // aiArmy := combat.GetArmy(combat.SelectedUnit)
     army := model.GetArmy(aiUnit)
     otherArmy := model.GetOtherArmy(aiUnit)
@@ -34,34 +82,8 @@ func doAI(model *CombatModel, spellSystem SpellSystem, aiActions AIUnitActionsIn
     }
 
     // for now, disallow confused enemies from casting spells
-    if !isConfused && army.autoCastsSpells() && aiUnit.CanCast() && rand.N(100) < 20 {
-        for spell, charges := range aiUnit.SpellCharges {
-            if charges > 0 {
-                casted := false
-                // try to cast this spell
-                // FIXME: what to do if the unit is confused?
-                model.InvokeSpell(spellSystem, army, nil, spell, func(success bool){
-                    casted = true
-
-                    aiUnit.SpellCharges[spell] -= 1
-
-                    if success {
-                        log.Debug("AI unit %v cast %v with strength %v", aiUnit.Unit.GetName(), spell.Name, spell.Cost(false))
-                        spellSystem.PlaySound(spell)
-                    }
-                })
-
-                if casted {
-                    aiUnit.MovesLeft = fraction.FromInt(0)
-                    aiActions.DoProjectiles()
-                    return
-                }
-            }
-        }
-
-        // FIXME: cast a spell if the unit has mana (caster ability)
-        // this can be a little tricky because typically the unit has a choice between a ranged magical attack
-        // and casting a spell, but sometimes the spells might not be as good
+    if !isConfused && model.doAIUnitCharges(spellSystem, aiActions, aiUnit, army) {
+        return
     }
 
     // if the selected unit has ranged attacks, then try to use that

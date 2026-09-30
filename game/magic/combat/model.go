@@ -2344,6 +2344,8 @@ type CombatModel struct {
     // when the user hovers over a unit, that unit should be shown in a little info box at the upper right
     HighlightedUnit *ArmyUnit
     MagicVortexes []*MagicVortex
+    // the combat AI of Chewbot, see aichewbot.go
+    chewbot *chewbotState
     Projectiles []*Projectile
     Plane data.Plane
     Zone ZoneType
@@ -2837,6 +2839,11 @@ func (model *CombatModel) doCallLightning(army *Army) {
 }
 
 func (model *CombatModel) computePath(x1 int, y1 int, x2 int, y2 int, canTraverseWall bool, isFlying bool, canEnterWater bool) (pathfinding.Path, bool) {
+    return model.computePathAvoiding(x1, y1, x2, y2, canTraverseWall, isFlying, canEnterWater, nil)
+}
+
+// the same, and the tiles avoid says true for are not entered. avoid may be nil
+func (model *CombatModel) computePathAvoiding(x1 int, y1 int, x2 int, y2 int, canTraverseWall bool, isFlying bool, canEnterWater bool, avoid func(int, int) bool) (pathfinding.Path, bool) {
 
     vortexTiles := make(map[image.Point]bool)
     for _, vortex := range model.MagicVortexes {
@@ -2845,6 +2852,9 @@ func (model *CombatModel) computePath(x1 int, y1 int, x2 int, y2 int, canTravers
 
     tileEmpty := func (x int, y int) bool {
         _, isVortex := vortexTiles[image.Pt(x, y)]
+        if avoid != nil && avoid(x, y) {
+            return false
+        }
         return model.GetUnit(x, y) == nil && !isVortex
     }
 
@@ -6304,12 +6314,16 @@ func (model *CombatModel) Update(spellSystem SpellSystem, actions CombatActionsI
             }
         }
 
-        // keep making choices until the unit runs out of moves
-        for aiUnit.MovesLeft.GreaterThan(fraction.FromInt(0)) && aiUnit.GetHealth() > 0 {
+        // keep making choices until the unit runs out of moves. a hero of Chewbot may wait for the
+        // other units and act again, see aichewbot.go
+        model.chewbotBeginUnit(aiUnit)
+        for aiUnit.MovesLeft.GreaterThan(fraction.FromInt(0)) && aiUnit.GetHealth() > 0 && !model.chewbotWaits(aiUnit) {
             doAI(model, spellSystem, actions, aiUnit)
         }
 
-        aiUnit.LastTurn = model.CurrentTurn
+        if !model.chewbotWaits(aiUnit) {
+            aiUnit.LastTurn = model.CurrentTurn
+        }
         model.NextUnit()
         return
     }

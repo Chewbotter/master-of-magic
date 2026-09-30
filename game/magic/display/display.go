@@ -45,6 +45,8 @@ type Settings struct {
     SpellbookTextStill bool `json:"spellbook-text-still"`
     // the opposite of the setting "Damage numbers", see damagenumbers.go
     DamageNumbersOff bool `json:"damage-numbers-off"`
+    // the setting "Enemy AI", see enemyai.go
+    EnemyAIName EnemyAI `json:"enemy-ai"`
 }
 
 // the preferences in use by the running game

@@ -43,6 +43,10 @@ const WidescreenRow = 1
 const ControlsRow = 2
 // upstream's
 const AggressiveRow = 3
+// which AI plays the computer players: caption, and a box that switches between the AIs when clicked
+const EnemyAIRow = 4
+const EnemyAIBoxX = DisplayColumnX + 32
+const EnemyAIBoxWidth = 58
 const ControlsBoxX = DisplayColumnX + 32
 const ControlsBoxWidth = 40
 // the button of the keys, on the row of the controls and right of their box
@@ -241,6 +245,44 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             drawBox(screen, controlsRect, getAlpha(), controlsInside)
             printInBox(screen, controlsRect.Min.X + 5, controlsRect, getAlpha(), displaySettings.Controls().Name())
+        },
+    })
+
+    // the AI of the computer players, see display/enemyai.go
+    group.AddElement(&uilib.UIElement{
+        Layer: settingsLayer,
+        Draw: func(element *uilib.UIElement, screen *ebiten.Image){
+            row := image.Rect(DisplayColumnX, SettingsRowY(EnemyAIRow), DisplayColumnX, SettingsRowY(EnemyAIRow) + SettingsCheckboxSize)
+            printInBox(screen, DisplayColumnX, row, getAlpha(), "Enemy AI")
+        },
+    })
+
+    enemyAITop := settingsRowBoxTop(EnemyAIRow)
+    enemyAIRect := image.Rect(EnemyAIBoxX, enemyAITop, EnemyAIBoxX + EnemyAIBoxWidth, enemyAITop + SettingsRowBoxHeight)
+    enemyAIInside := false
+    group.AddElement(&uilib.UIElement{
+        Layer: settingsLayer,
+        Rect: enemyAIRect,
+        LeftClick: func(element *uilib.UIElement){
+            if closing {
+                return
+            }
+            if displaySettings.EnemyAI() == display.EnemyAIChewbot {
+                displaySettings.SetEnemyAI(display.EnemyAIClone)
+            } else {
+                displaySettings.SetEnemyAI(display.EnemyAIChewbot)
+            }
+        },
+        Inside: func(element *uilib.UIElement, x int, y int){
+            enemyAIInside = true
+            hoverTip("Enemy AI", element, x, y)
+        },
+        NotInside: func(element *uilib.UIElement){
+            enemyAIInside = false
+        },
+        Draw: func(element *uilib.UIElement, screen *ebiten.Image){
+            drawBox(screen, enemyAIRect, getAlpha(), enemyAIInside)
+            printInBox(screen, enemyAIRect.Min.X + 5, enemyAIRect, getAlpha(), displaySettings.EnemyAI().Name())
         },
     })
 

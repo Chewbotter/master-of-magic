@@ -33,6 +33,7 @@ import (
     "github.com/kazzmir/master-of-magic/lib/fraction"
     introlib "github.com/kazzmir/master-of-magic/game/magic/intro"
     "github.com/kazzmir/master-of-magic/game/magic/audio"
+    "github.com/kazzmir/master-of-magic/game/magic/combat"
     musiclib "github.com/kazzmir/master-of-magic/game/magic/music"
     settingslib "github.com/kazzmir/master-of-magic/game/magic/settings"
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
@@ -1395,6 +1396,7 @@ func loadGameConfig() GameConfig {
     flag.IntVar(&spellbook.CaptureFlipPage, "capture-flip-page", 0, "development: which turn of a page -capture-flip shows, 0 the first")
     flag.BoolVar(&spellbook.CaptureFlipBack, "capture-flip-back", false, "development: the turn -capture-flip holds is one back")
     flag.IntVar(&capture.Leave, "capture-leave", 0, "development: the frame at which a debug battle is left as by Escape, counted from 250 frames before the capture")
+    flag.BoolVar(&combat.ChewbotLog, "capture-ai-log", false, "development: every decision of the combat AI of Chewbot in the log")
     flag.BoolVar(&capture.Auto, "capture-auto", false, "development: the army of the player of a random battle is set to auto")
     flag.BoolVar(&capture.DamageNumbers, "capture-damage-numbers", false, "development: keep damage numbers over the units of a random battle")
     flag.StringVar(&capture.MouseAt, "capture-mouse-at", "", "development: the game sees the mouse at x,y screen pixels of the picture")
