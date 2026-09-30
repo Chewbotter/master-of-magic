@@ -491,6 +491,12 @@ func TestChewbotShipLandsArmy(test *testing.T) {
 // Chewbot's own rule: a city with more units than it wants sends the rest on an expedition (the
 // original's rule, beyond 5, sends none of these)
 func TestChewbotCitySendsSpareUnits(test *testing.T) {
+    // the drafting rule alone: the expedition is the original's size (7 at turn 150)
+    oldSize := ai.ChewbotExpeditionByEmpire
+    ai.ChewbotExpeditionByEmpire = false
+    defer func() {
+        ai.ChewbotExpeditionByEmpire = oldSize
+    }()
     for _, beyondNeed := range []bool{true, false} {
         old := ai.ChewbotDraftBeyondNeed
         ai.ChewbotDraftBeyondNeed = beyondNeed
@@ -520,4 +526,46 @@ func TestChewbotCitySendsSpareUnits(test *testing.T) {
             test.Errorf("with the original's rule no spearmen should leave, %v do; orders: %v", leaving, chewDescribe(decisions))
         }
     }
+}
+
+// Chewbot's own size of expeditions: a small empire sends a small one (the original's size at turn
+// 150 is 7, more than this wizard can spare)
+func TestChewbotExpeditionBySizeOfEmpire(test *testing.T) {
+    for _, byEmpire := range []bool{true, false} {
+        old := ai.ChewbotExpeditionByEmpire
+        ai.ChewbotExpeditionByEmpire = byEmpire
+        scenario := makeChewScenario(test, 150, chewIsland...)
+        wizard := scenario.wizard("Merlin", data.BannerRed)
+        scenario.lair(17, 9)
+        scenario.city(wizard, 4, 5, 4, true)
+        scenario.units(wizard, 4, 5, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen)
+        scenario.city(wizard, 12, 5, 3, false)
+        garrison := scenario.units(wizard, 12, 5, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen)
+
+        decisions := scenario.turn(wizard)
+        ai.ChewbotExpeditionByEmpire = old
+        leaving := 0
+        for _, unit := range garrison {
+            if _, ok := chewDestinationOf(decisions, unit); ok {
+                leaving += 1
+            }
+        }
+        // 14 fighting units: an expedition of 3; the city of 3 citizens wants 2 and has 3 to spare
+        if byEmpire && leaving != 3 {
+            test.Errorf("3 spearmen should leave for an expedition of 3, %v do; orders: %v", leaving, chewDescribe(decisions))
+        }
+        if !byEmpire && leaving != 0 {
+            test.Errorf("with the original's size (7) no expedition should leave, %v do; orders: %v", leaving, chewDescribe(decisions))
+        }
+    }
+}
+
+// a stack of the game whose units are all gone (a lost battle) does not stop Chewbot's turn
+func TestChewbotEmptyStack(test *testing.T) {
+    scenario := makeChewScenario(test, 150, chewIsland...)
+    wizard := scenario.wizard("Merlin", data.BannerRed)
+    scenario.city(wizard, 4, 5, 4, true)
+    scenario.units(wizard, 8, 5, units.HighMenSpearmen, units.HighMenSpearmen)
+    wizard.Stacks = append(wizard.Stacks, playerlib.MakeUnitStack())
+    scenario.turn(wizard)
 }

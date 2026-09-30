@@ -149,7 +149,8 @@ func (turn *chewTurn) initPass(wp int, landmass int) *chewPass {
 
     bySquare := make(map[image.Point]*chewAIStack)
     for _, unitStack := range world.Self.Stacks {
-        if chewPlaneIndex(unitStack.Plane()) != wp || turn.Skip[unitStack] {
+        // a stack whose units are all gone (a battle was lost) is no stack
+        if chewPlaneIndex(unitStack.Plane()) != wp || turn.Skip[unitStack] || len(unitStack.Units()) == 0 {
             continue
         }
         x, y := unitStack.X(), unitStack.Y()

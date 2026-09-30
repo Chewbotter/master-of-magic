@@ -59,6 +59,35 @@ const (
     quirkWarOnMastery = true
 )
 
+// CHEWBOT'S OWN, not the original's (user 2026-09-30, "Go with sizing expeditions by the empire"):
+// an expedition is one fighting unit in chewExpeditionShare of all the wizard has, at least 2 and at
+// most 9. The original's size grows with the turn (2, and 1 more every 30 turns): a small empire on a
+// contested continent never had that many to spare, so its armies stayed home. false: the
+// original's size
+var ChewbotExpeditionByEmpire = true
+
+// one unit in this many of the wizard's fighting units makes an expedition (a judgment call)
+const chewExpeditionShare = 4
+
+// the smallest expedition, the original's first one
+const chewExpeditionLeast = 2
+
+// _ai_expedition_size_threshold, or Chewbot's by the empire
+func chewExpeditionSize(self *playerlib.Player, turn int) int {
+    if !ChewbotExpeditionByEmpire {
+        return min(2 + turn / 30, chewMaxStack)
+    }
+    fighting := 0
+    for _, stack := range self.Stacks {
+        for _, unit := range stack.Units() {
+            if !chewIsSettler(unit) && !chewBuildsRoads(unit) && !chewIsMelder(unit) && !chewIsBoat(unit) {
+                fighting += 1
+            }
+        }
+    }
+    return min(max(fighting / chewExpeditionShare, chewExpeditionLeast), chewMaxStack)
+}
+
 // the city a wizard's army sees as an opportunity has fewer defenders than this
 const chewOpportunityDefenders = 4
 
@@ -207,7 +236,7 @@ func (ai *ChewbotAI) moveDecisions(self *playerlib.Player, services playerlib.AI
         World: world,
         Skip: make(map[*playerlib.UnitStack]bool),
         Roads: make(map[chewUnitKey]image.Point),
-        ExpeditionSize: min(2 + world.Turn / 30, chewMaxStack),
+        ExpeditionSize: chewExpeditionSize(self, world.Turn),
     }
     turn.setUnitOrders()
     return turn.decisions()

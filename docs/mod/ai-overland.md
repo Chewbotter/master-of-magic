@@ -111,6 +111,12 @@ or swim go to the stage point of the war landmass.
   cities seldom hold more than 5, so no army ever left. Later, personalities are to shape what a
   wizard puts first. `-chewbot-draft-beyond-need=false` gives the original's rule back.
 
+- **Expeditions sized by the empire** (2026-09-30, `ChewbotExpeditionByEmpire`): an expedition
+  is one fighting unit in 4 of all the wizard has, at least 2 and at most 9. The original's size
+  grows with the turn (2, and 1 more every 30 turns: 7 at turn 150), which a small empire on a
+  contested continent never had to spare. `-chewbot-expedition-by-empire=false` gives the
+  original's size back.
+
 ## The original's mistakes that are kept (visible)
 
 - `quirkSettleOpponentCheck`: the check for enemies near a settler finds the settler itself, so
