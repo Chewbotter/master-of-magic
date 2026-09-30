@@ -54,7 +54,12 @@ func (model *GameModel) DiscoverVisibleWizards() []*GameEventDiplomacy {
             if observer.IsAwareOf(other) {
                 continue
             }
-            if observer.CanSeePlayer(other) {
+            // the original's rules (contactclassic.go), or the fork's: whoever it sees
+            meets := observer.CanSeePlayer(other)
+            if ClassicContact {
+                meets = classicMeets(observer, other)
+            }
+            if meets {
                 if event := model.MakeWizardContact(observer, other); event != nil {
                     meetings = append(meetings, event)
                 }

@@ -7963,7 +7963,8 @@ func (game *Game) doExploreFogForAwareness(awarenessOwner *playerlib.Player) {
         }
         awarenessOwner.ExploreFogSquare(city.X, city.Y, 1, city.Plane)
         _, owner := game.Model.FindCity(city.X, city.Y, city.Plane)
-        if owner != nil {
+        // in the original a city that is only explored makes no contact (contactclassic.go)
+        if owner != nil && !ClassicContact {
             game.meetWizards(nil, awarenessOwner, owner)
         }
     }

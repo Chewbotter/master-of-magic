@@ -77,7 +77,10 @@ func TestDiscoverVisibleWizards(test *testing.T) {
     }
 }
 
+// the fork's rule (ClassicContact false): a computer wizard that sees the human's city meets the human
 func TestDiscoverVisibleWizardsFromEnemySight(test *testing.T) {
+    ClassicContact = false
+    defer func() { ClassicContact = true }()
     human, enemy := makeContactPlayers()
     city := &citylib.City{Name: "Capital", X: 5, Y: 5, Plane: data.PlaneArcanus}
     human.AddCity(city)
@@ -93,5 +96,31 @@ func TestDiscoverVisibleWizardsFromEnemySight(test *testing.T) {
     }
     if meetings[0].Player != human || meetings[0].Enemy != enemy {
         test.Errorf("intro should still address the human player")
+    }
+}
+
+// the original's rule: a computer wizard that sees the human's city does not meet the human, and two
+// computer wizards do not meet by sight; with Nature's Awareness a wizard meets every wizard with a
+// unit
+func TestClassicContact(test *testing.T) {
+    human, enemy := makeContactPlayers()
+    names := make(map[herolib.HeroType]string)
+    other := playerlib.MakePlayer(setup.WizardCustom{Name: "Kali", Banner: data.BannerPurple}, false, 8, 8, names, nil)
+    human.AddCity(&citylib.City{Name: "Capital", X: 5, Y: 5, Plane: data.PlaneArcanus})
+    other.AddCity(&citylib.City{Name: "Far", X: 7, Y: 7, Plane: data.PlaneArcanus})
+
+    model := &GameModel{
+        Players: []*playerlib.Player{human, enemy, other},
+    }
+
+    enemy.LiftFogSquare(5, 5, 0, data.PlaneArcanus)
+    enemy.LiftFogSquare(7, 7, 0, data.PlaneArcanus)
+    if meetings := model.DiscoverVisibleWizards(); len(meetings) != 0 || enemy.IsAwareOf(other) {
+        test.Errorf("a computer wizard meets nobody by sight: %v meetings, knows Kali %v", len(meetings), enemy.IsAwareOf(other))
+    }
+
+    human.LiftFogSquare(7, 7, 0, data.PlaneArcanus)
+    if meetings := model.DiscoverVisibleWizards(); len(meetings) != 1 || meetings[0].Enemy != other {
+        test.Errorf("the human meets the wizard whose city it sees")
     }
 }

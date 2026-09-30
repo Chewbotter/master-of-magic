@@ -54,6 +54,7 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/camera"
     gamelib "github.com/kazzmir/master-of-magic/game/magic/game"
+    "github.com/kazzmir/master-of-magic/game/magic/maplib"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
 
@@ -331,7 +332,13 @@ func initializePlayer(game *gamelib.Game, wizard setup.WizardCustom, isHuman boo
 
     cityName := game.SuggestCityName(player.Wizard.Race)
 
-    cityX, cityY := findCityLocation(game, startingPlane, area)
+    cityX, cityY := 0, 0
+    if maplib.ClassicMaps {
+        // the original's rules (classiccities.go)
+        cityX, cityY = classicHomeLocation(game, startingPlane, len(game.Model.Players) - 1)
+    } else {
+        cityX, cityY = findCityLocation(game, startingPlane, area)
+    }
     area[image.Pt(cityX, cityY)] = false
 
     game.GetMap(startingPlane).SetRoad(cityX, cityY, startingPlane == data.PlaneMyrror)
@@ -423,14 +430,35 @@ func initializeNeutralPlayer(game *gamelib.Game, arcanusCityArea gamelib.CityVal
             area = myrrorCityArea
         }
 
-        for range 5 {
-            cityX, cityY := findCityLocation(game, plane, area)
+        count := 5
+        if maplib.ClassicMaps {
+            count = 15
+        }
+        tries := 0
+        landRaces := make(map[image.Point]data.Race)
+        for range count {
+            var cityX, cityY int
+            var race data.Race
+            if maplib.ClassicMaps {
+                // the original's rules (classiccities.go)
+                x, y, ok := classicNeutralLocation(game, plane, &tries)
+                if !ok {
+                    break
+                }
+                cityX, cityY = x, y
+                race = classicNeutralRace(game, plane, x, y, landRaces)
+            } else {
+                cityX, cityY = findCityLocation(game, plane, area)
+                // should every neutral town be a random race, or should they all be related?
+                race = randomRace()
+            }
 
-            // should every neutral town be a random race, or should they all be related?
-            race := randomRace()
             cityName := game.SuggestCityName(race)
             city := citylib.MakeCity(cityName, cityX, cityY, race, game.Model.BuildingInfo, game.GetMap(plane), game.Model, player)
             city.Population = rand.N(5) * 1000 + 2000
+            if maplib.ClassicMaps {
+                city.Population = classicNeutralPopulation(game.Model.Settings.Difficulty) * 1000
+            }
             city.ProducingBuilding = buildinglib.BuildingHousing
             city.Plane = plane
             city.Farmers = city.Citizens()
@@ -1419,6 +1447,8 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&ai.ChewbotMoveLog, "capture-move-log", false, "development: the overland orders of Chewbot in the log")
     flag.BoolVar(&ai.ChewbotExpeditionByEmpire, "chewbot-expedition-by-empire", true, "development: false gives Chewbot the original's size of expeditions (2 and 1 more every 30 turns)")
     flag.BoolVar(&ai.ChewbotDraftBeyondNeed, "chewbot-draft-beyond-need", true, "development: false gives Chewbot the original's rule for expeditions (units beyond 5 of a garrison)")
+    flag.BoolVar(&maplib.ClassicMaps, "classic-maps", true, "development: false for the fork's worlds, as large as the Land Size")
+    flag.BoolVar(&gamelib.ClassicContact, "classic-contact", true, "development: false for the fork's contact, every wizard meets every wizard it sees")
     flag.IntVar(&captureLandSize, "capture-land-size", -1, "development: the land size of a quick start (0 small, 1 medium, 2 large), -1 by chance")
     flag.IntVar(&captureOpponents, "capture-opponents", 0, "development: the number of computer wizards of a quick start, 0 for 1 to 4 by chance")
     flag.IntVar(&simTurns, "sim", 0, "development: play this many turns of the computer players without a window and write a summary (sim.go)")

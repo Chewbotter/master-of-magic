@@ -93,8 +93,13 @@ func MakeGameModel(terrainData *terrain.TerrainData, settings setup.NewGameSetti
         BuildingInfo: buildingInfo,
     }
 
-    model.ArcanusMap = maplib.MakeMap(terrainData, settings.LandSize, settings.Magic, settings.Difficulty, data.PlaneArcanus, &model, planeTowers)
-    model.MyrrorMap = maplib.MakeMap(terrainData, settings.LandSize, settings.Magic, settings.Difficulty, data.PlaneMyrror, &model, planeTowers)
+    if maplib.ClassicMaps {
+        // the original's worlds of 60 by 40 (maplib/classic.go)
+        model.ArcanusMap, model.MyrrorMap = maplib.MakeClassicMaps(terrainData, settings.LandSize, settings.Magic, settings.Difficulty, &model)
+    } else {
+        model.ArcanusMap = maplib.MakeMap(terrainData, settings.LandSize, settings.Magic, settings.Difficulty, data.PlaneArcanus, &model, planeTowers)
+        model.MyrrorMap = maplib.MakeMap(terrainData, settings.LandSize, settings.Magic, settings.Difficulty, data.PlaneMyrror, &model, planeTowers)
+    }
     return &model
 }
 

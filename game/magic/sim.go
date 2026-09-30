@@ -216,6 +216,31 @@ func simLoadGame(magic *MagicGame, path string) (*gamelib.Game, error) {
     return gamelib.MakeGameFromSerialized(magic.Cache, magic.Music, magic.Settings, &serialized), nil
 }
 
+// what is on each plane at the start: size, land, lairs and towers, nodes, neutral cities
+func simWorld(game *gamelib.Game) string {
+    var out strings.Builder
+    for _, plane := range []data.Plane{data.PlaneArcanus, data.PlaneMyrror} {
+        mapObject := game.GetMap(plane)
+        land := 0
+        for x := 0; x < mapObject.Width(); x++ {
+            for y := 0; y < mapObject.Height(); y++ {
+                if mapObject.GetTile(x, y).Tile.IsLand() {
+                    land += 1
+                }
+            }
+        }
+        neutral := 0
+        for _, city := range game.Model.AllCities() {
+            if city.Plane == plane && city.GetBanner() == data.BannerBrown {
+                neutral += 1
+            }
+        }
+        encounters := len(mapObject.GetEncounterLocations()) - len(mapObject.GetMagicNodeLocations())
+        fmt.Fprintf(&out, "%v: %v by %v, land %v, lairs and towers %v, nodes %v, neutral cities %v\n", plane, mapObject.Width(), mapObject.Height(), land, encounters, len(mapObject.GetMagicNodeLocations()), neutral)
+    }
+    return strings.TrimSuffix(out.String(), "\n")
+}
+
 // a quick start as -start makes it
 func simQuickGame(magic *MagicGame) (*gamelib.Game, string, error) {
     settings := setup.NewGameSettings{
@@ -227,6 +252,9 @@ func simQuickGame(magic *MagicGame) (*gamelib.Game, string, error) {
     if captureOpponents > 0 {
         settings.Opponents = captureOpponents
     }
+    if captureLandSize >= 0 {
+        settings.LandSize = captureLandSize
+    }
     spells, err := spellbook.ReadSpellsFromCache(magic.Cache)
     if err != nil {
         return nil, "", err
@@ -236,7 +264,7 @@ func simQuickGame(magic *MagicGame) (*gamelib.Game, string, error) {
         return nil, "", fmt.Errorf("could not choose a wizard")
     }
     game := initializeGame(magic, settings, wizard)
-    return game, fmt.Sprintf("a quick start, %v computer wizards, land size %v", settings.Opponents, settings.LandSize), nil
+    return game, fmt.Sprintf("a quick start, %v computer wizards, land size %v (0 small, 1 medium, 2 large)\n%v", settings.Opponents, settings.LandSize, simWorld(game)), nil
 }
 
 // every wizard at war with every other (not the neutral player)

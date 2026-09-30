@@ -84,9 +84,8 @@ attack their partners.
 Two wizards have relations only after they have met. In the original the human meets a wizard when
 the human's scouting covers one of its cities or a unit that is not invisible, and any wizard with
 Nature's Awareness meets every wizard with a visible unit; computer wizards never meet each other by
-sight. Here every wizard meets every wizard whose city or stack it can see (more than the original).
-The fork's maps are larger than the original's (see the project notes), so wizards meet late or not
-at all.
+sight. This is the rule here too (`game/contactclassic.go`; `-classic-contact=false` for the fork's
+rule, every wizard meeting every wizard it sees). The worlds are the original's 60 by 40.
 
 ## Kept from the original, on purpose
 

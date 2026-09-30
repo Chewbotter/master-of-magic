@@ -834,6 +834,9 @@ type Map struct {
 }
 
 func getLandSize(size int) (int, int) {
+    if ClassicMaps {
+        return terrain.ClassicWidth, terrain.ClassicHeight
+    }
     switch size {
         case 0: return 50, 50
         case 1: return 100, 100
@@ -847,6 +850,12 @@ func MakeMap(terrainData *terrain.TerrainData, landSize int, magicSetting data.M
     landWidth, landHeight := getLandSize(landSize)
 
     map_ := terrain.GenerateLandCellularAutomata(landWidth, landHeight, terrainData, plane)
+    return MakeMapFromTerrain(map_, terrainData, magicSetting, difficulty, plane, cityProvider, planeTowers)
+}
+
+// the map of a plane whose land is made: towers, nodes, lairs, minerals
+func MakeMapFromTerrain(map_ *terrain.Map, terrainData *terrain.TerrainData, magicSetting data.MagicSetting, difficulty data.DifficultySetting, plane data.Plane, cityProvider CityProvider, planeTowers []image.Point) *Map {
+    landWidth, landHeight := map_.Columns(), map_.Rows()
 
     extraMap := make(map[image.Point]map[ExtraKind]ExtraTile)
 
@@ -1013,6 +1022,10 @@ func MakeMap(terrainData *terrain.TerrainData, landSize int, magicSetting data.M
         return false
     }
 
+    if ClassicMaps {
+        placeClassicLairs(map_, terrainData, extraMap, difficulty, plane)
+    }
+
     continents := map_.FindContinents()
 
     // place some encounter nodes down (lair, cave, etc)
@@ -1020,6 +1033,10 @@ func MakeMap(terrainData *terrain.TerrainData, landSize int, magicSetting data.M
 
         // try to place N encounters. if we can't place them all, then we just place as many as we can
         maxEncounters := continents[i].Size() / 10
+        if ClassicMaps {
+            // placed above
+            maxEncounters = 0
+        }
         points := continents[i].Values()
         for _, index := range rand.Perm(len(points)) {
 
