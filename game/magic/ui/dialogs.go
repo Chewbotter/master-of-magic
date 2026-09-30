@@ -64,6 +64,25 @@ func MakeHelpElementSized(container UIContainer, cache *lbx.LbxCache, imageCache
     infoTopMargin := 26
     infoBodyMargin := 3
     maxInfoWidth := infoWidth - infoLeftMargin - infoBodyMargin - 14
+    // from a picture to the headline, between two entries, and under the text of an entry
+    pictureGap := 5
+    entryGap := 2
+    entryBelow := 0
+    scrollBelow := 0
+
+    // the colors and the places of the original, see helpstyle.go
+    style := getHelpStyle(cache)
+    if style != nil {
+        helpFonts = HelpFonts{HelpFont: style.Text, HelpTitleFont: style.Title}
+        infoX = helpScrollX
+        infoLeftMargin = helpTitleX
+        infoBodyMargin = helpTextX - helpTitleX
+        maxInfoWidth = helpTextWidth
+        pictureGap = helpPictureGap
+        entryGap = 0
+        entryBelow = helpEntryBelow
+        scrollBelow = helpScrollBelow
+    }
 
     // fmt.Printf("Help text: %v\n", []byte(help.Text))
 
@@ -108,17 +127,24 @@ func MakeHelpElementSized(container UIContainer, cache *lbx.LbxCache, imageCache
     }
 
     bottom := float64(helpTextY) + wrapped.TotalHeight
+    if help.Text != "" {
+        bottom += float64(entryBelow)
+    }
 
     var moreHelp []font.WrappedText
 
     // add in more help entries
     for _, entry := range helpEntries {
-        bottom += 2
+        bottom += float64(entryGap)
         bottom += float64(helpFonts.HelpTitleFont.Height()) + 1
         moreWrapped := wrap(entry.Text)
         moreHelp = append(moreHelp, moreWrapped)
         bottom += moreWrapped.TotalHeight
+        if entry.Text != "" {
+            bottom += float64(entryBelow)
+        }
     }
+    bottom += float64(scrollBelow)
 
     // the scroll is cut and its lower end put under it at whole art pixels. smaller text has
     // heights between them, which left a broken row of pixels where the two meet
@@ -158,17 +184,17 @@ func MakeHelpElementSized(container UIContainer, cache *lbx.LbxCache, imageCache
                 options.GeoM.Translate(float64(titleX), infoY + float64(infoTopMargin))
                 options.ColorScale.ScaleAlpha(getAlpha())
                 scale.DrawScaled(window, extraImage, &options)
-                titleX += extraImage.Bounds().Dx() + 5
+                titleX += extraImage.Bounds().Dx() + pictureGap
             }
 
             helpFonts.HelpTitleFont.PrintOptions(window, float64(titleX), infoY + float64(infoTopMargin + titleYAdjust), font.FontOptions{Options: &options, Scale: scale.ScaleAmount}, help.Headline)
             helpFonts.HelpFont.RenderWrapped(window, float64(infoX + infoLeftMargin + infoBodyMargin), float64(helpTextY) + infoY, wrapped, textOptions(&options))
 
-            yPos := float64(helpTextY) + infoY + wrapped.TotalHeight + 2
+            yPos := float64(helpTextY) + infoY + wrapped.TotalHeight + float64(entryGap)
             for i, moreWrapped := range moreHelp {
                 helpFonts.HelpTitleFont.PrintOptions(window, float64(titleX), yPos, font.FontOptions{Options: &options, Scale: scale.ScaleAmount}, helpEntries[i].Headline)
                 helpFonts.HelpFont.RenderWrapped(window, float64(infoX + infoLeftMargin + infoBodyMargin), yPos + float64(helpFonts.HelpTitleFont.Height()) + 1, moreWrapped, textOptions(&options))
-                yPos += float64(helpFonts.HelpTitleFont.Height()) + 1 + float64(moreWrapped.TotalHeight) + 2
+                yPos += float64(helpFonts.HelpTitleFont.Height()) + 1 + float64(moreWrapped.TotalHeight) + float64(entryGap)
             }
 
         },
