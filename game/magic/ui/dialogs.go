@@ -205,6 +205,11 @@ func MakeErrorElement(ui UIContainer, cache *lbx.LbxCache, imageCache *util.Imag
 }
 
 func MakeErrorElementWithLayer(ui UIContainer, cache *lbx.LbxCache, imageCache *util.ImageCache, message string, layer UILayer, clicked func()) *UIElement {
+    // the box of the original, see noticestyle.go
+    if styled := makeNoticeOriginal(ui, cache, imageCache, message, layer, clicked); styled != nil {
+        return styled
+    }
+
     errorX := 67
     errorY := 73
 
@@ -421,6 +426,11 @@ func MakeLairConfirmDialog(ui UIContainer, cache *lbx.LbxCache, imageCache *util
 }
 
 func MakeLairConfirmDialogWithLayer(ui UIContainer, cache *lbx.LbxCache, imageCache *util.ImageCache, lairPicture *util.Animation, layer UILayer, message string, confirm func(), cancel func()) []*UIElement {
+    // the box of the original, see noticestyle.go
+    if styled := makeLairOriginal(ui, cache, imageCache, lairPicture, layer, message, true, confirm, cancel); styled != nil {
+        return styled
+    }
+
     confirmX := 67
     confirmY := 40
 
@@ -553,6 +563,11 @@ func MakeLairConfirmDialogWithLayer(ui UIContainer, cache *lbx.LbxCache, imageCa
 }
 
 func MakeLairShowDialogWithLayer(ui UIContainer, cache *lbx.LbxCache, imageCache *util.ImageCache, lairPicture *util.Animation, layer UILayer, message string, dismiss func()) []*UIElement {
+    // the box of the original, see noticestyle.go
+    if styled := makeLairOriginal(ui, cache, imageCache, lairPicture, layer, message, false, dismiss, dismiss); styled != nil {
+        return styled
+    }
+
     confirmX := 67
     confirmY := 40
 

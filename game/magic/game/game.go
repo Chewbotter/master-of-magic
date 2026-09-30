@@ -4710,7 +4710,8 @@ func (game *Game) confirmLairEncounter(yield coroutine.YieldFunc, encounter *map
         case maplib.EncounterTypeLair:
             lairIndex = 17
         case maplib.EncounterTypeCave:
-            lairIndex = 17
+            // the original's picture of a cave (ReMoM Lair.c), upstream had the one of the lair
+            lairIndex = 13
         case maplib.EncounterTypePlaneTower:
             lairIndex = 9
         case maplib.EncounterTypeAncientTemple:
@@ -4754,12 +4755,23 @@ func (game *Game) confirmLairEncounter(yield coroutine.YieldFunc, encounter *map
     game.Music.PushSong(musiclib.SongSiteDiscovery)
     defer game.Music.PopSong()
 
+    // the words of the original (ReMoM Lair.c): the name of the place in small letters, two
+    // spaces after a full stop, and "a" or "an" before a guardian that is one figure
+    placeName := strings.ToLower(encounter.Type.Name())
     if len(encounter.Units) == 0 {
-        game.showEncounter(yield, fmt.Sprintf("You have found %v %v.", article, encounter.Type.Name()), animation)
+        game.showEncounter(yield, fmt.Sprintf("You have found %v %v.", article, placeName), animation)
         return true
     }
 
-    return game.confirmEncounter(yield, fmt.Sprintf("You have found %v %v. Scouts have spotted %v within the %v. Do you wish to enter?", article, encounter.Type.Name(), guardianName, encounter.Type.Name()), animation)
+    if encounter.Units[0].Count == 1 {
+        guardianArticle := "a"
+        if strings.ContainsAny(guardianName[:1], "AEIOUaeiou") {
+            guardianArticle = "an"
+        }
+        guardianName = guardianArticle + " " + guardianName
+    }
+
+    return game.confirmEncounter(yield, fmt.Sprintf("You have found %v %v.  Scouts have spotted %v within the %v.  Do you wish to enter?", article, placeName, guardianName, placeName), animation)
 }
 
 func (game *Game) doEncounter(yield coroutine.YieldFunc, player *playerlib.Player, stack *playerlib.UnitStack, encounter *maplib.ExtraEncounter, mapUse *maplib.Map, x int, y int) combat.CombatState {

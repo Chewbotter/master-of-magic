@@ -3,6 +3,8 @@ package game
 // Development: open a screen by name, so a frame capture can show it without clicking.
 
 import (
+    "github.com/kazzmir/master-of-magic/game/magic/maplib"
+    "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "fmt"
@@ -16,7 +18,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -163,6 +165,32 @@ func (game *Game) CaptureOpenScreen(name string) bool {
         case "chancellor":
             game.DoChancellor()
             return true
+        case "notice":
+            // the box of a message
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    game.doNotice(yield, game.HudUI, "You do not have enough gold to buy that. Perhaps you should raise your taxes.")
+                },
+            }
+        case "lair", "lairempty", "lairnode":
+            // the box of what a stack has found
+            encounter := &maplib.ExtraEncounter{Type: maplib.EncounterTypeAncientTemple}
+            if name == "lairnode" {
+                encounter.Type = maplib.EncounterTypeSorceryNode
+            }
+            if name != "lairempty" {
+                for index := range units.AllUnits {
+                    if units.AllUnits[index].Name == "Sky Drake" || (name == "lairnode" && units.AllUnits[index].Name == "Phantom Warriors") {
+                        encounter.Units = append(encounter.Units, units.AllUnits[index])
+                        break
+                    }
+                }
+            }
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    game.confirmLairEncounter(yield, encounter)
+                },
+            }
         case "chancellorevents", "chancellormany":
             // the scroll with events of several kinds, and with more than it has room for
             game.Model.ScrollEvents = []*GameEventScroll{
