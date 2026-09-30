@@ -32,6 +32,38 @@ type SimStats struct {
     Players map[*playerlib.Player]*SimPlayerStats
     // what computer wizards said to the human, by the original's action number
     Messages map[int]int
+    // the turn two wizards first knew of each other
+    Contacts []SimContact
+    contactSeen map[[2]*playerlib.Player]bool
+}
+
+type SimContact struct {
+    First *playerlib.Player
+    Second *playerlib.Player
+    Turn uint64
+}
+
+// notes the pairs of wizards that know of each other and were not noted before
+func (stats *SimStats) noteContacts(players []*playerlib.Player, turn uint64) {
+    if stats == nil {
+        return
+    }
+    stats.lock.Lock()
+    defer stats.lock.Unlock()
+    if stats.contactSeen == nil {
+        stats.contactSeen = make(map[[2]*playerlib.Player]bool)
+    }
+    for index, first := range players {
+        for _, second := range players[index + 1:] {
+            if first.IsNeutral() || second.IsNeutral() || stats.contactSeen[[2]*playerlib.Player{first, second}] {
+                continue
+            }
+            if first.IsAwareOf(second) || second.IsAwareOf(first) {
+                stats.contactSeen[[2]*playerlib.Player{first, second}] = true
+                stats.Contacts = append(stats.Contacts, SimContact{First: first, Second: second, Turn: turn})
+            }
+        }
+    }
 }
 
 func MakeSimStats() *SimStats {

@@ -155,6 +155,7 @@ func (game *Game) doDiplomacyTurn() {
         }
         game.masteryNoticed[player] = casting
     }
+    game.Stats.noteContacts(game.Model.Players, game.Model.TurnNumber)
     rules.EndOfTurn(game.Model.HasEnchantment(data.EnchantmentTimeStop))
     for _, message := range game.Model.DiplomacyMessages {
         if game.Stats != nil {

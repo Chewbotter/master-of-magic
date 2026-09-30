@@ -20,6 +20,7 @@ package main
 //   bash dev.sh a -sim 100 -sim-load turn150 -sim-repeat 5 -sim-ai clone
 
 import (
+    "image"
     "bufio"
     "cmp"
     "compress/gzip"
@@ -475,6 +476,47 @@ func simSummary(run simRun) string {
     return out.String()
 }
 
+// for every pair of wizards that have not met: the nearest two of their cities (squares, the larger
+// of the distances across and down, across the edge of the map) and whether they are on one landmass
+func simNearest(game *gamelib.Game, players []*playerlib.Player) string {
+    var out strings.Builder
+    for index, first := range players {
+        for _, second := range players[index + 1:] {
+            if first.IsNeutral() || second.IsNeutral() || first.IsAwareOf(second) {
+                continue
+            }
+            best := -1
+            sameLand := false
+            for _, a := range first.Cities {
+                for _, b := range second.Cities {
+                    if a.Plane != b.Plane {
+                        continue
+                    }
+                    mapObject := game.Model.GetMap(a.Plane)
+                    dx := a.X - b.X
+                    if dx < 0 {
+                        dx = -dx
+                    }
+                    dx = min(dx, mapObject.Width() - dx)
+                    dy := a.Y - b.Y
+                    if dy < 0 {
+                        dy = -dy
+                    }
+                    distance := max(dx, dy)
+                    if best < 0 || distance < best {
+                        best = distance
+                        sameLand = mapObject.Map.FindContinent(a.X, a.Y).Contains(image.Pt(b.X, b.Y))
+                    }
+                }
+            }
+            if best >= 0 {
+                fmt.Fprintf(&out, "  not met: %v and %v, nearest cities %v squares apart, one landmass %v\n", first.Wizard.Name, second.Wizard.Name, best, sameLand)
+            }
+        }
+    }
+    return out.String()
+}
+
 // the diplomacy at the end of a run: personalities, every pair's treaty, relation and hostility, and
 // what computer wizards said to the human
 func simDiplomacy(game *gamelib.Game, players []*playerlib.Player) string {
@@ -497,6 +539,13 @@ func simDiplomacy(game *gamelib.Game, players []*playerlib.Player) string {
             }
             fmt.Fprintf(&out, "  %v - %v: %v, relation %v (%v), hostility %v / %v\n", first.Wizard.Name, second.Wizard.Name, relation.Treaty, relation.VisibleRelation, relation.Description(), relation.Hostility, back)
         }
+    }
+    if len(game.Stats.Contacts) == 0 {
+        fmt.Fprintf(&out, "No two wizards met\n")
+    }
+    fmt.Fprintf(&out, "%v", simNearest(game, players))
+    for _, contact := range game.Stats.Contacts {
+        fmt.Fprintf(&out, "  met in turn %v: %v and %v\n", contact.Turn, contact.First.Wizard.Name, contact.Second.Wizard.Name)
     }
     if len(game.Stats.Messages) > 0 {
         var parts []string

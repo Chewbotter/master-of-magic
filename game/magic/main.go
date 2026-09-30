@@ -1023,6 +1023,8 @@ func startWatchMode(yield coroutine.YieldFunc, game *MagicGame) error {
 
 // development: computer wizards of a quick start, 0 for a number by chance
 var captureOpponents int
+// development: the land size of a quick start, below 0 by chance
+var captureLandSize int
 
 func startQuickGame(yield coroutine.YieldFunc, game *MagicGame, gameLoader *OriginalGameLoader) error {
     settings := setup.NewGameSettings{
@@ -1033,6 +1035,9 @@ func startQuickGame(yield coroutine.YieldFunc, game *MagicGame, gameLoader *Orig
     }
     if captureOpponents > 0 {
         settings.Opponents = captureOpponents
+    }
+    if captureLandSize >= 0 {
+        settings.LandSize = captureLandSize
     }
 
     spells, err := spellbook.ReadSpellsFromCache(game.Cache)
@@ -1414,6 +1419,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&ai.ChewbotMoveLog, "capture-move-log", false, "development: the overland orders of Chewbot in the log")
     flag.BoolVar(&ai.ChewbotExpeditionByEmpire, "chewbot-expedition-by-empire", true, "development: false gives Chewbot the original's size of expeditions (2 and 1 more every 30 turns)")
     flag.BoolVar(&ai.ChewbotDraftBeyondNeed, "chewbot-draft-beyond-need", true, "development: false gives Chewbot the original's rule for expeditions (units beyond 5 of a garrison)")
+    flag.IntVar(&captureLandSize, "capture-land-size", -1, "development: the land size of a quick start (0 small, 1 medium, 2 large), -1 by chance")
     flag.IntVar(&captureOpponents, "capture-opponents", 0, "development: the number of computer wizards of a quick start, 0 for 1 to 4 by chance")
     flag.IntVar(&simTurns, "sim", 0, "development: play this many turns of the computer players without a window and write a summary (sim.go)")
     flag.StringVar(&simOut, "sim-out", "sim-summary.txt", "development: where -sim writes its summary")

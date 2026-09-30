@@ -79,6 +79,15 @@ original's question comes: "You have a treaty with X.  Do you still wish to atta
 treaty (and the wizard minds it by 40); no keeps the stack where it was. Computer wizards never
 attack their partners.
 
+## Contact
+
+Two wizards have relations only after they have met. In the original the human meets a wizard when
+the human's scouting covers one of its cities or a unit that is not invisible, and any wizard with
+Nature's Awareness meets every wizard with a visible unit; computer wizards never meet each other by
+sight. Here every wizard meets every wizard whose city or stack it can see (more than the original).
+The fork's maps are larger than the original's (see the project notes), so wizards meet late or not
+at all.
+
 ## Kept from the original, on purpose
 
 - `quirkAllianceBecomesPact`: when both wizards of a pair pass the test for an alliance in the same
