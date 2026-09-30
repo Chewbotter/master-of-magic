@@ -12,7 +12,8 @@ package combat
 // - everything else plays its frames once on its target
 // - Lightning Bolt shows two flashes of a bolt that comes from the top of the screen, frames by
 //   chance. With a series of frames of the replacement folder (another number of frames than the
-//   game's 5) it shows all of them in their order, one after the other (user, 2026-09-30)
+//   game's 5) it shows all of them in their order, one after the other, and hits when the bolt
+//   has come down to the ground in them (user, 2026-09-30)
 // - Cracks Call and the circle of a summoning lie on the ground, under the units
 // - spells that hit all units of a side start on each unit a little later or earlier
 //
@@ -99,6 +100,8 @@ const lightningAbove = 199
 const lightningLbx = "cmbtfx.lbx"
 const lightningEntry = 24
 const lightningSeriesTicks = 1
+// a frame of a series whose bolt reaches this near to the bottom of the picture has come down
+const lightningGroundSlack = 8
 
 type boltPath struct {
     // from the place of the target to the top left corner of the picture when it hits
@@ -277,11 +280,16 @@ func (combat *CombatScreen) createLightning(target *ArmyUnit, pictures []*ebiten
     placeX, placeY := spellPlace(target.X, target.Y)
 
     steps := []ProjectileStep{{Frame: spellFrameNone, Ticks: lightningWaitTicks}}
+    // it hits with its first flash
+    impact := 1
     if mod.FrameCountChanged(lightningLbx, lightningEntry) {
-        // the replacement folder has a series of its own: all of it, in its order, a flash each
+        // the replacement folder has a series of its own: all of it, in its order, a flash each.
+        // it hits when the bolt has come down to the ground (user, 2026-09-30: "the flash on
+        // ground shouldn't happen until the frames are already in motion")
         for frame := range pictures {
             steps = append(steps, ProjectileStep{X: placeX, Y: placeY - lightningAbove, Frame: frame, Ticks: lightningSeriesTicks})
         }
+        impact = 1 + lightningGroundFrame(mod.LowestRows(lightningLbx, lightningEntry), len(pictures))
     } else {
         for range lightningFlashes {
             frame := rand.N(lightningFrames)
@@ -292,10 +300,26 @@ func (combat *CombatScreen) createLightning(target *ArmyUnit, pictures []*ebiten
 
     if len(pictures) == 0 {
         steps = nil
+        impact = 0
     }
 
-    // it hits with its first flash
-    return combat.dress(newSpellProjectile(target, pictures, steps, effect), firstShownStep(steps))
+    return combat.dress(newSpellProjectile(target, pictures, steps, effect), impact)
+}
+
+// the first frame of a series of Lightning Bolt whose bolt comes down to the place of the unit:
+// its lowest pixel no more than lightningGroundSlack above the bottom of the picture. the last
+// frame if none does, or if the rows are not known
+func lightningGroundFrame(rows []int, frames int) int {
+    last := max(0, frames - 1)
+    if len(rows) != frames {
+        return last
+    }
+    for frame, row := range rows {
+        if row >= lightningAbove - lightningGroundSlack {
+            return frame
+        }
+    }
+    return last
 }
 
 // the step a spell is at, or the number of its steps when it is over

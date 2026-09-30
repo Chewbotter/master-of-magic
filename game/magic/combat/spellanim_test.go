@@ -189,9 +189,13 @@ func TestLightningSeries(test *testing.T) {
     }
 
     // a series: every frame once, in its order
-    mod.MarkFrameCountChangedForTest(lightningLbx, lightningEntry, 5)
-    defer mod.MarkFrameCountChangedForTest(lightningLbx, lightningEntry, 0)
+    // the bolt comes down over the first two frames and is on the ground from the third
+    mod.MarkFrameCountChangedForTest(lightningLbx, lightningEntry, 5, []int{94, 157, 196, 199, 199, 199})
+    defer mod.MarkFrameCountChangedForTest(lightningLbx, lightningEntry, 0, nil)
     projectile = combat.createLightning(target, pictures, nil)
+    if projectile.ImpactStep != 1 + 2 {
+        test.Fatalf("it hits at step %v, the bolt is on the ground at step %v", projectile.ImpactStep, 1 + 2)
+    }
     if len(projectile.Steps) != len(pictures) + 2 {
         test.Fatalf("%v steps with a series of %v", len(projectile.Steps), len(pictures))
     }
@@ -199,5 +203,18 @@ func TestLightningSeries(test *testing.T) {
         if step.Frame != index || step.Ticks != lightningSeriesTicks {
             test.Fatalf("step %v: %v", index, describeStep(step))
         }
+    }
+}
+
+// the frame of a series that reaches the ground, or the last one
+func TestLightningGroundFrame(test *testing.T) {
+    if frame := lightningGroundFrame([]int{94, 157, 196, 199}, 4); frame != 2 {
+        test.Fatalf("the ground at frame %v", frame)
+    }
+    if frame := lightningGroundFrame([]int{50, 60, -1}, 3); frame != 2 {
+        test.Fatalf("none reaches the ground: frame %v", frame)
+    }
+    if frame := lightningGroundFrame(nil, 6); frame != 5 {
+        test.Fatalf("rows not known: frame %v", frame)
     }
 }
