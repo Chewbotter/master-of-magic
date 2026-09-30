@@ -588,6 +588,8 @@ type ArmyUnit struct {
 
     Attacking bool
     Defending bool
+    // it shows the frames of a shot, see shoot.go
+    Shooting bool
     // its swing: the tick of the battle it started at, and how many redraws of the original
     // later than that it starts, for the unit that is attacked. see strikeswing.go
     SwingStart uint64

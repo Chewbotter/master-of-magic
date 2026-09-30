@@ -2773,6 +2773,20 @@ func (combat *CombatScreen) doMoveUnit(yield coroutine.YieldFunc, mover *ArmyUni
 func (combat *CombatScreen) doRangeAttack(yield coroutine.YieldFunc, attacker *ArmyUnit, defender RangeTarget){
     attacker.Facing = faceTowards(attacker.X, attacker.Y, defender.GetX(), defender.GetY())
 
+    // figures with frames of a strike of their own draw and loose, see shoot.go
+    rest := 0
+    if showsShot(attacker) {
+        looses, lasts := combat.startShot(attacker)
+        defer func(){
+            attacker.Shooting = false
+        }()
+        if !combat.waitTicks(yield, looses) {
+            return
+        }
+        rest = lasts - looses
+    }
+    started := combat.Counter
+
     combat.Model.rangeAttack(attacker, defender, combat)
 
     sound, err := combat.AudioCache.GetSound(attacker.Unit.GetRangeAttackSound().LbxIndex())
@@ -2781,6 +2795,11 @@ func (combat *CombatScreen) doRangeAttack(yield coroutine.YieldFunc, attacker *A
     }
 
     combat.doProjectiles(yield)
+
+    // the rest of the shot, if the missile was faster
+    if gone := int(combat.Counter - started); gone < rest {
+        combat.waitTicks(yield, rest - gone)
+    }
 }
 
 func (combat *CombatScreen) doMeleeWall(yield coroutine.YieldFunc, attacker *ArmyUnit, x int, y int){
