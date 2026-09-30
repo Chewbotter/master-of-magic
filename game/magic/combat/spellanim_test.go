@@ -3,6 +3,8 @@ package combat
 import (
     "testing"
 
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
+
     "github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -171,5 +173,31 @@ func TestSpellSteps(test *testing.T) {
     projectile.updateSteps(1000 + at)
     if projectile.Step != 1 {
         test.Errorf("after 3 redraws: step %v, should be 1", projectile.Step)
+    }
+}
+
+// a lightning bolt with a series of frames of the replacement folder plays all of them in order
+func TestLightningSeries(test *testing.T) {
+    combat := &CombatScreen{}
+    target := &ArmyUnit{X: 5, Y: 5}
+    pictures := testPictures(6, 184, 200)
+
+    // the game's frames: two flashes by chance between the waits
+    projectile := combat.createLightning(target, pictures, nil)
+    if len(projectile.Steps) != lightningFlashes + 2 {
+        test.Fatalf("%v steps with the game's frames", len(projectile.Steps))
+    }
+
+    // a series: every frame once, in its order
+    mod.MarkFrameCountChangedForTest(lightningLbx, lightningEntry, 5)
+    defer mod.MarkFrameCountChangedForTest(lightningLbx, lightningEntry, 0)
+    projectile = combat.createLightning(target, pictures, nil)
+    if len(projectile.Steps) != len(pictures) + 2 {
+        test.Fatalf("%v steps with a series of %v", len(projectile.Steps), len(pictures))
+    }
+    for index, step := range projectile.Steps[1:len(projectile.Steps) - 1] {
+        if step.Frame != index || step.Ticks != lightningSeriesTicks {
+            test.Fatalf("step %v: %v", index, describeStep(step))
+        }
     }
 }

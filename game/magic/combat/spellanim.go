@@ -10,7 +10,9 @@ package combat
 //
 // - bolts (Fire Bolt, Ice Bolt, Fireball, Doom Bolt) fly in from a fixed place next to their target
 // - everything else plays its frames once on its target
-// - Lightning Bolt shows two flashes of a bolt that comes from the top of the screen
+// - Lightning Bolt shows two flashes of a bolt that comes from the top of the screen, frames by
+//   chance. With a series of frames of the replacement folder (another number of frames than the
+//   game's 5) it shows all of them in their order, one after the other (user, 2026-09-30)
 // - Cracks Call and the circle of a summoning lie on the ground, under the units
 // - spells that hit all units of a side start on each unit a little later or earlier
 //
@@ -34,6 +36,7 @@ import (
     "math/rand/v2"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
+    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "github.com/kazzmir/master-of-magic/lib/font"
@@ -92,6 +95,10 @@ const lightningWaitTicks = 5
 const lightningFlashes = 2
 const lightningFrames = 4
 const lightningAbove = 199
+// where the picture is, and how many redraws a frame of a series of the replacement folder shows
+const lightningLbx = "cmbtfx.lbx"
+const lightningEntry = 24
+const lightningSeriesTicks = 1
 
 type boltPath struct {
     // from the place of the target to the top left corner of the picture when it hits
@@ -270,9 +277,16 @@ func (combat *CombatScreen) createLightning(target *ArmyUnit, pictures []*ebiten
     placeX, placeY := spellPlace(target.X, target.Y)
 
     steps := []ProjectileStep{{Frame: spellFrameNone, Ticks: lightningWaitTicks}}
-    for range lightningFlashes {
-        frame := rand.N(lightningFrames)
-        steps = append(steps, ProjectileStep{X: placeX, Y: placeY - lightningAbove, Frame: min(frame, len(pictures) - 1), Ticks: 1})
+    if mod.FrameCountChanged(lightningLbx, lightningEntry) {
+        // the replacement folder has a series of its own: all of it, in its order, a flash each
+        for frame := range pictures {
+            steps = append(steps, ProjectileStep{X: placeX, Y: placeY - lightningAbove, Frame: frame, Ticks: lightningSeriesTicks})
+        }
+    } else {
+        for range lightningFlashes {
+            frame := rand.N(lightningFrames)
+            steps = append(steps, ProjectileStep{X: placeX, Y: placeY - lightningAbove, Frame: min(frame, len(pictures) - 1), Ticks: 1})
+        }
     }
     steps = append(steps, ProjectileStep{Frame: spellFrameNone, Ticks: lightningWaitTicks})
 

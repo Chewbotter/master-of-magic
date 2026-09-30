@@ -725,7 +725,7 @@ func (combat *CombatScreen) CreateDoomBoltProjectile(target *ArmyUnit) *Projecti
 }
 
 func (combat *CombatScreen) CreateLightningBoltProjectile(target *ArmyUnit, strength int) *Projectile {
-    images, _ := combat.ImageCache.GetImages("cmbtfx.lbx", 24)
+    images, _ := combat.ImageCache.GetImages(lightningLbx, lightningEntry)
     return combat.createLightning(target, images, combat.Model.CreateLightningBoltProjectileEffect(strength, combat))
 }
 

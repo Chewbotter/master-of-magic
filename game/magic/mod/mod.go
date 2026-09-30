@@ -122,6 +122,8 @@ var unitEntries = make(map[string]unitEntry)
 var reported = make(map[string]bool)
 // by archive and entry: the frames that came from the replacement folder
 var replaced = make(map[string]map[int]bool)
+// the entries whose number of frames the replacement folder has changed, with how many the game has
+var framesChanged = make(map[string]int)
 
 type folderList struct {
     Files map[string]bool
@@ -153,6 +155,15 @@ func hasFile(path string) bool {
 func HasFrame(archive string, entry int, frame int) bool {
     frames, ok := replaced[entryKey(archive, entry)]
     return ok && frames[frame]
+}
+
+// true if the replacement folder gave the entry another number of frames than the game has: more,
+// or fewer with its last frames missing. a spell with such frames plays all of them in their order
+// (user, 2026-09-30: "any spell with modified frame numbers will just play the whole series,
+// regardless of how many are there"). the entry has to have been read before
+func FrameCountChanged(archive string, entry int) bool {
+    _, ok := framesChanged[entryKey(archive, entry)]
+    return ok
 }
 
 // true if all frames from first to last came from the replacement folder
@@ -432,6 +443,10 @@ func Replace(archive string, entry int, pictures []*image.Paletted) []*image.Pal
     }
 
     replaced[key] = make(map[int]bool)
+    delete(framesChanged, key)
+    if last + 1 != len(pictures) {
+        framesChanged[key] = len(pictures)
+    }
 
     var out []*image.Paletted
     for frame := 0; frame <= last; frame++ {
@@ -449,4 +464,14 @@ func Replace(archive string, entry int, pictures []*image.Paletted) []*image.Pal
     }
 
     return out
+}
+
+// for tests: notes that the replacement folder changed the number of frames of an entry, or with
+// 0 that it did not
+func MarkFrameCountChangedForTest(archive string, entry int, gameFrames int) {
+    if gameFrames == 0 {
+        delete(framesChanged, entryKey(archive, entry))
+        return
+    }
+    framesChanged[entryKey(archive, entry)] = gameFrames
 }

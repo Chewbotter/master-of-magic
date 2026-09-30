@@ -51,7 +51,7 @@ var SpellPictures = []SpellPicture{
     {Name: "Mind Storm", Archive: "cmbtfx.lbx", Entry: 21, Note: "Mind Storm"},
     {Name: "Summoning Circle", Archive: "cmbtfx.lbx", Entry: 22, Note: "Every unit that is summoned in a battle. Lies on the ground"},
     {Name: "Fireball", Archive: "cmbtfx.lbx", Entry: 23, Note: "Fireball. Frames 0 to 10 in flight, 11 to 15 where it hits"},
-    {Name: "Lightning Bolt", Archive: "cmbtfx.lbx", Entry: 24, Note: "Lightning Bolt. As high as the screen, its lower end is where it hits. One of the frames by chance for each flash"},
+    {Name: "Lightning Bolt", Archive: "cmbtfx.lbx", Entry: 24, Note: "Lightning Bolt. As high as the screen, its lower end is where it hits. One of the frames by chance for each flash. With another number of frames than the game's, all of them in their order, one after the other"},
     {Name: "Dispel Magic", Archive: "cmbtfx.lbx", Entry: 26, Note: "Dispel Magic, Dispel Magic True"},
     {Name: "Flame Strike", Archive: "cmbtfx.lbx", Entry: 33, Note: "Flame Strike, on every unit of the enemy"},
     {Name: "Realm Nature", Archive: "specfx.lbx", Entry: 0, Note: "Elemental Armor, Giant Strength, Iron Skin, Stone Skin, Regeneration, Resist Elements"},
