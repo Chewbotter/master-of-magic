@@ -105,6 +105,9 @@ func ShowBanishAnimation(cache *lbx.LbxCache, attackingWizard *playerlib.Player,
 
     fonts := MakeBanishFonts(cache)
 
+    // the words of the original, see style.go
+    original := banishText(cache)
+
     background, _ := imageCache.GetImage("wizlab.lbx", 19, 0)
 
     defeatedWizardImage, _ := imageCache.GetImage("wizlab.lbx", getWizardStandingImageIndex(defeatedWizard.Wizard.Base), 0)
@@ -200,6 +203,11 @@ func ShowBanishAnimation(cache *lbx.LbxCache, attackingWizard *playerlib.Player,
 
             options.GeoM.Translate(x, y)
             scale.DrawScaled(screen, sprite.Image, &options)
+        }
+
+        if original != nil {
+            original.Print(screen, banishTextMiddle, banishTextY, font.FontOptions{Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount}, banishWords(attackingWizard.Wizard.Name, defeatedWizard.Wizard.Name, len(defeatedWizard.Cities)))
+            return
         }
 
         fonts.Main.PrintOptions(screen, 160, 10, font.FontOptions{Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount}, fmt.Sprintf("%v banishes %v", attackingWizard.Wizard.Name, defeatedWizard.Wizard.Name))

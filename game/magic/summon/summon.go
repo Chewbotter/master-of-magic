@@ -30,6 +30,8 @@ type Summon struct {
     Wizard data.WizardBase
     State SummonState
     Font *font.Font
+    // the title of the original, see style.go. nil for upstream's
+    Styled *font.StyledFont
     CircleBack *util.Animation
     CircleFront *util.Animation
     Background *ebiten.Image
@@ -111,6 +113,11 @@ func makeSummon(cache *lbx.LbxCache, title string, wizard data.WizardBase, summo
 
     infoFontYellow := font.MakeOptimizedFontWithPalette(fonts[4], yellowPalette)
     summon.Font = infoFontYellow
+
+    summon.Styled = summonTitle(cache)
+    if summon.Styled != nil && title == "Artifact Summoned" {
+        summon.Title = summonItemTitle
+    }
 
     return summon
 }
@@ -286,8 +293,13 @@ func (summon *Summon) Update() SummonState {
 func (summon *Summon) Draw(screen *ebiten.Image){
 
     // background, _ := summon.ImageCache.GetImage("spellscr.lbx", 9, 0)
+    frameY, wizardX, wizardTop, circleX, subjectX := 40, 7, 0, 53, 75
+    if summon.Styled != nil {
+        frameY, wizardX, wizardTop, circleX, subjectX = summonFrameY, summonWizardX, summonWizardTop - 3, summonCircleX, summonSubjectX
+    }
+
     var options ebiten.DrawImageOptions
-    options.GeoM.Translate(float64(30), float64(40))
+    options.GeoM.Translate(float64(30), float64(frameY))
     scale.DrawScaled(screen, summon.Background, &options)
 
     wizardIndex := 46
@@ -309,23 +321,34 @@ func (summon *Summon) Draw(screen *ebiten.Image){
     }
 
     circleOptions := options
-    circleOptions.GeoM.Translate(float64(53), float64(54))
+    circleOptions.GeoM.Translate(float64(circleX), float64(54))
     scale.DrawScaled(screen, summon.CircleBack.Frame(), &circleOptions)
 
     wizard, _ := summon.ImageCache.GetImage("spellscr.lbx", wizardIndex, 0)
     wizardOptions := options
-    wizardOptions.GeoM.Translate(float64(7), float64(3))
+    wizardOptions.GeoM.Translate(float64(wizardX), float64(3 + wizardTop))
+    if wizardTop > 0 && wizard != nil {
+        // nothing of the wizard shows over the inside of the frame
+        bounds := wizard.Bounds()
+        wizard = wizard.SubImage(image.Rect(bounds.Min.X, bounds.Min.Y + wizardTop, bounds.Max.X, bounds.Max.Y)).(*ebiten.Image)
+    }
     scale.DrawScaled(screen, wizard, &wizardOptions)
 
     monster := summon.SummonPic
     monsterOptions := options
-    monsterOptions.GeoM.Translate(float64(75), float64((30 + 70)) - float64(summon.SummonHeight))
+    monsterOptions.GeoM.Translate(float64(subjectX), float64((30 + 70)) - float64(summon.SummonHeight))
     partialMonster := monster.SubImage(image.Rect(0, 0, monster.Bounds().Dx(), summon.SummonHeight)).(*ebiten.Image)
     scale.DrawScaled(screen, partialMonster, &monsterOptions)
 
-    circleOptions.GeoM.Translate(float64(11), float64(26))
+    circleOptions.GeoM.Translate(float64(53 + 11 - circleX), float64(26))
     circleOptions.ColorScale.ScaleAlpha(1.0)
     scale.DrawScaled(screen, summon.CircleFront.Frame(), &circleOptions)
+
+    if summon.Styled != nil {
+        var plain ebiten.DrawImageOptions
+        summon.Styled.Print(screen, 30 + summonTitleMiddle, frameY + summonTitleY, font.FontOptions{Options: &plain, Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, summon.Title)
+        return
+    }
 
     x, y := options.GeoM.Apply(float64(summon.Background.Bounds().Dx())/2, float64(summon.Background.Bounds().Dy() - 18))
     summon.Font.PrintCenter(screen, x, y, scale.ScaleAmount, options.ColorScale, summon.Title)

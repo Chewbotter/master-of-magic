@@ -2675,12 +2675,24 @@ func (game *Game) doCastGlobalEnchantment(yield coroutine.YieldFunc, player *pla
 
     oldDrawer := game.LastDrawer()
 
+    // the words of the original, see caststyle.go
+    castText := game.globalCastText()
+    printCast := func(screen *ebiten.Image, alpha float32, words string) {
+        var plain ebiten.DrawImageOptions
+        plain.ColorScale.ScaleAlpha(alpha)
+        castText.Print(screen, globalCastX + globalCastTextMiddle, globalCastY + globalCastTextY, font.FontOptions{Options: &plain, Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, words)
+    }
+
     game.PushDrawer(func(screen *ebiten.Image){
         oldDrawer(screen)
         var options ebiten.DrawImageOptions
         options.GeoM.Translate(float64(data.ScreenWidth / 2), float64(data.ScreenHeight / 2))
         options.GeoM.Translate(float64(offset), 0)
         options.GeoM.Translate(float64(-frame.Bounds().Dx() / 2), float64(-frame.Bounds().Dy() / 2))
+        if castText != nil {
+            options.GeoM.Reset()
+            options.GeoM.Translate(float64(globalCastX), float64(globalCastY))
+        }
         scale.DrawScaled(screen, frame, &options)
 
         options.ColorScale.ScaleAlpha(fader())
@@ -2696,11 +2708,21 @@ func (game *Game) doCastGlobalEnchantment(yield coroutine.YieldFunc, player *pla
                 text = fmt.Sprintf("%v has cast", player.Wizard.Name)
             }
 
+            if castText != nil {
+                printCast(screen, fader(), globalCastWords(player.IsHuman(), player.Wizard.Name))
+                return
+            }
+
             fonts.InfoFont.PrintCenter(screen, float64(data.ScreenWidth / 2 + offset), float64(data.ScreenHeight / 2 + frame.Bounds().Dy() / 2), scale.ScaleAmount, options.ColorScale, text)
         } else {
             // then draw the spell image
             options.GeoM.Translate(float64(9), float64(8))
             scale.DrawScaled(screen, spellImage, &options)
+
+            if castText != nil {
+                printCast(screen, fader(), enchantment.String())
+                return
+            }
 
             fonts.InfoFont.PrintCenter(screen, float64(data.ScreenWidth / 2 + offset), float64(data.ScreenHeight / 2 + frame.Bounds().Dy() / 2), scale.ScaleAmount, options.ColorScale, enchantment.String())
         }

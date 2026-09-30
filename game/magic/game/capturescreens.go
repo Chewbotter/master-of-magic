@@ -4,6 +4,7 @@ package game
 
 import (
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
+    "github.com/kazzmir/master-of-magic/game/magic/summon"
     "github.com/kazzmir/master-of-magic/game/magic/artifact"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -19,7 +20,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"levelup", "outpost", "outpostnew", "treasure", "treasuremany", "treasurenone", "hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname", "newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"summon", "summonitem", "globalcast", "banish", "enemycity", "levelup", "outpost", "outpostnew", "treasure", "treasuremany", "treasurenone", "hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname", "newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -263,6 +264,33 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                         return
                     }
                     game.showOutpost(yield, city, nil, player, name == "outpostnew")
+                },
+            }
+        case "summon", "summonitem", "globalcast", "banish", "enemycity":
+            player := game.Model.GetHumanPlayer()
+            if player == nil || len(player.Cities) == 0 {
+                return false
+            }
+            var city *citylib.City
+            for _, check := range player.Cities {
+                city = check
+                break
+            }
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    switch name {
+                        case "summon": game.doSummon(yield, summon.MakeSummonUnit(game.Cache, units.WarBear, player.Wizard.Base, true))
+                        case "summonitem": game.doSummon(yield, summon.MakeSummonArtifact(game.Cache, player.Wizard.Base, true))
+                        case "globalcast": game.doCastGlobalEnchantment(yield, player, data.EnchantmentNatureAwareness, func(){})
+                        case "banish":
+                            for _, other := range game.Model.Players {
+                                if other != player {
+                                    game.doBanish(yield, player, other)
+                                    break
+                                }
+                            }
+                        case "enemycity": game.doEnemyCityView(yield, city, player, player)
+                    }
                 },
             }
         case "notice":
