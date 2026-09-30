@@ -385,6 +385,9 @@ type Game struct {
 
     // development: the game runs without a window (SimSkipHuman)
     headless bool
+    // the move of the selected stack goes on along a path of a turn before (doMoveSelectedUnit)
+    continuingPath bool
+
     // the wizards casting the Spell of Mastery at the last turn (doDiplomacyTurn)
     masteryNoticed map[*playerlib.Player]bool
 
@@ -2979,6 +2982,7 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                         if moveUnit.Hold {
                             game.holdBeforeAutoMove(yield)
                         }
+                        game.continuingPath = moveUnit.Hold
                         game.doMoveSelectedUnit(yield, moveUnit.Player)
                 }
 
@@ -3874,10 +3878,26 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
     // modern controls: one move of the camera, to where the stack will stop. see walkcamera.go
     game.startWalkCamera(yield, player, stack, mapUse, getStack)
 
+    // a path the stack goes on along by itself from a turn before (the original's go-to)
+    goingOn := game.continuingPath
+    game.continuingPath = false
+
     quitMoving:
     for i, step := range stack.CurrentPath {
-        if stack.AnyOutOfMoves() {
+        if units.ClassicMovement {
+            // Army_Moves2: the pace of the stack (a ship or a wind walker sets it)
+            if stack.GetRemainingMoves().IsZero() {
+                break
+            }
+        } else if stack.AnyOutOfMoves() {
             break
+        }
+
+        // the original's go-to never attacks or enters a lair: it stops before and ends (movement.go)
+        if units.ClassicMovement && goingOn && player.IsHuman() && game.classicGoToStops(player, stack, entityInfo, mapUse, step.X, step.Y) {
+            stack.CurrentPath = nil
+            stopMoving = true
+            break quitMoving
         }
 
         oldX := stack.X()
@@ -3926,6 +3946,10 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
                     game.RefreshUI()
                 } else {
                     encounter.ExploredBy.Insert(player)
+                    if units.ClassicMovement {
+                        // End_Of_Moving: the step into the lair is paid, refused or not
+                        stack.UseMovement(terrainCost)
+                    }
                 }
 
                 stopMoving = true
@@ -6218,6 +6242,10 @@ func (game *Game) CreateOutpost(settlers units.StackUnit, player *playerlib.Play
     player.SelectedStack = nil
     game.RefreshUI()
     player.AddCity(newCity)
+    if units.ClassicMovement {
+        // Outpost.c: a new outpost explores 2 around it
+        player.LiftFogSquare(newCity.X, newCity.Y, 2, newCity.Plane)
+    }
 
     stack := player.FindStack(newCity.X, newCity.Y, newCity.Plane)
 
@@ -7934,6 +7962,11 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
                     }
                 case *citylib.CityEventNewBuilding:
                     newBuilding := event.(*citylib.CityEventNewBuilding)
+
+                    if units.ClassicMovement && newBuilding.Building == buildinglib.BuildingOracle {
+                        // City_Apply_Production: an Oracle explores 6 around its city
+                        player.LiftFogSquare(city.X, city.Y, 6, city.Plane)
+                    }
 
                     if player.IsHuman() {
                         select {

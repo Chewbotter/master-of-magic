@@ -373,7 +373,8 @@ func (model *GameModel) FindPath(oldX int, oldY int, newX int, newY int, player 
         // don't know what the cost is, assume we can move there
         // FIXME: how should this behave for different FogTypes?
         // flying stacks can move anywhere, so don't penalize them
-        if !allFlyers && x2 >= 0 && x2 < len(fog) && y2 >= 0 && y2 < len(fog[x2]) && fog[x2][y2] == data.FogTypeUnexplored {
+        // Move_Path_Find sees the land under the fog as it is, at no extra cost
+        if !units.ClassicMovement && !allFlyers && x2 >= 0 && x2 < len(fog) && y2 >= 0 && y2 < len(fog[x2]) && fog[x2][y2] == data.FogTypeUnexplored {
             // increase cost of unknown tile by a lot so we prefer to move to known tiles
             return baseCost + 3
         }
@@ -460,7 +461,7 @@ func (model *GameModel) ComputeTerrainCost(stack playerlib.PathStack, sourceX in
         return fraction.Zero(), false
     }
 
-    if stack.AllFlyers() {
+    if stack.AllFlyers() && !units.ClassicMovement {
         return fraction.FromInt(1), true
     }
 
@@ -470,11 +471,18 @@ func (model *GameModel) ComputeTerrainCost(stack playerlib.PathStack, sourceX in
         if stack.AnyLandWalkers() {
             // if the stack already contains a sailing unit, then it is legal to move into water
             if stack.HasSailingUnits(true) {
+                if units.ClassicMovement {
+                    return model.classicTerrainCost(stack, destX, destY, mapUse, tileTo, false, getStack)
+                }
                 return fraction.FromInt(1), true
             }
 
             maybeStack, ok := getStack(destX, destY)
             if ok && maybeStack.HasSailingUnits(false) {
+                if units.ClassicMovement {
+                    // the stack limit and the seats of the ships (movement.go)
+                    return model.classicTerrainCost(stack, destX, destY, mapUse, tileTo, false, getStack)
+                }
                 return fraction.FromInt(1), true
             }
             return fraction.Zero(), false
@@ -514,6 +522,12 @@ func (model *GameModel) ComputeTerrainCost(stack playerlib.PathStack, sourceX in
         if !tileFrom.CanTraverse(terrain.ToDirection(dx, dy), maplib.TraverseWater) {
             return fraction.Zero(), false
         }
+    }
+
+    if units.ClassicMovement {
+        // the original's table and modes (movement.go); a city square has a road in the original
+        city, _ := model.FindCity(mapUse.WrapX(destX), destY, stack.Plane())
+        return model.classicTerrainCost(stack, destX, destY, mapUse, tileTo, city != nil, getStack)
     }
 
     road_v, ok := tileTo.Extras[maplib.ExtraKindRoad]
@@ -749,8 +763,16 @@ func (model *GameModel) DoBuildRoads(player *playerlib.Player) {
 
             tileWork := model.ComputeRoadBuildEffort(x, y, plane) // just to get the work map
 
-            amount += math.Pow(tileWork.WorkPerEngineer, float64(engineerCount))
-            if amount >= tileWork.TotalWork {
+            finished := false
+            if units.ClassicMovement {
+                // Turns_To_Build_Road: the terrain's turns over the builders, at least 1 (movement.go)
+                amount += 1
+                finished = amount >= float64(max(1, classicRoadTurns(model.GetMap(plane).GetTile(x, y)) / engineerCount))
+            } else {
+                amount += math.Pow(tileWork.WorkPerEngineer, float64(engineerCount))
+                finished = amount >= tileWork.TotalWork
+            }
+            if finished {
                 model.GetMap(plane).SetRoad(x, y, plane == data.PlaneMyrror)
 
                 player.BuiltRoad(x, y, plane)

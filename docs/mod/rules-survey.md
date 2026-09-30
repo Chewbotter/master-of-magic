@@ -265,6 +265,7 @@ Death Wish (stubs).
 4. Cities: population cap, plague and boom, rebels, the smaller city rules.
    DONE 2026-09-30, see cities.md (what is left is at the end of improvements.md).
 5. Movement: stack limit, ships, terrain table, Wind Walking, go-to.
+   DONE 2026-09-30, see movement.md (what is left is at the end of improvements.md).
 6. Combat: melee cost, then the MEDs of combat and combat spells.
 7. Heroes, items, merchants, mercenaries, fame.
 8. Events and conquest details.

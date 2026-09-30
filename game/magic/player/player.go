@@ -1666,6 +1666,21 @@ func (player *Player) UpdateFogVisibility() {
         }
     }
 
+    if units.ClassicMovement {
+        // Update_Scouted_And_Contacted: what stands sees what is explored, and explores nothing
+        for unit := range player.Units() {
+            sight := unit.GetSightRange()
+            if unit.GetBusy() == units.BusyStatusPatrol && !unit.IsFlying() {
+                sight += 1
+            }
+            player.ScoutFogSquare(unit.GetX(), unit.GetY(), sight, unit.GetPlane())
+        }
+        for _, city := range player.Cities {
+            player.ScoutFogSquare(city.X, city.Y, city.GetSightRange(), city.Plane)
+        }
+        return
+    }
+
     // make tiles visible
     for unit := range player.Units() {
         player.LiftFogSquare(unit.GetX(), unit.GetY(), unit.GetSightRange(), unit.GetPlane())
@@ -1673,6 +1688,23 @@ func (player *Player) UpdateFogVisibility() {
 
     for _, city := range player.Cities {
         player.LiftFogSquare(city.X, city.Y, city.GetSightRange(), city.Plane)
+    }
+}
+
+// the explored squares around a place are seen now; nothing is explored
+func (player *Player) ScoutFogSquare(x int, y int, squares int, plane data.Plane) {
+    fog := player.GetFog(plane)
+    for dx := -squares; dx <= squares; dx++ {
+        for dy := -squares; dy <= squares; dy++ {
+            mx := player.WrapX(x + dx)
+            my := y + dy
+            if mx < 0 || mx >= len(fog) || my < 0 || my >= len(fog[0]) {
+                continue
+            }
+            if fog[mx][my] != data.FogTypeUnexplored {
+                fog[mx][my] = data.FogTypeVisible
+            }
+        }
     }
 }
 

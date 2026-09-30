@@ -95,6 +95,10 @@ func conquestBeforeCapture(defender *playerlib.Player, city *citylib.City) conqu
 
 // Change_City_Ownership: after a city of a wizard was taken or razed
 func (game *Game) conquestAfterCapture(yield coroutine.YieldFunc, loser *playerlib.Player, winner *playerlib.Player, city *citylib.City, before conquestBefore) {
+    if units.ClassicMovement && winner.FindCity(city.X, city.Y, city.Plane) != nil {
+        // a city taken explores 3 around it
+        winner.LiftFogSquare(city.X, city.Y, 3, city.Plane)
+    }
     if loser.IsNeutral() || loser.Defeated {
         return
     }

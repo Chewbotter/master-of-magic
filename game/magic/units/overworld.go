@@ -624,7 +624,12 @@ func (unit *OverworldUnit) GetBaseMovementSpeed(overworld bool) int {
 func (unit *OverworldUnit) GetMovementSpeed(overworld bool) fraction.Fraction {
     base := fraction.FromInt(unit.GetBaseMovementSpeed(overworld))
 
-    base = unit.MovementSpeedEnchantmentBonus(base, unit.Enchantments)
+    if overworld && ClassicMovement {
+        // Unit_Moves2, see classicmove.go
+        base = unit.classicOverlandSpeed()
+    } else {
+        base = unit.MovementSpeedEnchantmentBonus(base, unit.Enchantments)
+    }
 
     modifier := fraction.FromInt(1)
 

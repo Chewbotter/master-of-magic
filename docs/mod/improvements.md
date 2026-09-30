@@ -168,3 +168,20 @@ quirk constant where there is one: turning it is the change. New calls go here t
 - Not ported: the random city of an event (the original's picks only cities whose race is content
   under the capital's; the reconstruction's version is doubtful), a replaced building coming back
   when its replacement is sold, production over 127 wrapping.
+
+## Movement (movement.md)
+
+- Kept, the original's: a stack with a mountaineer pays 3 on grassland (TERRSTAT; a later patch of
+  the data fixed it) (`quirkMountaineerGrass`); fliers move free on every road, Arcanus' too
+  (`quirkFliersFreeOnRoads`). Suggested: both as walkers.
+- MY CALL: a wind walker makes its stack fly (upstream's; the reconstruction's test can never fire).
+- MY CALL: every city square counts as a road (the original lays a road with every outpost).
+- MY CALL: ships enter coastal cities as upstream lets them (the reconstruction's pathfinder has
+  roads closed to ships and no rule that opens a city to them; the game as played lets ships dock).
+- MY CALL: every rider counts against the seats, heroes too (the original counts heroes one way in
+  one function and the other way in another).
+- MY CALL: the poles are closed only on maps higher than 2 rows (tests use maps of one row).
+- Not ported yet: Wind Mastery's count of wizards (the original multiplies by one and a half or
+  halves by the balance of friend and foe), Endurance adding to road building, the Earth Gate and
+  Plane Shift limits of 9, the riders who drown when the ships lose a sea battle, units evicted by a
+  full square, the terrain costs kept after a volcano rises or cools (the original's mistake).

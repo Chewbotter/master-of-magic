@@ -484,6 +484,28 @@ func (stack *UnitStack) AnyOutOfMoves() bool {
 }
 
 func (stack *UnitStack) GetRemainingMoves() fraction.Fraction {
+    if units.ClassicMovement {
+        // Army_Moves2: the slowest unit, but the first ship or wind walker sets the pace
+        hasMoves := false
+        moves := fraction.Make(10000, 1)
+        for _, unit := range stack.units {
+            if unit.GetBusy() != units.BusyStatusNone || !stack.active[unit] {
+                continue
+            }
+            if unit.IsTransport() || unit.HasAbility(data.AbilityWindWalking) {
+                return unit.GetMovesLeft(true)
+            }
+            if unit.GetMovesLeft(true).LessThan(moves) {
+                moves = unit.GetMovesLeft(true)
+                hasMoves = true
+            }
+        }
+        if !hasMoves {
+            return fraction.Zero()
+        }
+        return moves
+    }
+
     hasMoves := false
     moves := fraction.Make(10000, 1)
     transport := stack.HasSailingUnits(true)

@@ -888,6 +888,11 @@ func (hero *Hero) GetMovementSpeed(overworld bool) fraction.Fraction {
         }
     }
 
+    if overworld && units.ClassicMovement {
+        // Unit_Moves2, see units/classicmove.go
+        return units.ClassicOverlandMoves(base, hero.GetEnchantments())
+    }
+
     return hero.OverworldUnit.MovementSpeedEnchantmentBonus(fraction.FromInt(base), hero.GetEnchantments())
 }
 

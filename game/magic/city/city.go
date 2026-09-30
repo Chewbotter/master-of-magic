@@ -1961,6 +1961,22 @@ func (city *City) AllowedUnits(what buildinglib.Building) []units.Unit {
 }
 
 func (city *City) GetSightRange() int {
+    if units.ClassicMovement {
+        // Update_Scouted_And_Contacted: 2, walls 3, Nature's Eye 5, an Oracle 4 over all that
+        // (the original's)
+        sight := 2
+        if city.Buildings.Contains(buildinglib.BuildingCityWalls) {
+            sight = 3
+        }
+        if city.HasEnchantment(data.CityEnchantmentNaturesEye) {
+            sight = 5
+        }
+        if city.Buildings.Contains(buildinglib.BuildingOracle) {
+            sight = 4
+        }
+        return sight
+    }
+
     if city.HasEnchantment(data.CityEnchantmentNaturesEye) {
         return 5
     }

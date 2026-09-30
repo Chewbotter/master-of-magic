@@ -53,6 +53,9 @@ func (stub *chewStubAI) DidLoseCity(*citylib.City) {
 func (stub *chewStubAI) DidLearnSpell(spellbook.Spell) {
 }
 
+func (stub *chewStubAI) DidExplore(int, int, data.Plane) {
+}
+
 type chewScenario struct {
     Test *testing.T
     Model *GameModel

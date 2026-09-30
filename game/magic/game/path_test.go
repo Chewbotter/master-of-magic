@@ -196,9 +196,10 @@ func TestPathBasic(test *testing.T) {
         }
     }()
 
-    // land walker can create a path from land to water as long as the water tile is unexplored
-    if !checkValidPathUnexplored(2, 1, units.HighMenSwordsmen) {
-        test.Errorf("Land walker should be able to path to unexplored water tile")
+    // land walker can create a path from land to water as long as the water tile is unexplored;
+    // the original's pathfinder sees the land under the fog as it is (game/movement.go)
+    if checkValidPathUnexplored(2, 1, units.HighMenSwordsmen) == units.ClassicMovement {
+        test.Errorf("Land walker path to unexplored water tile: want %v", !units.ClassicMovement)
     }
 
     // an inactive ship sharing a stack with active land units must not be
