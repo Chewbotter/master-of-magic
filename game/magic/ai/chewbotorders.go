@@ -329,12 +329,18 @@ func (pass *chewPass) surveyExpeditionForces() {
                 if stack.Slots[0] != nil {
                     pass.surveyStack(stack, stack.Count())
                 }
-            case chewStackGarrison:
-                if stack.Count() > chewGarrisonKeeps {
-                    pass.surveyStack(stack, stack.Count() - chewGarrisonKeeps)
+            case chewStackGarrison, chewStackFortress:
+                if ChewbotDraftBeyondNeed {
+                    // Chewbot's own: what the site wants by the original's garrison rule stays
+                    if keep := pass.garrisonNeed(stack); stack.Count() > keep {
+                        pass.surveyStack(stack, stack.Count() - keep)
+                    }
+                    continue
                 }
-            case chewStackFortress:
-                if pass.World.Turn < chewFortressGivesUntil && stack.Count() > chewGarrisonKeeps {
+                if stack.Type == chewStackFortress && pass.World.Turn >= chewFortressGivesUntil {
+                    continue
+                }
+                if stack.Count() > chewGarrisonKeeps {
                     pass.surveyStack(stack, stack.Count() - chewGarrisonKeeps)
                 }
         }
@@ -342,6 +348,51 @@ func (pass *chewPass) surveyExpeditionForces() {
     slices.SortStableFunc(pass.Drafted, func(a chewDraft, b chewDraft) int {
         return b.Value - a.Value
     })
+}
+
+// CHEWBOT'S OWN, not the original's (user 2026-09-30, "Go with drafting beyond each city's
+// need"): an expedition takes the units of a garrison beyond what its site wants by the original's
+// garrison rule (garrisonNeed), where the original takes those beyond 5 (and from the fortress
+// only before turn 100). On a contested continent the original's cities seldom held more than 5,
+// so no expedition ever formed and its armies stayed home. false: the original's rule
+var ChewbotDraftBeyondNeed = true
+
+// the landmass is one the wizard feels safe on: its own, one it waits to leave, one with nothing to
+// attack (the original's low_concern_landmass of AI_Stacks_Garrison_Sites)
+func (pass *chewPass) safeLand() bool {
+    kind := pass.landType()
+    return kind == chewLandOwn || kind >= chewLandLeaveable
+}
+
+// the garrison a city of the wizard wants (AI_Stacks_Garrison_Sites): the fortress 9, others 2 and a
+// unit for 3 citizens (for 4 where the wizard feels safe or the race is dwarf, troll or draconian),
+// at most 9
+func (pass *chewPass) cityNeed(city chewCity) int {
+    fortress := chewFortress(pass.World.Self)
+    if fortress != nil && city.City == fortress {
+        return chewMaxStack
+    }
+    strong := city.City.Race == data.RaceDwarf || city.City.Race == data.RaceTroll || city.City.Race == data.RaceDraconian
+    want := chewGarrisonBase + city.City.Citizens() / chewGarrisonPerCitizens
+    if pass.safeLand() || strong {
+        want = chewGarrisonBase + city.City.Citizens() / chewGarrisonPerCitizensSafe
+    }
+    return min(want, chewMaxStack)
+}
+
+// what the site of a garrison wants to keep: a city its garrison, a node 8 where the wizard feels
+// safe and 4 where it does not (as the garrison rule has it), any other site the original's 5
+func (pass *chewPass) garrisonNeed(stack *chewAIStack) int {
+    if city, ok := pass.World.CityAt(stack.X, stack.Y, pass.WP); ok && city.Owner == pass.World.Self {
+        return pass.cityNeed(city)
+    }
+    if pass.World.Maps[pass.WP].HasMagicNode(stack.X, stack.Y) {
+        if pass.safeLand() {
+            return chewNodeGarrison
+        }
+        return chewNodeGarrisonUnsafe
+    }
+    return chewGarrisonKeeps
 }
 
 func (pass *chewPass) surveyStack(stack *chewAIStack, excess int) {
@@ -1325,9 +1376,7 @@ func (pass *chewPass) stageExpeditionForces() {
 // distance less what it wants, a city before any node
 func (pass *chewPass) garrisonSites() {
     world := pass.World
-    kind := pass.landType()
-    safe := kind == chewLandOwn || kind >= chewLandLeaveable
-    fortress := chewFortress(world.Self)
+    safe := pass.safeLand()
 
     type site struct {
         X int
@@ -1348,15 +1397,7 @@ func (pass *chewPass) garrisonSites() {
         if city.Owner != world.Self || chewPlaneIndex(city.City.Plane) != pass.WP || world.LandmassAt(city.City.X, city.City.Y, pass.WP) != pass.Landmass {
             continue
         }
-        strong := city.City.Race == data.RaceDwarf || city.City.Race == data.RaceTroll || city.City.Race == data.RaceDraconian
-        want := chewGarrisonBase + city.City.Citizens() / chewGarrisonPerCitizens
-        if safe || strong {
-            want = chewGarrisonBase + city.City.Citizens() / chewGarrisonPerCitizensSafe
-        }
-        if fortress != nil && city.City == fortress {
-            want = chewMaxStack
-        }
-        want = min(want, chewMaxStack)
+        want := pass.cityNeed(city)
         if stack := stackAt(city.City.X, city.City.Y); stack != nil {
             want -= stack.Count()
         }

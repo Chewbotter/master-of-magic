@@ -101,6 +101,16 @@ wizard or an ally (settlers: on the landmass for settlers, where no enemy is wit
 the settlers to that landmass or the army to the coast of the war landmass. Units at sea that fly
 or swim go to the stage point of the war landmass.
 
+## Chewbot's own changes (not the original's)
+
+- **Expeditions take what cities do not need** (2026-09-30, `ChewbotDraftBeyondNeed`): the survey
+  takes the units of a garrison beyond what its site wants by the original's garrison rule (the
+  fortress 9, a city 2 and one for every 3 citizens, or 4 where the wizard feels safe or the race is
+  strong; a node 8, or 4 where it does not feel safe; any other site 5), at any turn. The original
+  takes those beyond 5, and from the fortress only before turn 100: on a contested continent its
+  cities seldom hold more than 5, so no army ever left. Later, personalities are to shape what a
+  wizard puts first. `-chewbot-draft-beyond-need=false` gives the original's rule back.
+
 ## The original's mistakes that are kept (visible)
 
 - `quirkSettleOpponentCheck`: the check for enemies near a settler finds the settler itself, so

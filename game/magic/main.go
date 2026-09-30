@@ -1412,6 +1412,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&capture.EnemyMagic, "capture-enemy-magic", false, "development: the defender of a debug battle, when it is a wizard, knows every spell and has the mana to cast them")
     flag.BoolVar(&ai.ChewbotCityLog, "capture-city-log", false, "development: every choice of Chewbot's cities in the log")
     flag.BoolVar(&ai.ChewbotMoveLog, "capture-move-log", false, "development: the overland orders of Chewbot in the log")
+    flag.BoolVar(&ai.ChewbotDraftBeyondNeed, "chewbot-draft-beyond-need", true, "development: false gives Chewbot the original's rule for expeditions (units beyond 5 of a garrison)")
     flag.IntVar(&captureOpponents, "capture-opponents", 0, "development: the number of computer wizards of a quick start, 0 for 1 to 4 by chance")
     flag.IntVar(&simTurns, "sim", 0, "development: play this many turns of the computer players without a window and write a summary (sim.go)")
     flag.StringVar(&simOut, "sim-out", "sim-summary.txt", "development: where -sim writes its summary")

@@ -487,3 +487,37 @@ func TestChewbotShipLandsArmy(test *testing.T) {
         test.Errorf("the ship should wait where it is; orders: %v", chewDescribe(decisions))
     }
 }
+
+// Chewbot's own rule: a city with more units than it wants sends the rest on an expedition (the
+// original's rule, beyond 5, sends none of these)
+func TestChewbotCitySendsSpareUnits(test *testing.T) {
+    for _, beyondNeed := range []bool{true, false} {
+        old := ai.ChewbotDraftBeyondNeed
+        ai.ChewbotDraftBeyondNeed = beyondNeed
+        // turn 150: the expedition is 7 units, and the original's fortress gives none any more
+        scenario := makeChewScenario(test, 150, chewIsland...)
+        wizard := scenario.wizard("Merlin", data.BannerRed)
+        scenario.lair(17, 9)
+        scenario.city(wizard, 4, 5, 4, true)
+        scenario.units(wizard, 4, 5, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen)
+        scenario.city(wizard, 12, 5, 3, false)
+        garrison := scenario.units(wizard, 12, 5, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen, units.HighMenSpearmen)
+
+        decisions := scenario.turn(wizard)
+        ai.ChewbotDraftBeyondNeed = old
+        leaving := 0
+        for _, unit := range garrison {
+            if _, ok := chewDestinationOf(decisions, unit); ok {
+                leaving += 1
+            }
+        }
+        // a city of 3 citizens on its own island wants 2 + 3 / 4 = 2; the other 7 are an expedition.
+        // the original's rule finds 4 beyond 5, too few for one
+        if beyondNeed && leaving != 7 {
+            test.Errorf("7 of the 9 spearmen should leave the city of 3 citizens, %v do; orders: %v", leaving, chewDescribe(decisions))
+        }
+        if !beyondNeed && leaving != 0 {
+            test.Errorf("with the original's rule no spearmen should leave, %v do; orders: %v", leaving, chewDescribe(decisions))
+        }
+    }
+}
