@@ -5303,7 +5303,23 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     // dev: -capture-battle-log (strategiclog.go)
     before := battleStart(attackingArmy, defendingArmy, zone)
 
-    if useStrategicCombat {
+    // the original resolves every battle without the human, and the human's own with Strategic
+    // Combat Only, by its quick resolution (combat/strategicclassic.go)
+    classicQuick := combat.ClassicAutoResolve && (useStrategicCombat || !(useHuman || game.WatchMode))
+    if classicQuick {
+        // the original's quick resolution reads the node of the last battle that was fought on a
+        // screen, which it never sets itself: no node helps its creatures here (MY CALL for that
+        // leftover)
+        combatModel.Influence = data.MagicNone
+        x, y, plane := defenderStack.X(), defenderStack.Y(), defenderStack.Plane()
+        attackerSide := game.strategicSide(attacker, false, x, y, plane)
+        defenderSide := game.strategicSide(defender, zone.Encounter != combat.ZoneNone, x, y, plane)
+        var spentAttacker, spentDefender int
+        state, defeatedAttackers, defeatedDefenders, spentAttacker, spentDefender = combat.DoClassicStrategicCombat(attackingArmy, defendingArmy, attackerSide, defenderSide, game.strategicStructure(x, y, plane, zone))
+        attacker.Mana = max(0, attacker.Mana - spentAttacker)
+        defender.Mana = max(0, defender.Mana - spentDefender)
+        useStrategicCombat = true
+    } else if useStrategicCombat {
         state, defeatedAttackers, defeatedDefenders = combat.DoStrategicCombat(attackingArmy, defendingArmy)
     } else if useHuman || game.WatchMode {
         defer mouse.Mouse.SetImage(game.MouseData.Normal)

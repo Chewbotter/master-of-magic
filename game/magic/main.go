@@ -1466,6 +1466,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&maplib.ClassicMaps, "classic-maps", true, "development: false for the fork's worlds, as large as the Land Size")
     flag.BoolVar(&gamelib.ClassicContact, "classic-contact", true, "development: false for the fork's contact, every wizard meets every wizard it sees")
     flag.BoolVar(&ai.ChewbotNeutral, "chewbot-neutral", true, "development: false for the clone's neutral player under the Enemy AI Chewbot")
+    flag.BoolVar(&combat.ClassicAutoResolve, "classic-auto-resolve", true, "development: false for the fork's own quick resolution and full battles of computer players")
     flag.BoolVar(&gamelib.BattleLog, "capture-battle-log", false, "development: log every battle no screen shows: sides, power, Chewbot's strength, result, turns")
     flag.BoolVar(&ai.ChewbotNeutralLog, "capture-neutral-log", false, "development: log what Chewbot's neutral player does")
     flag.BoolVar(&citylib.ClassicDifficulty, "classic-difficulty", true, "development: false for no bonuses of computer wizards by difficulty (the original's difficulty table)")

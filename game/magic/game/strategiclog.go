@@ -44,6 +44,9 @@ func battleStart(attackers *combat.Army, defenders *combat.Army, zone combat.Zon
     if !BattleLog {
         return battleBefore{}
     }
+    combat.StrategicDebug = func(format string, args ...any) {
+        log.Printf("battle " + format, args...)
+    }
     attackUnits, attackPower, attackStrength := battleSide(attackers)
     defendUnits, defendPower, defendStrength := battleSide(defenders)
     where := "field"

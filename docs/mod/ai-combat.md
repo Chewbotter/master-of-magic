@@ -147,6 +147,38 @@ more than a roll of 1 to 15, and picks its spell the wizard's way from what it k
 What the original never casts in a battle: the walls (its target picker has no case for them),
 Word of Recall, Animate Dead and the other special spells without a picker.
 
+## Battles nobody watches (Strategic_Combat, combat/strategicclassic.go)
+
+The original fights every battle without the human, and the human's own when Strategic Combat Only
+is on, with a quick resolution; so does the game now (switch `combat.ClassicAutoResolve`, flag
+`-classic-auto-resolve=false` for the fork's full battles of computer players and its all or
+nothing resolution). Both Enemy AI settings.
+- Each side sums over its units: hits weighed by defense (Get_Effective_Hits: 3 times the hits,
+  times 1/2, 3/5, 7/10, 4/5 for defense 0 to 3, else (defense - 2) squared / 2), the threat of its
+  missiles and magic (Get_Effective_Ranged_Strength), the threat of its melee with a thrown attack,
+  breath or gaze (Get_Effective_Melee_Strength), and its plain hits. Defenders of a city +3 defense,
+  walls or not (the original's slip, kept).
+- A wizard with mana adds magic: what its mana allows is 10 times its mana over the casting cost
+  multiplier (5 at the fortress, else 10 to 30 by the distance), at most its skill; a third of its
+  skill is spent a round. With 10 or more, attack, ranged percent and healing by its books (the
+  last realm of nature, sorcery, chaos, life, death wins each; nature is looked at twice, the second
+  time with the numbers of sorcery, kept); for the attacker a node on the square takes the realms it
+  counters away.
+- A computer wizard's side against anyone but the human gets half as much again of everything (the
+  original's help to the AI; the neutral player and the monsters of a lair get none).
+- Three rounds of shooting (while either side shoots more than 10), then melee while both sides
+  have more than 10: each side takes its strength (and spell attack) times 1 to 10 percent as damage,
+  heals, and loses strength in proportion to the hits it loses. In the melee rounds the healing
+  comes from the ranged budget (kept).
+- The side with melee left wins; the loser loses every unit, nobody flees. The winner loses as much
+  of its plain hits as it lost of its weighed hits, 3 at a time, units of low defense most likely
+  (30 less defense, +50 for every hit), one unit until it dies.
+- MY CALLS (the original reads values it never set): when both sides fall in the same round, both
+  lose every unit; no node helps its creatures (the node of the last battle fought on a screen).
+- Measured (3 games, 200 turns, 4 wizards, lair fights by Chewbot's strength ratio): 1.5 and more
+  29 of 30 won, 1 to 1.5 12 of 17, 0.75 to 1 13 of 24 (with the full battles of before 14 of 26,
+  1 of 17, 4 of 36). Dev: `-capture-battle-log`.
+
 ## The original's mistakes that are kept (visible)
 
 - `quirkRangedStrengthOfLastUnit`: the ranged strength of a side is the one of its LAST unit with
