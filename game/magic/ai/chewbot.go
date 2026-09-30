@@ -17,7 +17,6 @@ package ai
 import (
     "image"
     "log"
-    "math/rand/v2"
     "slices"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -248,7 +247,7 @@ func chewWeightedChoice(weights []int) int {
         return 0
     }
 
-    roll := 1 + rand.IntN(total)
+    roll := 1 + chewRoll(total)
     roll -= weights[0]
     choice := 0
     for roll > 0 && choice < len(weights) - 1 {
@@ -316,7 +315,7 @@ func (ai *ChewbotAI) cityDecisions(self *playerlib.Player, services playerlib.AI
         nothing := city.ProducingBuilding == buildinglib.BuildingNone && city.ProducingUnit.IsNone()
         onFiller := city.ProducingUnit.IsNone() && (city.ProducingBuilding == buildinglib.BuildingHousing || city.ProducingBuilding == buildinglib.BuildingTradeGoods)
 
-        pick := finished || nothing || (onFiller && rand.IntN(chewRepickChance) == 0)
+        pick := finished || nothing || (onFiller && chewRoll(chewRepickChance) == 0)
 
         if pick {
             var product chewProduct
@@ -351,12 +350,12 @@ func (ai *ChewbotAI) wantsToBuy(self *playerlib.Player, city *citylib.City) bool
         return false
     }
 
-    times := 1 + rand.IntN(4)
+    times := 1 + chewRoll(4)
     if !city.ProducingUnit.IsNone() {
         if city.ProducingUnit.IsSettlers() {
-            times = rand.IntN(4)
+            times = chewRoll(4)
         } else {
-            times = 3 + rand.IntN(5)
+            times = 3 + chewRoll(5)
         }
     }
 
@@ -452,9 +451,9 @@ func (ai *ChewbotAI) pickWizard(self *playerlib.Player, services playerlib.AISer
 
     needUnits := false
     if onHumanLand {
-        needUnits = 1 + rand.IntN(chewDefendersOnFortressLand) > defenders
+        needUnits = 1 + chewRoll(chewDefendersOnFortressLand) > defenders
     } else {
-        needUnits = 1 + rand.IntN(chewDefendersElsewhere) > defenders
+        needUnits = 1 + chewRoll(chewDefendersElsewhere) > defenders
 
         // away from the human, the buildings of an army come first, one for every defender
         for index, building := range []buildinglib.Building{buildinglib.BuildingBarracks, buildinglib.BuildingBuildersHall, buildinglib.BuildingShrine, buildinglib.BuildingSmithy, buildinglib.BuildingGranary} {
@@ -464,7 +463,7 @@ func (ai *ChewbotAI) pickWizard(self *playerlib.Player, services playerlib.AISer
         }
     }
 
-    if 1 + rand.IntN(100) <= tradeGoodsChance {
+    if 1 + chewRoll(100) <= tradeGoodsChance {
         return chewProduct{Building: buildinglib.BuildingTradeGoods, Unit: units.UnitNone}
     }
 
@@ -553,7 +552,7 @@ func (ai *ChewbotAI) pickNeutral(self *playerlib.Player, city *citylib.City) che
     if stack := self.FindStack(city.X, city.Y, city.Plane); stack != nil {
         defenders = len(stack.Units())
     }
-    needUnits := chewNeutralDefendersBase + 1 + rand.IntN(chewNeutralDefendersRoll) > defenders
+    needUnits := chewNeutralDefendersBase + 1 + chewRoll(chewNeutralDefendersRoll) > defenders
 
     products := chewProducts(city)
     weights := make([]int, len(products))

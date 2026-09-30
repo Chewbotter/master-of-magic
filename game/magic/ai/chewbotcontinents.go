@@ -76,12 +76,30 @@ func makeChewOverland() *chewOverland {
     }
 }
 
+// every roll of Chewbot: 0 to n - 1. Tests put a function here that gives the same numbers every
+// time (ChewbotFixedRolls)
+var chewRoll = func(n int) int {
+    return rand.IntN(n)
+}
+
+// development: every roll of Chewbot gives this, so a test gets the same orders every time; the
+// lowest (0) means every chance the original rolls for happens. Returns the function that undoes it
+func ChewbotFixedRolls(value int) func() {
+    old := chewRoll
+    chewRoll = func(n int) int {
+        return min(max(value, 0), max(n - 1, 0))
+    }
+    return func() {
+        chewRoll = old
+    }
+}
+
 // Random(n) of the original: 1 to n
 func chewRandom(n int) int {
     if n <= 0 {
         return 1
     }
-    return 1 + rand.IntN(n)
+    return 1 + chewRoll(n)
 }
 
 // the arrays of a plane as long as it has landmasses (a change of land and sea keeps what it can)

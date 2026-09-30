@@ -79,6 +79,11 @@ again only when the old one holds none of those cities any more, or the army wai
     to 9) wait at the stage point or are on their way, the surveyed units go there, when enough
     could come or the landmass is not held. With 9 there, one time in 20 the landmass is looked at
     again.
+    The expedition's order comes after all others of the turn and takes their place: a roamer
+    that was sent at a target, or a priest sent to purify, goes to the stage point instead when the
+    survey took it. So an army first gathers, and attacks from the stage point once enough are
+    there (or at once, when too few are about for an expedition). On a landmass with nothing to
+    attack every spare unit gathers at the stage point.
 13. **Garrisons**: the fortress wants 9, a city 2 and a unit for 3 citizens (for 4 where the wizard
     feels safe or the race is dwarf, troll or draconian), a free node 8. Unknown stacks and
     roamers away from the stage point send units to the site with the smallest distance less what
@@ -128,5 +133,12 @@ or swim go to the stage point of the war landmass.
 - `-capture-turns N` lets the human skip N turns; its battles then end without a screen and random
   events are not shown:
   `bash dev.sh a -start -capture-opponents 4 -capture-turns 260 -capture-move-log -capture probe/x.png -capture-frames 33000`.
+- Scenario tests (game/magic/game/chewbotscenario_test.go): small worlds drawn in text, the real
+  game model and paths, Chewbot's rolls fixed at their lowest, the orders of one turn checked:
+  settlers found a city or walk to a site, an army gathers and attacks a weak neutral city and
+  leaves a strong one, wizards' cities only after turn 100 and at war, spare units gather where
+  there is nothing to attack, a lone unit garrisons a city, spirits meld, priests purify,
+  engineers build a road, a stack on a tower crosses planes, a ship leaves port, a ship lands its
+  army on the war landmass.
 - Tests: `TestChewbotDistances`, `TestChewbotUnitStrength`, `TestChewbotEvaluationSquare`,
   `TestChewbotNearestFree`, `TestChewbotLandmassType` (game/magic/ai).
