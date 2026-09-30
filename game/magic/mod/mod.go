@@ -124,6 +124,8 @@ var reported = make(map[string]bool)
 var replaced = make(map[string]map[int]bool)
 // the entries whose number of frames the replacement folder has changed, with how many the game has
 var framesChanged = make(map[string]int)
+// the lowest row of every frame of such an entry that has a pixel, -1 for a frame without any
+var lowestRows = make(map[string][]int)
 
 type folderList struct {
     Files map[string]bool
@@ -463,15 +465,45 @@ func Replace(archive string, entry int, pictures []*image.Paletted) []*image.Pal
         }
     }
 
+    delete(lowestRows, key)
+    if _, changed := framesChanged[key]; changed {
+        rows := make([]int, len(out))
+        for frame, picture := range out {
+            rows[frame] = lowestRow(picture)
+        }
+        lowestRows[key] = rows
+    }
+
     return out
+}
+
+// the lowest row of a picture that has a pixel that is not see-through, from its top. -1 if none
+func lowestRow(picture *image.Paletted) int {
+    bounds := picture.Bounds()
+    for y := bounds.Max.Y - 1; y >= bounds.Min.Y; y-- {
+        for x := bounds.Min.X; x < bounds.Max.X; x++ {
+            if picture.ColorIndexAt(x, y) != clearColor {
+                return y - bounds.Min.Y
+            }
+        }
+    }
+    return -1
+}
+
+// the lowest rows of the frames of an entry whose number of frames the replacement folder has
+// changed, see lowestRow. nil for any other entry
+func LowestRows(archive string, entry int) []int {
+    return lowestRows[entryKey(archive, entry)]
 }
 
 // for tests: notes that the replacement folder changed the number of frames of an entry, or with
 // 0 that it did not
-func MarkFrameCountChangedForTest(archive string, entry int, gameFrames int) {
+func MarkFrameCountChangedForTest(archive string, entry int, gameFrames int, rows []int) {
     if gameFrames == 0 {
         delete(framesChanged, entryKey(archive, entry))
+        delete(lowestRows, entryKey(archive, entry))
         return
     }
     framesChanged[entryKey(archive, entry)] = gameFrames
+    lowestRows[entryKey(archive, entry)] = rows
 }

@@ -278,6 +278,10 @@ func (combat *CombatScreen) spellHits(projectile *Projectile) {
     if values.BurstCount > 0 {
         effects.Particles.emitBurst(float64(placeX), float64(placeY), values.ImpactHeight, values.BurstCount, values.BurstSpeed, values.BurstLift, values.BurstGravity, values.BurstLife, values.BurstColors)
     }
+    // dirt from the ground
+    if values.DebrisCount > 0 && len(values.DebrisColors) > 0 {
+        effects.Particles.emitBurst(float64(placeX), float64(placeY), 0, values.DebrisCount, values.DebrisSpeed, values.DebrisLift, values.DebrisGravity, values.DebrisLife, values.DebrisColors)
+    }
 
     // the figures it kills, see figurefall.go
     if effects.Causes == nil {

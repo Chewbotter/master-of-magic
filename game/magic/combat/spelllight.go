@@ -257,6 +257,11 @@ func (combat *CombatScreen) lightOf(projectile *Projectile) (spellLightSource, S
                 light.X = float64(x) + float64(bounds.Dx()) / 2
                 light.Y = float64(y) + float64(bounds.Dy()) / 2
             }
+        } else if projectile.Step < projectile.ImpactStep {
+            // it is not in flight and has not hit yet, as a Lightning Bolt that comes down: no
+            // light on its target before it hits (user, 2026-09-30: "the flash on ground shouldn't
+            // happen until the frames are already in motion"). the dark comes all the same
+            light.Strength = 0
         }
     }
 
