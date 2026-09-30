@@ -811,6 +811,11 @@ func initializeGame(magic *MagicGame, settings setup.NewGameSettings, humanWizar
         log.Printf("done create neutral player with %v cities", len(neutral.Cities))
     }
 
+    if maplib.ClassicMaps {
+        // the original's minerals and roads come after all cities (classicspecials.go)
+        classicSpecialsAndRoads(game)
+    }
+
     // hack
     // human.Admin = true
     game.Model.CurrentPlayer = 0

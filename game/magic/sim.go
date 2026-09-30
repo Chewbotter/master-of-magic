@@ -223,10 +223,22 @@ func simWorld(game *gamelib.Game) string {
     for _, plane := range []data.Plane{data.PlaneArcanus, data.PlaneMyrror} {
         mapObject := game.GetMap(plane)
         land := 0
+        minerals := 0
+        roads := 0
+        rivers := 0
         for x := 0; x < mapObject.Width(); x++ {
             for y := 0; y < mapObject.Height(); y++ {
                 if mapObject.GetTile(x, y).Tile.IsLand() {
                     land += 1
+                }
+                if mapObject.GetBonusTile(x, y) != data.BonusNone {
+                    minerals += 1
+                }
+                if mapObject.ContainsRoad(x, y) {
+                    roads += 1
+                }
+                if mapObject.GetTile(x, y).Tile.IsRiver() {
+                    rivers += 1
                 }
             }
         }
@@ -237,7 +249,7 @@ func simWorld(game *gamelib.Game) string {
             }
         }
         encounters := len(mapObject.GetEncounterLocations()) - len(mapObject.GetMagicNodeLocations())
-        fmt.Fprintf(&out, "%v: %v by %v, land %v, lairs and towers %v, nodes %v, neutral cities %v\n", plane, mapObject.Width(), mapObject.Height(), land, encounters, len(mapObject.GetMagicNodeLocations()), neutral)
+        fmt.Fprintf(&out, "%v: %v by %v, land %v, lairs and towers %v, nodes %v, neutral cities %v, minerals %v, road squares %v, river squares %v\n", plane, mapObject.Width(), mapObject.Height(), land, encounters, len(mapObject.GetMagicNodeLocations()), neutral, minerals, roads, rivers)
     }
     return strings.TrimSuffix(out.String(), "\n")
 }

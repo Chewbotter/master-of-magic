@@ -1066,6 +1066,10 @@ func MakeMapFromTerrain(map_ *terrain.Map, terrainData *terrain.TerrainData, mag
         }
 
         maxBonuses := int(float64(len(candidates)) * fraction)
+        if ClassicMaps {
+            // the original's minerals come after the cities (classicspecials.go of the main package)
+            maxBonuses = -1
+        }
         // log.Printf("Candidates %v max bonuses %v", len(candidates), maxBonuses)
         for count, index := range rand.Perm(len(candidates)) {
             if count > maxBonuses {
