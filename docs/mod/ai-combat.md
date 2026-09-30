@@ -95,6 +95,58 @@ to walls of fire or darkness does not leave them.
 Heroes act twice: after all other units, a hero with moves left acts again, and when no unit of a
 computer player moved this turn it forgets its caution for that second turn.
 
+## Spells (aichewbotspells.go)
+
+The wizard of a computer player casts at the start of its side's turn, before its units act
+(Auto_Cast_Spell_And_Do_Combat_Turn); the neutral player never casts, nor does the player's own
+wizard while its army is on auto. One spell a turn, as the fork has it.
+
+Which spell (AI_Select_Combat_Spell): every combat spell it knows and can pay for (the lower of
+its casting skill left and its mana divided by the distance to its fortress) gets a score; the
+highest above 0 is cast. A spell without a target scores -1.
+
+The score (AI_Score_Combat_Spell) is a value by spell, mostly one of five groups by the player
+mode (0 badly outnumbered to 5 far stronger):
+
+| group | kind | modes 0 to 5 |
+|---|---|---|
+| 1 | summons | 0, 10, 20, 25, 10, -10 |
+| 2 | curses of the mind (Web, Confusion, Vertigo, Warp Wood...) | -900, 30, 35, 15, 0, 0 |
+| 3 | help for the army (Haste, Prayer, weapons...) | -900, 10, 20, 20, 20, 10 |
+| 4 | protection (Iron Skin, Invisibility, Counter Magic...) | -900, 30, 20, 15, 10, 0 |
+| 5 | damage (bolts, Disintegrate, Call Lightning...) | 500, 0, 10, 20, 30, 40 |
+
+So a wizard that is losing badly throws only damage, one that is far ahead mostly damage too, in
+between it protects and curses. Many spells add their own terms: Fireball + 5 for every figure
+above 3 of the enemy's largest unit, Flame Strike + 2 an enemy unit, Prayer + 2 an own unit, Wrack
++ 5 an enemy figure that can fail it, Earth to Mud only when the side outshoots the enemy by half,
+Counter Magic only when the enemy can cast attack spells, Resist Elements and the like by the share
+of the enemy's strength in those realms, Recall Hero when a hero is in danger, and more. Then half
+the percent the wizard saves on the spell, and 1 to 20 by chance.
+
+The target (AITP_Combat_Spell): damage at the weakest unit it hurts; kill spells and curses at the
+strongest unit, scaled by its chance to fail the resistance roll (with the original's resistance
+modifiers, Word of Death -5 and so on); unit enchantments on the own unit of most figures and
+melee that does not have it; Web at the strongest, flyers first; Healing at the unit missing the
+most hits times its attack; Warp Wood at the unit with the most arrows; Earth to Mud at the cell
+with the most walking enemies within 2 and fewest own; Cracks Call at the strongest walking enemy,
+one on the city wall most; Disrupt at the wall; dispels at a cursed own unit or an enchanted enemy.
+Chewbot hands its target to the fork's casting (`chewPending`), which falls back to its own choice
+when the fork does not allow it.
+
+More mana: a spell that can take more (the original's types from 17 on) is cast with as much again
+as it costs as far as the mana goes; Life Drain, Banish and Counter Magic with some fives by chance.
+
+Units (Choose_Target_And_Action): a unit that can summon demons does, while the side has fewer than
+9 units; Doom Bolt (worth 30) and Fireball (worth 16 minus the target's defense against it) are
+used unless an attack is worth more; Healing and Web are used when there is a target; a hero uses
+the spell of its item; a caster with more than 2 mana casts when its ranged attack minus 5 is no
+more than a roll of 1 to 15, and picks its spell the wizard's way from what it knows and can pay
+(no discount of the wizard). A unit that uses a spell ends its turn.
+
+What the original never casts in a battle: the walls (its target picker has no case for them),
+Word of Recall, Animate Dead and the other special spells without a picker.
+
 ## The original's mistakes that are kept (visible)
 
 - `quirkRangedStrengthOfLastUnit`: the ranged strength of a side is the one of its LAST unit with
@@ -102,6 +154,8 @@ computer player moved this turn it forgets its caution for that second turn.
 - `quirkHealingWastesTurn`: a unit with the Healing ability that sees a hurt friend picks it
   once, and the original has nothing to do for it: the unit does nothing that turn.
 - The advance modes only move the stage point (see 5).
+- A caster that decided to cast and finds no spell it can use loses its turn.
+- Walls are never cast by the computer (see Spells).
 - The stage point follows the targets of the turn before, none in the first turn.
 - Wall of darkness counts only when the city has it, not when it was cast in the battle.
 
@@ -114,9 +168,15 @@ computer player moved this turn it forgets its caution for that second turn.
 
 ## Not the original's yet, and differences of the fork
 
-- SPELLS: the spells of units (casters, Doom Bolt, Fireball, Web, Healing, Summon Demon, items)
-  are cast as the clone casts them (one time in five, any charge), and the wizard's own spells too
-  (`doAiCast`). The original's combat spell AI (CMBMAGIC.c, AITP_Combat_Spell) is the next part.
+- THE DAMAGE OF A SPELL: the original computes what a spell would do to a unit; here its strength
+  against the unit's defense at 30 in 100 to hit and block (`chewSpellDamage`). It only decides
+  which unit a damage spell goes for.
+- Realm threats: the original remembers the enemy's spell realms from battle to battle (never
+  cleared) and adds a bonus per realm that is always 0; here only whether the enemy can cast attack
+  spells at all counts, in this battle.
+- Raise Dead is never cast: the fork keeps no dead units in a battle to count.
+- The spell of a hero's item: the original only looks at the first item; here the first charge
+  spell of the hero.
 - Movement costs and how far a unit gets are the fork's (`StepCost`, `CanFollowPath`), not the
   original's cost map.
 - A retreat is decided when the side's turn starts; the original can decide it after any action.
@@ -131,5 +191,7 @@ computer player moved this turn it forgets its caution for that second turn.
 - Random battle on auto: `bash dev.sh a -capture-random-battle -capture-same-battle -capture-auto
   -capture-ai-log -capture probe/x.png -capture-frames 4000`.
 - A walled city: `-capture-city-battle "walls" -capture-auto -capture-ai-log`.
+- A computer wizard with every spell: `-capture-unit-battle "High Men Swordsmen" -capture-enemy-magic
+  -capture-auto -capture-ai-log` (the log has the score of every spell).
 - Tests: `TestChewbotStrengthFormulas`, `TestChewbotCellsMapBack`, `TestChewbotBoxStopsAtStagePoint`,
-  `TestChewbotHeroWaitsOnce`.
+  `TestChewbotHeroWaitsOnce`, `TestChewbotSpellGroups`.

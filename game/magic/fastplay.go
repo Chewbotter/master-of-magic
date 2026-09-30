@@ -647,6 +647,14 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
     attacker.Mana = DebugBattleMana
     attacker.CastingSkillPower = DebugBattleSkillPower
 
+    // development: a defending wizard with every spell, to see the computer cast
+    enemyMagic := capture.EnemyMagic && !defender.IsNeutral()
+    if enemyMagic {
+        defender.KnownSpells.AddAllSpells(allSpells)
+        defender.Mana = DebugBattleMana
+        defender.CastingSkillPower = DebugBattleSkillPower
+    }
+
     events := make(chan combat.CombatEvent, 1000)
     model := combat.MakeCombatModel(allSpells, defendingArmy, attackingArmy, landscape, plane, zone, data.MagicNone, 0, 0, events)
     combatScreen := combat.MakeCombatScreen(game.Cache, defendingArmy, attackingArmy, optional.Of[combat.ArmyPlayer](attacker), landscape, plane, zone, model)
@@ -770,6 +778,9 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
     state := combat.CombatStateRunning
     for state == combat.CombatStateRunning {
         debugMagic(attacker, attackingArmy)
+        if enemyMagic {
+            defender.Mana = DebugBattleMana
+        }
         if capture.SameBattle && model.CurrentTurn != loggedTurn {
             // development: where everybody stands at the start of the turn
             loggedTurn = model.CurrentTurn

@@ -4660,6 +4660,12 @@ func (model *CombatModel) DoTargetUnitSpell(army *Army, spell spellbook.Spell, t
 }
 
 func (model *CombatModel) DoAITargetUnitSpell(player ArmyPlayer, spell spellbook.Spell, selecter Team, selectTeam Team, canTarget func(*ArmyUnit) bool, onTarget func(*ArmyUnit)){
+    // the target Chewbot picked, see aichewbotspells.go
+    if unit, ok := model.chewPendingUnit(canTarget); ok {
+        onTarget(unit)
+        return
+    }
+
     var units []*ArmyUnit
     if selectTeam == TeamAttacker {
         units = model.AttackingArmy.units
@@ -4702,6 +4708,12 @@ func (model *CombatModel) DoAITargetUnitSpell(player ArmyPlayer, spell spellbook
 }
 
 func (model *CombatModel) DoAITargetTileSpell(player ArmyPlayer, spell spellbook.Spell, selecter Team, canTarget func(int, int) bool, onTarget func(int, int)){
+    // the place Chewbot picked, see aichewbotspells.go
+    if tile, ok := model.chewPendingTile(canTarget); ok {
+        onTarget(tile.X, tile.Y)
+        return
+    }
+
     x, y := StartingLocation(selecter)
     for _, dx := range rand.Perm(10) {
         for _, dy := range rand.Perm(10) {
@@ -6058,6 +6070,11 @@ func (army *Army) autoCastsSpells() bool {
 }
 
 func (model *CombatModel) doAiCast(spellSystem SpellSystem, army *Army) bool {
+    // Chewbot's wizard casts as the original's does, see aichewbotspells.go
+    if chewbotActive() {
+        return model.doAiCastChewbot(spellSystem, army)
+    }
+
     if !army.autoCastsSpells() {
         return false
     }

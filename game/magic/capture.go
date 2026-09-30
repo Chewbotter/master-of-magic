@@ -59,6 +59,9 @@ type frameCapture struct {
     UnitPicker string
     // units act in turn, as before they acted together
     InTurn bool
+    // the defender of a debug battle, when it is a wizard, knows every spell and has mana to cast
+    // them: to see the computer's spells in a battle
+    EnemyMagic bool
     // a random battle with the same armies on the same ground every time, and the places of all
     // units in the log at the start of every turn. to compare two ways of running a battle
     SameBattle bool

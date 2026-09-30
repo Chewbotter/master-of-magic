@@ -134,3 +134,23 @@ func TestChewbotHeroWaitsOnce(test *testing.T) {
         test.Fatalf("a hero waits in the turn after")
     }
 }
+
+// the values of AI_Score_Combat_Spell: a side that is losing badly only casts damage
+func TestChewbotSpellGroups(test *testing.T) {
+    for group := 2; group <= 4; group++ {
+        if chewSpellGroups[group][0] >= 0 {
+            test.Errorf("group %v is worth casting when badly outnumbered", group)
+        }
+    }
+    if chewSpellGroups[5][0] != 500 || chewSpellGroups[5][5] != 40 || chewSpellGroups[1][5] != -10 {
+        test.Errorf("values of the groups are not the original's")
+    }
+
+    // Spell_Resistance_Modifier and the chance to fail it
+    if chewByResistance(100, 10) != 0 || chewByResistance(100, 0) != 100 || chewByResistance(55, 6) != 22 {
+        test.Errorf("value by resistance is not the original's: %v %v %v", chewByResistance(100, 10), chewByResistance(100, 0), chewByResistance(55, 6))
+    }
+    if chewResistModifier["Word of Death"] != -5 || chewResistModifier["Terror"] != 1 {
+        test.Errorf("resistance modifiers are not the original's")
+    }
+}

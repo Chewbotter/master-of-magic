@@ -25,6 +25,7 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/pathfinding"
+    "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/lib/fraction"
 )
@@ -67,6 +68,15 @@ const (
     chewAdvanceAndShoot
     // bua_Healing, see quirkHealingWastesTurn
     chewHealing
+    // the spell actions of units, see aichewbotspells.go
+    chewDoomBolt
+    chewFireball
+    chewWeb
+    chewSummonDemon
+    chewUseItem
+    chewCastSpell
+    // no action picked yet: Choose_Target_And_Action's bua_Ready, which becomes shoot or fight
+    chewReady
 )
 
 // the effects of an attack that count in its strength, the original's attack attributes
@@ -156,8 +166,8 @@ type chewbotState struct {
     // the last turn a unit of a computer player found a way to move, for _ai_immobile_counter
     LastMoveTurn int
     MovedTurn int
-    // units that have picked their Healing ability, see quirkHealingWastesTurn
-    healed map[*ArmyUnit]bool
+    // what the spell being cast is cast at, see aichewbotspells.go
+    pending *chewPending
 }
 
 // the turn of one side
@@ -169,6 +179,8 @@ type chewbotPlan struct {
     HasRally bool
     // 1: the hero acted and waits for its second turn; 2: the second turn has begun
     Pass map[*ArmyUnit]int
+    // the spell of a unit whose action is a spell
+    Spells map[*ArmyUnit]spellbook.Spell
 }
 
 func (model *CombatModel) chewbotState() *chewbotState {
@@ -523,6 +535,7 @@ func (model *CombatModel) chewbotPlanFor(army *Army) *chewbotPlan {
         Turn: model.CurrentTurn,
         Actions: make(map[*ArmyUnit]chewAction),
         Pass: make(map[*ArmyUnit]int),
+        Spells: make(map[*ArmyUnit]spellbook.Spell),
     }
     chew.Plans[team] = plan
 
@@ -794,19 +807,17 @@ func doAIChewbot(model *CombatModel, spellSystem SpellSystem, aiActions AIUnitAc
 
     secondPass := plan.Pass[aiUnit] == 2
 
-    // NOT YET THE ORIGINAL'S: the spells of units (casters, Doom Bolt, Fireball, Web, Healing,
-    // Summon Demon) are cast as the clone casts them; the original's spell AI is the next part of
-    // the port. see docs/mod/ai-combat.md
-    if model.doAIUnitCharges(spellSystem, aiActions, aiUnit, army) {
-        endTurn()
-        return
-    }
-
     // heroes keep away from targets that would hurt them, but for their second turn when no unit
     // of a computer player has moved in this turn
     safetyOff := secondPass && model.chewImmobileTurns() != -1
 
-    model.chewSetUnitActionMode(aiUnit, plan, safetyOff)
+    model.chewSetUnitActionMode(aiUnit, plan, safetyOff, false)
+
+    // a spell of the unit ends its turn, see aichewbotspells.go
+    if model.chewCastAction(spellSystem, aiActions, aiUnit, plan) {
+        endTurn()
+        return
+    }
 
     // the stage point: a defender outside of its walls goes for its target
     rally, hasRally := plan.Rally, plan.HasRally
@@ -834,15 +845,34 @@ func chewName(unit *ArmyUnit) string {
     return unit.Unit.GetName()
 }
 
-// AI_Set_Unit_Action_Mode: the unit picks its target and whether it shoots or fights
-func (model *CombatModel) chewSetUnitActionMode(unit *ArmyUnit, plan *chewbotPlan, safetyOff bool) *ArmyUnit {
+// AI_Set_Unit_Action_Mode: the unit picks its target and whether it shoots, fights or uses a spell
+func (model *CombatModel) chewSetUnitActionMode(unit *ArmyUnit, plan *chewbotPlan, safetyOff bool, noSpells bool) *ArmyUnit {
     chew := model.chewbotState()
     ranged := chewHasRanged(unit)
 
-    target, healing := model.chewChooseTarget(unit, ranged, plan, safetyOff)
-    if healing {
-        plan.Actions[unit] = chewHealing
-        return nil
+    setTarget := func(target *ArmyUnit) {
+        if target == nil {
+            delete(chew.Targets, unit)
+        } else {
+            chew.Targets[unit] = target
+        }
+    }
+
+    // the spell abilities first; a bolt is only kept when no attack is worth more
+    action, abilityTarget, best, spell, done := model.chewChooseAbility(unit, noSpells)
+    if done {
+        plan.Actions[unit] = action
+        plan.Spells[unit] = spell
+        setTarget(abilityTarget)
+        return abilityTarget
+    }
+
+    target, replaced := model.chewChooseTarget(unit, ranged, plan, safetyOff, best, abilityTarget)
+    if !replaced && action != chewReady {
+        plan.Actions[unit] = action
+        plan.Spells[unit] = spell
+        setTarget(target)
+        return target
     }
 
     // a missile against a target immune to it: fight instead if the unit is about as good at that
@@ -854,7 +884,7 @@ func (model *CombatModel) chewSetUnitActionMode(unit *ArmyUnit, plan *chewbotPla
 
     if ranged && target == nil {
         ranged = false
-        target, _ = model.chewChooseTarget(unit, false, plan, safetyOff)
+        target, _ = model.chewChooseTarget(unit, false, plan, safetyOff, chewNoValue, nil)
     }
 
     if ranged {
@@ -900,22 +930,12 @@ func (model *CombatModel) chewSetUnitActionMode(unit *ArmyUnit, plan *chewbotPla
     return target
 }
 
-// Choose_Target_And_Action: the enemy of the highest value. true for a unit that picks its
-// Healing ability, see quirkHealingWastesTurn
-func (model *CombatModel) chewChooseTarget(unit *ArmyUnit, ranged bool, plan *chewbotPlan, safetyOff bool) (*ArmyUnit, bool) {
-    chew := model.chewbotState()
-
-    if quirkHealingWastesTurn && unit.HasAbility(data.AbilityHealingSpell) && !chew.usedHealing(unit) {
-        for _, friend := range model.GetArmy(unit).units {
-            if friend.GetHealth() > 0 && friend.GetHealth() < friend.GetMaxHealth() {
-                chew.markHealing(unit)
-                return nil, true
-            }
-        }
-    }
-
-    best := chewNoValue
-    var target *ArmyUnit
+// Choose_Target_And_Action: the enemy of the highest value, starting from what a spell ability
+// of the unit is worth (chewChooseAbility). true when an attack is worth more than that
+func (model *CombatModel) chewChooseTarget(unit *ArmyUnit, ranged bool, plan *chewbotPlan, safetyOff bool, startBest int, startTarget *ArmyUnit) (*ArmyUnit, bool) {
+    best := startBest
+    target := startTarget
+    replaced := false
 
     gateX, gateY := model.GetCityGateCoordinates()
     atGate := func(other *ArmyUnit) bool {
@@ -976,33 +996,26 @@ func (model *CombatModel) chewChooseTarget(unit *ArmyUnit, ranged bool, plan *ch
                 if health(other) < health(target) {
                     best = max(best, value)
                     target = other
+                    replaced = true
                 }
             } else if value > best {
                 best = value
                 target = other
+                replaced = true
             }
         } else if value > best || (value == best && target != nil && health(other) > health(target)) {
             // as good: the one with more health left
             best = value
             target = other
+            replaced = true
         } else if value == best && target == nil {
             best = value
             target = other
+            replaced = true
         }
     }
 
-    return target, false
-}
-
-func (chew *chewbotState) usedHealing(unit *ArmyUnit) bool {
-    return chew.healed[unit]
-}
-
-func (chew *chewbotState) markHealing(unit *ArmyUnit) {
-    if chew.healed == nil {
-        chew.healed = make(map[*ArmyUnit]bool)
-    }
-    chew.healed[unit] = true
+    return target, replaced
 }
 
 // Target_Unit_Value: how much a unit wants to attack a target
@@ -1114,7 +1127,7 @@ func (model *CombatModel) chewExecute(actions AIUnitActionsInterface, unit *Army
                 }
 
                 if !model.chewAlive(target) {
-                    model.chewSetUnitActionMode(unit, plan, safetyOff)
+                    model.chewSetUnitActionMode(unit, plan, safetyOff, false)
                 }
                 if !unit.MovesLeft.LessThan(before) {
                     return
@@ -1156,7 +1169,7 @@ func (model *CombatModel) chewExecute(actions AIUnitActionsInterface, unit *Army
                 model.chewAutoTurn(actions, unit, image.Pt(target.X, target.Y), target, rally, hasRally, plan)
 
                 if !model.chewAlive(target) {
-                    model.chewSetUnitActionMode(unit, plan, safetyOff)
+                    model.chewSetUnitActionMode(unit, plan, safetyOff, false)
                 }
                 if !unit.MovesLeft.LessThan(before) || chew.Targets[unit] == nil || unit.MovesLeft.LessThanEqual(fraction.Zero()) || unit.GetHealth() <= 0 {
                     return

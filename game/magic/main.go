@@ -1396,6 +1396,7 @@ func loadGameConfig() GameConfig {
     flag.IntVar(&spellbook.CaptureFlipPage, "capture-flip-page", 0, "development: which turn of a page -capture-flip shows, 0 the first")
     flag.BoolVar(&spellbook.CaptureFlipBack, "capture-flip-back", false, "development: the turn -capture-flip holds is one back")
     flag.IntVar(&capture.Leave, "capture-leave", 0, "development: the frame at which a debug battle is left as by Escape, counted from 250 frames before the capture")
+    flag.BoolVar(&capture.EnemyMagic, "capture-enemy-magic", false, "development: the defender of a debug battle, when it is a wizard, knows every spell and has the mana to cast them")
     flag.BoolVar(&combat.ChewbotLog, "capture-ai-log", false, "development: every decision of the combat AI of Chewbot in the log")
     flag.BoolVar(&capture.Auto, "capture-auto", false, "development: the army of the player of a random battle is set to auto")
     flag.BoolVar(&capture.DamageNumbers, "capture-damage-numbers", false, "development: keep damage numbers over the units of a random battle")
