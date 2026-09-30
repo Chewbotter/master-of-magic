@@ -4,6 +4,7 @@ package game
 
 import (
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
+    "github.com/kazzmir/master-of-magic/game/magic/artifact"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
@@ -18,7 +19,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname", "newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -182,6 +183,40 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                         game.doRandomEvent(yield, MakeDisjunctionEvent(1), true, player.Wizard)
                     } else {
                         game.showNewBuilding(yield, city, buildinglib.BuildingArmory, player)
+                    }
+                },
+            }
+        case "hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname":
+            // the windows of hiring and the box of a name
+            player := game.Model.GetHumanPlayer()
+            if player == nil {
+                return false
+            }
+            player.Gold = 5000
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    switch name {
+                        case "hirehero", "hireprisoner":
+                            for _, hero := range player.HeroPool {
+                                cost := 0
+                                if name == "hirehero" {
+                                    cost = 250
+                                }
+                                game.doHireHero(yield, cost, hero, player, false, data.PlanePoint{})
+                                break
+                            }
+                        case "heroname": game.doInput(yield, "Hero Name", "Brax", 70, 50)
+                        case "cityname": game.doInput(yield, "New Starting City", "Gatewood", 60, 28)
+                        case "outpostname": game.doInput(yield, "New Outpost", "Gatewood", 80, 100)
+                        case "mercenaries":
+                            var hired []*units.OverworldUnit
+                            for range 3 {
+                                hired = append(hired, units.MakeOverworldUnitFromUnit(units.HighMenSwordsmen, 0, 0, data.PlaneArcanus, player.Wizard.Banner, player.MakeExperienceInfo(), player.MakeUnitEnchantmentProvider()))
+                            }
+                            game.doHireMercenaries(yield, 300, hired, player)
+                        case "merchant":
+                            item := artifact.MakeRandomArtifact(game.Cache)
+                            game.doMerchant(yield, 1200, &item, player)
                     }
                 },
             }

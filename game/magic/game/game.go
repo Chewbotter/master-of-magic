@@ -1110,6 +1110,16 @@ func (game *Game) doInput(yield coroutine.YieldFunc, title string, name string, 
 
     quit := false
 
+    // the box of the original, see hirestyle.go
+    place, isOriginal := nameInputOf(title, topX, topY)
+    var placeStyle *nameInputStyle
+    if isOriginal {
+        placeStyle = place.style(game.Cache)
+    }
+    if placeStyle != nil {
+        name = place.fit(placeStyle, name)
+    }
+
     source := ebiten.NewImage(1, 1)
     source.Fill(color.RGBA{R: 0xcf, G: 0xef, B: 0xf9, A: 0xff})
 
@@ -1133,6 +1143,11 @@ func (game *Game) doInput(yield coroutine.YieldFunc, title string, name string, 
     input := &uilib.UIElement{
         TextEntry: func(element *uilib.UIElement, text string) string {
             name = text
+
+            if placeStyle != nil {
+                name = place.fit(placeStyle, name)
+                return name
+            }
 
             for len(name) > 0 && fonts.NameFont.MeasureTextWidth(name, 1) > maxLength {
                 name = name[:len(name)-1]
@@ -1162,6 +1177,11 @@ func (game *Game) doInput(yield coroutine.YieldFunc, title string, name string, 
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             background, _ := game.ImageCache.GetImage("backgrnd.lbx", 33, 0)
+            if placeStyle != nil {
+                place.draw(screen, placeStyle, background, name, game.Counter)
+                return
+            }
+
             var options ebiten.DrawImageOptions
             options.GeoM.Translate(float64(topX), float64(topY))
             scale.DrawScaled(screen, background, &options)
@@ -1950,7 +1970,7 @@ func (game *Game) doHireHero(yield coroutine.YieldFunc, cost int, hero *herolib.
         quit = true
     }
 
-    game.HudUI.AddGroup(MakeHireHeroScreenUI(game.Cache, game.HudUI, hero, cost, result, fadeOut))
+    game.HudUI.AddGroup(MakeHireHeroScreenUIOf(game.Cache, game.HudUI, hero, cost, hireKindOf(hero, cost, atFortress), result, fadeOut))
 
     for !quit {
         game.Counter += 1
