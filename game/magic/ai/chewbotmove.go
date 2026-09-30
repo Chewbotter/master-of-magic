@@ -14,6 +14,7 @@ package ai
 import (
     "image"
     "log"
+    "sync"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/display"
@@ -28,6 +29,23 @@ var ChewbotMoves = true
 
 // development: the orders of every turn in the log
 var ChewbotMoveLog = false
+
+// development: when not nil, the units given an order, by wizard and by the step of the original
+// that gave it (a run without a window counts them for its summary)
+var ChewbotOrderCounts map[string]map[string]int
+var chewOrderCountsLock sync.Mutex
+
+func chewCountOrder(wizard string, why string, count int) {
+    chewOrderCountsLock.Lock()
+    defer chewOrderCountsLock.Unlock()
+    if ChewbotOrderCounts == nil {
+        return
+    }
+    if ChewbotOrderCounts[wizard] == nil {
+        ChewbotOrderCounts[wizard] = make(map[string]int)
+    }
+    ChewbotOrderCounts[wizard][why] += count
+}
 
 // The original's own mistakes in its overland orders that change how it plays, kept on purpose
 const (
@@ -106,6 +124,7 @@ func (turn *chewTurn) order(unit units.StackUnit, x int, y int, plane data.Plane
         kind = chewOrderAttack
     }
     turn.Overland.Orders[chewKey(unit)] = &chewOrder{Kind: kind, X: turn.World.WrapX(x), Y: y, Plane: plane, Why: turn.Why}
+    chewCountOrder(turn.World.Self.Wizard.Name, turn.Why, 1)
 }
 
 // on its way, building a road or purifying: the original's units that are left out of the plans
@@ -310,8 +329,10 @@ func (turn *chewTurn) decisions() []playerlib.AIDecision {
     overland.MoveFailed = make(map[chewUnitKey]bool)
 
     var decisions []playerlib.AIDecision
+    name := self.Wizard.Name
     for _, stack := range turn.Shifts {
         decisions = append(decisions, &playerlib.AIPlaneShiftDecision{Stack: stack})
+        chewCountOrder(name, "plane shift", len(stack.Units()))
     }
 
     settles := chewSetOf(turn.Settles)
@@ -353,6 +374,7 @@ func (turn *chewTurn) decisions() []playerlib.AIDecision {
                     overland.MoveFailed[chewKey(unit)] = true
                 }
                 chewMoveLog("%v: no path from %v,%v to %v for %v units", self.Wizard.Name, stack.X(), stack.Y(), point, len(group))
+                chewCountOrder(name, "no path", len(group))
                 continue
             }
             why := overland.Orders[chewKey(group[0])].Why
@@ -368,10 +390,12 @@ func (turn *chewTurn) decisions() []playerlib.AIDecision {
                 settled = true
                 chewMoveLog("%v: settles at %v,%v", self.Wizard.Name, stack.X(), stack.Y())
                 decisions = append(decisions, &playerlib.AIBuildOutpostDecision{Stack: stack})
+                chewCountOrder(name, "found a city", 1)
             }
             if melds[key] && !melded {
                 melded = true
                 decisions = append(decisions, &playerlib.AIMeldNodeDecision{Stack: stack})
+                chewCountOrder(name, "meld", 1)
             }
             if purifies[key] {
                 purifiers = append(purifiers, unit)
@@ -379,6 +403,7 @@ func (turn *chewTurn) decisions() []playerlib.AIDecision {
             if road, has := turn.Roads[key]; has {
                 chewMoveLog("%v: road from %v,%v to %v", self.Wizard.Name, stack.X(), stack.Y(), road)
                 decisions = append(decisions, &playerlib.AIBuildRoadDecision{Stack: stack, X: road.X, Y: road.Y, Units: []units.StackUnit{unit}})
+                chewCountOrder(name, "start a road", 1)
             } else if roadPath := unit.GetBuildRoadPath(); len(roadPath) > 0 && unit.GetBusy() != units.BusyStatusBuildRoad {
                 // a road on its way: the game finished a square of it, the engineer goes on to the next
                 end := roadPath[len(roadPath) - 1]
@@ -387,6 +412,7 @@ func (turn *chewTurn) decisions() []playerlib.AIDecision {
         }
         if len(purifiers) > 0 {
             decisions = append(decisions, &playerlib.AIPurifyDecision{Stack: stack, Units: purifiers})
+            chewCountOrder(name, "purify", len(purifiers))
         }
     }
     return decisions

@@ -386,7 +386,7 @@ func initializePlayer(game *gamelib.Game, wizard setup.WizardCustom, isHuman boo
 
     if isHuman {
         // a frame capture wants the plain world map, not the city naming prompt
-        if capture.Path == "" || capture.CityPrompt {
+        if (capture.Path == "" && simTurns == 0) || capture.CityPrompt {
             game.Events <- gamelib.StartingCityEvent(introCity)
         }
         game.Camera.Center(cityX, cityY)
@@ -1413,6 +1413,9 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&ai.ChewbotCityLog, "capture-city-log", false, "development: every choice of Chewbot's cities in the log")
     flag.BoolVar(&ai.ChewbotMoveLog, "capture-move-log", false, "development: the overland orders of Chewbot in the log")
     flag.IntVar(&captureOpponents, "capture-opponents", 0, "development: the number of computer wizards of a quick start, 0 for 1 to 4 by chance")
+    flag.IntVar(&simTurns, "sim", 0, "development: play this many turns of the computer players without a window and write a summary (sim.go)")
+    flag.StringVar(&simOut, "sim-out", "sim-summary.txt", "development: where -sim writes its summary")
+    flag.StringVar(&simAI, "sim-ai", "", "development: the Enemy AI of a -sim run, clone or chewbot (the setting when empty)")
     flag.BoolVar(&combat.ChewbotLog, "capture-ai-log", false, "development: every decision of the combat AI of Chewbot in the log")
     flag.BoolVar(&capture.Auto, "capture-auto", false, "development: the army of the player of a random battle is set to auto")
     flag.BoolVar(&capture.DamageNumbers, "capture-damage-numbers", false, "development: keep damage numbers over the units of a random battle")
@@ -1534,6 +1537,15 @@ func main() {
     mouse.Initialize()
 
     ebiten.SetCursorMode(ebiten.CursorModeHidden)
+
+    if simTurns > 0 {
+        // development: no window at all
+        if err := runSimulation(config); err != nil {
+            log.Printf("Error: %v", err)
+        }
+        log.Printf("Bye")
+        return
+    }
 
     game, err := NewMagicGame(config)
 

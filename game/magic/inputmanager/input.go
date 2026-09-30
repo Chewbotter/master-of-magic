@@ -95,6 +95,15 @@ func Update() {
     theInputManager.Update()
 }
 
+// development: a game without a window (-sim) has no input: nothing is pressed and the mouse is
+// far off the screen
+func NoInput() {
+    updated = true
+    FixedMouse = true
+    FixedMouseX = -10000
+    FixedMouseY = -10000
+}
+
 func LeftClick() bool {
     if !updated {
         log.Fatal("InputManager.Update() not called")

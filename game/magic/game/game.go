@@ -377,6 +377,8 @@ const (
 type Game struct {
     // development: a capture lets the human skip turns (CaptureSkipTurns)
     captureSkipping bool
+    // development: what a game without a window counts for its summary (simstats.go); nil in a game
+    Stats *SimStats
 
     Cache *lbx.LbxCache
     ImageCache util.ImageCache
@@ -4360,14 +4362,19 @@ func (handlers *GameMoveHandlers) ShowMovement(x int, y int, stack *playerlib.Un
 }
 
 func (handlers *GameMoveHandlers) DoEncounter(player *playerlib.Player, stack *playerlib.UnitStack, encounter *maplib.ExtraEncounter, map_ *maplib.Map, x int, y int) combat.CombatState {
-    return handlers.Game.doEncounter(handlers.Yield, player, stack, encounter, map_, x, y)
+    state := handlers.Game.doEncounter(handlers.Yield, player, stack, encounter, map_, x, y)
+    handlers.Game.Stats.encounter(player, state)
+    return state
 }
 
 func (handlers *GameMoveHandlers) DoCombat(player *playerlib.Player, stack *playerlib.UnitStack, enemy *playerlib.Player, enemyStack *playerlib.UnitStack, zone combat.ZoneType) combat.CombatState {
-    return handlers.Game.doCombat(handlers.Yield, player, stack, enemy, enemyStack, zone)
+    state := handlers.Game.doCombat(handlers.Yield, player, stack, enemy, enemyStack, zone)
+    handlers.Game.Stats.combat(player, enemy, state)
+    return state
 }
 
 func (handlers *GameMoveHandlers) DefeatCity(player *playerlib.Player, stack *playerlib.UnitStack, enemy *playerlib.Player, city *citylib.City) (bool, int) {
+    handlers.Game.Stats.cityTaken(player, enemy)
     return handlers.Game.defeatCity(handlers.Yield, player, stack, enemy, city)
 }
 
@@ -4395,6 +4402,7 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
             // run AI in background so the UI doesn't totally freeze
             out := player.AIBehavior.Update(player, game.Model)
             elapsed := time.Since(thinkStart)
+            game.Stats.thought(player, elapsed)
             if elapsed >= time.Second {
                 log.Printf("Year=%v AI %v(%v) thought for %v (%d decisions)", thinkYear, thinkName, thinkBanner, elapsed, len(out))
             }
@@ -6097,6 +6105,7 @@ func (game *Game) CityProductionBonus(x int, y int, plane data.Plane) int {
 }
 
 func (game *Game) CreateOutpost(settlers units.StackUnit, player *playerlib.Player) *citylib.City {
+    game.Stats.cityFounded(player)
     cityName := game.SuggestCityName(settlers.GetRace())
 
     newCity := citylib.MakeCity(cityName, settlers.GetX(), settlers.GetY(), settlers.GetRace(), game.Model.BuildingInfo, game.GetMap(settlers.GetPlane()), game.Model, player)

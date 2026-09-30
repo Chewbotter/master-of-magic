@@ -120,6 +120,9 @@ or swim go to the stage point of the war landmass.
 
 ## Checking it
 
+- `bash dev.sh a -sim 260 -capture-opponents 4` plays 260 turns without a window in about half a
+  minute and writes a summary of every player (`-sim-ai clone` for the clone's AI to compare).
+
 - `-capture-move-log` writes every order with the step of the original that gave it.
 - `-capture-opponents N` gives a quick start N computer wizards.
 - `-capture-turns N` lets the human skip N turns; its battles then end without a screen and random
