@@ -84,8 +84,12 @@ func makeChewScenario(test *testing.T, turn uint64, rows ...string) *chewScenari
     test.Cleanup(ai.ChewbotFixedRolls(0))
     oldCities := ai.ChewbotCities
     ai.ChewbotCities = false
+    // the orders are tested here: no spells, no glue (their players have no economy)
+    oldSpells, oldGlue := ai.ChewbotSpells, ai.ChewbotTurnGlue
+    ai.ChewbotSpells, ai.ChewbotTurnGlue = false, false
     test.Cleanup(func() {
         ai.ChewbotCities = oldCities
+        ai.ChewbotSpells, ai.ChewbotTurnGlue = oldSpells, oldGlue
     })
     return &chewScenario{Test: test, Model: model, Width: width, Height: height}
 }

@@ -1446,6 +1446,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&ai.ChewbotCityLog, "capture-city-log", false, "development: every choice of Chewbot's cities in the log")
     flag.BoolVar(&ai.ChewbotSpellLog, "capture-spell-log", false, "development: every choice of Chewbot's spells and their targets in the log")
     flag.BoolVar(&ai.ChewbotMoveLog, "capture-move-log", false, "development: the overland orders of Chewbot in the log")
+    flag.BoolVar(&ai.ChewbotTurnGlue, "chewbot-turn-glue", true, "development: false leaves the economy of Chewbot's wizards (reserves, tax, farmers, disbanding) to the clone")
     flag.BoolVar(&ai.ChewbotExpeditionByEmpire, "chewbot-expedition-by-empire", true, "development: false gives Chewbot the original's size of expeditions (2 and 1 more every 30 turns)")
     flag.BoolVar(&ai.ChewbotDraftBeyondNeed, "chewbot-draft-beyond-need", true, "development: false gives Chewbot the original's rule for expeditions (units beyond 5 of a garrison)")
     flag.BoolVar(&maplib.ClassicMaps, "classic-maps", true, "development: false for the fork's worlds, as large as the Land Size")

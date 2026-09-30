@@ -125,6 +125,8 @@ type ChewbotAI struct {
     overland *chewOverland
     // the state of its magic from turn to turn (chewbotspells.go)
     magic *chewMagic
+    // the tax the glue keeps (chewbotglue.go)
+    glue *chewGlue
     services playerlib.AIServices
     self *playerlib.Player
 }
@@ -202,6 +204,11 @@ func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIService
     moves := !ai.Neutral && chewbotMovesActive()
     // the neutral player casts nothing
     spells := !ai.Neutral && chewbotSpellsActive()
+    glue := chewbotGlueActive()
+    if glue {
+        // every computer player (chewbotglue.go)
+        chewHopelessStasis(self)
+    }
     if !cities && !moves && !spells {
         return decisions
     }
@@ -224,11 +231,14 @@ func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIService
     if cities {
         out = append(out, ai.cityDecisions(self, services)...)
     }
-    if moves {
-        out = append(out, ai.moveDecisions(self, services)...)
-    }
     if spells {
         out = append(out, ai.spellDecisions(self, services)...)
+    }
+    if glue && !ai.Neutral {
+        ai.turnGlue(self, services)
+    }
+    if moves {
+        out = append(out, ai.moveDecisions(self, services)...)
     }
     return out
 }
