@@ -15,6 +15,7 @@ package combat
 
 import (
     "image"
+    "math/rand/v2"
     "image/color"
     "log"
     "math"
@@ -137,6 +138,10 @@ type spellEffects struct {
 
     // what is left of the particles a bolt is to give off, by bolt
     Owed map[*Projectile]float64
+    // the same for the sparks off the picture of a spell, and the pixels of a picture sparks come
+    // off, by picture
+    SparksOwed map[*Projectile]float64
+    Points map[*ebiten.Image][]image.Point
     // the tile every unit that walks was last over, see splash.go
     Wading map[*ArmyUnit]image.Point
 
@@ -441,6 +446,44 @@ func (combat *CombatScreen) updateSpellEffects() {
         }
     }
 
+    // sparks off the pixels of the picture of a spell while it shows
+    if SpellEffects {
+        for _, projectile := range combat.Model.Projectiles {
+            if !projectile.Scripted || !projectile.Started {
+                continue
+            }
+            values := combat.valuesOf(projectile.Name)
+            if values.SparkRate <= 0 || len(values.SparkColors) == 0 {
+                continue
+            }
+            x, y, frame, ok := projectile.placeAt(combat.Counter)
+            if !ok {
+                continue
+            }
+            points := combat.picturePoints(projectile.Pictures[frame])
+            if len(points) == 0 {
+                continue
+            }
+
+            if effects.SparksOwed == nil {
+                effects.SparksOwed = make(map[*Projectile]float64)
+            }
+            owed := effects.SparksOwed[projectile] + values.SparkRate * seconds
+            count := int(owed)
+            effects.SparksOwed[projectile] = owed - float64(count)
+
+            for range count {
+                point := points[rand.N(len(points))]
+                effects.Particles.emitTrail(float64(x + point.X) + 0.5, float64(y + point.Y) + 0.5, 0.5, 1, values.SparkSpeed, values.SparkGravity, values.SparkLife, values.SparkColors)
+            }
+        }
+    }
+    for projectile := range effects.SparksOwed {
+        if projectile.Step >= len(projectile.Steps) {
+            delete(effects.SparksOwed, projectile)
+        }
+    }
+
     // the water of a river under the units that walk into it, see splash.go
     combat.splashTick()
 
@@ -453,6 +496,33 @@ func (combat *CombatScreen) updateSpellEffects() {
         combat.splatCorpse(each.X, each.Y, each.Color)
     }
     effects.Particles.Landed = effects.Particles.Landed[:0]
+}
+
+// the pixels of a picture that are not see-through, from its top left corner. read once
+func (combat *CombatScreen) picturePoints(picture *ebiten.Image) []image.Point {
+    effects := &combat.effects
+    if points, ok := effects.Points[picture]; ok {
+        return points
+    }
+
+    bounds := picture.Bounds()
+    pixels := make([]byte, 4 * bounds.Dx() * bounds.Dy())
+    picture.ReadPixels(pixels)
+
+    var points []image.Point
+    for y := range bounds.Dy() {
+        for x := range bounds.Dx() {
+            if pixels[(y * bounds.Dx() + x) * 4 + 3] >= 0x80 {
+                points = append(points, image.Pt(x, y))
+            }
+        }
+    }
+
+    if effects.Points == nil {
+        effects.Points = make(map[*ebiten.Image][]image.Point)
+    }
+    effects.Points[picture] = points
+    return points
 }
 
 // art pixels around the middle of a bolt its particles start in
