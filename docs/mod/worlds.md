@@ -119,6 +119,15 @@ before the place is taken, so it is rolled when it is taken, from the budget abo
 - Seen: 3 to 9 of the 10 made a plane, 9 to 47 river squares. A river may touch itself and make
   a small loop, as the original's may.
 
+## Pictures (Shuffle_Terrains)
+
+`classicShuffle` in `classicspecials.go`, last of all: the plain pictures of grassland (4 looks),
+forest (3), desert (4) and swamp (3) become one of their look-alikes by chance; plain tundra stays
+two times in three and takes the second look one time in three, never the third (the original's
+switch misses it; kept). Before, desert, swamp and tundra always showed their first look. The
+autotiling itself (which piece of shore, river, mountain range) stays the fork's, with its first
+fitting picture where the original picks among up to 4 river pieces.
+
 ## Before
 
 The fork put minerals on 6 (Arcanus) or 10 (Myrror) percent of the hills, forest, mountain, swamp

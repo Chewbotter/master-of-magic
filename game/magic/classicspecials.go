@@ -312,6 +312,37 @@ func classicSpecialsAndRoads(game *gamelib.Game) {
         classicRoads(game, plane)
     }
     classicRivers(game)
+    for _, plane := range []data.Plane{data.PlaneArcanus, data.PlaneMyrror} {
+        classicShuffle(game.GetMap(plane), plane)
+    }
+}
+
+// Shuffle_Terrains: the plain pictures of grassland (4), forest (3), desert (4) and swamp (3) become
+// one of their look-alikes by chance; plain tundra stays two times in three and becomes the second
+// picture one time in three (the original's switch misses the third; kept)
+func classicShuffle(mapObject *maplib.Map, plane data.Plane) {
+    variants := map[int][]int{}
+    add := func(first terrain.Tile, others ...terrain.Tile) {
+        indexes := []int{first.Index(plane)}
+        for _, other := range others {
+            indexes = append(indexes, other.Index(plane))
+        }
+        variants[first.Index(plane)] = indexes
+    }
+    add(terrain.TileGrasslands1, terrain.TileGrasslands4, terrain.TileGrasslands2, terrain.TileGrasslands3)
+    add(terrain.TileForest1, terrain.TileForest2, terrain.TileForest3)
+    add(terrain.TileAllDesert1, terrain.TileAllDesert2, terrain.TileAllDesert3, terrain.TileAllDesert4)
+    add(terrain.TileSwamp1, terrain.TileSwamp2, terrain.TileSwamp3)
+    tundra := terrain.TileAllTundra1.Index(plane)
+    variants[tundra] = []int{tundra, tundra, terrain.TileAllTundra2.Index(plane)}
+
+    for x := 0; x < mapObject.Width(); x++ {
+        for y := 0; y < mapObject.Height(); y++ {
+            if choices, has := variants[mapObject.Map.Terrain[x][y]]; has {
+                mapObject.Map.Terrain[x][y] = choices[classicSpecialRoll(len(choices)) - 1]
+            }
+        }
+    }
 }
 
 // Init_New_Game: 10 rivers a plane, in turn, each tried up to 2000 times (terrain.ClassicRiver). A
