@@ -1162,7 +1162,12 @@ func (hero *Hero) GetAbilityToHit() int {
             case units.ExperienceLord: return 40
             case units.ExperienceGrandLord: return 50
             case units.ExperienceSuperHero: return 60
-            case units.ExperienceDemiGod: return 80
+            case units.ExperienceDemiGod:
+                if ClassicAbilities {
+                    // the original: (level + 1) x 3 / 4, 6 at Demigod
+                    return 60
+                }
+                return 80
         }
     }
 
@@ -1269,6 +1274,10 @@ func (hero *Hero) GetAbilityMelee() int {
 }
 
 func (hero *Hero) GetAbilityRangedAttack() int {
+    if ClassicAbilities {
+        // the original: Might is for melee only
+        return 0
+    }
     return hero.GetAbilityMelee() / 2
 }
 

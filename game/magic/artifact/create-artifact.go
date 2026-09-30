@@ -313,7 +313,22 @@ func calculateCost(artifact *Artifact, costs map[Power]int) int {
 
     // jewelry costs are 2x
     if artifact.Type == ArtifactTypeMisc {
-        powerCost *= 2
+        if ClassicItems {
+            // the original doubles only the basic powers of jewelry
+            powerCost = 0
+            for _, power := range artifact.Powers {
+                if power.Type == PowerTypeSpellCharges {
+                    continue
+                }
+                if isBasicPower(power) {
+                    powerCost += costs[power] * 2
+                } else {
+                    powerCost += costs[power]
+                }
+            }
+        } else {
+            powerCost *= 2
+        }
     }
 
     cost := base + powerCost + spellCost
@@ -1158,7 +1173,7 @@ func ShowCreateArtifactScreen(yield coroutine.YieldFunc, cache *lbx.LbxCache, cr
         groups := groupPowers(powers, costs, compatibilities, artifactType, creationType)
         selectCount := 0
         elements := makePowersFull(ui, cache, &imageCache, fonts, picLow, picHigh, groups, costs, &artifact, &customName, &selectCount)
-        abilityElements := makeAbilityElements(ui, cache, &imageCache, &artifact, &customName, fonts, powers, compatibilities, costs, &selectCount, wizard, availableSpells)
+        abilityElements := makeAbilityElements(ui, cache, &imageCache, &artifact, &customName, fonts, enchantItemPowers(powers, costs, creationType), compatibilities, costs, &selectCount, wizard, availableSpells)
         return PowerArtifact{
             Elements: elements,
             AbilityElements: abilityElements,

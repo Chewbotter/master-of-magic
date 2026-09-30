@@ -99,7 +99,16 @@ func MakeUnitContextMenu(cache *lbx.LbxCache, ui *uilib.UI, unit UnitView, doDis
 }
 
 func makeHeroContextMenu(cache *lbx.LbxCache, ui *uilib.UI, hero *herolib.Hero, doDisband func()) *uilib.UIElementGroup {
-    return MakeGenericContextMenu(cache, ui, hero, fmt.Sprintf("Do you wish to dismiss %v?", hero.GetName()), doDisband)
+    dismiss := func() {
+        if herolib.ClassicAbilities {
+            // Kill_Unit: a dismissed hero's items are destroyed (the original's)
+            for i := range hero.Equipment {
+                hero.Equipment[i] = nil
+            }
+        }
+        doDisband()
+    }
+    return MakeGenericContextMenu(cache, ui, hero, fmt.Sprintf("Do you wish to dismiss %v?", hero.GetName()), dismiss)
 }
 
 type UIFonts struct {

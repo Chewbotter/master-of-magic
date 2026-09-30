@@ -53,6 +53,8 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/halloffame"
+    herolib "github.com/kazzmir/master-of-magic/game/magic/hero"
+    "github.com/kazzmir/master-of-magic/game/magic/artifact"
     "github.com/kazzmir/master-of-magic/game/magic/mastery"
     "github.com/kazzmir/master-of-magic/game/magic/camera"
     gamelib "github.com/kazzmir/master-of-magic/game/magic/game"
@@ -1064,6 +1066,9 @@ func startWatchMode(yield coroutine.YieldFunc, game *MagicGame) error {
 // -classic-economy
 var classicEconomy = true
 
+// -classic-heroes
+var classicHeroes = true
+
 var captureOpponents int
 // development: the land size of a quick start, below 0 by chance
 var captureLandSize int
@@ -1476,6 +1481,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&gamelib.BattleLog, "capture-battle-log", false, "development: log every battle no screen shows: sides, power, Chewbot's strength, result, turns")
     flag.BoolVar(&ai.ChewbotNeutralLog, "capture-neutral-log", false, "development: log what Chewbot's neutral player does")
     flag.BoolVar(&citylib.ClassicDifficulty, "classic-difficulty", true, "development: false for no bonuses of computer wizards by difficulty (the original's difficulty table)")
+    flag.BoolVar(&classicHeroes, "classic-heroes", true, "development: false for upstream's heroes, mercenaries, merchants, items and fame of battles")
     flag.BoolVar(&combat.ClassicRules, "classic-combat", true, "development: false for upstream's rules of tactical combat and combat spells")
     flag.BoolVar(&units.ClassicMovement, "classic-movement", true, "development: false for upstream's movement on the world map (terrain costs, stack limit, ship seats, go-to, exploring)")
     flag.BoolVar(&citylib.ClassicCities, "classic-cities", true, "development: false for upstream's rules of cities (growth, rebels, food, production, gold, outposts, selling)")
@@ -1591,6 +1597,11 @@ func main() {
             log.Println(http.ListenAndServe("localhost:8000", nil))
         }()
     }
+
+    // heroes, mercenaries, merchants, items, see docs/mod/heroes.md
+    gamelib.ClassicHeroes = classicHeroes
+    herolib.ClassicAbilities = classicHeroes
+    artifact.ClassicItems = classicHeroes
 
     // the economy of mana and units, see docs/mod/economy.md
     playerlib.ClassicEconomy = classicEconomy

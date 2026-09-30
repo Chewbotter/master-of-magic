@@ -1906,6 +1906,14 @@ func (game *Game) doVault(yield coroutine.YieldFunc, newArtifact *artifact.Artif
 /* random chance to create a hire hero event
  */
 func (game *Game) maybeHireHero(player *playerlib.Player) {
+    if ClassicHeroes {
+        // Determine_Offer: nothing for a banished wizard (heroesclassic.go)
+        if !player.Banished {
+            game.classicHireHero(player)
+        }
+        return
+    }
+
     if len(player.AliveHeroes()) >= 6 {
         return
     }
@@ -2013,6 +2021,13 @@ func (game *Game) doHireHero(yield coroutine.YieldFunc, cost int, hero *herolib.
 /* random chance to create a hire mercenaries event
  */
 func (game *Game) maybeHireMercenaries(player *playerlib.Player) {
+    if ClassicHeroes {
+        if !player.Banished {
+            game.classicHireMercenaries(player)
+        }
+        return
+    }
+
     if game.Model.TurnNumber <= 30 {
         return
     }
@@ -2171,6 +2186,13 @@ func (game *Game) doHireMercenaries(yield coroutine.YieldFunc, cost int, units [
 /* random chance to create a merchant event
  */
 func (game *Game) maybeBuyFromMerchant(player *playerlib.Player) {
+    if ClassicHeroes {
+        if !player.Banished {
+            game.classicMerchant(player)
+        }
+        return
+    }
+
     // chance to create an event
     chance := 2 + player.GetFame() / 25
     if player.Wizard.RetortEnabled(data.RetortFamous) {
@@ -2736,7 +2758,12 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                             game.doHireHero(yield, hire.Cost, hire.Hero, player, true, data.PlanePoint{})
                         } else {
                             if player.AIBehavior != nil {
-                                player.AIBehavior.HandleHireHero(player, hire.Hero, 0, true, data.PlanePoint{})
+                                cost := 0
+                                if ClassicHeroes {
+                                    // MY CALL: a computer wizard pays the fee as the human does (upstream: nothing)
+                                    cost = hire.Cost
+                                }
+                                player.AIBehavior.HandleHireHero(player, hire.Hero, cost, true, data.PlanePoint{})
                             }
                         }
                     case *GameEventHireMercenaries:
@@ -5433,6 +5460,10 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
     // returns the fame that should be added to the winner and loser. the loser fame is negative
     distributeFame := func(winner *playerlib.Player, loser *playerlib.Player, loserStack *playerlib.UnitStack, defeatedUnits int) (int, int) {
+        if ClassicHeroes {
+            // End_Of_Combat, see heroesclassic.go
+            return classicBattleFame(winner, loser, loserStack, defeatedUnits)
+        }
         winnerFame := 0
         loserFame := 0
 

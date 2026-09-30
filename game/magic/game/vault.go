@@ -208,7 +208,8 @@ func (game *Game) showVaultScreen(createdArtifact *artifact.Artifact, player *pl
                     group := uilib.MakeGroup()
 
                     gainedMana := selectedItem.Item.Cost
-                    if !player.Wizard.RetortEnabled(data.RetortArtificer) {
+                    if !player.Wizard.RetortEnabled(data.RetortArtificer) || ClassicHeroes {
+                        // the original: half the cost, for every wizard
                         gainedMana /= 2
                     }
 

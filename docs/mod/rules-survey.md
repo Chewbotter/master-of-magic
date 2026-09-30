@@ -270,5 +270,6 @@ Death Wish (stubs).
    DONE 2026-09-30 for the HIGH and the MEDs, see combat-rules.md (what is left is at the end of
    improvements.md).
 7. Heroes, items, merchants, mercenaries, fame.
+   DONE 2026-09-30, see heroes.md (what is left is at the end of improvements.md).
 8. Events and conquest details.
 9. The LOWs by system.

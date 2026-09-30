@@ -202,3 +202,18 @@ quirk constant where there is one: turning it is the change. New calls go here t
   rest of the fleeing, experience, fame and regeneration rules; Wall of Stone in a city battle (the
   original can not cast it in battle); the magic ranged shot of a hasted hero; the LOWs of combat
   spells (rules-survey.md).
+
+## Heroes, mercenaries, merchants, items (heroes.md)
+
+- Kept, the original's: computer wizards' offers figured on the human's fame
+  (`quirkOffersOnHumanFame`); no veteran mercenaries (`quirkMercenariesNoVeteran`); Charismatic
+  halving after the check of the full price (`quirkCharismaticAfterCheck`); a hero's fame strictly
+  below the wizard's (`quirkHeroFameStrict`, doubtful: with no fame no hero comes). Suggested: each
+  as meant.
+- MY CALL: a computer wizard pays for its hero (upstream hired them for nothing; the original's
+  AI_Accept_Hero was not read).
+- MY CALL: mercenaries come from both planes always (the fork keeps no owner of a tower; the
+  original opens both planes when any tower is not the wizard's).
+- Not ported yet: the heroes' starting picks and their mistakes (Lucky falling into Agility and the
+  others), Sage's research, the order of the hero chance's cap (the fork's already matches), the
+  first turn of mercenaries' uninitialized cost test.

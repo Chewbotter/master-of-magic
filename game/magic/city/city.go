@@ -338,6 +338,9 @@ func (city *City) FameForCaptureOrRaze(captured bool) int {
         case CitySizeTown:
             if captured {
                 return 1
+            } else if ClassicCities {
+                // the original: the size, 3 for a town
+                return -3
             } else {
                 return -2
             }
