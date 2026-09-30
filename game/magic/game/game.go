@@ -379,6 +379,8 @@ type Game struct {
     captureSkipping bool
     // development: what a game without a window counts for its summary (simstats.go); nil in a game
     Stats *SimStats
+    // development: the game runs without a window (SimSkipHuman)
+    headless bool
 
     Cache *lbx.LbxCache
     ImageCache util.ImageCache
@@ -4433,6 +4435,12 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
         })
         // a label over the world map, not a screen of its own: the map stays wide, see wide.go
         game.markOverlayDrawer()
+
+        if game.headless {
+            // development: no window to keep alive, so wait for the AI instead of spinning
+            decisions = <-decisionResult
+            done = true
+        }
 
         for !done {
             game.Counter += 1

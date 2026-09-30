@@ -310,6 +310,18 @@ func ReconstructMap(mapData SerializedMap, terrainData *terrain.TerrainData, cit
         extras[point] = extraData
     }
 
+    // every square has its table of extras, as in a new map: the setters (SetBonus, SetCorruption,
+    // CreateEncounter, ...) write into it without making it, and a random event that put a mineral
+    // on a square without extras crashed a loaded game
+    for x := range len(mapData.Map) {
+        for y := range len(mapData.Map[x]) {
+            point := image.Pt(x, y)
+            if _, ok := extras[point]; !ok {
+                extras[point] = make(map[ExtraKind]ExtraTile)
+            }
+        }
+    }
+
     return map_
 }
 

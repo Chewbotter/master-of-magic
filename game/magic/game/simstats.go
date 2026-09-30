@@ -100,6 +100,7 @@ func (stats *SimStats) thought(player *playerlib.Player, elapsed time.Duration) 
 // the human skips its turns and nobody waits for it (see CaptureSkipTurns)
 func (game *Game) SimSkipHuman() {
     game.captureSkipping = true
+    game.headless = true
     if human := game.Model.GetHumanPlayer(); human != nil {
         human.Skip = true
     }

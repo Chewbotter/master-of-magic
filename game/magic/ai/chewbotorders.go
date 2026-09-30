@@ -15,6 +15,9 @@ package ai
 import (
     "image"
     "slices"
+    "sync"
+
+    "github.com/kazzmir/master-of-magic/game/magic/maplib"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/units"
@@ -450,6 +453,44 @@ func (world *chewWorld) canSettle(x int, y int, wp int) bool {
     return world.Services.IsSettlableLocation(x, y, chewPlaneOf(wp))
 }
 
+// the values of city sites of one map, the same for every wizard
+type chewSiteTable struct {
+    Map *maplib.Map
+    Cities int
+    Turn int
+    Values map[image.Point]int
+}
+
+var chewSiteTables [2]chewSiteTable
+var chewSiteLock sync.Mutex
+
+// the value of a site, kept from turn to turn while the plane has as many cities (a city founded or
+// lost changes what the squares around it are worth) and for at most chewSiteKeepTurns turns
+func (overland *chewOverland) siteValue(world *chewWorld, x int, y int, wp int) int {
+    cities := 0
+    for _, city := range world.Cities {
+        if chewPlaneIndex(city.City.Plane) == wp {
+            cities += 1
+        }
+    }
+    chewSiteLock.Lock()
+    defer chewSiteLock.Unlock()
+    table := &chewSiteTables[wp]
+    if table.Values == nil || table.Map != world.Maps[wp] || table.Cities != cities || world.Turn - table.Turn >= chewSiteKeepTurns || world.Turn < table.Turn {
+        *table = chewSiteTable{Map: world.Maps[wp], Cities: cities, Turn: world.Turn, Values: make(map[image.Point]int)}
+    }
+    point := image.Pt(x, y)
+    if value, ok := table.Values[point]; ok {
+        return value
+    }
+    value := world.siteValue(x, y, wp)
+    table.Values[point] = value
+    return value
+}
+
+// how long the values of sites are kept at most
+const chewSiteKeepTurns = 20
+
 // Compute_Base_Values_For_Map_Square, weighed as AI_Stacks_Do_Settle does: the maximum population
 // times 10, the production bonus, the gold bonus of the square, the reduction of the cost of
 // units, gold of minerals times 3, magic of minerals times 5, nightshade 10, mithril 20,
@@ -525,7 +566,7 @@ func (pass *chewPass) doSettle() {
                 if distance == 0 {
                     continue
                 }
-                value := world.siteValue(square.X, square.Y, pass.WP) / distance
+                value := pass.Overland.siteValue(world, square.X, square.Y, pass.WP) / distance
                 if value > best {
                     best = value
                     target = square
