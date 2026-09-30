@@ -11,6 +11,7 @@ import (
     "github.com/kazzmir/master-of-magic/lib/coroutine"
     "github.com/kazzmir/master-of-magic/game/magic/util"
     "github.com/kazzmir/master-of-magic/game/magic/data"
+    "github.com/kazzmir/master-of-magic/game/magic/halloffame"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/gamemenu"
     settingslib "github.com/kazzmir/master-of-magic/game/magic/settings"
@@ -42,7 +43,7 @@ const MenuLastRowY = 187
 const MenuRowGap = 1
 // area the credits scroll through. the bottom edge sits above the first menu row
 const CreditsTop = 35
-const CreditsBottom = 118
+const CreditsBottom = 107
 const CreditsLeft = 60
 const CreditsRight = 270
 // game ticks per pixel of credits scroll. higher is slower
@@ -56,6 +57,10 @@ type MainScreenEvent interface {
 }
 
 type MainScreenEventLoad struct {
+}
+
+// the Hall of Fame (halloffame), the original's row of the start screen
+type MainScreenEventHallOfFame struct {
 }
 
 type MainScreen struct {
@@ -352,8 +357,8 @@ func (main *MainScreen) MakeUI() *uilib.UI {
 
     centerX := data.ScreenWidth / 2
     yGap := titleFont.Height() + MenuRowGap
-    // seven rows: quick start, continue, load, new game, options, credits, quit
-    yBase := MenuLastRowY - yGap * 5
+    // eight rows: quick start, continue, load, new game, options, credits, hall of fame, quit
+    yBase := MenuLastRowY - yGap * 6
 
     elements = append(elements, makeButton(centerX, yBase - yGap * 1, "Quick Start", true, func(){
         main.State = MainScreenStateQuickGame
@@ -387,10 +392,15 @@ func (main *MainScreen) MakeUI() *uilib.UI {
         main.ToggleCredits()
     }))
 
-    // FIXME: add "Hall of Fame" button
+    elements = append(elements, makeButton(centerX, yBase + yGap * 5, "Hall of Fame", true, func(){
+        select {
+            case main.Events <- &MainScreenEventHallOfFame{}:
+            default:
+        }
+    }))
 
     // exit
-    elements = append(elements, makeLabeledButton(centerX, yBase + yGap * 5, "Quit", "Quit to Dos", true, func(){
+    elements = append(elements, makeLabeledButton(centerX, yBase + yGap * 6, "Quit", "Quit to Dos", true, func(){
         main.State = MainScreenStateQuit
     }))
 
@@ -464,6 +474,24 @@ func (main *MainScreen) RunGameScreen(yield coroutine.YieldFunc) MainScreenState
     return MainScreenStateRunning
 }
 
+func (main *MainScreen) RunHallOfFame(yield coroutine.YieldFunc) MainScreenState {
+    main.CreditsPlaying = false
+
+    oldDrawer := main.Drawer
+    defer func() {
+        main.Drawer = oldDrawer
+    }()
+
+    logic, draw := halloffame.HallOfFameScreen(main.Cache)
+    main.Drawer = draw
+    logic(yield)
+
+    // the key that closed it is not the start screen's
+    yield()
+
+    return MainScreenStateRunning
+}
+
 func (main *MainScreen) Update(yield coroutine.YieldFunc) MainScreenState {
     main.Counter += 1
     main.Yield = yield
@@ -475,6 +503,8 @@ func (main *MainScreen) Update(yield coroutine.YieldFunc) MainScreenState {
             switch event.(type) {
                 case *MainScreenEventLoad:
                     main.State = main.RunGameScreen(yield)
+                case *MainScreenEventHallOfFame:
+                    main.State = main.RunHallOfFame(yield)
             }
         default:
     }

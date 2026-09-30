@@ -93,3 +93,32 @@ quirk constant where there is one: turning it is the change. New calls go here t
 - Spell of Return of a computer wizard: its city with the strongest garrison above the old
   fortress's (MY CALL: above 0, the old fortress being another's or gone); with none the spell does
   nothing and the wizard starts it again (MY CALL: the original's spell fails).
+
+## Conquest and the end of the game (conquest.md)
+
+- MY CALL, the reconstruction doubts itself: its scene of a conquest returns at once unless the
+  neutral player takes part, which would leave "X banishes Y" and the wizards the human conquered
+  (the score's Banished Wizards) to raiders alone. Here the scene shows when the human is the
+  winner or the loser, as upstream, and the wizards the human conquers are counted, as an older
+  note of the reconstruction says. Worth checking against the game as played: whether the scene
+  also shows when two computer wizards fight.
+- MY CALL, the reconstruction's gap: nothing in it gives a wizard its fortress back after the
+  Spell of Return; here the fortress is where the spell was cast (upstream's).
+- A computer wizard that banishes the human gets no spells (kept, the original's mistake).
+  Suggested: spells for every winner.
+- A wizard casting the Spell of Return has its mana set to its gold, not added
+  (`ai.quirkReturnReservesOverwrite`). Suggested: added.
+- A computer wizard pays the Spell of Return with its skill, mana or not (kept). Suggested: as
+  anyone else, or say so in the game.
+- A defeated human keeps its cities (kept; the game ends at once, so it shows nowhere).
+- Raiders that take a wizard's last city defeat it and get the fame and loot (kept).
+- The capturer's summoning point is moved to the loser's fortress when the loser's summoning city
+  is taken (the original's, likely a mistake; not ported: the fork's summoning circle is a
+  building).
+- Not ported yet: outposts always destroyed when taken; the text "Raiders destroy X's fortress";
+  the original's screen of a computer wizard's start of the Spell of Return ("X begins casting the
+  Spell Of Return"), and of the loss by another's Spell of Mastery (SPELLOSE.LBX); the human's
+  spellbook, Recall and diplomacy closed while banished; no offers of heroes, mercenaries and items
+  to a banished wizard beyond upstream's; events that skip banished wizards.
+- The frame of the score's bar is drawn by eye (the original's remap blocks were not read).
+- The Hall of Fame is kept in a file of ours, not the original's MAGIC.SET.

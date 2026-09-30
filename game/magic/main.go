@@ -52,6 +52,8 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/mainview"
     "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/display"
+    "github.com/kazzmir/master-of-magic/game/magic/halloffame"
+    "github.com/kazzmir/master-of-magic/game/magic/mastery"
     "github.com/kazzmir/master-of-magic/game/magic/camera"
     gamelib "github.com/kazzmir/master-of-magic/game/magic/game"
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
@@ -1441,6 +1443,7 @@ func loadGameConfig() GameConfig {
     flag.StringVar(&capture.Path, "capture", "", "development: write one frame to this png file and exit")
     flag.IntVar(&capture.Frames, "capture-frames", 120, "development: frames to draw before the capture")
     flag.BoolVar(&capture.RevealAll, "capture-reveal-all", false, "development: turn on the Reveal All debug option")
+    flag.IntVar(&mastery.CaptureLoseStage, "capture-lose-stage", 0, "development: the stage the lose animation starts at (-capture-screen lose)")
     flag.IntVar(&capture.KillFigures, "capture-kill-figures", 0, "development: the frame of a random battle at which every unit loses about half of its figures")
     flag.IntVar(&capture.ArmyScale, "capture-army-scale", 0, "development: multiplies the units of both armies of a random battle")
     flag.StringVar(&capture.Spell, "capture-spell", "", "development: show a spell in a debug battle: firebolt, fireball, icebolt, doombolt, lightning, warplightning, confusion, bless, flamestrike, cracks, web, as name@frame")
@@ -1480,6 +1483,7 @@ func loadGameConfig() GameConfig {
     flag.StringVar(&simSave, "sim-save", "", "development: a -sim run saves the game at its end (a bare name goes to the folder scenarios)")
     flag.IntVar(&simRepeat, "sim-repeat", 1, "development: play the saved game of -sim-load this many times, with averages")
     flag.BoolVar(&simWar, "sim-war", false, "development: every wizard at war with every other at the start of a -sim run")
+    flag.BoolVar(&gamelib.SimPlayOn, "sim-play-on", false, "development: a -sim run goes on when the human is defeated or wins, to see the computer wizards conquer")
     flag.StringVar(&simProfile, "sim-profile", "", "development: write a CPU profile of a -sim run to this file")
     flag.BoolVar(&combat.ChewbotLog, "capture-ai-log", false, "development: every decision of the combat AI of Chewbot in the log")
     flag.BoolVar(&capture.Auto, "capture-auto", false, "development: the army of the player of a random battle is set to auto")
@@ -1584,6 +1588,7 @@ func main() {
     developmentRun := capture.Corner || capture.Path != ""
     if developmentRun {
         display.SettingsFile = display.DevelopmentSettingsFile
+        halloffame.File = halloffame.DevelopmentFile
     }
 
     display.Load().Apply()

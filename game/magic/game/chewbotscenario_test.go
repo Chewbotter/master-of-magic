@@ -37,6 +37,18 @@ func (stub *chewStubAI) Update(*playerlib.Player, playerlib.AIServices) []player
 func (stub *chewStubAI) DidDiscoverEnemy(*playerlib.Player) {
 }
 
+func (stub *chewStubAI) DidBanish(*playerlib.Player, *playerlib.Player) {
+}
+
+func (stub *chewStubAI) DidDefeat(*playerlib.Player, *playerlib.Player) {
+}
+
+func (stub *chewStubAI) DidConquerCity(*citylib.City, bool) {
+}
+
+func (stub *chewStubAI) DidLoseCity(*citylib.City) {
+}
+
 type chewScenario struct {
     Test *testing.T
     Model *GameModel

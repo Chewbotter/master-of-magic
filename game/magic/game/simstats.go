@@ -35,6 +35,18 @@ type SimStats struct {
     // the turn two wizards first knew of each other
     Contacts []SimContact
     contactSeen map[[2]*playerlib.Player]bool
+    // banishments and defeats (conquest.go), and how the game ended
+    Conquests []string
+    GameOver string
+}
+
+func (stats *SimStats) noteConquest(text string) {
+    if stats == nil {
+        return
+    }
+    stats.lock.Lock()
+    defer stats.lock.Unlock()
+    stats.Conquests = append(stats.Conquests, text)
 }
 
 type SimContact struct {

@@ -21,10 +21,14 @@ import (
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
     "github.com/kazzmir/master-of-magic/game/magic/unitview"
     "github.com/kazzmir/master-of-magic/lib/coroutine"
+    "github.com/kazzmir/master-of-magic/game/magic/halloffame"
+    "github.com/kazzmir/master-of-magic/game/magic/mastery"
+
+    "github.com/hajimehoshi/ebiten/v2"
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"vault", "vaultitem", "summon", "summonitem", "globalcast", "banish", "enemycity", "levelup", "outpost", "outpostnew", "treasure", "treasuremany", "treasurenone", "hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname", "newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"vault", "vaultitem", "summon", "summonitem", "globalcast", "banish", "enemycity", "levelup", "outpost", "outpostnew", "treasure", "treasuremany", "treasurenone", "hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname", "newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror", "score", "halloffame", "lose", "resign"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -377,6 +381,45 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                 event = &GameEventVault{CreatedArtifact: &item, Player: player}
             } else {
                 event = &GameEventVault{Player: player}
+            }
+        case "score", "halloffame", "lose", "resign":
+            // the end of a game (conquest.go)
+            human := game.Model.GetHumanPlayer()
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    switch name {
+                        case "score":
+                            for _, other := range game.Model.Players {
+                                if other != human && !other.IsNeutral() {
+                                    human.DefeatedWizards = append(human.DefeatedWizards, other.GetBanner())
+                                }
+                            }
+                            human.Fame = 37
+                            score := game.endScore(nil)
+                            score.Turn = 180
+                            score.Townsfolk = 57
+                            game.showScreen(yield, -1, func() (coroutine.AcceptYieldFunc, func (*ebiten.Image)) {
+                                return halloffame.ScoreScreen(game.Cache, score)
+                            })
+                        case "halloffame":
+                            entries := []halloffame.Entry{
+                                {Name: human.Wizard.Name, Score: 6120, Race: data.RaceHighMen},
+                                {Name: "Merlin", Score: 3405, Race: data.RaceHighElf},
+                                {Name: "Kali", Score: 1270, Race: data.RaceDarkElf},
+                                {Name: "Lo Pan", Score: 96, Race: data.RaceKlackon},
+                            }
+                            game.showScreen(yield, -1, func() (coroutine.AcceptYieldFunc, func (*ebiten.Image)) {
+                                return halloffame.HallOfFameScreenOf(game.Cache, entries)
+                            })
+                        case "lose":
+                            game.showScreen(yield, -1, func() (coroutine.AcceptYieldFunc, func (*ebiten.Image)) {
+                                return mastery.LoseScreen(game.Cache, human.Wizard.Base)
+                            })
+                        case "resign":
+                            human.CastSpellOfReturn()
+                            game.askResign(yield, human)
+                    }
+                },
             }
         case "notice":
             // the box of a message

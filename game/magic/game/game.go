@@ -3757,6 +3757,7 @@ func (game *Game) defeatCity(yield coroutine.YieldFunc, attacker *playerlib.Play
     }
 
     containedFortress := city.Buildings.Contains(buildinglib.BuildingFortress)
+    before := conquestBeforeCapture(defender, city)
 
     if raze {
         defender.RemoveCity(city)
@@ -3766,6 +3767,12 @@ func (game *Game) defeatCity(yield coroutine.YieldFunc, attacker *playerlib.Play
 
     attacker.DidConquerCity(city, raze)
     defender.DidLoseCity(city)
+
+    if ClassicConquest {
+        // banishment, defeat and the end of the game as the original's (conquest.go)
+        game.conquestAfterCapture(yield, defender, attacker, city, before)
+        return raze, gold
+    }
 
     // player is defeated if they have no cities left
     defeated := len(defender.Cities) == 0
@@ -4426,6 +4433,11 @@ func MakeMoveHandlers(game *Game, yield coroutine.YieldFunc) MovementHandler {
 }
 
 func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player) {
+    if player.Defeated && ClassicConquest {
+        game.DoNextTurn()
+        return
+    }
+
     // log.Printf("AI %v year %v: make decisions", player.Wizard.Name, game.Model.TurnNumber)
 
     if player.AIBehavior != nil {
@@ -6124,6 +6136,11 @@ func (game *Game) ShowSpellBookCastUI(yield coroutine.YieldFunc, player *playerl
 // the spell of mastery is the game's win condition, so the game ends here for everyone,
 // whether the winner is the human player or an ai.
 func (game *Game) doSpellOfMasteryVictory(yield coroutine.YieldFunc, player *playerlib.Player) {
+    if ClassicConquest {
+        game.doSpellOfMasteryEnd(yield, player)
+        return
+    }
+
     var losers []data.WizardBase
     for _, other := range game.Model.Players {
         if other != player && !other.Defeated {
@@ -7749,6 +7766,10 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
     }
 
     power := game.Model.ComputePower(player)
+    returning := classicReturning(player)
+    if returning {
+        power = 0
+    }
 
     game.DissipateEnchantments(player, power)
 
@@ -7760,7 +7781,9 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
         player.Gold = 0
     }
 
-    player.Mana += player.ManaPerTurn(power, game.Model)
+    if !returning {
+        player.Mana += player.ManaPerTurn(power, game.Model)
+    }
 
     if timeStop {
         player.Mana -= data.EnchantmentTimeStop.UpkeepMana()
@@ -7768,7 +7791,17 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
 
     player.Mana = max(0, player.Mana)
 
-    if !player.CastingSpell.Invalid() {
+    if returning && !player.IsHuman() && !player.CastingSpell.Invalid() {
+        // All_Players_Apply_Spell_Casting: the skill, with mana or without (conquest.go)
+        skill := player.ComputeCastingSkill()
+        player.CastingSpellProgress += skill
+        player.Mana = max(0, player.Mana - skill)
+        if player.ComputeEffectiveSpellCost(player.CastingSpell, true) <= player.CastingSpellProgress {
+            game.doCastSpell(player, player.CastingSpell)
+            player.CastingSpell = spellbook.Spell{}
+            player.CastingSpellProgress = 0
+        }
+    } else if !player.CastingSpell.Invalid() {
         // mana spent on the skill is the minimum of {player's mana, casting skill, remaining cost for spell}
         manaSpent := player.Mana
         if manaSpent > player.RemainingCastingSkill {
@@ -8374,7 +8407,9 @@ func (game *Game) DoNextTurn(){
         }
     }
 
-    if len(game.Model.Players) > 0 {
+    if len(game.Model.Players) > 0 && game.Model.Players[game.Model.CurrentPlayer].Defeated && ClassicConquest {
+        // a defeated wizard plays no more turns (conquest.go); doAiUpdate passes the turn on
+    } else if len(game.Model.Players) > 0 {
         player := game.Model.Players[game.Model.CurrentPlayer]
 
         aiPlayer := game.Model.Players[game.Model.CurrentPlayer]

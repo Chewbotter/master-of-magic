@@ -584,6 +584,12 @@ func simDiplomacy(game *gamelib.Game, players []*playerlib.Player) string {
             fmt.Fprintf(&out, "  %v - %v: %v, relation %v (%v), hostility %v / %v\n", first.Wizard.Name, second.Wizard.Name, relation.Treaty, relation.VisibleRelation, relation.Description(), relation.Hostility, back)
         }
     }
+    for _, conquest := range game.Stats.Conquests {
+        fmt.Fprintf(&out, "Conquest: %v\n", conquest)
+    }
+    if game.Stats.GameOver != "" {
+        fmt.Fprintf(&out, "Game over: %v\n", game.Stats.GameOver)
+    }
     if len(game.Stats.Contacts) == 0 {
         fmt.Fprintf(&out, "No two wizards met\n")
     }

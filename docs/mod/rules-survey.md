@@ -258,6 +258,7 @@ Death Wish (stubs).
 
 1. The fix to our difficulty port (upkeep).
 2. The end of a wizard and of the game: defeat, banishment, win and loss, score (1-3 above).
+   DONE 2026-09-30, see conquest.md.
 3. The economy of mana and units: Channeler, Conjurer, disbanding, the Spell of Mastery's costs,
    research, arcane rarities (4-6, the magic MEDs).
 4. Cities: population cap, plague and boom, rebels, the smaller city rules.

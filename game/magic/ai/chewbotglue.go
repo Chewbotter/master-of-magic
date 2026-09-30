@@ -149,12 +149,15 @@ func (ai *ChewbotAI) updateReserves(self *playerlib.Player, services playerlib.A
         self.Mana = min(mana, chewMaxReserve)
     }
     if self.CastingSpell.Name == "Spell of Return" {
-        // the original sets the mana to it (meant: adds)
+        // the original sets the mana to it, meant is adds (quirkReturnReservesOverwrite)
+        mana := self.Gold / 2
         if alchemy {
-            set(0, self.Mana + self.Gold)
-        } else {
-            set(0, self.Mana + self.Gold / 2)
+            mana = self.Gold
         }
+        if !quirkReturnReservesOverwrite {
+            mana += self.Mana
+        }
+        set(0, mana)
         return
     }
     if alchemy {
@@ -250,6 +253,10 @@ func chewNodeValueFactor(services playerlib.AIServices) int {
 // AI_Landmass_Values_And_Strengths sets (does not add) the value of a landmass for every city, so
 // the last city in the original's order counts (kept; the order here: plane, row, column)
 const quirkLandmassLastCity = true
+
+// AI_Update_Gold_And_Mana_Reserves: a wizard that casts the Spell of Return has its mana SET to
+// its gold (half without Alchemy), its mana before is lost (kept, the original's)
+const quirkReturnReservesOverwrite = true
 
 // the cost of a unit in the original's table: production, or casting for a creature
 func chewTableCost(unit units.Unit) int {

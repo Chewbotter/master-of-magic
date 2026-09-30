@@ -365,6 +365,10 @@ type Player struct {
     // true if the wizard is currently banished
     Banished bool
 
+    // the banners of the wizards this one banished or defeated, each once: the score counts them
+    // (the original's Defeated_Wizards, conquest.go)
+    DefeatedWizards []data.BannerType
+
     // what kind of wizard a computer wizard is, picked at the start of a game (personality.go)
     Personality Personality
     Objective Objective
