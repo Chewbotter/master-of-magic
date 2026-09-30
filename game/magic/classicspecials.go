@@ -1,9 +1,9 @@
 package main
 
-// Minerals and roads of the original's worlds, made after all cities are placed as the original
-// does (ReMoM MoM/src/MAPGEN.c: Generate_Terrain_Specials, Desert_Terrain_Special,
-// Hills_Terrain_Special, Mountain_Terrain_Special, Generate_Roads; MoX/src/special.c: Path_Wrap,
-// Range). The rules in words: docs/mod/worlds.md. The code is ours.
+// Minerals, roads and rivers of the original's worlds, made after all cities are placed as the
+// original does (ReMoM MoM/src/MAPGEN.c: Generate_Terrain_Specials, Desert_Terrain_Special,
+// Hills_Terrain_Special, Mountain_Terrain_Special, Generate_Roads, Init_New_Game, Generate_River;
+// MoX/src/special.c: Path_Wrap, Range). The rules in words: docs/mod/worlds.md. The code is ours.
 //
 //   minerals: one try in every cell of a grid, 4 squares on Arcanus and 3 on Myrror, at the corner
 //     of the cell plus 1 to twice the cell across and down; not on a square with a mineral, lair,
@@ -16,6 +16,7 @@ package main
 
 import (
     "image"
+    "log"
     "math/rand/v2"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -302,12 +303,55 @@ func classicRoads(game *gamelib.Game, plane data.Plane) {
     }
 }
 
-// minerals and roads of both planes, after all cities
+// minerals, roads and rivers of both planes, after all cities
 func classicSpecialsAndRoads(game *gamelib.Game) {
     for _, plane := range []data.Plane{data.PlaneArcanus, data.PlaneMyrror} {
         classicSpecials(game, plane)
     }
     for _, plane := range []data.Plane{data.PlaneArcanus, data.PlaneMyrror} {
         classicRoads(game, plane)
+    }
+    classicRivers(game)
+}
+
+// Init_New_Game: 10 rivers a plane, in turn, each tried up to 2000 times (terrain.ClassicRiver). A
+// river does not go on a mineral (the original's rule) nor on a lair, tower or city (MY CALL: the
+// original lets it, and the square becomes river under them)
+func classicRivers(game *gamelib.Game) {
+    planes := []data.Plane{data.PlaneArcanus, data.PlaneMyrror}
+    blocked := make(map[data.Plane]terrain.RiverBlocked)
+    for _, plane := range planes {
+        mapObject := game.GetMap(plane)
+        cities := make(map[image.Point]bool)
+        for _, city := range classicCitiesOn(game, plane) {
+            cities[image.Pt(city.X, city.Y)] = true
+        }
+        blocked[plane] = func(x int, y int) bool {
+            extras := mapObject.ExtraMap[image.Pt(x, y)]
+            if _, has := extras[maplib.ExtraKindBonus]; has {
+                return true
+            }
+            if _, has := extras[maplib.ExtraKindEncounter]; has {
+                return true
+            }
+            return cities[image.Pt(x, y)]
+        }
+    }
+    made := make(map[data.Plane]int)
+    for range terrain.ClassicRivers {
+        for _, plane := range planes {
+            mapObject := game.GetMap(plane)
+            for range terrain.ClassicRiverTries {
+                if mapObject.Map.ClassicRiver(mapObject.Data, plane, blocked[plane]) {
+                    made[plane] += 1
+                    break
+                }
+            }
+        }
+    }
+    log.Printf("rivers: %v on Arcanus, %v on Myrror of %v each", made[data.PlaneArcanus], made[data.PlaneMyrror], terrain.ClassicRivers)
+    for _, plane := range planes {
+        mapObject := game.GetMap(plane)
+        mapObject.Map.ResolveTiles(mapObject.Data, plane)
     }
 }

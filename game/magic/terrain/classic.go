@@ -450,22 +450,8 @@ func classicMap(kinds [][]classicKind, nodes []classicNode, data *TerrainData, p
     for _, node := range nodes {
         map_.Terrain[node.X][node.Y] = nodeTiles[node.Kind].Index(plane)
     }
-    // the original makes 10 rivers a plane (NUM_RIVERS); the fork's rivers come by the size of a
-    // landmass, one for every tenth of the land, not on the tundra of the poles
-    var continents []Continent
-    for _, continent := range map_.FindContinents() {
-        polar := false
-        for _, point := range continent.Values() {
-            if point.Y == 0 || point.Y == ClassicHeight - 1 {
-                polar = true
-                break
-            }
-        }
-        if !polar {
-            continents = append(continents, continent)
-        }
-    }
-    map_.placeRivers(max(land / ClassicRivers, 1), data, plane, continents)
+    // the rivers come after the cities, minerals and roads, as in the original (ClassicRiver,
+    // called by the game)
     map_.ResolveTiles(data, plane)
     return map_
 }
@@ -513,7 +499,7 @@ func classicTowers(arcanus [][]classicKind, myrror [][]classicKind, nodes []clas
 const ClassicTowers = 6
 
 // the worlds of the original game (Init_New_Game, as far as it is ported): the land of both planes,
-// their nodes, the towers, then the fork's rivers. The towers are returned for the game to make
+// their nodes, the towers, the islands grown around them (Extend_Islands). The towers are returned for the game to make
 // their encounters
 func GenerateClassicWorld(landSize int, terrainData *TerrainData) (*Map, *Map, []image.Point) {
     arcanusKinds := classicKinds(landSize)
@@ -521,6 +507,8 @@ func GenerateClassicWorld(landSize int, terrainData *TerrainData) (*Map, *Map, [
     arcanusNodes := classicNodes(arcanusKinds, data.PlaneArcanus)
     myrrorNodes := classicNodes(myrrorKinds, data.PlaneMyrror)
     towers := classicTowers(arcanusKinds, myrrorKinds, append(append([]classicNode{}, arcanusNodes...), myrrorNodes...))
+    classicExtendIslands(arcanusKinds, arcanusNodes, towers)
+    classicExtendIslands(myrrorKinds, myrrorNodes, towers)
     arcanus := classicMap(arcanusKinds, arcanusNodes, terrainData, data.PlaneArcanus)
     myrror := classicMap(myrrorKinds, myrrorNodes, terrainData, data.PlaneMyrror)
     return arcanus, myrror, towers

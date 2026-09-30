@@ -8,9 +8,18 @@ garrison in `ai-neutral.md` (`classicneutral.go`). This page has the parts after
 
 ## Order
 
-Land, climate, nodes, towers, lairs; homes, neutral cities (with their buildings and garrison);
-then minerals and roads of both planes (`classicspecials.go`, called at the end of
-`initializeGame`), as the original does them after all cities.
+Land, climate, nodes, towers, islands grown around lone nodes and towers, lairs; homes, neutral
+cities (with their buildings and garrison); then minerals, roads and rivers of both planes
+(`classicspecials.go`, called at the end of `initializeGame`), as the original does them after all
+cities.
+
+## Islands (Extend_Islands)
+
+`terrain/classicislands.go`. A node or tower with the sea on all four sides (nodes land in the sea
+now and then), two times in three, tries 2 to 9 of its 8 neighbors by chance (not a node or tower):
+the one east and the one south become grassland, the one southwest too unless the squares south and
+west of it are both sea. The original means every direction and works the neighbor out wrong, so
+only these grow (`quirkIslandsGrowSouthEast`, kept).
 
 ## Minerals (Generate_Terrain_Specials)
 
@@ -43,8 +52,30 @@ then minerals and roads of both planes (`classicspecials.go`, called at the end 
   Myrror moves as an enchanted one there).
 - Wizards' homes get no road to anything.
 
+## Rivers (Init_New_Game, Generate_River)
+
+`terrain/classicislands.go` `ClassicRiver`, `classicRivers` in `classicspecials.go`.
+- 10 rivers a plane, Arcanus and Myrror in turn, each tried up to 2000 times.
+- A try starts 5 to 56 across and 5 to 36 down, with no sea in the 3 by 3 around it, not on
+  mountain, hills, a node, a river or a mineral (desert is allowed at the start).
+- It picks a way (south, west, north, east); every step goes that way half the time, else a way by
+  chance that is not back. A step onto mountain, hills, desert, a node or a mineral is lost and the
+  river stays.
+- It ends on a square next to the sea (or on the sea's edge) or on another river, which it joins.
+  More than 30 steps, more than 28 squares or fewer than 4: no river.
+- The original then refuses a mouth on a shore that has no picture of a river mouth; here a river
+  is refused when its squares or their neighbors find no picture (the fork's own check). The
+  pictures are the fork's first fitting ones (the original picks among up to 4).
+- MY CALL: no river on a lair, tower or city square (the original lets the square become river
+  under them). Not ported: the original turns every one-square lake without a river into desert
+  and cuts extra rivers into a lake or shore to grassland; the fork keeps its lakes and refuses
+  such rivers.
+- Seen: 3 to 9 of the 10 made a plane, 9 to 47 river squares. A river may touch itself and make
+  a small loop, as the original's may.
+
 ## Before
 
 The fork put minerals on 6 (Arcanus) or 10 (Myrror) percent of the hills, forest, mountain, swamp
 and desert of every landmass before the cities were placed (so a city could sit on one) and made no
-roads but the one under each home.
+roads but the one under each home. Its rivers came one per tenth of the land of a landmass
+with a walk in any direction, before the cities, and could run over mountains and nodes.
