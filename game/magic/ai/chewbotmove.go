@@ -509,11 +509,21 @@ func (ai *ChewbotAI) ConfirmEncounter(stack *playerlib.UnitStack, encounter *map
             continue
         }
         if ai.encounterAt(order.X, order.Y, encounter) {
+            if ChewbotEncounterLog {
+                var names []string
+                for _, other := range stack.Units() {
+                    names = append(names, other.GetName())
+                }
+                log.Printf("chewbot encounter: %v enters the lair at %v,%v with %v, by the order %q of %v", ai.self.Wizard.Name, order.X, order.Y, names, order.Why, unit.GetName())
+            }
             return true
         }
     }
     return false
 }
+
+// dev: log the order that sends a stack into a lair (-capture-battle-log)
+var ChewbotEncounterLog = false
 
 func (ai *ChewbotAI) encounterAt(x int, y int, encounter *maplib.ExtraEncounter) bool {
     if ai.services == nil {

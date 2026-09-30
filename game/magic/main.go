@@ -1466,6 +1466,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&maplib.ClassicMaps, "classic-maps", true, "development: false for the fork's worlds, as large as the Land Size")
     flag.BoolVar(&gamelib.ClassicContact, "classic-contact", true, "development: false for the fork's contact, every wizard meets every wizard it sees")
     flag.BoolVar(&ai.ChewbotNeutral, "chewbot-neutral", true, "development: false for the clone's neutral player under the Enemy AI Chewbot")
+    flag.BoolVar(&gamelib.BattleLog, "capture-battle-log", false, "development: log every battle no screen shows: sides, power, Chewbot's strength, result, turns")
     flag.BoolVar(&ai.ChewbotNeutralLog, "capture-neutral-log", false, "development: log what Chewbot's neutral player does")
     flag.BoolVar(&citylib.ClassicDifficulty, "classic-difficulty", true, "development: false for no bonuses of computer wizards by difficulty (the original's difficulty table)")
     flag.IntVar(&captureDifficulty, "capture-difficulty", -1, "development: the difficulty of a quick start and -sim (0 intro, 1 easy, 2 average, 3 hard, 4 extreme, 5 impossible), -1 average")
@@ -1519,6 +1520,7 @@ func loadGameConfig() GameConfig {
     flag.Float64Var(&display.DrawScaleOverride, "scale", 0, "development: screen pixels per art pixel the game draws at. development runs default to the saved window scale")
     flag.StringVar(&capture.Screen, "capture-screen", "", "development: open a screen before the capture: armies, cities, magic, spellbook, city, surveyor, cartographer, advisors")
     flag.Parse()
+    ai.ChewbotEncounterLog = gamelib.BattleLog
 
     out := DefaultGameConfig()
 

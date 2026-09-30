@@ -5300,6 +5300,9 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
     popCombatScreen := false
 
+    // dev: -capture-battle-log (strategiclog.go)
+    before := battleStart(attackingArmy, defendingArmy, zone)
+
     if useStrategicCombat {
         state, defeatedAttackers, defeatedDefenders = combat.DoStrategicCombat(attackingArmy, defendingArmy)
     } else if useHuman || game.WatchMode {
@@ -5341,6 +5344,7 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
         defeatedDefenders = combatModel.DefeatedDefenders
         defeatedAttackers = combatModel.DefeatedAttackers
     }
+    battleEnd(before, state, combatModel, useStrategicCombat)
 
     // FIXME: resolve the attacker/defender stack at the end of combat?
     for _, unit := range combatModel.AttackingArmy.RecalledUnits {
