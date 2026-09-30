@@ -39,7 +39,79 @@ type Summon struct {
     SummonHeight int
 }
 
-func makeSummon(cache *lbx.LbxCache, title string, wizard data.WizardBase, summonPic *ebiten.Image, baseColor color.Color, short bool) *Summon {
+// THE COLORS OF THE SUMMONING CIRCLE (user, 2026-09-30: the gray ring of the floor stayed gray
+// while the flames took the color of the realm). The pictures of the circle (spellscr.lbx 10 and
+// 11) and of the floor (9) are indexed, all of their colors of the realm are at the indexes 224
+// to 254. Before, the fork rewrote 225 to 247 with steps of one color of its own, which left 224
+// and 248 to 254, the ring among them, as they were.
+//
+// The original does not compute anything: spellscr.lbx has a whole palette for every realm,
+// entries 61 to 66 (SUMMGREY, SUMGREEN, SUMMBLUE, SUMMRED, SUMWHITE, SUMMPURP), and loads the
+// one of the realm before it draws (ReMoM Spells137.c Summon_Animation: Load_Palette_From_Animation
+// of that entry, then Apply_Palette). The code here is ours.
+//
+// So: the palette of the realm is read from that entry (lbx.GetPalette gives the game's 256
+// colors with the entry's own laid over them) and the pictures are shown with it. If the entry
+// can not be read, the old steps of the color of the realm are used.
+
+// the entries of spellscr.lbx that hold the palette of a realm
+const summonPaletteGrey = 61
+const summonPaletteGreen = 62
+const summonPaletteBlue = 63
+const summonPaletteRed = 64
+const summonPaletteWhite = 65
+const summonPalettePurple = 66
+
+// the first and the last color of a picture of the summoning that the palette of the realm changes
+const summonRealmColorFirst = 224
+const summonRealmColorLast = 254
+
+// the palette entry of a realm. items and heroes are summoned in white
+func summonPaletteEntry(realm data.MagicType) int {
+    switch realm {
+        case data.NatureMagic: return summonPaletteGreen
+        case data.SorceryMagic: return summonPaletteBlue
+        case data.ChaosMagic: return summonPaletteRed
+        case data.LifeMagic: return summonPaletteWhite
+        case data.DeathMagic: return summonPalettePurple
+        case data.ArcaneMagic: return summonPaletteGrey
+    }
+    return summonPaletteWhite
+}
+
+// gives the palette of a picture of the summoning with the colors of the realm in it
+func (summon *Summon) realmPalette(realm data.MagicType, baseColor color.Color) func(color.Palette) color.Palette {
+    var ofRealm color.Palette
+    file, err := summon.Cache.GetLbxFile("spellscr.lbx")
+    if err == nil {
+        ofRealm, err = file.GetPalette(summonPaletteEntry(realm))
+        if err != nil {
+            ofRealm = nil
+        }
+    }
+
+    return func(palette color.Palette) color.Palette {
+        out := make(color.Palette, len(palette))
+        copy(out, palette)
+
+        if len(ofRealm) > summonRealmColorLast {
+            for index := summonRealmColorFirst; index <= summonRealmColorLast && index < len(out); index++ {
+                out[index] = ofRealm[index]
+            }
+            return out
+        }
+
+        // the palette of the realm is not there: steps of its color, as before
+        light := 0
+        for index := 225; index <= 247 && index < len(out); index++ {
+            out[index] = util.Lighten(baseColor, float64(light))
+            light -= 4
+        }
+        return out
+    }
+}
+
+func makeSummon(cache *lbx.LbxCache, title string, wizard data.WizardBase, summonPic *ebiten.Image, realm data.MagicType, baseColor color.Color, short bool) *Summon {
     summon := &Summon{
         Cache: cache,
         ImageCache: util.MakeImageCache(cache),
@@ -54,29 +126,10 @@ func makeSummon(cache *lbx.LbxCache, title string, wizard data.WizardBase, summo
         summon.Counter = 300
     }
 
-    // FIXME: some of the pixels still have the wrong color, like the outer edges of the summoning circle
+    // the colors of the realm, see realmPalette
+    realmColors := summon.realmPalette(realm, baseColor)
     updateColors := func (img *image.Paletted) image.Image {
-        // 228-245 remap colors
-        // colorRange := 245 - 226
-
-        newPalette := make(color.Palette, len(img.Palette))
-        copy(newPalette, img.Palette)
-        img.Palette = newPalette
-
-        light := 0
-        for i := 225; i <= 247; i++ {
-            img.Palette[i] = util.Lighten(baseColor, float64(light))
-            light -= 4
-        }
-
-        /*
-        img.Palette[227] = color.RGBA{R: 0, G: 0, B: 0, A: 0}
-        img.Palette[228] = color.RGBA{R: 0, G: 0, B: 0, A: 0}
-        img.Palette[237] = color.RGBA{R: 0, G: 0, B: 0, A: 0}
-        img.Palette[238] = color.RGBA{R: 0, G: 0, B: 0, A: 0}
-        img.Palette[239] = color.RGBA{R: 0, G: 0, B: 0, A: 0}
-        */
-
+        img.Palette = realmColors(img.Palette)
         return img
     }
 
@@ -229,7 +282,7 @@ func MakeSummonUnit(cache *lbx.LbxCache, unit units.Unit, wizard data.WizardBase
         log.Printf("Error: could not load monster image at index %v: %v", monsterIndex, err)
     }
 
-    return makeSummon(cache, fmt.Sprintf("%v Summoned", unit.Name), wizard, monsterPicture, getRealmColor(unit), short)
+    return makeSummon(cache, fmt.Sprintf("%v Summoned", unit.Name), wizard, monsterPicture, unit.Realm, getRealmColor(unit), short)
 }
 
 func MakeSummonArtifact(cache *lbx.LbxCache, wizard data.WizardBase, short bool) *Summon {
@@ -241,7 +294,7 @@ func MakeSummonArtifact(cache *lbx.LbxCache, wizard data.WizardBase, short bool)
         log.Printf("Error: could not load artifact image at index %v: %v", artifactIndex, err)
     }
 
-    return makeSummon(cache, "Artifact Summoned", wizard, monsterPicture, color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}, short)
+    return makeSummon(cache, "Artifact Summoned", wizard, monsterPicture, data.LifeMagic, color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}, short)
 }
 
 func MakeSummonHero(cache *lbx.LbxCache, wizard data.WizardBase, champion bool, short bool, female bool) *Summon {
@@ -266,7 +319,7 @@ func MakeSummonHero(cache *lbx.LbxCache, wizard data.WizardBase, champion bool, 
         title = "Champion Summoned"
     }
 
-    return makeSummon(cache, title, wizard, heroPicture, color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}, short)
+    return makeSummon(cache, title, wizard, heroPicture, data.LifeMagic, color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}, short)
 }
 
 func (summon *Summon) Update() SummonState {
