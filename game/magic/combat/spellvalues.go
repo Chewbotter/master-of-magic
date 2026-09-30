@@ -330,9 +330,9 @@ func gameValues(name string) SpellValues {
             values.DebrisGravity = 320
             values.DebrisColors = dirtColors
             // sparks off the bolt while it shows
-            values.SparkRate = 260
-            values.SparkSpeed = 38
-            values.SparkLife = 0.4
+            values.SparkRate = 450
+            values.SparkSpeed = 65
+            values.SparkLife = 0.45
             values.SparkGravity = 90
             values.SparkColors = boltSparkColors
             values.FlashTime = 0.1
