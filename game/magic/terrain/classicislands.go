@@ -17,7 +17,7 @@ const quirkIslandsGrowSouthEast = true
 // Extend_Islands for one plane: a node or tower with the sea on all four sides, two times in three,
 // tries 2 to 9 neighbors by chance: east and south become grassland, southwest too unless the
 // squares south and west of it are both sea (the other neighbors stay)
-func classicExtendIslands(kinds [][]classicKind, nodes []classicNode, towers []image.Point) {
+func classicExtendIslands(kinds [][]classicKind, nodes []ClassicNode, towers []image.Point) {
     special := make(map[image.Point]bool)
     for _, node := range nodes {
         special[image.Pt(node.X, node.Y)] = true

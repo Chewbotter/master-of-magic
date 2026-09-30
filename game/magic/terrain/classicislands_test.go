@@ -21,7 +21,7 @@ func TestClassicExtendIslands(test *testing.T) {
         rolls = rolls[1:]
         return roll
     }
-    classicExtendIslands(kinds, []classicNode{{X: 10, Y: 10}}, nil)
+    classicExtendIslands(kinds, []ClassicNode{{X: 10, Y: 10}}, nil)
     if kinds[11][10] != classicGrass {
         test.Errorf("the square east of the node should be land")
     }
@@ -35,5 +35,5 @@ func TestClassicExtendIslands(test *testing.T) {
     // a node with land beside it grows nothing
     kinds[11][10] = classicGrass
     rolls = []int{}
-    classicExtendIslands(kinds, []classicNode{{X: 10, Y: 10}}, []image.Point{})
+    classicExtendIslands(kinds, []ClassicNode{{X: 10, Y: 10}}, []image.Point{})
 }

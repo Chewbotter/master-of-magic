@@ -1022,10 +1022,6 @@ func MakeMapFromTerrain(map_ *terrain.Map, terrainData *terrain.TerrainData, mag
         return false
     }
 
-    if ClassicMaps {
-        placeClassicLairs(map_, terrainData, extraMap, difficulty, plane)
-    }
-
     continents := map_.FindContinents()
 
     // place some encounter nodes down (lair, cave, etc)

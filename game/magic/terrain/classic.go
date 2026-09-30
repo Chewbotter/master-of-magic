@@ -249,11 +249,20 @@ const (
     classicChaos
 )
 
-type classicNode struct {
+// a node of the original's worlds: its place, kind (ClassicSorcery, ClassicNature, ClassicChaos),
+// power and aura (as many squares as its power, the node's own first)
+type ClassicNode struct {
     X, Y int
     Kind int
+    Power int
     Aura []image.Point
 }
+
+const (
+    ClassicSorcery = classicSorcery
+    ClassicNature = classicNature
+    ClassicChaos = classicChaos
+)
 
 // Make_Aura: the squares of a node's aura: the node, up to 8 around it, then up to 2 away
 func classicAura(power int, x int, y int) []image.Point {
@@ -312,8 +321,8 @@ func classicDistance(x1 int, y1 int, x2 int, y2 int) int {
 // when it is the highest, else sorcery when above nature); then sorcery nodes beyond 9 (Myrror 4)
 // make up to 6 chaos and 6 nature nodes (Myrror 3). The original checks Myrror's nodes against
 // the land of Arcanus (a mistake it marks); here each plane its own
-func classicNodes(kinds [][]classicKind, plane data.Plane) []classicNode {
-    var nodes []classicNode
+func classicNodes(kinds [][]classicKind, plane data.Plane) []ClassicNode {
+    var nodes []ClassicNode
     count := 16
     if plane == data.PlaneMyrror {
         count = 14
@@ -377,7 +386,7 @@ func classicNodes(kinds [][]classicKind, plane data.Plane) []classicNode {
                 case chaos > sorcery && chaos > nature: kind = classicChaos
                 case sorcery > nature: kind = classicSorcery
             }
-            nodes = append(nodes, classicNode{X: x, Y: y, Kind: kind, Aura: aura})
+            nodes = append(nodes, ClassicNode{X: x, Y: y, Kind: kind, Power: power, Aura: aura})
             break
         }
     }
@@ -435,7 +444,7 @@ func classicTile(kind classicKind, plane data.Plane) int {
 
 // the land and nodes of the original game on a map of 60 by 40, then the fork's rivers and the pictures that
 // fit their neighbors
-func classicMap(kinds [][]classicKind, nodes []classicNode, data *TerrainData, plane data.Plane) *Map {
+func classicMap(kinds [][]classicKind, nodes []ClassicNode, data *TerrainData, plane data.Plane) *Map {
     map_ := MakeMap(ClassicHeight, ClassicWidth)
     land := 0
     for x := 0; x < ClassicWidth; x++ {
@@ -460,7 +469,7 @@ func classicMap(kinds [][]classicKind, nodes []classicNode, data *TerrainData, p
 // land (the sea one time in 40), 4 or more from every node, apart by a distance that starts at 10
 // and shrinks by one every 50 tries that fail (the original's count of tries starts with what was
 // left on the stack, so it shrinks at once: from 9); the square becomes grassland on both planes
-func classicTowers(arcanus [][]classicKind, myrror [][]classicKind, nodes []classicNode) []image.Point {
+func classicTowers(arcanus [][]classicKind, myrror [][]classicKind, nodes []ClassicNode) []image.Point {
     var towers []image.Point
     distance := 10
     tries := 500
@@ -499,19 +508,19 @@ func classicTowers(arcanus [][]classicKind, myrror [][]classicKind, nodes []clas
 const ClassicTowers = 6
 
 // the worlds of the original game (Init_New_Game, as far as it is ported): the land of both planes,
-// their nodes, the towers, the islands grown around them (Extend_Islands). The towers are returned for the game to make
-// their encounters
-func GenerateClassicWorld(landSize int, terrainData *TerrainData) (*Map, *Map, []image.Point) {
+// their nodes, the towers, the islands grown around them (Extend_Islands). The towers and the nodes
+// of both planes are returned for the game to make their guardians
+func GenerateClassicWorld(landSize int, terrainData *TerrainData) (*Map, *Map, []image.Point, [2][]ClassicNode) {
     arcanusKinds := classicKinds(landSize)
     myrrorKinds := classicKinds(landSize)
     arcanusNodes := classicNodes(arcanusKinds, data.PlaneArcanus)
     myrrorNodes := classicNodes(myrrorKinds, data.PlaneMyrror)
-    towers := classicTowers(arcanusKinds, myrrorKinds, append(append([]classicNode{}, arcanusNodes...), myrrorNodes...))
+    towers := classicTowers(arcanusKinds, myrrorKinds, append(append([]ClassicNode{}, arcanusNodes...), myrrorNodes...))
     classicExtendIslands(arcanusKinds, arcanusNodes, towers)
     classicExtendIslands(myrrorKinds, myrrorNodes, towers)
     arcanus := classicMap(arcanusKinds, arcanusNodes, terrainData, data.PlaneArcanus)
     myrror := classicMap(myrrorKinds, myrrorNodes, terrainData, data.PlaneMyrror)
-    return arcanus, myrror, towers
+    return arcanus, myrror, towers, [2][]ClassicNode{arcanusNodes, myrrorNodes}
 }
 
 // NUM_RIVERS

@@ -21,6 +21,34 @@ the one east and the one south become grassland, the one southwest too unless th
 west of it are both sea. The original means every direction and works the neighbor out wrong, so
 only these grow (`quirkIslandsGrowSouthEast`, kept).
 
+## Lairs, towers and nodes: guardians and treasure (Generate_Lairs, Create_Lair)
+
+`maplib/classiclairs.go`, wired in `MakeClassicMaps` (`maplib/classic.go`).
+- Exactly 25 strong and then 32 weak lairs, each on a plane by chance (before: a coin per plane
+  for each, so the number varied), each of the 7 kinds by chance.
+- Budgets: a tower 700 to 1200 (one set of guardians and treasure, the same on both planes); a node
+  power squared times 5 to 15 times the magic setting (weak half, normal one, powerful one and a
+  half; power 5 to 10 on Arcanus, 10 to 20 on Myrror, the node's aura as its zone); a strong lair
+  100 to 1500 (Myrror 200 to 2500), a weak one 10 to 100 (Myrror 10 to 200).
+- The budget times (level + 1) / 4 (Intro a quarter to Impossible one and a quarter; Extreme counts
+  as Impossible).
+- Realm: a node its own; a tower death 2 in 6, chaos, life, nature, sorcery 1 in 6 each; temples and
+  ruins death 3 in 4, life 1 in 4; caves, dungeons, keeps and monster lairs death 2 in 5, chaos 2 in
+  5, nature 1 in 5 (MY CALL: the reconstruction's choice falls through to nature every time and says
+  the program does too; players see chaos and death in them).
+- First guardians: up to 200 tries of a share of the budget (a quarter to all of it by chance), the
+  costliest creature of the realm (not Floating Island) that costs less than the share; as many as
+  the budget pays for, one fewer half the time, at most 8. Second guardians: the same with what is
+  left, another kind, a share of 1 to (10 less the first count), up to 9 in all. A node or lair
+  can end with none (it is then found empty, with its treasure).
+- Treasure budget: the first guardians' cost and half the second's, the difficulty taken back out
+  (not at Impossible), times 50 to 124 percent (Myrror 76 to 174), at least 50. The treasure itself
+  is still rolled by the fork when the place is conquered (`game/treasure.go`), from that budget.
+- Costs are the fork's casting costs of the creatures (Guardian Spirit 80, the original's table 50).
+- Not ported: the original's treasure rules (gold and mana for 200 each, items of a value, spells
+  by rarity, the prisoner, the book or retort that replaces all else, a tower's spell), which need
+  the fork's rewards reworked.
+
 ## Minerals (Generate_Terrain_Specials)
 
 - One try in every cell of a grid, 4 squares on Arcanus (150 cells) and 3 on Myrror (280 cells),
@@ -77,5 +105,6 @@ only these grow (`quirkIslandsGrowSouthEast`, kept).
 
 The fork put minerals on 6 (Arcanus) or 10 (Myrror) percent of the hills, forest, mountain, swamp
 and desert of every landmass before the cities were placed (so a city could sit on one) and made no
-roads but the one under each home. Its rivers came one per tenth of the land of a landmass
+roads but the one under each home. Its lairs had budgets of its own (up to about 3300), realms mixed for
+every kind, up to 9 of one guardian, nodes always guarded, and towers different on each plane. Its rivers came one per tenth of the land of a landmass
 with a walk in any direction, before the cities, and could run over mountains and nodes.
