@@ -3,6 +3,11 @@ package game
 // Development: open a screen by name, so a frame capture can show it without clicking.
 
 import (
+    "github.com/kazzmir/master-of-magic/game/magic/maplib"
+    herolib "github.com/kazzmir/master-of-magic/game/magic/hero"
+    "github.com/kazzmir/master-of-magic/game/magic/summon"
+    "github.com/kazzmir/master-of-magic/game/magic/artifact"
+    "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "fmt"
@@ -16,7 +21,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"vault", "vaultitem", "summon", "summonitem", "globalcast", "banish", "enemycity", "levelup", "outpost", "outpostnew", "treasure", "treasuremany", "treasurenone", "hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname", "newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -161,6 +166,199 @@ func (game *Game) CaptureOpenScreen(name string) bool {
             }
             event = &GameEventSurveyor{}
         case "chancellor":
+            game.DoChancellor()
+            return true
+        case "newbuilding", "event":
+            // the box with the animal of the realm: a building that is finished, an event
+            player := game.Model.GetHumanPlayer()
+            if player == nil || len(player.Cities) == 0 {
+                return false
+            }
+            var city *citylib.City
+            for _, check := range player.Cities {
+                city = check
+                break
+            }
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    if name == "event" {
+                        game.doRandomEvent(yield, MakeDisjunctionEvent(1), true, player.Wizard)
+                    } else {
+                        game.showNewBuilding(yield, city, buildinglib.BuildingArmory, player)
+                    }
+                },
+            }
+        case "hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname":
+            // the windows of hiring and the box of a name
+            player := game.Model.GetHumanPlayer()
+            if player == nil {
+                return false
+            }
+            player.Gold = 5000
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    switch name {
+                        case "hirehero", "hireprisoner":
+                            for _, hero := range player.HeroPool {
+                                cost := 0
+                                if name == "hirehero" {
+                                    cost = 250
+                                }
+                                game.doHireHero(yield, cost, hero, player, false, data.PlanePoint{})
+                                break
+                            }
+                        case "heroname": game.doInput(yield, "Hero Name", "Brax", 70, 50)
+                        case "cityname": game.doInput(yield, "New Starting City", "Gatewood", 60, 28)
+                        case "outpostname": game.doInput(yield, "New Outpost", "Gatewood", 80, 100)
+                        case "mercenaries":
+                            var hired []*units.OverworldUnit
+                            for range 3 {
+                                hired = append(hired, units.MakeOverworldUnitFromUnit(units.HighMenSwordsmen, 0, 0, data.PlaneArcanus, player.Wizard.Banner, player.MakeExperienceInfo(), player.MakeUnitEnchantmentProvider()))
+                            }
+                            game.doHireMercenaries(yield, 300, hired, player)
+                        case "merchant":
+                            item := artifact.MakeRandomArtifact(game.Cache)
+                            game.doMerchant(yield, 1200, &item, player)
+                    }
+                },
+            }
+        case "treasure", "treasuremany", "treasurenone":
+            // the box of what was found in a lair
+            player := game.Model.GetHumanPlayer()
+            if player == nil {
+                return false
+            }
+            var found Treasure
+            switch name {
+                case "treasure": found.Treasures = []TreasureItem{&TreasureGold{Amount: 120}}
+                case "treasuremany":
+                    item := artifact.MakeRandomArtifact(game.Cache)
+                    found.Treasures = []TreasureItem{&TreasureGold{Amount: 120}, &TreasureMana{Amount: 80}, &TreasureMagicalItem{Artifact: &item}, &TreasureSpellbook{Magic: data.LifeMagic, Count: 1}}
+            }
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    game.doTreasurePopup(yield, player, found)
+                },
+            }
+        case "levelup", "outpost", "outpostnew":
+            // a hero that has made a level, the window of an outpost
+            player := game.Model.GetHumanPlayer()
+            if player == nil || len(player.Cities) == 0 {
+                return false
+            }
+            var city *citylib.City
+            for _, check := range player.Cities {
+                city = check
+                break
+            }
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    if name == "levelup" {
+                        for _, hero := range player.HeroPool {
+                            if len(hero.GetAbilities()) < 3 {
+                                continue
+                            }
+                            hero.AddExperience(200)
+                            game.showHeroLevelUpPopup(yield, hero)
+                            break
+                        }
+                        return
+                    }
+                    game.showOutpost(yield, city, nil, player, name == "outpostnew")
+                },
+            }
+        case "summon", "summonitem", "globalcast", "banish", "enemycity":
+            player := game.Model.GetHumanPlayer()
+            if player == nil || len(player.Cities) == 0 {
+                return false
+            }
+            var city *citylib.City
+            for _, check := range player.Cities {
+                city = check
+                break
+            }
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    switch name {
+                        case "summon": game.doSummon(yield, summon.MakeSummonUnit(game.Cache, units.WarBear, player.Wizard.Base, true))
+                        case "summonitem": game.doSummon(yield, summon.MakeSummonArtifact(game.Cache, player.Wizard.Base, true))
+                        case "globalcast": game.doCastGlobalEnchantment(yield, player, data.EnchantmentNatureAwareness, func(){})
+                        case "banish":
+                            for _, other := range game.Model.Players {
+                                if other != player {
+                                    game.doBanish(yield, player, other)
+                                    break
+                                }
+                            }
+                        case "enemycity": game.doEnemyCityView(yield, city, player, player)
+                    }
+                },
+            }
+        case "vault", "vaultitem":
+            // the screen of the items, with heroes; vaultitem with an item in the hand
+            player := game.Model.GetHumanPlayer()
+            if player == nil || len(player.Cities) == 0 {
+                return false
+            }
+            var city *citylib.City
+            for _, check := range player.Cities {
+                city = check
+                break
+            }
+            player.Gold = 1234
+            player.Mana = 567
+            added := 0
+            for _, hero := range player.HeroPool {
+                if added < 3 && player.AddHero(hero, city.X, city.Y, city.Plane) {
+                    hero.SetStatus(herolib.StatusEmployed)
+                    added += 1
+                }
+            }
+            if name == "vaultitem" {
+                item := artifact.MakeRandomArtifact(game.Cache)
+                event = &GameEventVault{CreatedArtifact: &item, Player: player}
+            } else {
+                event = &GameEventVault{Player: player}
+            }
+        case "notice":
+            // the box of a message
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    game.doNotice(yield, game.HudUI, "You do not have enough gold to buy that. Perhaps you should raise your taxes.")
+                },
+            }
+        case "lair", "lairempty", "lairnode":
+            // the box of what a stack has found
+            encounter := &maplib.ExtraEncounter{Type: maplib.EncounterTypeAncientTemple}
+            if name == "lairnode" {
+                encounter.Type = maplib.EncounterTypeSorceryNode
+            }
+            if name != "lairempty" {
+                for index := range units.AllUnits {
+                    if units.AllUnits[index].Name == "Sky Drake" || (name == "lairnode" && units.AllUnits[index].Name == "Phantom Warriors") {
+                        encounter.Units = append(encounter.Units, units.AllUnits[index])
+                        break
+                    }
+                }
+            }
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    game.confirmLairEncounter(yield, encounter)
+                },
+            }
+        case "chancellorevents", "chancellormany":
+            // the scroll with events of several kinds, and with more than it has room for
+            game.Model.ScrollEvents = []*GameEventScroll{
+                {Title: "CITY GROWTH", Text: "Hadrian's Wall has grown to a population of 5"},
+                {Title: "UNITS DISBANDED", Text: "Swordsmen - deserted: lack of gold.\nBowmen - deserted: lack of food."},
+                {Title: "CITY DEATHS", Text: "Rivendell now has a population of 3"},
+                {Title: "CITY GROWTH", Text: "Camelot has grown to a population of 9"},
+            }
+            if name == "chancellormany" {
+                for index := range 14 {
+                    game.Model.ScrollEvents = append(game.Model.ScrollEvents, &GameEventScroll{Title: "CITY GROWTH", Text: fmt.Sprintf("Town %v has grown to a population of %v", index + 1, index + 2)})
+                }
+            }
             game.DoChancellor()
             return true
         case "apprentice": event = &GameEventApprenticeUI{}

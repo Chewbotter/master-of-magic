@@ -58,6 +58,8 @@ func MakeCartographer(cache *lbx.LbxCache, cities []*citylib.City, stacks []*pla
     quit := false
 
     fonts := makeFonts(cache)
+    // the text and the map of the original, see style.go
+    style := getStyle(cache)
 
     imageCache := util.MakeImageCache(cache)
 
@@ -137,6 +139,9 @@ func MakeCartographer(cache *lbx.LbxCache, cities []*citylib.City, stacks []*pla
 
     renderMap := func (plane data.Plane) *ebiten.Image {
         showMap := ebiten.NewImage(20*11, 18*9)
+        if style != nil {
+            showMap = ebiten.NewImage(mapWidth, mapHeight)
+        }
         showMap.Fill(color.RGBA{A: 0})
         // showMap.Fill(color.RGBA{R: 32, G: 32, B: 32, A: 255})
 
@@ -223,6 +228,10 @@ func MakeCartographer(cache *lbx.LbxCache, cities []*citylib.City, stacks []*pla
 
     offsetX := 25
     offsetY := 30
+    if style != nil {
+        offsetX = mapX
+        offsetY = mapY
+    }
 
     scaleX := float64(arcanusRender.Bounds().Dx()) / float64(arcanusMap.Width() * tileImage0.Bounds().Dx())
     scaleY := float64(arcanusRender.Bounds().Dy()) / float64(arcanusMap.Height() * tileImage0.Bounds().Dy())
@@ -240,12 +249,18 @@ func MakeCartographer(cache *lbx.LbxCache, cities []*citylib.City, stacks []*pla
                 planeName = "Myrror Plane"
                 render = myrrorRender
             }
-            fonts.Title.PrintOptions(screen, float64(background.Bounds().Dx() / 2), 10, font.FontOptions{Scale: scale.ScaleAmount, Options: &options, Justify: font.FontJustifyCenter}, planeName)
+            if style != nil {
+                style.drawTitle(screen, &options, planeName)
+            } else {
+                fonts.Title.PrintOptions(screen, float64(background.Bounds().Dx() / 2), 10, font.FontOptions{Scale: scale.ScaleAmount, Options: &options, Justify: font.FontJustifyCenter}, planeName)
+            }
 
             options.GeoM.Translate(float64(offsetX), float64(offsetY))
             scale.DrawScaled(screen, render, &options)
 
-            if drawCityName != nil {
+            if drawCityName != nil && style != nil {
+                style.drawCity(screen, &options, drawCityName.GetBanner(), drawCityName.X, drawCityName.Y, drawCityName.Name)
+            } else if drawCityName != nil {
                 cityName := drawCityName.Name
 
                 options.GeoM.Reset()
@@ -263,9 +278,16 @@ func MakeCartographer(cache *lbx.LbxCache, cities []*citylib.City, stacks []*pla
             }
 
             bannerY := 80
+            legendPlace := 0
             for _, banner := range bannerList {
                 name := usedBanners[banner]
-                if name != "" {
+                if name != "" && style != nil {
+                    options.GeoM.Reset()
+                    options.GeoM.Translate(legendFlagX, float64(legendY + legendPlace * legendStep))
+                    scale.DrawScaled(screen, getFlag(banner), &options)
+                    style.drawLegend(screen, &options, legendPlace, name)
+                    legendPlace += 1
+                } else if name != "" {
                     options.GeoM.Reset()
                     options.GeoM.Translate(260, float64(bannerY))
                     flag := getFlag(banner)

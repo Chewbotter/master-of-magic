@@ -257,6 +257,8 @@ type GameEventScroll struct {
     Title string
     Text string
     Old bool // a replayed event, don't add it again
+    // the chancellor: the scroll with all events of the turn, see scrollevents.go
+    All bool
 }
 
 type GameEventCityName struct {
@@ -1108,6 +1110,16 @@ func (game *Game) doInput(yield coroutine.YieldFunc, title string, name string, 
 
     quit := false
 
+    // the box of the original, see hirestyle.go
+    place, isOriginal := nameInputOf(title, topX, topY)
+    var placeStyle *nameInputStyle
+    if isOriginal {
+        placeStyle = place.style(game.Cache)
+    }
+    if placeStyle != nil {
+        name = place.fit(placeStyle, name)
+    }
+
     source := ebiten.NewImage(1, 1)
     source.Fill(color.RGBA{R: 0xcf, G: 0xef, B: 0xf9, A: 0xff})
 
@@ -1131,6 +1143,11 @@ func (game *Game) doInput(yield coroutine.YieldFunc, title string, name string, 
     input := &uilib.UIElement{
         TextEntry: func(element *uilib.UIElement, text string) string {
             name = text
+
+            if placeStyle != nil {
+                name = place.fit(placeStyle, name)
+                return name
+            }
 
             for len(name) > 0 && fonts.NameFont.MeasureTextWidth(name, 1) > maxLength {
                 name = name[:len(name)-1]
@@ -1160,6 +1177,11 @@ func (game *Game) doInput(yield coroutine.YieldFunc, title string, name string, 
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             background, _ := game.ImageCache.GetImage("backgrnd.lbx", 33, 0)
+            if placeStyle != nil {
+                place.draw(screen, placeStyle, background, name, game.Counter)
+                return
+            }
+
             var options ebiten.DrawImageOptions
             options.GeoM.Translate(float64(topX), float64(topY))
             scale.DrawScaled(screen, background, &options)
@@ -1216,6 +1238,13 @@ func (game *Game) showNewBuilding(yield coroutine.YieldFunc, city *citylib.City,
 
     wrappedText := fonts.BigFont.CreateWrappedText(float64(175), 1, fmt.Sprintf("The %s of %s has completed the construction of a %s.", city.GetSize(), city.Name, game.Model.BuildingInfo.Name(building)))
 
+    // the text of the original, see notifystyle.go
+    notify := game.notifyText()
+    var notifyLines []string
+    if notify != nil {
+        notifyLines = notify.Wrap(newBuildingMessage(fmt.Sprintf("%v", city.GetSize()), city.Name, game.Model.BuildingInfo.Name(building)), notifyTextWidth)
+    }
+
     rightSide, _ := game.ImageCache.GetImage("resource.lbx", 41, 0)
 
     getAlpha := util.MakeFadeIn(7, &game.Counter)
@@ -1245,7 +1274,12 @@ func (game *Game) showNewBuilding(yield coroutine.YieldFunc, city *citylib.City,
         scale.DrawScaled(screen, animal, &iconOptions)
 
         x, y := options.GeoM.Apply(80, 9)
-        fonts.BigFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Scale: scale.ScaleAmount, Options: &options})
+        if notify != nil {
+            start := notifyTextStart(player.Wizard)
+            notify.PrintLines(screen, func(int) int { return start }, notifyBuildingY + notifyTextDown, font.FontJustifyLeft, getAlpha(), notifyLines)
+        } else {
+            fonts.BigFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Scale: scale.ScaleAmount, Options: &options})
+        }
 
         options.GeoM.Translate(float64(background.Bounds().Dx()), 0)
         scale.DrawScaled(screen, rightSide, &options)
@@ -1320,9 +1354,19 @@ func (game *Game) showScroll(yield coroutine.YieldFunc, title string, text strin
 
     wrappedText := fonts.SmallFont.CreateWrappedText(float64(180), 1, text)
 
+    // the text of the original, see scrollstyle.go
+    style := game.getScrollStyle()
+    var styleLines []string
+    if style != nil {
+        styleLines = style.lines(text)
+    }
+
     scrollImages, _ := game.ImageCache.GetImages("scroll.lbx", 2)
 
     totalImages := int((wrappedText.TotalHeight + float64(fonts.BigFont.Height())) / float64(5)) + 1
+    if style != nil {
+        totalImages = (style.height(title, styleLines) + scrollHeadingStep) / 5 + 1
+    }
 
     if totalImages < 3 {
         totalImages = 3
@@ -1366,13 +1410,17 @@ func (game *Game) showScroll(yield coroutine.YieldFunc, title string, text strin
         textScale := options.ColorScale
         textScale.ScaleAlpha(getAlpha())
 
-        x, y := options.GeoM.Apply(float64(pageBackground.Bounds().Dx()) / 2, float64(middleY) - wrappedText.TotalHeight / 2 - float64(fonts.BigFont.Height()) / 2 + 5)
-        fonts.BigFont.PrintCenter(screen, x, y, scale.ScaleAmount, textScale, title)
-        y += float64(fonts.BigFont.Height()) + 1
+        if style != nil {
+            style.draw(screen, textScale, title, styleLines)
+        } else {
+            x, y := options.GeoM.Apply(float64(pageBackground.Bounds().Dx()) / 2, float64(middleY) - wrappedText.TotalHeight / 2 - float64(fonts.BigFont.Height()) / 2 + 5)
+            fonts.BigFont.PrintCenter(screen, x, y, scale.ScaleAmount, textScale, title)
+            y += float64(fonts.BigFont.Height()) + 1
 
-        var textOptions ebiten.DrawImageOptions
-        textOptions.ColorScale = textScale
-        fonts.SmallFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount, Options: &textOptions})
+            var textOptions ebiten.DrawImageOptions
+            textOptions.ColorScale = textScale
+            fonts.SmallFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount, Options: &textOptions})
+        }
 
         scrollOptions := options
         scrollOptions.GeoM.Translate(float64(-63), float64(-20))
@@ -1468,6 +1516,9 @@ func (game *Game) showOutpost(yield coroutine.YieldFunc, city *citylib.City, sta
     x1 := 30
     y1 := 50
 
+    // the text and the places of the original, see outpoststyle.go
+    outpostText := game.outpostStyle()
+
     uiOptions.GeoM.Translate(float64(x1), float64(y1))
     rect := util.ImageRect(x1, y1, background)
     group.AddElement(&uilib.UIElement{
@@ -1485,6 +1536,11 @@ func (game *Game) showOutpost(yield coroutine.YieldFunc, city *citylib.City, sta
 
             houseOptions := uiOptions
             houseOptions.GeoM.Translate(float64(7), float64(31))
+            houseStep := -1
+            if outpostText != nil {
+                houseOptions.GeoM.Translate(float64(outpostHouseX - 7), 0)
+                houseStep = outpostHouseStep
+            }
 
             fullHouseIndex := 34
             emptyHouseIndex := 37
@@ -1502,23 +1558,38 @@ func (game *Game) showOutpost(yield coroutine.YieldFunc, city *citylib.City, sta
 
             for i := 0; i < numHouses; i++ {
                 scale.DrawScaled(screen, house, &houseOptions)
+                if houseStep > 0 {
+                    houseOptions.GeoM.Translate(float64(houseStep), 0)
+                    continue
+                }
                 houseOptions.GeoM.Translate(float64(house.Bounds().Dx()) + 1, 0)
             }
 
             emptyHouse, _ := game.ImageCache.GetImage("backgrnd.lbx", emptyHouseIndex, 0)
             for i := numHouses; i < maxHouses; i++ {
                 scale.DrawScaled(screen, emptyHouse, &houseOptions)
+                if houseStep > 0 {
+                    houseOptions.GeoM.Translate(float64(houseStep), 0)
+                    continue
+                }
                 houseOptions.GeoM.Translate(float64(emptyHouse.Bounds().Dx() + 1), 0)
             }
 
             x, y := uiOptions.GeoM.Apply(float64(6), float64(22))
-            game.Fonts.InfoFontYellow.Print(screen, x, y, scale.ScaleAmount, uiOptions.ColorScale, city.Race.String())
-
-            x, y = uiOptions.GeoM.Apply(float64(20), float64(5))
+            title := fmt.Sprintf("Outpost Of %v", city.Name)
             if rename {
-                fonts.BigFont.Print(screen, x, y, scale.ScaleAmount, uiOptions.ColorScale, "New Outpost Founded")
+                title = "New Outpost Founded"
+            }
+
+            if outpostText != nil {
+                var plain ebiten.DrawImageOptions
+                outpostText.Race.Print(screen, x1 + outpostRaceX, y1 + outpostRaceY, font.FontOptions{Options: &plain, Scale: scale.ScaleAmount}, city.Race.String())
+                outpostText.Title.Print(screen, x1 + outpostTitleMiddle, y1 + outpostTitleY, font.FontOptions{Options: &plain, Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, title)
             } else {
-                fonts.BigFont.Print(screen, x, y, scale.ScaleAmount, uiOptions.ColorScale, fmt.Sprintf("Outpost Of %v", city.Name))
+                game.Fonts.InfoFontYellow.Print(screen, x, y, scale.ScaleAmount, uiOptions.ColorScale, city.Race.String())
+
+                x, y = uiOptions.GeoM.Apply(float64(20), float64(5))
+                fonts.BigFont.Print(screen, x, y, scale.ScaleAmount, uiOptions.ColorScale, title)
             }
 
             cityScapeOptions := uiOptions
@@ -1922,7 +1993,7 @@ func (game *Game) doHireHero(yield coroutine.YieldFunc, cost int, hero *herolib.
         quit = true
     }
 
-    game.HudUI.AddGroup(MakeHireHeroScreenUI(game.Cache, game.HudUI, hero, cost, result, fadeOut))
+    game.HudUI.AddGroup(MakeHireHeroScreenUIOf(game.Cache, game.HudUI, hero, cost, hireKindOf(hero, cost, atFortress), result, fadeOut))
 
     for !quit {
         game.Counter += 1
@@ -2310,6 +2381,15 @@ func (game *Game) doRandomEvent(yield coroutine.YieldFunc, event *RandomEvent, s
     }
     wrappedText := fonts.BigFont.CreateWrappedText(float64(175), 1, message)
 
+    // the text and the place of the original, see notifystyle.go
+    notify := game.notifyText()
+    var notifyLines []string
+    boxY := 60
+    if notify != nil {
+        notifyLines = notify.Wrap(message, notifyTextWidth)
+        boxY = notifyEventY
+    }
+
     rightSide, _ := game.ImageCache.GetImage("resource.lbx", 41, 0)
 
     getAlpha := util.MakeFadeIn(7, &game.Counter)
@@ -2335,7 +2415,7 @@ func (game *Game) doRandomEvent(yield coroutine.YieldFunc, event *RandomEvent, s
 
         var options ebiten.DrawImageOptions
         options.ColorScale.ScaleAlpha(getAlpha())
-        options.GeoM.Translate(float64(8), float64(60))
+        options.GeoM.Translate(float64(8), float64(boxY))
         scale.DrawScaled(screen, background, &options)
         iconOptions := options
         iconOptions.GeoM.Translate(float64(34), float64(28))
@@ -2343,7 +2423,12 @@ func (game *Game) doRandomEvent(yield coroutine.YieldFunc, event *RandomEvent, s
         scale.DrawScaled(screen, animal, &iconOptions)
 
         x, y := options.GeoM.Apply(float64(75), float64(9))
-        fonts.BigFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Scale: scale.ScaleAmount, Options: &options})
+        if notify != nil {
+            start := notifyTextStart(wizard)
+            notify.PrintLines(screen, func(int) int { return start }, boxY + notifyTextDown, font.FontJustifyLeft, getAlpha(), notifyLines)
+        } else {
+            fonts.BigFont.RenderWrapped(screen, x, y, wrappedText, font.FontOptions{Scale: scale.ScaleAmount, Options: &options})
+        }
 
         options.GeoM.Translate(float64(background.Bounds().Dx()), 0)
 
@@ -2748,9 +2833,18 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                         }
                     case *GameEventScroll:
                         scroll := event.(*GameEventScroll)
-                        game.showScroll(yield, scroll.Title, scroll.Text)
-                        if !scroll.Old {
+                        if OneScrollForAllEvents && scroll.All {
+                            // the chancellor, see scrollevents.go
+                            game.showScrollEvents(yield, game.Model.ScrollEvents)
+                        } else if OneScrollForAllEvents && !scroll.Old {
+                            // shown with the others of the turn when no more events wait
                             game.Model.ScrollEvents = append(game.Model.ScrollEvents, scroll)
+                            scrollEventsWait = true
+                        } else {
+                            game.showScroll(yield, scroll.Title, scroll.Text)
+                            if !scroll.Old {
+                                game.Model.ScrollEvents = append(game.Model.ScrollEvents, scroll)
+                            }
                         }
                     case *GameEventLearnedSpell:
                         learnedSpell := event.(*GameEventLearnedSpell)
@@ -2859,10 +2953,24 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
 
                 lastEvent = event
             default:
+                if scrollEventsWait {
+                    // one scroll for the events that were not shown yet, see scrollevents.go
+                    scrollEventsWait = false
+                    from := min(scrollEventsShown, len(game.Model.ScrollEvents))
+                    scrollEventsShown = len(game.Model.ScrollEvents)
+                    if from < scrollEventsShown {
+                        game.showScrollEvents(yield, game.Model.ScrollEvents[from:])
+                    }
+                    continue
+                }
                 return
         }
     }
 }
+
+// events for the scroll have come and are not shown yet, and how many of the turn were shown
+var scrollEventsWait bool
+var scrollEventsShown int
 
 
 // the turn as a readable date, such as June 1450
@@ -2929,6 +3037,11 @@ func (game *Game) ShowHistorian(yield coroutine.YieldFunc) {
         mainImage := ebiten.NewImage(background.Bounds().Dx(), background.Bounds().Dy())
         var options ebiten.DrawImageOptions
         mainImage.DrawImage(background, &options)
+
+        // the text and the graph of the original, see historianstyle.go
+        if game.drawHistorianOriginal(mainImage, append(game.Model.GetHumanPlayer().GetKnownPlayers(), game.Model.GetHumanPlayer())) {
+            return mainImage
+        }
 
         fonts.Title.PrintOptions(mainImage, float64(mainImage.Bounds().Dx() / 2), 10, font.FontOptions{DropShadow: true, Scale: 1, Justify: font.FontJustifyCenter, Options: &options}, "History Of Wizards Power")
 
@@ -3062,6 +3175,10 @@ func (game *Game) ShowAstrologer(yield coroutine.YieldFunc) {
 
     background, _ := game.ImageCache.GetImage("reload.lbx", 1, 0)
     rect := util.ImageRect(10, 10, background)
+    if OriginalAstrologer {
+        // where the original has it, see astrologerstyle.go
+        rect = util.ImageRect(astrologerX, astrologerY, background)
+    }
 
     fade := group.MakeFadeIn(7)
 
@@ -3094,6 +3211,11 @@ func (game *Game) ShowAstrologer(yield coroutine.YieldFunc) {
         mainImage := ebiten.NewImage(background.Bounds().Dx(), background.Bounds().Dy())
         var options ebiten.DrawImageOptions
         mainImage.DrawImage(background, &options)
+
+        // the text and the bars of the original, see astrologerstyle.go
+        if game.drawAstrologerOriginal(mainImage, append(game.Model.GetHumanPlayer().GetKnownPlayers(), game.Model.GetHumanPlayer())) {
+            return mainImage
+        }
 
         x, y := options.GeoM.Apply(float64(background.Bounds().Dx()) / 2, 9)
         fonts.Title.PrintOptions(mainImage, x, y, font.FontOptions{DropShadow: true, Scale: 1, Justify: font.FontJustifyCenter, Options: &options}, "Current Status Of Wizards")
@@ -3917,11 +4039,6 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
         leftClick = false
     }
 
-    if rightClick {
-        // what a right click opens has the cursor of always
-        game.resetWorldCursor()
-    }
-
     if leftClick {
         // modern controls: a click on a stack of the player selects it, see worldselect.go
         picked := game.stackToSelect(player, mouseX, mouseY)
@@ -4072,6 +4189,11 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
             if rightClick {
                 city := player.FindCity(tileX, tileY, game.Model.Plane)
                 if city != nil {
+                    // what a right click opens has the cursor of always. only then: set back at
+                    // every right click, the cursor of the map was the plain one for a moment
+                    // also when the click only moved the camera, another size at another place
+                    // (user, 2026-09-29: "the cursor will spasm a bit")
+                    game.resetWorldCursor()
                     if city.Outpost {
                         game.showOutpost(yield, city, player.FindStack(city.X, city.Y, city.Plane), player, false)
                     } else {
@@ -4091,6 +4213,7 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
 
                             city := otherPlayer.FindCity(tileX, tileY, game.Model.Plane)
                             if city != nil {
+                                game.resetWorldCursor()
                                 if player.Admin {
                                     game.doCityScreen(yield, city, otherPlayer, buildinglib.BuildingNone)
                                 } else {
@@ -4099,6 +4222,7 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
                             } else if player.IsVisible(tileX, tileY, game.Model.Plane) {
                                 enemyStack := otherPlayer.FindStack(tileX, tileY, game.Model.Plane)
                                 if enemyStack != nil {
+                                    game.resetWorldCursor()
                                     quit := false
                                     clicked := func(unit unitview.UnitView){
                                         quit = true
@@ -4655,7 +4779,8 @@ func (game *Game) confirmLairEncounter(yield coroutine.YieldFunc, encounter *map
         case maplib.EncounterTypeLair:
             lairIndex = 17
         case maplib.EncounterTypeCave:
-            lairIndex = 17
+            // the original's picture of a cave (ReMoM Lair.c), upstream had the one of the lair
+            lairIndex = 13
         case maplib.EncounterTypePlaneTower:
             lairIndex = 9
         case maplib.EncounterTypeAncientTemple:
@@ -4699,12 +4824,23 @@ func (game *Game) confirmLairEncounter(yield coroutine.YieldFunc, encounter *map
     game.Music.PushSong(musiclib.SongSiteDiscovery)
     defer game.Music.PopSong()
 
+    // the words of the original (ReMoM Lair.c): the name of the place in small letters, two
+    // spaces after a full stop, and "a" or "an" before a guardian that is one figure
+    placeName := strings.ToLower(encounter.Type.Name())
     if len(encounter.Units) == 0 {
-        game.showEncounter(yield, fmt.Sprintf("You have found %v %v.", article, encounter.Type.Name()), animation)
+        game.showEncounter(yield, fmt.Sprintf("You have found %v %v.", article, placeName), animation)
         return true
     }
 
-    return game.confirmEncounter(yield, fmt.Sprintf("You have found %v %v. Scouts have spotted %v within the %v. Do you wish to enter?", article, encounter.Type.Name(), guardianName, encounter.Type.Name()), animation)
+    if encounter.Units[0].Count == 1 {
+        guardianArticle := "a"
+        if strings.ContainsAny(guardianName[:1], "AEIOUaeiou") {
+            guardianArticle = "an"
+        }
+        guardianName = guardianArticle + " " + guardianName
+    }
+
+    return game.confirmEncounter(yield, fmt.Sprintf("You have found %v %v.  Scouts have spotted %v within the %v.  Do you wish to enter?", article, placeName, guardianName, placeName), animation)
 }
 
 func (game *Game) doEncounter(yield coroutine.YieldFunc, player *playerlib.Player, stack *playerlib.UnitStack, encounter *maplib.ExtraEncounter, mapUse *maplib.Map, x int, y int) combat.CombatState {
@@ -4834,6 +4970,11 @@ func (game *Game) doTreasurePopup(yield coroutine.YieldFunc, player *playerlib.P
             uiDone = true
         },
         Draw: func (element *uilib.UIElement, screen *ebiten.Image){
+            // the box of the original, see treasurestyle.go
+            if game.drawTreasureOriginal(screen, treasure, getAlpha()) {
+                return
+            }
+
             left, _ := game.ImageCache.GetImage("resource.lbx", 56, 0)
             var options ebiten.DrawImageOptions
             options.ColorScale.ScaleAlpha(getAlpha())
@@ -5586,66 +5727,46 @@ func (game *Game) ShowGrandVizierUI(){
 func (game *Game) ShowTaxCollectorUI(cornerX int, cornerY int){
     player := game.Model.GetHumanPlayer()
 
-    // put a * on the value that is currently selected
-    selected := func(s string, use bool) string {
-        if use {
-            return fmt.Sprintf("%v*", s)
-        }
-
-        return s
-    }
-
+    // the text of the original (ReMoM AdvsrScr.c TaxCollector_Window): the gold, and the unrest
+    // in a column of its own, 59, 54 or 52 from where the gold starts. a * after the rate that
+    // is set. upstream had both in one text with a space between
     update := func(rate fraction.Fraction){
         player.UpdateTaxRate(rate)
         game.RefreshUI()
     }
 
-    taxes := []uilib.Selection{
-        uilib.Selection{
-            Name: selected("0 gold, 0% unrest", player.TaxRate.IsZero()),
-            Action: func(){
-                update(fraction.Zero())
-            },
-        },
-        uilib.Selection{
-            Name: selected("0.5 gold, 10% unrest", player.TaxRate.Equals(fraction.Make(1, 2))),
-            Action: func(){
-                update(fraction.Make(1, 2))
-            },
-        },
-        uilib.Selection{
-            Name: selected("1 gold, 20% unrest", player.TaxRate.Equals(fraction.Make(1, 1))),
-            Action: func(){
-                update(fraction.Make(1, 1))
-            },
-        },
-        uilib.Selection{
-            Name: selected("1.5 gold, 30% unrest", player.TaxRate.Equals(fraction.Make(3, 2))),
-            Action: func(){
-                update(fraction.Make(3, 2))
-            },
-        },
-        uilib.Selection{
-            Name: selected("2 gold, 45% unrest", player.TaxRate.Equals(fraction.Make(2, 1))),
-            Action: func(){
-                update(fraction.Make(2, 1))
-            },
-        },
-        uilib.Selection{
-            Name: selected("2.5 gold, 60% unrest", player.TaxRate.Equals(fraction.Make(5, 2))),
-            Action: func(){
-                update(fraction.Make(5, 2))
-            },
-        },
-        uilib.Selection{
-            Name: selected("3 gold, 75% unrest", player.TaxRate.Equals(fraction.Make(3, 1))),
-            Action: func(){
-                update(fraction.Make(3, 1))
-            },
-        },
+    rates := []struct{
+        Gold string
+        Unrest string
+        Column int
+        Rate fraction.Fraction
+    }{
+        {"0 gold,", "0% unrest", 59, fraction.Zero()},
+        {".5 gold,", "10% unrest", 54, fraction.Make(1, 2)},
+        {"1 gold,", "20% unrest", 52, fraction.Make(1, 1)},
+        {"1.5 gold,", "30% unrest", 52, fraction.Make(3, 2)},
+        {"2 gold,", "45% unrest", 52, fraction.Make(2, 1)},
+        {"2.5 gold,", "60% unrest", 52, fraction.Make(5, 2)},
+        {"3 gold,", "75% unrest", 52, fraction.Make(3, 1)},
     }
 
-    game.HudUI.AddElements(uilib.MakeSelectionUI(game.HudUI, game.Cache, &game.ImageCache, cornerX, cornerY, "Tax Per Population", taxes, true))
+    var taxes []uilib.Selection
+    for _, rate := range rates {
+        unrest := rate.Unrest
+        if player.TaxRate.Equals(rate.Rate) {
+            unrest += "*"
+        }
+        taxes = append(taxes, uilib.Selection{
+            Name: rate.Gold,
+            Hotkey: unrest,
+            HotkeyX: rate.Column,
+            Action: func(){
+                update(rate.Rate)
+            },
+        })
+    }
+
+    game.HudUI.AddElements(uilib.MakeSelectionUICentered(game.HudUI, game.Cache, &game.ImageCache, " Tax Per Population ", taxes, true, cornerX, cornerY))
 }
 
 func (game *Game) ShowApprenticeUI(yield coroutine.YieldFunc, player *playerlib.Player){
@@ -5685,7 +5806,13 @@ func (game *Game) ResearchNewSpell(yield coroutine.YieldFunc, player *playerlib.
 
 // show all scroll events for this turn, or a message that no events occurred
 func (game *Game) DoChancellor(){
-    if len(game.Model.ScrollEvents) == 0 {
+    if OneScrollForAllEvents {
+        // one scroll with all of them, see scrollevents.go
+        select {
+            case game.Events <- &GameEventScroll{Old: true, All: true}:
+            default:
+        }
+    } else if len(game.Model.ScrollEvents) == 0 {
         event := &GameEventScroll{
             Title: "NO EVENTS THIS MONTH",
         }
@@ -5793,7 +5920,8 @@ func (game *Game) MakeInfoUI(cornerX int, cornerY int) []*uilib.UIElement {
         },
     }
 
-    return uilib.MakeSelectionUI(game.HudUI, game.Cache, &game.ImageCache, cornerX, cornerY, "Select An Advisor", advisors, true)
+    // in the middle of the screen, as the original has it
+    return uilib.MakeSelectionUICentered(game.HudUI, game.Cache, &game.ImageCache, "Select An Advisor", advisors, true, cornerX, cornerY)
 }
 
 func (game *Game) doDefaultItemEditor(yield coroutine.YieldFunc) {
@@ -7314,7 +7442,7 @@ func (game *Game) DisbandUnits(player *playerlib.Player) []string {
                 // disband the unit for the right reason
                 if goldIssue && unit.GetUpkeepGold() > 0 {
                     log.Printf("Disband %v due to lack of gold", unit)
-                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v disbanded due to lack of gold", unit.GetName()))
+                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v - deserted: lack of gold.", unit.GetName()))
                     player.RemoveUnit(unit)
                     disbanded = true
                     break
@@ -7322,7 +7450,7 @@ func (game *Game) DisbandUnits(player *playerlib.Player) []string {
 
                 if foodIssue && unit.GetUpkeepFood() > 0 {
                     log.Printf("Disband %v due to lack of food", unit)
-                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v disbanded due to lack of food", unit.GetName()))
+                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v - deserted: lack of food.", unit.GetName()))
                     player.RemoveUnit(unit)
                     disbanded = true
                     break
@@ -7330,7 +7458,7 @@ func (game *Game) DisbandUnits(player *playerlib.Player) []string {
 
                 if manaIssue && unit.GetUpkeepMana() > 0 {
                     log.Printf("Disband %v due to lack of mana", unit)
-                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v disbanded due to lack of mana", unit.GetName()))
+                    disbandedMessages = append(disbandedMessages, fmt.Sprintf("%v - dispelled: lack of mana.", unit.GetName()))
                     player.RemoveUnit(unit)
                     disbanded = true
                     break
@@ -7479,6 +7607,7 @@ func handleStasis(stack *playerlib.UnitStack) {
 func (game *Game) StartPlayerTurn(player *playerlib.Player) {
     if player.IsHuman() {
         game.Model.ScrollEvents = nil
+        scrollEventsShown = 0
     }
 
     if player.Skip {
@@ -7492,7 +7621,8 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
 
     if player.IsHuman() && len(disbandedMessages) > 0 {
         select {
-            case game.Events<- &GameEventScroll{Title: "", Text: strings.Join(disbandedMessages, "\n")}:
+            // the heading and the words of the original (ReMoM REPORT.c), see scrollstyle.go
+            case game.Events<- &GameEventScroll{Title: "UNITS DISBANDED", Text: strings.Join(disbandedMessages, "\n")}:
             default:
         }
     }
@@ -7591,14 +7721,16 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
                     if player.IsHuman() {
                         growthEvent := event.(*citylib.CityEventPopulationGrowth)
 
-                        verb := "grown"
-                        if !growthEvent.Grow {
-                            verb = "shrunk"
-                        }
-
+                        // the headings and the words of the original (ReMoM REPORT.c)
                         scrollEvent := GameEventScroll{
                             Title: "CITY GROWTH",
-                            Text: fmt.Sprintf("%v has %v to a population of %v.", city.Name, verb, city.Citizens()),
+                            Text: fmt.Sprintf("%v has grown to a population of %v", city.Name, city.Citizens()),
+                        }
+                        if !growthEvent.Grow {
+                            scrollEvent = GameEventScroll{
+                                Title: "CITY DEATHS",
+                                Text: fmt.Sprintf("%v now has a population of %v", city.Name, city.Citizens()),
+                            }
                         }
 
                         select {

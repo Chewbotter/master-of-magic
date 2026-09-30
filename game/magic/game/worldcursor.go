@@ -179,6 +179,13 @@ func (game *Game) setMapCursor(picture *ebiten.Image, hot image.Point) {
     mouse.Mouse.SetImageFunc(func(screen *ebiten.Image, options *ebiten.DrawImageOptions) {
         // screen pixels per art pixel of the map
         pixel := math.Max(1, math.Round(game.Camera.GetAnimatedZoom() * scale.ScaleAmount))
+        // while the zoom changes the map is between two sizes and its pixels go by under the
+        // mouse: the cursor grows or shrinks with the map, smoothly, and stays where the mouse
+        // is. as large as whole pixels of the map and put on them it shook (user, 2026-09-29)
+        zooming := game.Camera.AnimatedZoom != 0
+        if zooming {
+            pixel = math.Max(1, game.Camera.GetAnimatedZoom() * scale.ScaleAmount)
+        }
 
         mouseX, mouseY := options.GeoM.Apply(0, 0)
         x := mouseX * scale.ScaleAmount - float64(hot.X) * pixel
@@ -187,7 +194,10 @@ func (game *Game) setMapCursor(picture *ebiten.Image, hot image.Point) {
         // while the map is panned the cursor glides between pixels on a small picture of its own
         // (mouse/smooth.go), where the pixels of the map are not known
         onScreen := screen.Bounds().Dx() > scale.Scale(mapCursorCanvasLimit)
-        if onScreen {
+        // not while the camera moves: the pixels of the map go by under the mouse then, and a
+        // cursor that is put on them goes along with one for a moment and jumps back to the
+        // next, again and again (user, 2026-09-29)
+        if onScreen && !cameraMoves && !zooming {
             useCamera := game.Camera
             game.roundToPixel(&useCamera)
             startX := float64(display.ContentOffsetX()) - useCamera.GetZoomedX() * float64(game.Model.CurrentMap().TileWidth()) * pixel
@@ -200,6 +210,10 @@ func (game *Game) setMapCursor(picture *ebiten.Image, hot image.Point) {
         use.GeoM.Scale(pixel / scale.ScaleAmount, pixel / scale.ScaleAmount)
         use.GeoM.Translate(x / scale.ScaleAmount, y / scale.ScaleAmount)
         use.ColorScale = options.ColorScale
+        if zooming {
+            // between two sizes, as the map is drawn then (zoom.go)
+            use.Filter = ebiten.FilterLinear
+        }
         scale.DrawScaled(screen, picture, &use)
     })
 }

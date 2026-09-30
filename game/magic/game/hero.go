@@ -48,6 +48,15 @@ func MakeHireHeroFonts(cache *lbx.LbxCache) *HireHeroFonts {
 }
 
 func MakeHireHeroScreenUI(cache *lbx.LbxCache, ui *uilib.UI, hero *herolib.Hero, goldToHire int, action func(bool), onFadeOut func()) *uilib.UIElementGroup {
+    kind := hireForGold
+    if hero.HeroType == herolib.HeroTorin {
+        kind = hireSummoned
+    }
+    return MakeHireHeroScreenUIOf(cache, ui, hero, goldToHire, kind, action, onFadeOut)
+}
+
+// the same for a hero that asks for this reason, see hirestyle.go
+func MakeHireHeroScreenUIOf(cache *lbx.LbxCache, ui *uilib.UI, hero *herolib.Hero, goldToHire int, kind hireKind, action func(bool), onFadeOut func()) *uilib.UIElementGroup {
     imageCache := util.MakeImageCache(cache)
 
     yTop := float64(10)
@@ -65,6 +74,25 @@ func MakeHireHeroScreenUI(cache *lbx.LbxCache, ui *uilib.UI, hero *herolib.Hero,
         titleText = "Hero Summoned"
     }
 
+    // where the window is, the name in it, its list of abilities, the box of the buttons and the buttons
+    windowX, windowY := 31, 6 + int(yTop)
+    nameDown := 7
+    boxX, boxY := 248, 139 + int(yTop)
+    buttonX, hireY, rejectY := 257, 149 + int(yTop), 169 + int(yTop)
+    titleX, titleY := 135, 6
+
+    // the text and the places of the original, see hirestyle.go
+    original := hireText2(cache)
+    if original != nil {
+        hireText = kind.Button()
+        titleText = kind.Title(goldToHire)
+        windowX, windowY = hireWindowX, hireWindowY
+        nameDown = 6
+        boxX, boxY = hireButtonBoxX, hireButtonBoxY
+        buttonX, hireY, rejectY = hireButtonX, hireButtonY, hireRejectY
+        titleX, titleY = hireTitleX, hireTitleY
+    }
+
     uiGroup := uilib.MakeGroup()
 
     background, _ := imageCache.GetImage("unitview.lbx", 1, 0)
@@ -73,8 +101,7 @@ func MakeHireHeroScreenUI(cache *lbx.LbxCache, ui *uilib.UI, hero *herolib.Hero,
         Order: 0,
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             var options ebiten.DrawImageOptions
-            options.GeoM.Translate(0, yTop)
-            options.GeoM.Translate(float64(31), float64(6))
+            options.GeoM.Translate(float64(windowX), float64(windowY))
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(screen, background, &options)
 
@@ -88,9 +115,8 @@ func MakeHireHeroScreenUI(cache *lbx.LbxCache, ui *uilib.UI, hero *herolib.Hero,
             // unitview.RenderCombatImage(screen, &imageCache, &hero.Unit.Unit, options)
 
             options.GeoM.Reset()
-            options.GeoM.Translate(0, yTop)
-            options.GeoM.Translate(float64(31), float64(6))
-            options.GeoM.Translate(float64(51), float64(7))
+            options.GeoM.Translate(float64(windowX), float64(windowY))
+            options.GeoM.Translate(float64(51), float64(nameDown))
 
             unitview.RenderUnitInfoNormal(screen, &imageCache, hero, hero.GetTitle(), "", fonts.DescriptionFont, fonts.SmallFont, options)
 
@@ -129,21 +155,19 @@ func MakeHireHeroScreenUI(cache *lbx.LbxCache, ui *uilib.UI, hero *herolib.Hero,
     */
 
     var statsOptions ebiten.DrawImageOptions
-    statsOptions.GeoM.Translate(0, yTop)
-    statsOptions.GeoM.Translate(float64(31), float64(6))
+    statsOptions.GeoM.Translate(float64(windowX), float64(windowY))
     statsOptions.GeoM.Translate(float64(10), float64(50))
 
     uiGroup.AddElements(unitview.CreateUnitInfoStatsElements(&imageCache, hero, 15, fonts.DescriptionFont, fonts.SmallFont, statsOptions, &getAlpha, background, 1))
 
-    uiGroup.AddElements(unitview.MakeUnitAbilitiesElements(uiGroup, cache, &imageCache, hero, fonts.MediumFont, 40, 124, &ui.Counter, 1, &getAlpha, true, 0, false))
+    uiGroup.AddElements(unitview.MakeUnitAbilitiesElements(uiGroup, cache, &imageCache, hero, fonts.MediumFont, windowX + 9, windowY + 108, &ui.Counter, 1, &getAlpha, true, 0, false))
 
     uiGroup.AddElement(&uilib.UIElement{
         Layer: 1,
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             box, _ := imageCache.GetImage("unitview.lbx", 2, 0)
             var options ebiten.DrawImageOptions
-            options.GeoM.Translate(0, yTop)
-            options.GeoM.Translate(float64(248), float64(139))
+            options.GeoM.Translate(float64(boxX), float64(boxY))
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(screen, box, &options)
         },
@@ -151,7 +175,7 @@ func MakeHireHeroScreenUI(cache *lbx.LbxCache, ui *uilib.UI, hero *herolib.Hero,
 
     buttonBackgrounds, _ := imageCache.GetImages("backgrnd.lbx", 24)
     // hire button
-    hireRect := util.ImageRect(257, 149 + int(yTop), buttonBackgrounds[0])
+    hireRect := util.ImageRect(buttonX, hireY, buttonBackgrounds[0])
     hireIndex := 0
     uiGroup.AddElement(&uilib.UIElement{
         Layer: 1,
@@ -191,13 +215,18 @@ func MakeHireHeroScreenUI(cache *lbx.LbxCache, ui *uilib.UI, hero *herolib.Hero,
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(screen, buttonBackgrounds[hireIndex], &options)
 
+            if original != nil {
+                printButtonWord(screen, original, hireRect, hireIndex == 1, getAlpha(), hireText)
+                return
+            }
+
             x := float64(hireRect.Min.X + hireRect.Max.X) / 2
             y := float64(hireRect.Min.Y + hireRect.Max.Y) / 2
             fonts.OkDismissFont.PrintOptions(screen, x, y - float64(5), font.FontOptions{Justify: font.FontJustifyCenter, Options: &options, Scale: scale.ScaleAmount}, hireText)
         },
     })
 
-    rejectRect := util.ImageRect(257, 169 + int(yTop), buttonBackgrounds[0])
+    rejectRect := util.ImageRect(buttonX, rejectY, buttonBackgrounds[0])
     rejectIndex := 0
     uiGroup.AddElement(&uilib.UIElement{
         Layer: 1,
@@ -221,6 +250,11 @@ func MakeHireHeroScreenUI(cache *lbx.LbxCache, ui *uilib.UI, hero *herolib.Hero,
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(screen, buttonBackgrounds[rejectIndex], &options)
 
+            if original != nil {
+                printButtonWord(screen, original, rejectRect, rejectIndex == 1, getAlpha(), "Reject")
+                return
+            }
+
             x := float64(rejectRect.Min.X + rejectRect.Max.X) / 2
             y := float64(rejectRect.Min.Y + rejectRect.Max.Y) / 2
             fonts.OkDismissFont.PrintOptions(screen, x, y - float64(5), font.FontOptions{Options: &options, Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, "Reject")
@@ -236,7 +270,12 @@ func MakeHireHeroScreenUI(cache *lbx.LbxCache, ui *uilib.UI, hero *herolib.Hero,
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(screen, banner, &options)
 
-            fonts.OkDismissFont.PrintOptions(screen, float64(135), float64(6), font.FontOptions{Options: &options, Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, titleText)
+            if original != nil {
+                original.Print(screen, titleX, titleY, font.FontOptions{Options: &options, Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, titleText)
+                return
+            }
+
+            fonts.OkDismissFont.PrintOptions(screen, float64(titleX), float64(titleY), font.FontOptions{Options: &options, Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, titleText)
         },
     })
 
@@ -316,6 +355,11 @@ func (game *Game) showHeroLevelUpPopup(yield coroutine.YieldFunc, hero *herolib.
 
     game.PushDrawer(func (screen *ebiten.Image){
         drawer(screen)
+
+        // the box of the original, see levelstyle.go
+        if game.drawLevelUpOriginal(screen, hero, haveAbilities, getAlpha()) {
+            return
+        }
 
         var options ebiten.DrawImageOptions
 

@@ -13,7 +13,9 @@ package ui
 //   a choice: font 4 in its color set 1 with soft edge 53, and a light edge below and right of
 //     the letters in 182 (as chiseled); under the mouse soft edge 182 and the edge in 178
 //   a choice starts 4 from the rim at y 2 of its button, its key 81 further right
-//   the box is as wide as its widest text and 8
+//   the box is as wide as its widest text and 8, and in the middle of the screen
+//   the buttons: there are 5 pictures of them and of their right ends, taken in turn from the
+//     top; the last button of a box is always the fifth, which has the lower rim
 
 import (
     "image/color"
@@ -134,13 +136,28 @@ func getSelectionStyle(cache *lbx.LbxCache) *selectionStyle {
     return style
 }
 
+// the pictures of resource.lbx of the button of a choice and of its right end
+const selectionButtonFirst = 12
+const selectionEndFirst = 22
+const selectionButtonKinds = 5
+
+func selectionButton(index int, count int) (int, int) {
+    kind := index % selectionButtonKinds
+    if index == count - 1 {
+        kind = selectionButtonKinds - 1
+    }
+    return selectionButtonFirst + kind, selectionEndFirst + kind
+}
+
 // how wide the buttons of a box with these texts are
 func (style *selectionStyle) width(title string, choices []Selection) int {
     widest := style.Title.Width(title)
     for _, choice := range choices {
         width := style.Choice.Width(choice.Name)
         if choice.Hotkey != "" {
-            width = style.keyX(choice.Name) + style.Choice.Width(choice.Hotkey)
+            // the original does not count what stands after the tab. it is counted here, so
+            // nothing can reach out of the box
+            width = style.keyX(choice) + style.Choice.Width(choice.Hotkey)
         }
         widest = max(widest, width)
     }
@@ -149,9 +166,13 @@ func (style *selectionStyle) width(title string, choices []Selection) int {
 }
 
 // where the key of a choice starts, from where the choice starts
-func (style *selectionStyle) keyX(name string) int {
+func (style *selectionStyle) keyX(choice Selection) int {
+    column := selectionKeyX
+    if choice.HotkeyX > 0 {
+        column = choice.HotkeyX
+    }
     // a name that reaches the column of the keys has its key right after it
-    return max(selectionKeyX, style.Choice.Width(name) + selectionKeyGap)
+    return max(column, style.Choice.Width(choice.Name) + selectionKeyGap)
 }
 
 // the title, in the middle of a box from left to right
@@ -172,6 +193,6 @@ func (style *selectionStyle) drawChoice(screen *ebiten.Image, x int, y int, opti
     print := font.FontOptions{Options: &options, Scale: scale.ScaleAmount}
     use.Print(screen, x + selectionTextX, y + selectionTextY, print, choice.Name)
     if choice.Hotkey != "" {
-        use.Print(screen, x + selectionTextX + style.keyX(choice.Name), y + selectionTextY, print, choice.Hotkey)
+        use.Print(screen, x + selectionTextX + style.keyX(choice), y + selectionTextY, print, choice.Hotkey)
     }
 }

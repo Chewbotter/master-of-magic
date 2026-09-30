@@ -43,13 +43,31 @@ func MakeMerchantScreenUI(cache *lbx.LbxCache, ui *uilib.UI, artifactToBuy *arti
 
     getAlpha := ui.MakeFadeIn(fadeSpeed)
 
+    backgroundX, itemX, buttonX := 4, 18, 256
+    buttonBackgrounds, _ := imageCache.GetImages("backgrnd.lbx", 24)
+
+    // the text and the places of the original, see hirestyle.go
+    original := merchantText(cache)
+    words := hireText2(cache)
+    var lines []string
+    if original != nil && words != nil {
+        backgroundX, itemX, buttonX = merchantX, merchantItemX, merchantButtonX
+        lines = original.Wrap(merchantMessage(artifactToBuy.Name, goldToBuy), merchantTextWidth)
+        own, err := imageCache.GetImages("hire.lbx", 1)
+        if err == nil && len(own) >= 2 {
+            buttonBackgrounds = own
+        }
+    } else {
+        original = nil
+    }
+
     elements = append(elements, &uilib.UIElement{
         Layer: 1,
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             background, _ := imageCache.GetImage("hire.lbx", 2, 0)
             var options ebiten.DrawImageOptions
             options.ColorScale.ScaleAlpha(getAlpha())
-            options.GeoM.Translate(float64(4), float64(15))
+            options.GeoM.Translate(float64(backgroundX), float64(15))
             scale.DrawScaled(screen, background, &options)
         },
     })
@@ -57,6 +75,11 @@ func MakeMerchantScreenUI(cache *lbx.LbxCache, ui *uilib.UI, artifactToBuy *arti
     elements = append(elements, &uilib.UIElement{
         Layer: 1,
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
+            if original != nil {
+                original.PrintLines(screen, func(int) int { return merchantTextX }, merchantTextY, font.FontJustifyLeft, getAlpha(), lines)
+                return
+            }
+
             var options ebiten.DrawImageOptions
             options.ColorScale.ScaleAlpha(getAlpha())
             text := fmt.Sprintf("A merchant arrives and offers a magic %v for sale. The price is only %v gold pieces.", artifactToBuy.Name, goldToBuy)
@@ -69,13 +92,12 @@ func MakeMerchantScreenUI(cache *lbx.LbxCache, ui *uilib.UI, artifactToBuy *arti
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             var options ebiten.DrawImageOptions
             options.ColorScale.ScaleAlpha(getAlpha())
-            options.GeoM.Translate(float64(18), float64(80))
+            options.GeoM.Translate(float64(itemX), float64(80))
             artifact.RenderArtifactBox(screen, &imageCache, *artifactToBuy, ui.Counter / 8, vaultFonts.ItemName, vaultFonts.PowerFont, options)
         },
     })
 
-    buttonBackgrounds, _ := imageCache.GetImages("backgrnd.lbx", 24)
-    buyRect := util.ImageRect(256, 136, buttonBackgrounds[0])
+    buyRect := util.ImageRect(buttonX, 136, buttonBackgrounds[0])
     buyIndex := 0
     elements = append(elements, &uilib.UIElement{
         Layer: 1,
@@ -97,13 +119,18 @@ func MakeMerchantScreenUI(cache *lbx.LbxCache, ui *uilib.UI, artifactToBuy *arti
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(screen, buttonBackgrounds[buyIndex], &options)
 
+            if original != nil {
+                printButtonWord(screen, words, buyRect, buyIndex == 1, getAlpha(), "Buy")
+                return
+            }
+
             x := float64(buyRect.Min.X + buyRect.Max.X) / 2
             y := float64(buyRect.Min.Y + buyRect.Max.Y) / 2
             fonts.LightFont.PrintOptions(screen, x, y - float64(5), font.FontOptions{Justify: font.FontJustifyCenter, Options: &options, Scale: scale.ScaleAmount}, "Buy")
         },
     })
 
-    rejectRect := util.ImageRect(256, 155, buttonBackgrounds[0])
+    rejectRect := util.ImageRect(buttonX, 155, buttonBackgrounds[0])
     rejectIndex := 0
     elements = append(elements, &uilib.UIElement{
         Layer: 1,
@@ -124,6 +151,11 @@ func MakeMerchantScreenUI(cache *lbx.LbxCache, ui *uilib.UI, artifactToBuy *arti
             options.GeoM.Translate(float64(rejectRect.Min.X), float64(rejectRect.Min.Y))
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(screen, buttonBackgrounds[rejectIndex], &options)
+
+            if original != nil {
+                printButtonWord(screen, words, rejectRect, rejectIndex == 1, getAlpha(), "Reject")
+                return
+            }
 
             x := float64(rejectRect.Min.X + rejectRect.Max.X) / 2
             y := float64(rejectRect.Min.Y + rejectRect.Max.Y) / 2

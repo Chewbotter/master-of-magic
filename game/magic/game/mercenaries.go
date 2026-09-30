@@ -53,6 +53,23 @@ func MakeHireMercenariesScreenUI(cache *lbx.LbxCache, ui *uilib.UI, unit *units.
 
     uiGroup := uilib.MakeGroup()
 
+    // where the window is, the name in it, the box of the buttons and the buttons
+    windowX, windowY := 31, 6 + int(yTop)
+    nameDown := 7
+    boxX, boxY := 248, 139 + int(yTop)
+    buttonX, hireY, rejectY := 257, 149 + int(yTop), 169 + int(yTop)
+    titleX, titleY := 135, 6
+
+    // the text and the places of the original, see hirestyle.go
+    original := hireText2(cache)
+    if original != nil {
+        windowX, windowY = hireWindowX, hireWindowY
+        nameDown = 6
+        boxX, boxY = hireButtonBoxX, hireButtonBoxY
+        buttonX, hireY, rejectY = hireButtonX, hireButtonY, hireRejectY
+        titleX, titleY = hireTitleX, hireTitleY
+    }
+
     background, _ := imageCache.GetImage("unitview.lbx", 1, 0)
 
     uiGroup.AddElement(&uilib.UIElement{
@@ -60,8 +77,7 @@ func MakeHireMercenariesScreenUI(cache *lbx.LbxCache, ui *uilib.UI, unit *units.
         Order: 0,
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             var options ebiten.DrawImageOptions
-            options.GeoM.Translate(0, yTop)
-            options.GeoM.Translate(float64(31), float64(6))
+            options.GeoM.Translate(float64(windowX), float64(windowY))
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(screen, background, &options)
 
@@ -69,9 +85,8 @@ func MakeHireMercenariesScreenUI(cache *lbx.LbxCache, ui *uilib.UI, unit *units.
             unitview.RenderUnitViewImage(screen, &imageCache, unit, options, false, 0)
 
             options.GeoM.Reset()
-            options.GeoM.Translate(0, yTop)
-            options.GeoM.Translate(float64(31), float64(6))
-            options.GeoM.Translate(float64(51), float64(7))
+            options.GeoM.Translate(float64(windowX), float64(windowY))
+            options.GeoM.Translate(float64(51), float64(nameDown))
             unitview.RenderUnitInfoNormal(screen, &imageCache, unit, "", unit.Unit.Race.String(), fonts.DescriptionFont, fonts.SmallFont, options)
 
             /*
@@ -85,13 +100,12 @@ func MakeHireMercenariesScreenUI(cache *lbx.LbxCache, ui *uilib.UI, unit *units.
     })
 
     var statsOptions ebiten.DrawImageOptions
-    statsOptions.GeoM.Translate(0, yTop)
-    statsOptions.GeoM.Translate(float64(31), float64(6))
+    statsOptions.GeoM.Translate(float64(windowX), float64(windowY))
     statsOptions.GeoM.Translate(float64(10), float64(50))
 
     uiGroup.AddElements(unitview.CreateUnitInfoStatsElements(&imageCache, unit, 15, fonts.DescriptionFont, fonts.SmallFont, statsOptions, &getAlpha, background, 1))
 
-    uiGroup.AddElements(unitview.MakeUnitAbilitiesElements(uiGroup, cache, &imageCache, unit, fonts.MediumFont, 40, 124, &ui.Counter, 1, &getAlpha, false, 0, false))
+    uiGroup.AddElements(unitview.MakeUnitAbilitiesElements(uiGroup, cache, &imageCache, unit, fonts.MediumFont, windowX + 9, windowY + 108, &ui.Counter, 1, &getAlpha, false, 0, false))
 
     uiGroup.AddElement(&uilib.UIElement{
         Layer: 1,
@@ -99,8 +113,7 @@ func MakeHireMercenariesScreenUI(cache *lbx.LbxCache, ui *uilib.UI, unit *units.
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             box, _ := imageCache.GetImage("unitview.lbx", 2, 0)
             var options ebiten.DrawImageOptions
-            options.GeoM.Translate(0, yTop)
-            options.GeoM.Translate(float64(248), float64(139))
+            options.GeoM.Translate(float64(boxX), float64(boxY))
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(screen, box, &options)
         },
@@ -108,7 +121,7 @@ func MakeHireMercenariesScreenUI(cache *lbx.LbxCache, ui *uilib.UI, unit *units.
 
     buttonBackgrounds, _ := imageCache.GetImages("backgrnd.lbx", 24)
 
-    hireRect := util.ImageRect(257, 149 + int(yTop), buttonBackgrounds[0])
+    hireRect := util.ImageRect(buttonX, hireY, buttonBackgrounds[0])
     hireIndex := 0
     uiGroup.AddElement(&uilib.UIElement{
         Layer: 1,
@@ -132,13 +145,18 @@ func MakeHireMercenariesScreenUI(cache *lbx.LbxCache, ui *uilib.UI, unit *units.
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(screen, buttonBackgrounds[hireIndex], &options)
 
+            if original != nil {
+                printButtonWord(screen, original, hireRect, hireIndex == 1, getAlpha(), "Hire")
+                return
+            }
+
             x := float64(hireRect.Min.X + hireRect.Max.X) / 2
             y := float64(hireRect.Min.Y + hireRect.Max.Y) / 2
             fonts.OkDismissFont.PrintOptions(screen, x, y - float64(5), font.FontOptions{Options: &options, Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount}, "Hire")
         },
     })
 
-    rejectRect := util.ImageRect(257, 169 + int(yTop), buttonBackgrounds[0])
+    rejectRect := util.ImageRect(buttonX, rejectY, buttonBackgrounds[0])
     rejectIndex := 0
     uiGroup.AddElement(&uilib.UIElement{
         Layer: 1,
@@ -162,6 +180,11 @@ func MakeHireMercenariesScreenUI(cache *lbx.LbxCache, ui *uilib.UI, unit *units.
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(screen, buttonBackgrounds[rejectIndex], &options)
 
+            if original != nil {
+                printButtonWord(screen, original, rejectRect, rejectIndex == 1, getAlpha(), "Reject")
+                return
+            }
+
             x := float64(rejectRect.Min.X + rejectRect.Max.X) / 2
             y := float64(rejectRect.Min.Y + rejectRect.Max.Y) / 2
             fonts.OkDismissFont.PrintOptions(screen, x, y - float64(5), font.FontOptions{Options: &options, Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount}, "Reject")
@@ -182,7 +205,12 @@ func MakeHireMercenariesScreenUI(cache *lbx.LbxCache, ui *uilib.UI, unit *units.
             if count > 1 {
                 message = fmt.Sprintf("%v Mercenaries for Hire: %v gold", count, goldToHire)
             }
-            fonts.OkDismissFont.PrintOptions(screen, float64(135), float64(6), font.FontOptions{Options: &options, Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount}, message)
+            if original != nil {
+                original.Print(screen, titleX, titleY, font.FontOptions{Options: &options, Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount}, mercenariesTitle(count, goldToHire))
+                return
+            }
+
+            fonts.OkDismissFont.PrintOptions(screen, float64(titleX), float64(titleY), font.FontOptions{Options: &options, Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount}, message)
         },
     })
 

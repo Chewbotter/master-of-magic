@@ -81,6 +81,17 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
 
     cancelBackground, _ := game.ImageCache.GetImage("main.lbx", 47, 0)
 
+    // the text and the places of the original, see surveyorstyle.go
+    style := game.getSurveyorStyle()
+    landY := 77
+    cancelBackY := 174
+    cancelY := 182
+    if style != nil {
+        landY = surveyorLandY
+        cancelBackY = surveyorCancelBackY
+        cancelY = surveyorCancelY
+    }
+
     quit := false
 
     ui := &uilib.UI{
@@ -99,11 +110,11 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
             scale.DrawScaled(screen, mainHud, &options)
 
             landImage, _ := game.ImageCache.GetImage("main.lbx", 57, 0)
-            options.GeoM.Translate(float64(240), float64(77))
+            options.GeoM.Translate(float64(240), float64(landY))
             scale.DrawScaled(screen, landImage, &options)
 
             options.GeoM.Reset()
-            options.GeoM.Translate(float64(240), float64(174))
+            options.GeoM.Translate(float64(240), float64(cancelBackY))
             scale.DrawScaled(screen, cancelBackground, &options)
 
             ui.StandardDraw(screen)
@@ -112,6 +123,20 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
 
             // outlined like the world map panel, see panel.go
             game.drawPanelReserves(screen)
+
+            if style != nil {
+                style.Title.Print(screen, surveyorMiddle, surveyorTitleY, font.FontOptions{Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, "Surveyor")
+
+                inMap := selectedPoint.X >= 0 && selectedPoint.X < game.Model.CurrentMap().Width() && selectedPoint.Y >= 0 && selectedPoint.Y < game.Model.CurrentMap().Height()
+                if inMap && overworld.Fog[selectedPoint.X][selectedPoint.Y] != data.FogTypeUnexplored {
+                    game.drawSurveyorOriginal(screen, style, selectedPoint.X, selectedPoint.Y, cityMap[selectedPoint], surveyorResources{
+                        MaximumPopulation: resources.MaximumPopulation,
+                        ProductionBonus: resources.ProductionBonus,
+                        GoldBonus: resources.GoldBonus,
+                    })
+                }
+                return
+            }
 
             fonts.SurveyorFont.PrintCenter(screen, float64(280), float64(81), scale.ScaleAmount, ebiten.ColorScale{}, "Surveyor")
 
@@ -342,7 +367,7 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
     // cancel button at bottom
     cancel, _ := game.ImageCache.GetImages("main.lbx", 41)
     cancelIndex := 0
-    cancelRect := util.ImageRect(263, 182, cancel[0])
+    cancelRect := util.ImageRect(263, cancelY, cancel[0])
     ui.AddElement(&uilib.UIElement{
         Rect: cancelRect,
         LeftClick: func(element *uilib.UIElement){
@@ -408,7 +433,14 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
 
                 tile := game.Model.CurrentMap().GetTile(newX, newY)
 
-                if !tile.Tile.IsLand() {
+                if style != nil && game.surveyorNoCity(game.Model.CurrentMap(), newX, newY, cityMap[newPoint]) == "" {
+                    // the numbers of a place for a city, which the text of the original shows
+                    resources.Enabled = true
+                    resources.MaximumPopulation = game.Model.ComputeMaximumPopulation(newX, newY, game.Model.Plane)
+                    resources.ProductionBonus = game.CityProductionBonus(newX, newY, game.Model.Plane)
+                    resources.GoldBonus = game.CityGoldBonus(newX, newY, game.Model.Plane)
+                } else if style != nil {
+                } else if !tile.Tile.IsLand() {
                     text = "Cannot build cities on water."
                 } else if cityMap[newPoint] == nil && game.Model.NearCity(newPoint, 3, game.Model.Plane) {
                     text = "Cities cannot be built less than 3 squares from any other city."

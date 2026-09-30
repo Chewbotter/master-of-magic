@@ -64,6 +64,25 @@ func MakeHelpElementSized(container UIContainer, cache *lbx.LbxCache, imageCache
     infoTopMargin := 26
     infoBodyMargin := 3
     maxInfoWidth := infoWidth - infoLeftMargin - infoBodyMargin - 14
+    // from a picture to the headline, between two entries, and under the text of an entry
+    pictureGap := 5
+    entryGap := 2
+    entryBelow := 0
+    scrollBelow := 0
+
+    // the colors and the places of the original, see helpstyle.go
+    style := getHelpStyle(cache)
+    if style != nil {
+        helpFonts = HelpFonts{HelpFont: style.Text, HelpTitleFont: style.Title}
+        infoX = helpScrollX
+        infoLeftMargin = helpTitleX
+        infoBodyMargin = helpTextX - helpTitleX
+        maxInfoWidth = helpTextWidth
+        pictureGap = helpPictureGap
+        entryGap = 0
+        entryBelow = helpEntryBelow
+        scrollBelow = helpScrollBelow
+    }
 
     // fmt.Printf("Help text: %v\n", []byte(help.Text))
 
@@ -108,17 +127,24 @@ func MakeHelpElementSized(container UIContainer, cache *lbx.LbxCache, imageCache
     }
 
     bottom := float64(helpTextY) + wrapped.TotalHeight
+    if help.Text != "" {
+        bottom += float64(entryBelow)
+    }
 
     var moreHelp []font.WrappedText
 
     // add in more help entries
     for _, entry := range helpEntries {
-        bottom += 2
+        bottom += float64(entryGap)
         bottom += float64(helpFonts.HelpTitleFont.Height()) + 1
         moreWrapped := wrap(entry.Text)
         moreHelp = append(moreHelp, moreWrapped)
         bottom += moreWrapped.TotalHeight
+        if entry.Text != "" {
+            bottom += float64(entryBelow)
+        }
     }
+    bottom += float64(scrollBelow)
 
     // the scroll is cut and its lower end put under it at whole art pixels. smaller text has
     // heights between them, which left a broken row of pixels where the two meet
@@ -158,17 +184,17 @@ func MakeHelpElementSized(container UIContainer, cache *lbx.LbxCache, imageCache
                 options.GeoM.Translate(float64(titleX), infoY + float64(infoTopMargin))
                 options.ColorScale.ScaleAlpha(getAlpha())
                 scale.DrawScaled(window, extraImage, &options)
-                titleX += extraImage.Bounds().Dx() + 5
+                titleX += extraImage.Bounds().Dx() + pictureGap
             }
 
             helpFonts.HelpTitleFont.PrintOptions(window, float64(titleX), infoY + float64(infoTopMargin + titleYAdjust), font.FontOptions{Options: &options, Scale: scale.ScaleAmount}, help.Headline)
             helpFonts.HelpFont.RenderWrapped(window, float64(infoX + infoLeftMargin + infoBodyMargin), float64(helpTextY) + infoY, wrapped, textOptions(&options))
 
-            yPos := float64(helpTextY) + infoY + wrapped.TotalHeight + 2
+            yPos := float64(helpTextY) + infoY + wrapped.TotalHeight + float64(entryGap)
             for i, moreWrapped := range moreHelp {
                 helpFonts.HelpTitleFont.PrintOptions(window, float64(titleX), yPos, font.FontOptions{Options: &options, Scale: scale.ScaleAmount}, helpEntries[i].Headline)
                 helpFonts.HelpFont.RenderWrapped(window, float64(infoX + infoLeftMargin + infoBodyMargin), yPos + float64(helpFonts.HelpTitleFont.Height()) + 1, moreWrapped, textOptions(&options))
-                yPos += float64(helpFonts.HelpTitleFont.Height()) + 1 + float64(moreWrapped.TotalHeight) + 2
+                yPos += float64(helpFonts.HelpTitleFont.Height()) + 1 + float64(moreWrapped.TotalHeight) + float64(entryGap)
             }
 
         },
@@ -205,6 +231,11 @@ func MakeErrorElement(ui UIContainer, cache *lbx.LbxCache, imageCache *util.Imag
 }
 
 func MakeErrorElementWithLayer(ui UIContainer, cache *lbx.LbxCache, imageCache *util.ImageCache, message string, layer UILayer, clicked func()) *UIElement {
+    // the box of the original, see noticestyle.go
+    if styled := makeNoticeOriginal(ui, cache, imageCache, message, layer, clicked); styled != nil {
+        return styled
+    }
+
     errorX := 67
     errorY := 73
 
@@ -299,6 +330,21 @@ func MakeConfirmDialogWithLayerFull(container UIContainer, cache *lbx.LbxCache, 
 
     topDraw := confirmTop.SubImage(image.Rect(0, 0, confirmTop.Bounds().Dx(), int(bottom) - confirmY)).(*ebiten.Image)
 
+    // the text and the places of the original, see confirmstyle.go
+    style := getConfirmStyle(cache)
+    var styleLines []string
+    buttonsY := bottom + float64(5)
+    if style != nil {
+        var textHeight int
+        styleLines, textHeight = style.lines(message)
+        confirmX = confirmBoxX
+        confirmY = confirmBoxY(textHeight)
+        bottom = float64(confirmY + textHeight + confirmBottomY)
+        buttonsY = float64(confirmY + textHeight + confirmButtonsY)
+        rows := min(confirmTop.Bounds().Dy(), textHeight + confirmTopRows)
+        topDraw = confirmTop.SubImage(image.Rect(0, 0, confirmTop.Bounds().Dx(), rows)).(*ebiten.Image)
+    }
+
     var elements []*UIElement
 
     elements = append(elements, &UIElement{
@@ -313,7 +359,9 @@ func MakeConfirmDialogWithLayerFull(container UIContainer, cache *lbx.LbxCache, 
             options.ColorScale.ScaleAlpha(getAlpha())
             scale.DrawScaled(window, topDraw, &options)
 
-            if center {
+            if style != nil {
+                style.draw(window, confirmX, confirmY, getAlpha(), styleLines)
+            } else if center {
                 fonts.Yellow.RenderWrapped(window, float64(confirmX + confirmMargin + maxWidth / 2), float64(confirmY + confirmTopMargin), wrapped, font.FontOptions{Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount, Options: &options, DropShadow: true})
             } else {
                 fonts.Yellow.RenderWrapped(window, float64(confirmX + confirmMargin), float64(confirmY + confirmTopMargin), wrapped, font.FontOptions{Scale: scale.ScaleAmount, Options: &options, DropShadow: true})
@@ -328,7 +376,7 @@ func MakeConfirmDialogWithLayerFull(container UIContainer, cache *lbx.LbxCache, 
     // add yes/no buttons
     if err == nil {
         yesX := confirmX + 101
-        yesY := bottom + float64(5)
+        yesY := buttonsY
 
         clicked := false
         elements = append(elements, &UIElement{
@@ -363,7 +411,7 @@ func MakeConfirmDialogWithLayerFull(container UIContainer, cache *lbx.LbxCache, 
 
     if err == nil {
         noX := confirmX + 18
-        noY := bottom + float64(5)
+        noY := buttonsY
 
         clicked := false
         elements = append(elements, &UIElement{
@@ -404,6 +452,11 @@ func MakeLairConfirmDialog(ui UIContainer, cache *lbx.LbxCache, imageCache *util
 }
 
 func MakeLairConfirmDialogWithLayer(ui UIContainer, cache *lbx.LbxCache, imageCache *util.ImageCache, lairPicture *util.Animation, layer UILayer, message string, confirm func(), cancel func()) []*UIElement {
+    // the box of the original, see noticestyle.go
+    if styled := makeLairOriginal(ui, cache, imageCache, lairPicture, layer, message, true, confirm, cancel); styled != nil {
+        return styled
+    }
+
     confirmX := 67
     confirmY := 40
 
@@ -536,6 +589,11 @@ func MakeLairConfirmDialogWithLayer(ui UIContainer, cache *lbx.LbxCache, imageCa
 }
 
 func MakeLairShowDialogWithLayer(ui UIContainer, cache *lbx.LbxCache, imageCache *util.ImageCache, lairPicture *util.Animation, layer UILayer, message string, dismiss func()) []*UIElement {
+    // the box of the original, see noticestyle.go
+    if styled := makeLairOriginal(ui, cache, imageCache, lairPicture, layer, message, false, dismiss, dismiss); styled != nil {
+        return styled
+    }
+
     confirmX := 67
     confirmY := 40
 
@@ -601,6 +659,30 @@ type Selection struct {
     Name string
     Action func()
     Hotkey string
+    // where the Hotkey starts, in art pixels from where the name starts. 0: where the keys of
+    // the advisors are. the Hotkey is any text that stands in a second column. see selectstyle.go
+    HotkeyX int
+}
+
+// the box in the middle of the screen, where the original has every box of choices
+func MakeSelectionUICentered(ui UIContainer, lbxCache *lbx.LbxCache, imageCache *util.ImageCache, selectionTitle string, choices []Selection, canCancel bool, fallbackX int, fallbackY int) []*UIElement {
+    style := getSelectionStyle(lbxCache)
+    if style == nil {
+        return MakeSelectionUI(ui, lbxCache, imageCache, fallbackX, fallbackY, selectionTitle, choices, canCancel)
+    }
+
+    left, _ := imageCache.GetImage("resource.lbx", 5, 0)
+    right, _ := imageCache.GetImage("resource.lbx", 8, 0)
+    top, _ := imageCache.GetImage("resource.lbx", 7, 0)
+    bottom, _ := imageCache.GetImage("resource.lbx", 9, 0)
+    button, _ := imageCache.GetImage("resource.lbx", 13, 0)
+    if left == nil || right == nil || top == nil || bottom == nil || button == nil {
+        return MakeSelectionUI(ui, lbxCache, imageCache, fallbackX, fallbackY, selectionTitle, choices, canCancel)
+    }
+
+    width := left.Bounds().Dx() + style.width(selectionTitle, choices) + right.Bounds().Dx()
+    height := top.Bounds().Dy() + button.Bounds().Dy() * len(choices) + bottom.Bounds().Dy()
+    return MakeSelectionUI(ui, lbxCache, imageCache, (data.ScreenWidth - width) / 2, (data.ScreenHeight - height) / 2, selectionTitle, choices, canCancel)
 }
 
 type SelectionFonts struct {
@@ -721,6 +803,16 @@ func MakeSelectionUI(ui UIContainer, lbxCache *lbx.LbxCache, imageCache *util.Im
         images, _ := imageCache.GetImages("resource.lbx", 12 + choiceIndex)
         // the ends are all the same image
         ends, _ := imageCache.GetImages("resource.lbx", 22)
+        if style != nil {
+            // the buttons of the original, see selectstyle.go
+            button, end := selectionButton(choiceIndex, len(choices))
+            ownImages, err1 := imageCache.GetImages("resource.lbx", button)
+            ownEnds, err2 := imageCache.GetImages("resource.lbx", end)
+            if err1 == nil && err2 == nil && len(ownImages) > 1 && len(ownEnds) > 1 {
+                images = ownImages
+                ends = ownEnds
+            }
+        }
 
         myX := x1
         myY := y1

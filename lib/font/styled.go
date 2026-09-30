@@ -77,6 +77,13 @@ type StyledFont struct {
     ShadowColor color.Color
     // when above 0, the width of a space, in art pixels
     SpaceWidth int
+    // art pixels between two lines of a paragraph, from the data of the font
+    LineGap int
+}
+
+// from a line of a paragraph to the next, in art pixels
+func (styled *StyledFont) LineHeight() int {
+    return styled.Height() + styled.LineGap
 }
 
 // colors[k] is the color of glyph pixel value k. colors[0] is the alias color.
@@ -107,6 +114,7 @@ func MakeStyledFont(lbxFont *LbxFont, colors []color.Color, shadow ShadowMode, s
         Mask: MakeOptimizedFontWithPalette(lbxFont, mask),
         Shadow: shadow,
         ShadowColor: shadowColor,
+        LineGap: lbxFont.VerticalSpacing,
     }
 }
 

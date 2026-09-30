@@ -2636,6 +2636,9 @@ func SimplifiedView(cache *lbx.LbxCache, city *citylib.City, player *playerlib.P
 
     currentUnitName := ""
 
+    // the text of the original, see enemystyle.go
+    enemyStyle := getEnemyCityStyle(cache)
+
     ui := &uilib.UI{
         LeftClick: func(){
             quit = true
@@ -2647,6 +2650,22 @@ func SimplifiedView(cache *lbx.LbxCache, city *citylib.City, player *playerlib.P
             scale.DrawScaled(screen, background, &useOptions)
 
             fontOptions := font.FontOptions{Options: &useOptions, Scale: scale.ScaleAmount}
+
+            if enemyStyle != nil {
+                cornerX, cornerY := options.GeoM.Apply(0, 0)
+                var plain ebiten.DrawImageOptions
+                plain.ColorScale.ScaleAlpha(getAlpha())
+                print := font.FontOptions{Options: &plain, Scale: scale.ScaleAmount}
+                middle := print
+                middle.Justify = font.FontJustifyCenter
+                enemyStyle.Title.Print(screen, int(cornerX) + enemyTitleMiddle, int(cornerY) + enemyTitleY, middle, fmt.Sprintf("%v of %s", city.GetSize(), city.Name))
+                enemyStyle.Text.Print(screen, int(cornerX) + enemyTextX, int(cornerY) + enemyRaceY, print, fmt.Sprintf("%v", city.Race))
+                enemyStyle.Text.Print(screen, int(cornerX) + enemyTextX, int(cornerY) + enemyUnitsY, print, "Units")
+                enemyStyle.Text.Print(screen, int(cornerX) + enemyUnitNameX, int(cornerY) + enemyUnitsY, print, currentUnitName)
+
+                ui.StandardDraw(screen)
+                return
+            }
 
             titleX, titleY := options.GeoM.Apply(float64(20), float64(3))
             fonts.BigFont.PrintOptions(screen, titleX, titleY, fontOptions, fmt.Sprintf("%v of %s", city.GetSize(), city.Name))
@@ -2720,6 +2739,10 @@ func SimplifiedView(cache *lbx.LbxCache, city *citylib.City, player *playerlib.P
             inside := 0
             for i, unit := range stack.Units() {
                 x, y := options.GeoM.Apply(float64(8), float64(52))
+
+                if enemyStyle != nil {
+                    x += float64(enemyUnitX - 8 + (i % 6) * (enemyUnitStep - 20))
+                }
 
                 x += float64((i % 6) * 20)
                 y += float64((i / 6) * 20)

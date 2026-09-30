@@ -49,6 +49,10 @@ func easeInOut(value float64) float64 {
 // development: called with the camera offsets on every frame of a move
 var CameraMoveTrace func(x float64, y float64)
 
+// true while a move of the camera of the game's own runs. the cursor of the map is not put on
+// the pixels of the map then, see worldcursor.go
+var cameraMoves bool
+
 // moves the camera to center on a tile
 func (game *Game) animateCameraTo(yield coroutine.YieldFunc, x int, y int) {
     mapUse := game.Model.CurrentMap()
@@ -67,6 +71,11 @@ func (game *Game) animateCameraTo(yield coroutine.YieldFunc, x int, y int) {
         game.setCameraOffset(float64(x), float64(y))
         return
     }
+
+    cameraMoves = true
+    defer func(){
+        cameraMoves = false
+    }()
 
     frames := max(1, int(math.Round(CameraMoveTime * float64(ebiten.TPS()))))
     for frame := 1; frame < frames; frame++ {
