@@ -1516,6 +1516,9 @@ func (game *Game) showOutpost(yield coroutine.YieldFunc, city *citylib.City, sta
     x1 := 30
     y1 := 50
 
+    // the text and the places of the original, see outpoststyle.go
+    outpostText := game.outpostStyle()
+
     uiOptions.GeoM.Translate(float64(x1), float64(y1))
     rect := util.ImageRect(x1, y1, background)
     group.AddElement(&uilib.UIElement{
@@ -1533,6 +1536,11 @@ func (game *Game) showOutpost(yield coroutine.YieldFunc, city *citylib.City, sta
 
             houseOptions := uiOptions
             houseOptions.GeoM.Translate(float64(7), float64(31))
+            houseStep := -1
+            if outpostText != nil {
+                houseOptions.GeoM.Translate(float64(outpostHouseX - 7), 0)
+                houseStep = outpostHouseStep
+            }
 
             fullHouseIndex := 34
             emptyHouseIndex := 37
@@ -1550,23 +1558,38 @@ func (game *Game) showOutpost(yield coroutine.YieldFunc, city *citylib.City, sta
 
             for i := 0; i < numHouses; i++ {
                 scale.DrawScaled(screen, house, &houseOptions)
+                if houseStep > 0 {
+                    houseOptions.GeoM.Translate(float64(houseStep), 0)
+                    continue
+                }
                 houseOptions.GeoM.Translate(float64(house.Bounds().Dx()) + 1, 0)
             }
 
             emptyHouse, _ := game.ImageCache.GetImage("backgrnd.lbx", emptyHouseIndex, 0)
             for i := numHouses; i < maxHouses; i++ {
                 scale.DrawScaled(screen, emptyHouse, &houseOptions)
+                if houseStep > 0 {
+                    houseOptions.GeoM.Translate(float64(houseStep), 0)
+                    continue
+                }
                 houseOptions.GeoM.Translate(float64(emptyHouse.Bounds().Dx() + 1), 0)
             }
 
             x, y := uiOptions.GeoM.Apply(float64(6), float64(22))
-            game.Fonts.InfoFontYellow.Print(screen, x, y, scale.ScaleAmount, uiOptions.ColorScale, city.Race.String())
-
-            x, y = uiOptions.GeoM.Apply(float64(20), float64(5))
+            title := fmt.Sprintf("Outpost Of %v", city.Name)
             if rename {
-                fonts.BigFont.Print(screen, x, y, scale.ScaleAmount, uiOptions.ColorScale, "New Outpost Founded")
+                title = "New Outpost Founded"
+            }
+
+            if outpostText != nil {
+                var plain ebiten.DrawImageOptions
+                outpostText.Race.Print(screen, x1 + outpostRaceX, y1 + outpostRaceY, font.FontOptions{Options: &plain, Scale: scale.ScaleAmount}, city.Race.String())
+                outpostText.Title.Print(screen, x1 + outpostTitleMiddle, y1 + outpostTitleY, font.FontOptions{Options: &plain, Scale: scale.ScaleAmount, Justify: font.FontJustifyCenter}, title)
             } else {
-                fonts.BigFont.Print(screen, x, y, scale.ScaleAmount, uiOptions.ColorScale, fmt.Sprintf("Outpost Of %v", city.Name))
+                game.Fonts.InfoFontYellow.Print(screen, x, y, scale.ScaleAmount, uiOptions.ColorScale, city.Race.String())
+
+                x, y = uiOptions.GeoM.Apply(float64(20), float64(5))
+                fonts.BigFont.Print(screen, x, y, scale.ScaleAmount, uiOptions.ColorScale, title)
             }
 
             cityScapeOptions := uiOptions
@@ -4947,6 +4970,11 @@ func (game *Game) doTreasurePopup(yield coroutine.YieldFunc, player *playerlib.P
             uiDone = true
         },
         Draw: func (element *uilib.UIElement, screen *ebiten.Image){
+            // the box of the original, see treasurestyle.go
+            if game.drawTreasureOriginal(screen, treasure, getAlpha()) {
+                return
+            }
+
             left, _ := game.ImageCache.GetImage("resource.lbx", 56, 0)
             var options ebiten.DrawImageOptions
             options.ColorScale.ScaleAlpha(getAlpha())

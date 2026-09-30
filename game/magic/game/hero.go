@@ -356,6 +356,11 @@ func (game *Game) showHeroLevelUpPopup(yield coroutine.YieldFunc, hero *herolib.
     game.PushDrawer(func (screen *ebiten.Image){
         drawer(screen)
 
+        // the box of the original, see levelstyle.go
+        if game.drawLevelUpOriginal(screen, hero, haveAbilities, getAlpha()) {
+            return
+        }
+
         var options ebiten.DrawImageOptions
 
         // background

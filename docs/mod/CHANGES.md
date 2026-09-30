@@ -20,7 +20,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 
 ## World map
 - The menus of choices (Info, Game) and the advisors of Info have the original's text: its letters, colors, edges and places.
-- Messages and popups have the original's text: the box of a message, what a stack has found (lair, node, tower), the help scroll, the box of a finished building and of an event, the windows of a hero or mercenaries for hire and of the merchant, the box a name is typed in.
+- Messages and popups have the original's text: the box of a message, what a stack has found (lair, node, tower), the help scroll, the box of a finished building and of an event, the windows of a hero or mercenaries for hire and of the merchant, the box a name is typed in, what was found in a lair, a hero that has made a level, the window of an outpost.
 - The events of a turn are on one scroll, under their headings, as in the original; a text that is too long for it can be moved with the wheel, the arrow keys or the arrows on the scroll.
 - Smooth panning with the middle mouse button (modern controls): the map glides, keeps moving for a moment after release, and the cursor glides with it.
 - Camera moves are eased: a right click, the jump to the next unit, and following a unit that walks.

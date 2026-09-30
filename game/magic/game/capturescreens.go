@@ -19,7 +19,7 @@ import (
 )
 
 // the names CaptureOpenScreen accepts
-var CaptureScreenNames = []string{"hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname", "newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
+var CaptureScreenNames = []string{"levelup", "outpost", "outpostnew", "treasure", "treasuremany", "treasurenone", "hirehero", "hireprisoner", "heroname", "mercenaries", "merchant", "cityname", "outpostname", "newbuilding", "event", "notice", "lair", "lairempty", "lairnode", "chancellorevents", "chancellormany", "unit", "cityunit", "citybuilding", "build", "buildunit", "buildbuilding", "armies", "cities", "magic", "spellbook", "city", "surveyor", "cartographer", "advisors", "blink", "nextunit", "research", "spellinfo", "chancellor", "apprentice", "historian", "astrologer", "taxcollector", "vizier", "mirror"}
 
 // development: sends the selected stack walking to the tile dx,dy away, as a left click would.
 // returns false when there is no selected stack or no path
@@ -218,6 +218,51 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                             item := artifact.MakeRandomArtifact(game.Cache)
                             game.doMerchant(yield, 1200, &item, player)
                     }
+                },
+            }
+        case "treasure", "treasuremany", "treasurenone":
+            // the box of what was found in a lair
+            player := game.Model.GetHumanPlayer()
+            if player == nil {
+                return false
+            }
+            var found Treasure
+            switch name {
+                case "treasure": found.Treasures = []TreasureItem{&TreasureGold{Amount: 120}}
+                case "treasuremany":
+                    item := artifact.MakeRandomArtifact(game.Cache)
+                    found.Treasures = []TreasureItem{&TreasureGold{Amount: 120}, &TreasureMana{Amount: 80}, &TreasureMagicalItem{Artifact: &item}, &TreasureSpellbook{Magic: data.LifeMagic, Count: 1}}
+            }
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    game.doTreasurePopup(yield, player, found)
+                },
+            }
+        case "levelup", "outpost", "outpostnew":
+            // a hero that has made a level, the window of an outpost
+            player := game.Model.GetHumanPlayer()
+            if player == nil || len(player.Cities) == 0 {
+                return false
+            }
+            var city *citylib.City
+            for _, check := range player.Cities {
+                city = check
+                break
+            }
+            event = &GameEventInvokeRoutine{
+                Routine: func(yield coroutine.YieldFunc) {
+                    if name == "levelup" {
+                        for _, hero := range player.HeroPool {
+                            if len(hero.GetAbilities()) < 3 {
+                                continue
+                            }
+                            hero.AddExperience(200)
+                            game.showHeroLevelUpPopup(yield, hero)
+                            break
+                        }
+                        return
+                    }
+                    game.showOutpost(yield, city, nil, player, name == "outpostnew")
                 },
             }
         case "notice":
