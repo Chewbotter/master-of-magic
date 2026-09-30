@@ -408,14 +408,19 @@ func (rules *Rules) DeclareWar(attacker *playerlib.Player, defender *playerlib.P
     resetHostilityCountdown(defender)
 }
 
-// Break_Treaties: the breaker ends a pact or alliance. Its victim trusts it 10 less for good (20
-// for an alliance, twice that when the breaker is lawful), every other wizard 5 less; after an
-// alliance the victim's lasting relation drops as much. The relation drops by 1 to 20, the patience
-// for proposals is gone. (The original's signs and sides here are marked as mistakes in the
-// reconstruction; this is the rule as meant: the breaker pays.)
+// Break_Treaties: the breaker ends a pact or alliance. The size is 10 (20 for an alliance, twice
+// that when the breaker is lawful). As the original has it (quirkBreakTreatiesBackwards): the
+// BREAKER's hidden relation to the victim goes up by it, every other wizard's to the VICTIM drops by
+// 5, after an alliance the breaker's lasting relation goes up by it, and the lasting relation is
+// copied to the victim's view for any treaty. (Meant: the breaker pays; see improvements.md.) The
+// relation drops by 1 to 20, the patience for proposals is gone
 func (rules *Rules) BreakTreaties(breaker *playerlib.Player, victim *playerlib.Player) {
     breakerView, victimView := view(breaker, victim), view(victim, breaker)
     if breakerView == nil || victimView == nil || breakerView.Treaty >= data.TreatyWar {
+        return
+    }
+    if quirkBreakTreatiesBackwards {
+        rules.breakTreatiesBackwards(breaker, victim, breakerView, victimView)
         return
     }
 
@@ -441,6 +446,52 @@ func (rules *Rules) BreakTreaties(breaker *playerlib.Player, victim *playerlib.P
         breakerView.StartingRelation = victimView.StartingRelation
     }
     if penalty != 0 {
+        breakerView.BrokenTreaty = breakerView.Treaty
+        victimView.BrokenTreaty = breakerView.Treaty
+        breakerView.VisibleRelation -= roll(20)
+    }
+    breakerView.Treaty = data.TreatyNone
+    victimView.Treaty = data.TreatyNone
+    breakerView.VisibleRelation = max(breakerView.VisibleRelation, -100)
+    victimView.VisibleRelation = breakerView.VisibleRelation
+    for _, relation := range []*playerlib.Relationship{breakerView, victimView} {
+        relation.TreatyInterest = -200
+        relation.TradeInterest = -200
+        relation.PeaceInterest = -200
+    }
+    resetHostilityCountdown(breaker)
+    resetHostilityCountdown(victim)
+}
+
+// Break_Treaties: the signs and sides of the original's program (the reconstruction marks them
+// as its bugs)
+const quirkBreakTreatiesBackwards = true
+
+func (rules *Rules) breakTreatiesBackwards(breaker *playerlib.Player, victim *playerlib.Player, breakerView *playerlib.Relationship, victimView *playerlib.Relationship) {
+    size := 0
+    switch breakerView.Treaty {
+        case data.TreatyPact: size = 10
+        case data.TreatyAlliance: size = 20
+    }
+    if breaker.Personality == playerlib.PersonalityLawful {
+        size *= 2
+    }
+    // the original subtracts a negative number
+    breakerView.HiddenRelation += size
+    for _, other := range rules.wizards() {
+        if other == breaker || other == victim {
+            continue
+        }
+        if otherView := view(other, victim); otherView != nil {
+            otherView.HiddenRelation -= 5
+        }
+    }
+    if breakerView.Treaty == data.TreatyAlliance {
+        breakerView.StartingRelation += size
+    }
+    breakerView.StartingRelation = max(breakerView.StartingRelation, -100)
+    victimView.StartingRelation = breakerView.StartingRelation
+    if size != 0 {
         breakerView.BrokenTreaty = breakerView.Treaty
         victimView.BrokenTreaty = breakerView.Treaty
         breakerView.VisibleRelation -= roll(20)

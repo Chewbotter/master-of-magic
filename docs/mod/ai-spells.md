@@ -90,17 +90,29 @@ Presence on death wizards (where it does nothing), Storm Giant not squared, Inca
 Barbarian Spearmen, Astral Gate never, Trolls' cities not doubled, Transmute's test of bits, Plane
 Shift only for stacks with settlers, Enchant Road on the city's square.
 
+## As the original (put back 2026-09-30)
+
+- Black Wind and Stasis find no target (their pickers never answer), so they are lost with their
+  mana (`quirkStackSpellsNoTarget`).
+- An enemy stack's value is its last unit's strength (`quirkStackValueLastUnit`).
+- Raise Volcano counts only sorcery nodes as nodes, so nature nodes can be struck
+  (`quirkOnlySorceryNodes`).
+- Stacks of treaty partners are targets like any other.
+- The research cost is the spell's cost less the wizard's research bonus, which the original works
+  out for the first spells of nature: Sage Master, Nature Mastery, nature books beyond 7, whatever the
+  spell's realm.
+- The second realm starts at nature and its books (`quirkSecondaryFromNature`): a nature wizard's
+  second realm is nature, and another realm needs more books than nature to be second. The first
+  realm on a tie: nature, sorcery, chaos, life, death.
+
 ## Our calls
 
-- Where the reconstruction is wired wrong, the meaning is ported: Fire Storm and Ice Storm strike
-  the square picked, Black Wind and Stasis a stack, the curses of cities use the enemy city scan,
-  that scan wants cities seen (through Awareness), an enemy stack's value is the sum of its units,
-  every node is a node, Disenchant's last step aims at the unit it found.
+- Where the reconstruction's own notes, checked against the program, disagree with its code, the
+  notes are followed: the curses of cities use the enemy city scan, and it wants cities seen.
+- Not portable, the meaning is ported: Fire Storm and Ice Storm take a unit number for a square (the
+  fork has no unit numbers), Disenchant's last step reads outside its list.
 - Summoning Circle, Enchant Item, Create Artifact: their targets and items are not reconstructed;
   Chewbot does not cast them.
-- The research cost is the spell's own, without the wizard's research bonus.
-- Stacks of a treaty partner are no target.
-- The tie of realms of equal books: nature, sorcery, chaos, life, death.
 
 ## Seen in runs
 

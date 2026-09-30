@@ -13,15 +13,20 @@ func chewSpellWizard(name string, banner data.BannerType, human bool, books ...d
     return playerlib.MakePlayer(setup.WizardCustom{Name: name, Banner: banner, Books: books}, human, 10, 10, make(map[herolib.HeroType]string), &playerlib.NoGlobalEnchantments{})
 }
 
-// the realms of most and second most books; one realm is both; none is nature
+// the realms of most and second most books; the second starts at nature (quirkSecondaryFromNature);
+// none is nature
 func TestChewbotRealms(test *testing.T) {
     wizard := setup.WizardCustom{Books: []data.WizardBook{{Magic: data.DeathMagic, Count: 6}, {Magic: data.ChaosMagic, Count: 5}}}
     if primary, secondary := chewRealms(wizard); primary != data.DeathMagic || secondary != data.ChaosMagic {
         test.Errorf("death 6, chaos 5: %v %v", primary, secondary)
     }
     wizard = setup.WizardCustom{Books: []data.WizardBook{{Magic: data.LifeMagic, Count: 11}}}
-    if primary, secondary := chewRealms(wizard); primary != data.LifeMagic || secondary != data.LifeMagic {
+    if primary, secondary := chewRealms(wizard); primary != data.LifeMagic || secondary != data.NatureMagic {
         test.Errorf("life only: %v %v", primary, secondary)
+    }
+    wizard = setup.WizardCustom{Books: []data.WizardBook{{Magic: data.NatureMagic, Count: 6}, {Magic: data.ChaosMagic, Count: 5}}}
+    if primary, secondary := chewRealms(wizard); primary != data.NatureMagic || secondary != data.NatureMagic {
+        test.Errorf("nature 6, chaos 5: %v %v", primary, secondary)
     }
     if primary, _ := chewRealms(setup.WizardCustom{}); primary != data.NatureMagic {
         test.Errorf("no books: %v", primary)

@@ -85,15 +85,22 @@ func classicLairRealm(kind EncounterType) data.MagicType {
             }
             return data.DeathMagic
     }
-    // cave, dungeon, keep, monster lair: death 2 in 5, chaos 2 in 5, nature 1 in 5 (MY CALL: the
-    // reconstruction's switch falls through to nature every time, which it says the program does
-    // too; the other realms are seen in these places in the game as played)
-    switch classicLairRoll(5) {
+    // cave, dungeon, keep, monster lair: meant death 2 in 5, chaos 2 in 5, nature 1 in 5; the
+    // original's choice falls through to nature every time (kept, the roll is still made)
+    roll := classicLairRoll(5)
+    if quirkLairsAllNature {
+        return data.NatureMagic
+    }
+    switch roll {
         case 1, 2: return data.DeathMagic
         case 3, 4: return data.ChaosMagic
     }
     return data.NatureMagic
 }
+
+// Create_Lair: the realm of a cave, dungeon, keep or monster lair falls through to nature (see
+// docs/mod/improvements.md)
+const quirkLairsAllNature = true
 
 // Create_Lair: guardians for a budget scaled by the difficulty, and the budget of the treasure,
 // which is worth what the guardians are

@@ -10,9 +10,9 @@ package ai
 //   enemy city: the same for a city of a wizard the AI is hostile to (2 or more, no peace) and for
 //     neutral cities, 200 more for another wizard's fortress, 0 for all others
 //   garrison: the strength of the AI's units in a city; settlers, engineers, transports count 0
-//   stacks: the units of a square outside cities, their strengths added (the original sets the value
-//     of an enemy stack to its last unit's strength, a slip of the reconstruction or the original;
-//     here the sum)
+//   stacks: the units of a square outside cities; the value of an enemy stack is the strength of its
+//     last unit (the original sets it for every unit, kept: quirkStackValueLastUnit), of an own
+//     stack the sum
 
 import (
     "image"
@@ -26,6 +26,9 @@ import (
 
 // the original misses Trolls in the races whose cities count twice (rt_Standard for Trolls)
 const quirkTrollCityValue = true
+
+// AI_Player_Calculate_Target_Values: every unit of an enemy stack sets its value (not adds)
+const quirkStackValueLastUnit = true
 
 // a square of units of one player
 type chewSpellStack struct {
@@ -147,10 +150,15 @@ func (ai *ChewbotAI) spellWorld(self *playerlib.Player, services playerlib.AISer
                 continue
             }
             value := 0
+            last := 0
             for _, unit := range stack.Units() {
-                value += chewSpellStrength(unit)
+                last = chewSpellStrength(unit)
+                value += last
             }
             city := cityAt(stack.X(), stack.Y(), stack.Plane())
+            if player != self && quirkStackValueLastUnit {
+                value = last
+            }
             entry := chewSpellStack{X: stack.X(), Y: stack.Y(), Plane: stack.Plane(), Owner: player, Units: stack.Units(), Value: value}
             if player == self {
                 if city != nil {

@@ -4997,7 +4997,10 @@ func (game *Game) createTreasure(encounterType maplib.EncounterType, budget int,
         treasure := makeTreasure(game.Cache, encounterType, budget, point, player.Wizard, player.KnownSpells, allSpells, heroes, makeArtifacts)
         if maplib.ClassicMaps {
             // the original's hoard (treasureclassic.go)
-            treasure = makeClassicTreasure(encounterType, budget, point, player.Wizard, player.KnownSpells, allSpells, heroes, makeArtifacts)
+            treasure = makeClassicTreasure(game.Cache, encounterType, budget, point, player.Wizard, player.KnownSpells, allSpells, heroes)
+        }
+        if BattleLog {
+            log.Printf("battle treasure of %v (budget %v) for %v: %v", encounterType, budget, player.Wizard.Name, treasure)
         }
         // FIXME: show treasure ui for human, otherwise just apply treasure for AI
         select {

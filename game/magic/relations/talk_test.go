@@ -81,14 +81,12 @@ func TestThreatenWithoutArmy(test *testing.T) {
 
 // a warning names the treaty, a breaking says it is broken (records 15 and 24 past the grievance)
 func TestWarningRecords(test *testing.T) {
-    if got := warningRecord(ActionBattle); got != 23 {
-        test.Errorf("warning for a battle: %v, want 23", got)
+    // the original says the grievance's words (quirkWarningWordsOfGrievance)
+    if got := warningRecord(ActionBattle); got != ActionBattle {
+        test.Errorf("warning for a battle: %v, want %v", got, ActionBattle)
     }
-    if got := brokenRecord(ActionCityAttacked); got != 33 {
-        test.Errorf("broken over an attacked city: %v, want 33", got)
-    }
-    if got := brokenRecord(ActionUnitsNearCity); got != ActionUnitsNearCity {
-        test.Errorf("units near a city have no words of their own: %v", got)
+    if got := brokenRecord(ActionCityAttacked); got != ActionCityAttacked {
+        test.Errorf("broken over an attacked city: %v, want %v", got, ActionCityAttacked)
     }
 }
 

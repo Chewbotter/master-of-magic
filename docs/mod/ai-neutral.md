@@ -21,8 +21,9 @@ of that is gone under Chewbot.
    original adds a number of farmers to a number of units, its slip, kept; the game still keeps at
    least the farmers that feed the town.
 3. Where its stacks outside the towns go (NPC_Destinations), up to 80 stacks:
-   - a stack with no target picks, among the first 30 cities of wizards on its plane (walkers:
-     on its landmass), the one worth the most: 10 less the units in it less its distance, 5 more
+   - a stack with no target picks, among the first 30 cities of wizards on its plane (fliers and
+     swimmers: on its landmass; walkers anywhere on the plane, the original's flag being the wrong
+     way round, `quirkNeutralLandmassInverted`), the one worth the most: 10 less the units in it less its distance, 5 more
      for a city of the human at Hard and 5 more at Impossible;
    - a stack on its way that stands next to another city of a wizard turns to it when that one is
      worth more;
@@ -60,12 +61,10 @@ their units.
 
 ## Our calls
 
-- Walkers only go to cities on their landmass: the original marks a stack of fliers or swimmers
-  as bound to its landmass and a stack with walkers as free, the wrong way round; the meaning is
-  ported.
 - Cities are looked at in the order of plane, row and column (the original goes by the number of
   the city, which the game does not keep).
-- A landmass is compared on its plane (the original compares landmass numbers across planes).
+- A landmass is compared on its plane: the original compares its numbers alone, which are never the
+  same on both planes (its count goes on from Arcanus to Myrror), so this is the same.
 - The accumulators and targets are not saved.
 - The clone setting keeps the clone's neutral player.
 

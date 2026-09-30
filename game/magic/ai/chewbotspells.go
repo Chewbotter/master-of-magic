@@ -157,6 +157,13 @@ func chewRealms(wizard setup.WizardCustom) (data.MagicType, data.MagicType) {
         }
     }
     next := 0
+    if quirkSecondaryFromNature {
+        // the original starts the second realm at nature and its books, and never leaves nature out:
+        // a nature wizard's second realm is nature, and another realm has to have more books than
+        // nature to be second
+        secondary = data.NatureMagic
+        next = count(data.NatureMagic)
+    }
     for _, realm := range chewRealmOrder {
         if realm != primary && count(realm) > next {
             next = count(realm)
@@ -168,6 +175,9 @@ func chewRealms(wizard setup.WizardCustom) (data.MagicType, data.MagicType) {
     }
     return primary, secondary
 }
+
+// Init_Magic_Personalities_Objectives: the second realm starts at nature (kept)
+const quirkSecondaryFromNature = true
 
 func chewHasRealm(wizard setup.WizardCustom, realm data.MagicType) bool {
     primary, secondary := chewRealms(wizard)

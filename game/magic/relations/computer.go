@@ -396,10 +396,11 @@ func (rules *Rules) computerToHuman() {
 // or without a treaty, may declare war by the size of the grievance) or breaks the treaty. At war
 // it offers peace one time in 8 when it wants it, sometimes with gold or a spell
 //
-// What the wizard says: the reconstruction leaves the order at the grievance, so a warning and a
-// broken treaty would both say what the grievance alone says. The messages of the original have a
+// What the wizard says: the original leaves the order at the grievance, so a warning and a broken
+// treaty say what the grievance alone says (quirkWarningWordsOfGrievance). The messages have a
 // warning that names the treaty for every grievance (records 22 to 29, 15 more than the grievance)
-// and one that breaks it (31 to 38, 24 more); those are said here (warningRecord, brokenRecord)
+// and one that breaks it (31 to 38, 24 more), which no code of the original is known to say
+// (warningRecord, brokenRecord; see improvements.md)
 func (rules *Rules) humanWarOrPeace(other *playerlib.Player) {
     human := rules.human()
     relation := view(human, other)
@@ -463,8 +464,14 @@ func grievanceHasTreatyWords(kind int) bool {
     return kind >= ActionConquest && kind <= ActionOverextension
 }
 
+// DIPL_HumanWarOrPeace leaves the order at the grievance when it warns or breaks a treaty
+const quirkWarningWordsOfGrievance = true
+
 // "another incident and I shall break our treaty"
 func warningRecord(kind int) int {
+    if quirkWarningWordsOfGrievance {
+        return kind
+    }
     if grievanceHasTreatyWords(kind) {
         return kind + 15
     }
@@ -473,6 +480,9 @@ func warningRecord(kind int) int {
 
 // "our treaty is broken"
 func brokenRecord(kind int) int {
+    if quirkWarningWordsOfGrievance {
+        return kind
+    }
     if grievanceHasTreatyWords(kind) {
         return kind + 24
     }

@@ -120,32 +120,55 @@ func classicSpecials(game *gamelib.Game, plane data.Plane) {
         cities[image.Pt(city.X, city.Y)] = true
     }
 
-    changed := false
+    changed := make(map[*maplib.Map]bool)
     for anchorY := 0; anchorY < height; anchorY += stride {
         for anchorX := 0; anchorX < width; anchorX += stride {
             y := anchorY + classicSpecialRoll(stride * 2)
-            // past the right edge the original runs into the next row, past the bottom into the
-            // other plane: here x goes around the world and a square below the map is none (MY CALL)
-            x := mapObject.WrapX(anchorX + classicSpecialRoll(stride * 2))
-            if y >= height {
-                continue
-            }
+            x := anchorX + classicSpecialRoll(stride * 2)
             if !quirkSpecialsAtEdges && (y <= 2 || y >= height - 2 || x <= 2 || x >= width - 2) {
                 continue
             }
+            // the original's maps are one array: past the right edge a square is the first of the
+            // next row, and past the bottom of Arcanus a row of Myrror (where the mineral is wiped
+            // when Myrror's turn comes, but a changed land stays); past the bottom of Myrror the
+            // original reads beyond its maps, nothing here. Its checks for cities, lairs and towers
+            // use the square as rolled, so a square it runs into is not kept safe (kept)
+            target := mapObject
+            aliased := false
+            wiped := false
+            if x >= width {
+                x -= width
+                y += 1
+                aliased = true
+            }
+            if y >= height {
+                if plane != data.PlaneArcanus {
+                    continue
+                }
+                target = game.GetMap(data.PlaneMyrror)
+                y -= height
+                aliased = true
+                wiped = true
+            }
             point := image.Pt(x, y)
-            extras := mapObject.ExtraMap[point]
+            extras := target.ExtraMap[point]
             if _, has := extras[maplib.ExtraKindBonus]; has {
                 continue
             }
-            if _, has := extras[maplib.ExtraKindEncounter]; has {
-                continue
-            }
-            if cities[point] {
-                continue
+            if !aliased {
+                if _, has := extras[maplib.ExtraKindEncounter]; has {
+                    continue
+                }
+                if cities[point] {
+                    continue
+                }
             }
 
-            kind := mapObject.GetTile(x, y).Tile.TerrainType()
+            targetPlane := plane
+            if target != mapObject {
+                targetPlane = data.PlaneMyrror
+            }
+            kind := target.GetTile(x, y).Tile.TerrainType()
             convert := kind == terrain.Grass
             if kind == terrain.Forest {
                 convert = classicSpecialRoll(2) == 1
@@ -155,17 +178,21 @@ func classicSpecials(game *gamelib.Game, plane data.Plane) {
                 switch {
                     case roll <= 3:
                         kind = terrain.Mountain
-                        mapObject.Map.Terrain[x][y] = terrain.TileMountain1.Index(plane)
+                        target.Map.Terrain[x][y] = terrain.TileMountain1.Index(targetPlane)
                     case roll <= 6:
                         kind = terrain.Hill
-                        mapObject.Map.Terrain[x][y] = terrain.TileHills1.Index(plane)
+                        target.Map.Terrain[x][y] = terrain.TileHills1.Index(targetPlane)
                     default:
                         kind = terrain.Swamp
-                        mapObject.Map.Terrain[x][y] = terrain.TileSwamp1.Index(plane)
+                        target.Map.Terrain[x][y] = terrain.TileSwamp1.Index(targetPlane)
                 }
-                changed = true
+                changed[target] = true
+            }
+            if wiped {
+                continue
             }
 
+            // the tables are the plane's whose turn it is
             bonus := data.BonusNone
             switch kind {
                 case terrain.Forest: bonus = data.BonusWildGame
@@ -177,14 +204,14 @@ func classicSpecials(game *gamelib.Game, plane data.Plane) {
             if bonus != data.BonusNone {
                 if extras == nil {
                     extras = make(map[maplib.ExtraKind]maplib.ExtraTile)
-                    mapObject.ExtraMap[point] = extras
+                    target.ExtraMap[point] = extras
                 }
-                mapObject.SetBonus(x, y, bonus)
+                target.SetBonus(x, y, bonus)
             }
         }
     }
-    if changed {
-        mapObject.Map.ResolveTiles(mapObject.Data, plane)
+    for changedMap := range changed {
+        changedMap.Map.ResolveTiles(changedMap.Data, changedMap.Plane)
     }
 }
 
@@ -296,10 +323,11 @@ func classicRoads(game *gamelib.Game, plane data.Plane) {
         }
     }
 
-    // a road under every city (on Myrror enchanted: the original writes the flag of the enchanted
-    // road beside the square by a slip, but moves on every road of Myrror as on an enchanted one)
+    // a plain road under every city, on Myrror too: the original writes the flag of the enchanted
+    // road beside the square by a slip (kept; it moves on every road of Myrror as on an enchanted
+    // one, see game.MyrrorRoadsEnchanted)
     for _, city := range classicCitiesOn(game, plane) {
-        mapObject.SetRoad(city.X, city.Y, enchanted)
+        mapObject.SetRoad(city.X, city.Y, false)
     }
 }
 
@@ -346,26 +374,15 @@ func classicShuffle(mapObject *maplib.Map, plane data.Plane) {
 }
 
 // Init_New_Game: 10 rivers a plane, in turn, each tried up to 2000 times (terrain.ClassicRiver). A
-// river does not go on a mineral (the original's rule) nor on a lair, tower or city (MY CALL: the
-// original lets it, and the square becomes river under them)
+// river does not go on a mineral; it may run under a lair, tower or city, as the original's does
 func classicRivers(game *gamelib.Game) {
     planes := []data.Plane{data.PlaneArcanus, data.PlaneMyrror}
     blocked := make(map[data.Plane]terrain.RiverBlocked)
     for _, plane := range planes {
         mapObject := game.GetMap(plane)
-        cities := make(map[image.Point]bool)
-        for _, city := range classicCitiesOn(game, plane) {
-            cities[image.Pt(city.X, city.Y)] = true
-        }
         blocked[plane] = func(x int, y int) bool {
-            extras := mapObject.ExtraMap[image.Pt(x, y)]
-            if _, has := extras[maplib.ExtraKindBonus]; has {
-                return true
-            }
-            if _, has := extras[maplib.ExtraKindEncounter]; has {
-                return true
-            }
-            return cities[image.Pt(x, y)]
+            _, has := mapObject.ExtraMap[image.Pt(x, y)][maplib.ExtraKindBonus]
+            return has
         }
     }
     made := make(map[data.Plane]int)
@@ -383,6 +400,29 @@ func classicRivers(game *gamelib.Game) {
     log.Printf("rivers: %v on Arcanus, %v on Myrror of %v each", made[data.PlaneArcanus], made[data.PlaneMyrror], terrain.ClassicRivers)
     for _, plane := range planes {
         mapObject := game.GetMap(plane)
+        classicDryLakes(mapObject, plane)
         mapObject.Map.ResolveTiles(mapObject.Data, plane)
+    }
+}
+
+// River_Autotile: a lake of one square that no river runs into becomes a lone desert
+func classicDryLakes(mapObject *maplib.Map, plane data.Plane) {
+    width, height := mapObject.Width(), mapObject.Height()
+    kindAt := func(x int, y int) terrain.TerrainType {
+        if y < 0 || y >= height {
+            return terrain.Ocean
+        }
+        return mapObject.GetTile(((x % width) + width) % width, y).Tile.TerrainType()
+    }
+    for x := 0; x < width; x++ {
+        for y := 0; y < height; y++ {
+            if kindAt(x, y) != terrain.Lake {
+                continue
+            }
+            if kindAt(x + 1, y) == terrain.River || kindAt(x - 1, y) == terrain.River || kindAt(x, y + 1) == terrain.River || kindAt(x, y - 1) == terrain.River {
+                continue
+            }
+            mapObject.Map.Terrain[x][y] = terrain.TileAllDesert1.Index(plane)
+        }
     }
 }

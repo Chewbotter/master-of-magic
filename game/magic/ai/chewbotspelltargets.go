@@ -4,10 +4,13 @@ package ai
 // ReMoM MoM/src/AISPELL.c, and the routing of MoM/src/OverSpel.c Cast_Spell_Overland). The rules in
 // words: docs/mod/ai-spells.md. The code is ours.
 //
-// Where the reconstruction is wired wrong (Fire Storm and Ice Storm take a unit number for a square,
-// Black Wind and Stasis and the curses of cities ask pickers that never answer, the enemy city scan
-// wants cities not seen, the value of an enemy stack is its last unit's, a node is only a sorcery
-// node, Disenchant's last step reads outside its list), the evident meaning is ported.
+// The reconstruction's wiring is kept where nothing says it is not the original's: Black Wind and
+// Stasis ask pickers that never answer (quirkStackSpellsNoTarget), the value of an enemy stack is
+// its last unit's (chewbotspellworld.go), a node is only a sorcery node (quirkOnlySorceryNodes),
+// stacks of treaty partners are targets too. Where the reconstruction's own notes, checked against
+// the program, say otherwise, they are followed: the curses of cities use the enemy city scan and
+// it wants cities seen. Not portable, the meaning is ported: Fire Storm and Ice Storm take a unit
+// number for a square (the fork has no unit numbers), Disenchant's last step reads outside its list.
 
 import (
     "image"
@@ -35,6 +38,10 @@ const (
     // AITP_Transmute: the specials are tested as bits (Iron, Coal, Silver, Gems, Mithril,
     // Adamantium, Crysx), and all 25 squares around a city
     quirkTransmuteBits = true
+    // Black Wind and Stasis: the AI's casting asks pickers that never answer, so the spell is lost
+    quirkStackSpellsNoTarget = true
+    // Square_Is_Node compares with the sorcery node three times: Raise Volcano takes nature nodes
+    quirkOnlySorceryNodes = true
 )
 
 // ChooseSpellTarget: the target of a spell of the world map, when it is cast (game/aicast.go)
@@ -269,7 +276,12 @@ func (ai *ChewbotAI) spellTarget(self *playerlib.Player, services playerlib.AISe
             return chewAttackTerrainTarget(world, services, spell.Name)
 
         // stacks
-        case "Ice Storm", "Fire Storm", "Black Wind", "Stasis":
+        case "Black Wind", "Stasis":
+            if quirkStackSpellsNoTarget {
+                return playerlib.AISpellTarget{}, false
+            }
+            return chewAttackStackTarget(world, services)
+        case "Ice Storm", "Fire Storm":
             return chewAttackStackTarget(world, services)
         case "Floating Island":
             return chewFloatingIslandTarget(world, services)
@@ -497,7 +509,11 @@ func chewAttackTerrainTarget(world *chewSpellWorld, services playerlib.AIService
                 continue
             }
             if name == "Raise Volcano" {
-                if kind == terrain.Mountain || kind == terrain.Hill || kind == terrain.River || tile.IsMagic() {
+                node := tile.IsMagic()
+                if quirkOnlySorceryNodes {
+                    node = kind == terrain.SorceryNode
+                }
+                if kind == terrain.Mountain || kind == terrain.Hill || kind == terrain.River || node {
                     continue
                 }
             }
@@ -510,13 +526,6 @@ func chewAttackTerrainTarget(world *chewSpellWorld, services playerlib.AIService
     return target, found
 }
 
-// a player the wizard has a pact or alliance with (its stacks are not attacked; the original's list
-// of enemy stacks has every other player's)
-func chewPartner(self *playerlib.Player, other *playerlib.Player) bool {
-    relation, ok := self.PlayerRelations[other]
-    return ok && (relation.Treaty == data.TreatyPact || relation.Treaty == data.TreatyAlliance)
-}
-
 // AITP_Attack_Stack: the most valued enemy stack within sight of the wizard's cities (2, walls 3,
 // Oracle 5) or units (2) on its plane
 func chewAttackStackTarget(world *chewSpellWorld, services playerlib.AIServices) (playerlib.AISpellTarget, bool) {
@@ -524,7 +533,8 @@ func chewAttackStackTarget(world *chewSpellWorld, services playerlib.AIServices)
     var target playerlib.AISpellTarget
     found := false
     for _, stack := range world.EnemyStacks {
-        if stack.Value <= bestValue || chewPartner(world.Self, stack.Owner) {
+        // every other player's stack, a treaty partner's too
+        if stack.Value <= bestValue {
             continue
         }
         width := services.GetMap(stack.Plane).Width()

@@ -261,6 +261,9 @@ func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIService
     if moves {
         out = append(out, ai.moveDecisions(self, services)...)
     }
+    if glue && !ai.Neutral {
+        out = ai.excessBuildersAfterOrders(self, services, out)
+    }
     return out
 }
 

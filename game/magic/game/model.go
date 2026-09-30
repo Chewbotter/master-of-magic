@@ -515,7 +515,7 @@ func (model *GameModel) ComputeTerrainCost(stack playerlib.PathStack, sourceX in
     road_v, ok := tileTo.Extras[maplib.ExtraKindRoad]
     if ok {
         road := road_v.(*maplib.ExtraRoad)
-        if road.Enchanted {
+        if road.Enchanted || (MyrrorRoadsEnchanted && mapUse.Plane == data.PlaneMyrror) {
             if stack.ActiveUnitsDoesntHaveAbility(data.AbilityNonCorporeal) {
                 return fraction.Zero(), true
             }
@@ -659,6 +659,11 @@ func (model *GameModel) FindStack(x int, y int, plane data.Plane) (*playerlib.Un
 
 func (model *GameModel) GetDifficulty() data.DifficultySetting {
     return model.Settings.Difficulty
+}
+
+// the magic setting of the game (Chewbot's value of a node)
+func (model *GameModel) GetMagicSetting() data.MagicSetting {
+    return model.Settings.Magic
 }
 
 func (model *GameModel) GetAggressiveAI() bool {

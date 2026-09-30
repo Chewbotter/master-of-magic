@@ -44,12 +44,15 @@ func (player *Player) DifficultyModifiers() (citylib.DifficultyModifiers, bool) 
     return citylib.DifficultyTable[owner.Level], true
 }
 
-// gold, food and mana a computer wizard pays for its units and enchantments, times the maintenance
-// of the table
+// gold, food and mana every player but the human pays for its units and enchantments, times the
+// maintenance of the table (Player_Resource_Income_Total: the neutral player too)
 func (player *Player) difficultyUpkeep(upkeep int) int {
-    modifiers, ok := player.DifficultyModifiers()
-    if !ok {
+    if !citylib.ClassicDifficulty {
         return upkeep
     }
-    return citylib.ScaleByDifficulty(upkeep, modifiers.Maintenance)
+    owner, ok := player.OwnerDifficulty()
+    if !ok || (!owner.Computer && !owner.Neutral) {
+        return upkeep
+    }
+    return citylib.ScaleByDifficulty(upkeep, citylib.DifficultyTable[owner.Level].Maintenance)
 }

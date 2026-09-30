@@ -33,8 +33,8 @@ is what that wizard says to the human at the end of the turn.
 Battles against a wizard's troops or cities, conquered and razed cities, curses on cities, global
 enchantments (each wizard minds them by its books), the Spell of Mastery, units standing near its
 cities, an empire that grows too large, the human's army being larger, treaties (goodwill every
-turn), broken treaties (the breaker pays: its victim trusts it less for good, every other wizard a
-little). Bad news counts twice against a good relation; without an alliance the relation stays at
+turn), broken treaties (as the original has it, the other way round: the breaker's trust in its
+victim rises, every other wizard trusts the victim a little less). Bad news counts twice against a good relation; without an alliance the relation stays at
 most 65.
 
 ## The turn
@@ -71,7 +71,7 @@ talk at all when trust and patience are gone. Then:
   and patience; the wizard then declares war, ignores it, pays gold, or gives a spell. Visiting this
   list at all, even to forget it, wears the patience down ten times over (as in the original).
 - Offer Tribute: gold (a quarter to all, in 25s) or a spell the wizard lacks.
-- Exchange Spells: a spell of the wizard for one of the human's of at least the same research cost.
+- Exchange Spells: a spell of the wizard for one of the human's worth at least as much (see below).
 - A wizard whose patience is gone says it is tired of talk and ends it.
 
 Before the human's stack attacks a stack or city of a wizard it has a pact or alliance with, the
@@ -99,13 +99,25 @@ rule, every wizard meeting every wizard it sees). The worlds are the original's 
 - The threat of an army counts the more the two armies on the wizard's home land differ, whichever
   is larger.
 
+## As the original (put back 2026-09-30)
+
+- Break_Treaties: size 10 (pact) or 20 (alliance), twice for a lawful breaker; the breaker's hidden
+  relation to its victim goes UP by it, every other wizard's to the VICTIM down by 5, after an
+  alliance the breaker's lasting relation up by it, and the lasting relation is copied to the
+  victim's view (`quirkBreakTreatiesBackwards`; the reconstruction marks these as the program's
+  bugs).
+- A warning and a broken treaty say the words of the grievance alone
+  (`quirkWarningWordsOfGrievance`; the messages have words of their own for both, records 15 and 24
+  past the grievance, which no code of the original is known to say).
+- A threat that pays gold gives it to the human and takes none from the wizard
+  (`quirkTributeFromNowhere`).
+- The exchange of spells: a spell's worth to a receiver is nothing when it knows it, -1 when it can
+  not learn it, its research cost less a tenth when it can research it now, half again when it can
+  later; the wizard's spell's worth is kept in a byte (what is left over 256, -1 is 255), and the
+  human's spells worth at least that to the wizard are offered (`quirkExchangeWorthByte`).
+
 ## Our calls
 
-- Break_Treaties: the breaker pays (the reconstruction marks its sides and signs as mistakes).
-- A warning and a broken treaty say the original's words for them (records 15 and 24 past the
-  grievance); the reconstruction leaves them at the words of the grievance alone.
-- A threat that pays gold takes it from the wizard (the original only gives it to the human).
-- The worth of spells in an exchange is the research cost (the original's comparison is broken).
 - The lists of spells of a tribute and an exchange end with Forget It.
 - The band of the item under the mouse is dark by eye (the original's remap is not read).
 - A proposal with gold or a spell adds "What if we were to also offer ... as an incentive?".

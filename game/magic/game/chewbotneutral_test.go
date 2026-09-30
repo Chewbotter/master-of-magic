@@ -27,7 +27,8 @@ func TestChewbotNeutralGoesForCity(test *testing.T) {
     }
 }
 
-// a neutral stack of walkers with no city of a wizard on its landmass is disbanded
+// the original's landmass flag of a neutral stack is the wrong way round: walkers go for any city of
+// their plane, a stack of fliers with no city of a wizard on its landmass is disbanded
 func TestChewbotNeutralWithNowhereToGo(test *testing.T) {
     scenario := makeChewScenario(test, 60,
         "~~~~~~~~~~~~~~~~~~~~",
@@ -39,15 +40,19 @@ func TestChewbotNeutralWithNowhereToGo(test *testing.T) {
     wizard := scenario.wizard("Merlin", data.BannerRed)
     raiders := scenario.wizard("Raiders", data.BannerBrown)
     scenario.city(wizard, 2, 2, 4, true)
-    scenario.units(raiders, 16, 2, units.HighMenSwordsmen)
+    walkers := scenario.units(raiders, 16, 2, units.HighMenSwordsmen)
+    fliers := scenario.units(raiders, 16, 1, units.GreatDrake)
 
-    scenario.turn(raiders)
-    count := 0
-    for range raiders.Units() {
-        count += 1
+    decisions := scenario.turn(raiders)
+    alive := map[units.StackUnit]bool{}
+    for unit := range raiders.Units() {
+        alive[unit] = true
     }
-    if count != 0 {
-        test.Errorf("the raiders on the other island should be gone, %v units left", count)
+    if !alive[walkers[0]] {
+        test.Errorf("the walkers should go for the city across the sea, not be disbanded; orders: %v", chewDescribe(decisions))
+    }
+    if alive[fliers[0]] {
+        test.Errorf("the fliers with no city on their landmass should be gone")
     }
 }
 

@@ -156,8 +156,10 @@ func (rules *Rules) Threaten(human *playerlib.Player, other *playerlib.Player) (
             }
             if amount != 0 {
                 relation.PeaceCounter = roll(15)
-                // the original gives the gold to the human and takes none from the wizard; meant: it pays
-                other.Gold -= amount
+                // the original gives the gold to the human and takes none from the wizard (kept)
+                if !quirkTributeFromNowhere {
+                    other.Gold -= amount
+                }
                 human.Gold += amount
                 answer.Record = RecordThreatGold
                 answer.Gold = amount
@@ -182,10 +184,32 @@ type ExchangeOffer struct {
     For []spellbook.Spell
 }
 
+// Diplomacy_Offer_Tribute: the gold of a threat is given, not taken from the wizard
+const quirkTributeFromNowhere = true
+
+// Diplomacy_Exchange_Spell__WIP stores the worth of the wizard's spell in a byte (kept)
+const quirkExchangeWorthByte = true
+
+// Calc_Spell_Value: what a spell is worth to a receiver: nothing when it knows it, not learnable -1,
+// its research cost less a tenth when it can research it now, half again when it could later
+func exchangeWorth(spell spellbook.Spell, receiver *playerlib.Player) int {
+    if receiver.KnownSpells.Contains(spell) {
+        return 0
+    }
+    if receiver.ResearchCandidateSpells.Contains(spell) {
+        return spell.ResearchCost * 9 / 10
+    }
+    if receiver.ResearchPoolSpells.Contains(spell) {
+        return spell.ResearchCost * 3 / 2
+    }
+    return -1
+}
+
 // Diplomacy_Exchange_Spell__WIP: what the wizard would trade: every spell it knows and the human
-// does not (5 at most) for which the human has spells it lacks of at least the same worth (4 at most
-// each). Worth is the research cost here: the original's comparison of worth is broken (the
-// reconstruction notes the values do not fit their bytes). Asking wears the patience down
+// does not (5 at most) for which the human has spells it lacks worth at least as much to the wizard
+// as the wizard's is worth to the human (4 at most each). The original keeps the worth of the
+// wizard's spell in a byte, so only what is left over 256 counts (-1 is 255): a costly spell may ask
+// little (quirkExchangeWorthByte). Asking wears the patience down
 func (rules *Rules) ExchangeOffers(human *playerlib.Player, other *playerlib.Player) []ExchangeOffer {
     relation := view(human, other)
     if relation == nil {
@@ -195,9 +219,13 @@ func (rules *Rules) ExchangeOffers(human *playerlib.Player, other *playerlib.Pla
     theirs := spellsToGive(other, human)
     mine := spellsToGive(human, other)
     for _, spell := range theirs {
+        asked := exchangeWorth(spell, human)
+        if quirkExchangeWorthByte {
+            asked = asked & 0xFF
+        }
         var trade []spellbook.Spell
         for _, candidate := range mine {
-            if candidate.ResearchCost >= spell.ResearchCost {
+            if exchangeWorth(candidate, other) >= asked {
                 trade = append(trade, candidate)
             }
         }

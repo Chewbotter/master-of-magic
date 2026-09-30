@@ -51,14 +51,20 @@ One settler a landmass, the others go; after turn 200 one engineer a landmass to
 
 A unit of a computer player in Stasis with a resistance below 7 dies.
 
+## As the original
+
+- The extra settlers and engineers go after the orders are set and before they are carried out
+  (the orders of the units that go are dropped).
+- A landmass's value is set by every city on it, the wizard's or not (another's sets it to 0), so
+  the last city counts (`quirkLandmassLastCity`; the order: plane, row, column, where the original
+  goes by the city's number); then its nodes add power x (magic + 1) x 2, magic 0 weak, 1 normal,
+  2 powerful. Lair guardians count by their cost in the original's table (casting cost for
+  creatures; the production cost used first was 0 for them).
+
 ## Our calls
 
-- The glue runs before the orders of the units (the original removes extra settlers after them),
-  so no order is given to a unit that goes.
-- A landmass's value counts all its cities (the original keeps the last city's) and a node at the
-  magic of a normal game.
 - The disbanding of summoned units uses each unit's own strength (the original reads a strength by
-  the unit's kind number, a slip).
+  the unit's kind number, a slip; the fork keeps no unit numbers).
 
 ## Seen in runs
 

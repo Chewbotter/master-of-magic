@@ -16,6 +16,7 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
     "github.com/kazzmir/master-of-magic/game/magic/setup"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
+    "github.com/kazzmir/master-of-magic/lib/lbx"
     herolib "github.com/kazzmir/master-of-magic/game/magic/hero"
 )
 
@@ -24,6 +25,8 @@ const (
     quirkTowerBooksNature = true
     // Create_Lair: a second spell adds its rarity to the first, so a rare one comes cheap; kept
     quirkSpellRaritiesAdd = true
+    // EZ_SpecialTreasure: a book of arcane (a cave's) lands on the Alchemy retort
+    quirkArcaneBookAlchemy = true
 
     classicTreasureStop = 50
     classicGoldOrManaSpend = 200
@@ -122,9 +125,9 @@ func classicBookRealm(kind maplib.EncounterType) data.MagicType {
                 return data.NatureMagic
             }
     }
-    // a cave or monster lair: any realm (MY CALL: the reconstruction rolls 1 to 5 where it means 0
-    // to 4, so it never gives nature)
-    realms := []data.MagicType{data.NatureMagic, data.SorceryMagic, data.ChaosMagic, data.LifeMagic, data.DeathMagic}
+    // a cave or monster lair: the original rolls 1 to 5 where it means 0 to 4, so sorcery, chaos,
+    // life, death or arcane, never nature (kept)
+    realms := []data.MagicType{data.SorceryMagic, data.ChaosMagic, data.LifeMagic, data.DeathMagic, data.ArcaneMagic}
     return realms[rand.N(len(realms))]
 }
 
@@ -135,25 +138,18 @@ var classicRetortsOne = []data.Retort{data.RetortAlchemy, data.RetortArchmage, d
 var classicRetortsTwo = []data.Retort{data.RetortWarlord, data.RetortChanneler, data.RetortDivinePower, data.RetortFamous, data.RetortInfernalPower}
 
 // Lair_Generate_Treasure: what the hoard gives the wizard that takes the place
-func makeClassicTreasure(encounterType maplib.EncounterType, budget int, point data.PlanePoint, wizard setup.WizardCustom, knownSpells spellbook.Spells, allSpells spellbook.Spells, heroes []*herolib.Hero, getPremadeArtifacts func() []*artifact.Artifact) Treasure {
+func makeClassicTreasure(cache *lbx.LbxCache, encounterType maplib.EncounterType, budget int, point data.PlanePoint, wizard setup.WizardCustom, knownSpells spellbook.Spells, allSpells spellbook.Spells, heroes []*herolib.Hero) Treasure {
     hoard := classicRollHoard(budget, encounterType == maplib.EncounterTypePlaneTower)
     var items []TreasureItem
 
-    // an item of a value: the costliest premade item the wizard can use that is worth no more
-    // (MY CALL: the original makes an item of that value)
-    var given []*artifact.Artifact
-    giveItem := func(value int) bool {
-        var best *artifact.Artifact
-        for _, item := range getPremadeArtifacts() {
-            if item.Cost <= value && canUseArtifact(item, wizard) && !slices.Contains(given, item) && (best == nil || item.Cost > best.Cost) {
-                best = item
-            }
-        }
-        if best == nil {
+    // an item: Lair_Generate_Treasure calls Make_Item with its value where the "power" goes and no
+    // worth, so every item of a hoard is a random one of 800 to 1700 (artifact.MakeClassicRandomItem)
+    giveItem := func(power int, worth int) bool {
+        made, ok := artifact.MakeClassicRandomItem(cache, power, worth)
+        if !ok {
             return false
         }
-        given = append(given, best)
-        items = append(items, &TreasureMagicalItem{Artifact: best})
+        items = append(items, &TreasureMagicalItem{Artifact: &made})
         return true
     }
 
@@ -162,7 +158,7 @@ func makeClassicTreasure(encounterType maplib.EncounterType, budget int, point d
     }
     mana := hoard.Mana
     for _, value := range hoard.Items {
-        giveItem(value)
+        giveItem(value, 0)
     }
     if hoard.Prisoner && len(heroes) > 0 {
         items = append(items, &TreasurePrisonerHero{Hero: heroes[rand.N(len(heroes))]})
@@ -181,6 +177,16 @@ func makeClassicTreasure(encounterType maplib.EncounterType, budget int, point d
             for picks > 0 {
                 if classicTreasureRoll(4) <= 3 {
                     realm := classicBookRealm(encounterType)
+                    // an arcane book is not refused; the original adds it past the end of its list of
+                    // books, onto the retort of Alchemy (kept: quirkArcaneBookAlchemy)
+                    if realm == data.ArcaneMagic {
+                        picks -= 1
+                        given = true
+                        if quirkArcaneBookAlchemy && !wizard.RetortEnabled(data.RetortAlchemy) {
+                            items = append(items, &TreasureRetort{Retort: data.RetortAlchemy})
+                        }
+                        continue
+                    }
                     // a wizard of life gets no book of death, and the other way round
                     if (realm == data.DeathMagic && wizard.MagicLevel(data.LifeMagic) > 0) || (realm == data.LifeMagic && wizard.MagicLevel(data.DeathMagic) > 0) {
                         picks -= 1
@@ -217,7 +223,7 @@ func makeClassicTreasure(encounterType maplib.EncounterType, budget int, point d
                 }
             }
             if !given {
-                if len(hoard.Items) >= classicItemsMost || !giveItem(classicFallbackItem) {
+                if len(hoard.Items) >= classicItemsMost || !giveItem(0, classicFallbackItem) {
                     mana += classicFallbackMana
                 }
             }

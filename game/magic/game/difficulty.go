@@ -32,3 +32,7 @@ func capReserves(players []*playerlib.Player) {
         player.Mana = min(player.Mana, reserveMost)
     }
 }
+
+// Movement_Mode_Cost_Maps: the original moves on every road of Myrror as on an enchanted one,
+// whether or not the square has the flag of an enchanted road (the roads under its cities have not)
+var MyrrorRoadsEnchanted = true

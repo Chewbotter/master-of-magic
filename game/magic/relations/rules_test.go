@@ -80,11 +80,16 @@ func TestBreakTreaties(test *testing.T) {
     kali.Personality = playerlib.PersonalityLawful
     rules.StartTreaty(kali, human, data.TreatyAlliance)
     rules.BreakTreaties(kali, human)
-    if got := human.PlayerRelations[kali].HiddenRelation; got != -40 {
-        test.Errorf("a lawful wizard breaking an alliance: the victim's trust %v, want -40", got)
+    // the original's signs and sides (quirkBreakTreatiesBackwards): the breaker's trust in its victim
+    // rises, every other wizard trusts the victim less, the lasting relation rises and is shared
+    if got := kali.PlayerRelations[human].HiddenRelation; got != 40 {
+        test.Errorf("a lawful wizard breaking an alliance: the breaker's trust %v, want 40", got)
     }
-    if got := jafar.PlayerRelations[kali].HiddenRelation; got != -5 {
-        test.Errorf("another wizard's trust in the breaker: %v, want -5", got)
+    if got := jafar.PlayerRelations[human].HiddenRelation; got != -5 {
+        test.Errorf("another wizard's trust in the victim: %v, want -5", got)
+    }
+    if got := human.PlayerRelations[kali].StartingRelation; got != kali.PlayerRelations[human].StartingRelation {
+        test.Errorf("the lasting relation is shared: %v", got)
     }
     if kali.PlayerRelations[human].Treaty != data.TreatyNone {
         test.Errorf("the alliance is over")

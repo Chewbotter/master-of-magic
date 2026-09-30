@@ -68,7 +68,8 @@ func (ai *ChewbotAI) NewTurn(self *playerlib.Player) {
 }
 
 // the glue of a turn, before the orders of the units (the original: reserves and income after the
-// spells, the budget first thing of the orders, the excess settlers after them)
+// spells, the budget first thing of the orders); the excess settlers go after the orders are set
+// (excessBuildersAfterOrders)
 func (ai *ChewbotAI) turnGlue(self *playerlib.Player, services playerlib.AIServices) {
     if ai.glue == nil {
         ai.glue = &chewGlue{TaxIndex: chewTaxIndex(self.TaxRate), TaxSet: true}
@@ -78,7 +79,60 @@ func (ai *ChewbotAI) turnGlue(self *playerlib.Player, services playerlib.AIServi
     world := makeChewWorld(self, services)
     spells := ai.spellWorld(self, services)
     ai.disbandToBudget(self, services, world, spells)
-    ai.killExcessBuilders(self, world, int(services.GetTurnNumber()))
+}
+
+// AI_Next_Turn: the excess settlers and engineers go after AI_Set_Unit_Orders and before the orders
+// are carried out; the orders of the units that go are dropped
+func (ai *ChewbotAI) excessBuildersAfterOrders(self *playerlib.Player, services playerlib.AIServices, decisions []playerlib.AIDecision) []playerlib.AIDecision {
+    gone := ai.killExcessBuilders(self, makeChewWorld(self, services), int(services.GetTurnNumber()))
+    if len(gone) == 0 {
+        return decisions
+    }
+    removed := make(map[units.StackUnit]bool)
+    for _, unit := range gone {
+        removed[unit] = true
+    }
+    keep := func(units_ []units.StackUnit) ([]units.StackUnit, bool) {
+        if len(units_) == 0 {
+            return units_, true
+        }
+        var out []units.StackUnit
+        for _, unit := range units_ {
+            if !removed[unit] {
+                out = append(out, unit)
+            }
+        }
+        return out, len(out) > 0
+    }
+    var out []playerlib.AIDecision
+    for _, decision := range decisions {
+        switch decision := decision.(type) {
+            case *playerlib.AIMoveStackDecision:
+                if decision.Stack == nil || decision.Stack.IsEmpty() {
+                    continue
+                }
+                left, ok := keep(decision.Units)
+                if !ok {
+                    continue
+                }
+                decision.Units = left
+            case *playerlib.AIBuildRoadDecision:
+                if decision.Stack == nil || decision.Stack.IsEmpty() {
+                    continue
+                }
+                left, ok := keep(decision.Units)
+                if !ok {
+                    continue
+                }
+                decision.Units = left
+            case *playerlib.AIBuildOutpostDecision:
+                if decision.Stack == nil || decision.Stack.IsEmpty() {
+                    continue
+                }
+        }
+        out = append(out, decision)
+    }
+    return out
 }
 
 // AI_Update_Gold_And_Mana_Reserves: a wizard without Alchemy that has no mana takes a quarter of its
@@ -181,8 +235,29 @@ func (ai *ChewbotAI) updateIncome(self *playerlib.Player, services playerlib.AIS
 }
 
 // the power of a node as the original counts it for a landmass: its power times (magic + 1) times 2,
-// the magic of a normal game
-const chewNodeValueFactor = 4
+// magic 0 weak, 1 normal, 2 powerful
+func chewNodeValueFactor(services playerlib.AIServices) int {
+    magic := 1
+    if provider, ok := services.(interface{ GetMagicSetting() data.MagicSetting }); ok {
+        switch provider.GetMagicSetting() {
+            case data.MagicSettingWeak: magic = 0
+            case data.MagicSettingPowerful: magic = 2
+        }
+    }
+    return (magic + 1) * 2
+}
+
+// AI_Landmass_Values_And_Strengths sets (does not add) the value of a landmass for every city, so
+// the last city in the original's order counts (kept; the order here: plane, row, column)
+const quirkLandmassLastCity = true
+
+// the cost of a unit in the original's table: production, or casting for a creature
+func chewTableCost(unit units.Unit) int {
+    if unit.ProductionCost > 0 {
+        return unit.ProductionCost
+    }
+    return unit.CastingCost
+}
 
 // AI_Landmass_Values_And_Strengths: per landmass, the wizard's strength (its stacks, a tenth of their
 // value) less a tenth of what it has there (cities, nodes) less the strength of the others (their
@@ -211,19 +286,34 @@ func (ai *ChewbotAI) landmassRatios(world *chewWorld, spells *chewSpellWorld, se
                 continue
             }
             for _, unit := range encounter.Units {
-                enemy[wp][world.LandmassAt(point.X, point.Y, wp)] += unit.ProductionCost / 10
-            }
-        }
-        for _, point := range mapObject.GetMagicNodeLocations() {
-            node := mapObject.GetMagicNode(point.X, point.Y)
-            if node != nil && chewNodeOwner(node, spells.Self) {
-                value[wp][world.LandmassAt(point.X, point.Y, wp)] += len(node.Zone) * chewNodeValueFactor
+                enemy[wp][world.LandmassAt(point.X, point.Y, wp)] += chewTableCost(unit) / 10
             }
         }
     }
-    for city, cityValue := range spells.OwnValue {
+    // the cities, every player's: the original sets the landmass's value to the wizard's value of the
+    // city (0 for another player's), so the last city of a landmass counts; then the nodes add theirs
+    var cities []*citylib.City
+    for _, city := range world.Cities {
+        cities = append(cities, city.City)
+    }
+    chewSortCityList(cities)
+    for _, city := range cities {
         wp := chewPlaneIndex(city.Plane)
-        value[wp][world.LandmassAt(city.X, city.Y, wp)] += cityValue
+        landmass := world.LandmassAt(city.X, city.Y, wp)
+        if quirkLandmassLastCity {
+            value[wp][landmass] = spells.OwnValue[city]
+        } else {
+            value[wp][landmass] += spells.OwnValue[city]
+        }
+    }
+    for wp := range 2 {
+        mapObject := services.GetMap(chewPlaneOf(wp))
+        for _, point := range mapObject.GetMagicNodeLocations() {
+            node := mapObject.GetMagicNode(point.X, point.Y)
+            if node != nil && chewNodeOwner(node, spells.Self) {
+                value[wp][world.LandmassAt(point.X, point.Y, wp)] += len(node.Zone) * chewNodeValueFactor(services)
+            }
+        }
     }
 
     var ratios [2]map[int]int
@@ -341,7 +431,7 @@ func (ai *ChewbotAI) disbandToBudget(self *playerlib.Player, services playerlib.
 
 // AI_Kill_Excess_Settlers_And_Engineers: one settler a landmass, the others go; after turn 200 one
 // engineer a landmass too
-func (ai *ChewbotAI) killExcessBuilders(self *playerlib.Player, world *chewWorld, turn int) {
+func (ai *ChewbotAI) killExcessBuilders(self *playerlib.Player, world *chewWorld, turn int) []units.StackUnit {
     settlers := make(map[[2]int]int)
     engineers := make(map[[2]int]int)
     var gone []units.StackUnit
@@ -371,6 +461,7 @@ func (ai *ChewbotAI) killExcessBuilders(self *playerlib.Player, world *chewWorld
         chewSpellLog(self, "disbands %v, one too many on its landmass", unit.GetName())
         self.RemoveUnit(unit)
     }
+    return gone
 }
 
 // AI_Hopeless_Stasis: a unit of a computer player in Stasis with a resistance below 7 dies

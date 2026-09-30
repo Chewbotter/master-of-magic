@@ -40,8 +40,19 @@ func (ai *ChewbotAI) pickResearch(self *playerlib.Player, services playerlib.AIS
 
     weights := make([]int, len(candidates))
     highest := 0
+    // AI_Spell_Research_Select: the cost with the wizard's research bonus, which the original works
+    // out for a spell number that is the realm's number (the first spells of the book, of nature):
+    // Sage Master, Nature Mastery and nature books beyond 7, whatever the spell's realm (kept)
+    bonus := 0
+    if self.Wizard.RetortEnabled(data.RetortSageMaster) {
+        bonus += 25
+    }
+    if self.Wizard.RetortEnabled(data.RetortNatureMastery) {
+        bonus += 15
+    }
+    bonus += 10 * max(0, self.Wizard.MagicLevel(data.NatureMagic) - 7)
     for index, spell := range candidates {
-        cost := spell.ResearchCost
+        cost := spell.ResearchCost * 100 / (100 + bonus)
         weight := cost
         group := spell.AiGroup
         if known[group] {

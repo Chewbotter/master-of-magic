@@ -26,8 +26,8 @@ diplomacy).
   (before the upkeep of buildings), mana and research of the city times the table, the upkeep of its
   buildings times the maintenance (Do_City_Calculations).
 - The power of a computer wizard's nodes times the mana, after the masteries (Player_Magic_Power_Income_Total).
-- The gold, food and mana a computer wizard pays for its units and all its enchantments times the
-  maintenance (Player_Resource_Income_Total).
+- The gold, food and mana every player but the human pays for its units and all its enchantments
+  (the neutral player's too) times the maintenance (Player_Resource_Income_Total).
 - Growth of a computer wizard's city times the growth; a NEUTRAL city grows half as fast and not at
   all from (level + 1) x 2 citizens on (City_Growth_Rate).
 - The chance an outpost grows times the outposts column, for EVERY owner, the human's outposts too
@@ -40,8 +40,6 @@ diplomacy).
 - The table applies under both Enemy AI settings: it is a rule of the game, not of the AI.
 - Only growth is scaled; a city that starves loses what it loses (the original keeps growth at 0 or
   more and shrinks cities elsewhere).
-- The neutral player's units pay their upkeep as before (the original scales every player's but the
-  human's; the neutral player has no economy of its own).
 
 ## Seen in runs
 

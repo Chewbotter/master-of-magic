@@ -33,8 +33,9 @@ only these grow (`quirkIslandsGrowSouthEast`, kept).
 - The budget times (level + 1) / 4 (Intro a quarter to Impossible one and a quarter; Extreme counts
   as Impossible).
 - Realm: a node its own; a tower death 2 in 6, chaos, life, nature, sorcery 1 in 6 each; temples and
-  ruins death 3 in 4, life 1 in 4; caves, dungeons, keeps and monster lairs death 2 in 5, chaos 2 in
-  5, nature 1 in 5 (MY CALL: the reconstruction's choice falls through to nature every time and says
+  ruins death 3 in 4, life 1 in 4; caves, dungeons, keeps and monster lairs nature, always: the
+  original means death 2 in 5, chaos 2 in 5, nature 1 in 5 and falls through to nature every time
+  (`quirkLairsAllNature`, kept; the roll is still made). Before: the realms as meant (and it says
   the program does too; players see chaos and death in them).
 - First guardians: up to 200 tries of a share of the budget (a quarter to all of it by chance), the
   costliest creature of the realm (not Floating Island) that costs less than the share; as many as
@@ -60,12 +61,18 @@ before the place is taken, so it is rolled when it is taken, from the budget abo
 - Given: gold, mana, a hero for the prisoner, a spell of the rarity the wizard does not know (its
   realms or arcane), and each pick of the book or retort: 3 in 4 a book of the place's realm
   (nodes their own, dungeon, keep and ruins death, temples life, towers nature: kept quirk
-  `quirkTowerBooksNature`; caves and monster lairs any realm, MY CALL: the reconstruction's roll
-  never gives nature), refused across life and death; else a retort (with two picks one of Warlord,
-  Channeler, Divine Power, Famous, Infernal Power can come). Nothing given: an item of 1200, or 1000
-  mana when there are 3 items.
-- MY CALL: an item of a value is the costliest premade item the wizard can use that is worth no more
-  (the original makes a new item of that value).
+  `quirkTowerBooksNature`; caves and monster lairs sorcery, chaos, life, death or arcane, never
+  nature: the original rolls 1 to 5 where it means 0 to 4, kept), refused across life and death; an
+  arcane book lands on the Alchemy retort (the original adds it past its list of books,
+  `quirkArcaneBookAlchemy`); else a retort (with two picks one of Warlord, Channeler, Divine Power,
+  Famous, Infernal Power can come). Nothing given: an item worth 1200, or 1000 mana when there are 3
+  items.
+- The items: the original calls Make_Item with the hoard's value where the "power" goes and no
+  worth, so every item of a hoard is a random one of 800 to 1700 whatever its value
+  (`artifact.MakeClassicRandomItem`, Create_Random_Item): a kind by chance, basic powers (attack,
+  defense, to hit, movement, resistance, skill, spell save) by chance that fit the kind, up to 4, until
+  its cost is over its worth. Names and the costs of powers are the game's data. Never a premade item
+  or one with spell charges or abilities.
 
 ## Minerals (Generate_Terrain_Specials)
 
@@ -84,8 +91,11 @@ before the place is taken, so it is rolled when it is taken, from the budget abo
 
 - Kept quirk (`quirkSpecialsAtEdges`): the test meant to keep minerals off the edges never keeps
   any off.
-- MY CALL: a square past the right edge goes around the world (the original runs into the next
-  row) and one below the map is none (the original runs into the other plane's rows).
+- The grid runs off the maps as the original's does: past the right edge a square is the first of
+  the next row, past the bottom of Arcanus one of Myrror's top rows (the land changes there, the
+  mineral is wiped when Myrror's turn comes), past the bottom of Myrror nothing (the original reads
+  beyond its maps). Such squares are not kept safe from cities, lairs and towers: the checks use the
+  square as rolled.
 
 ## Roads (Generate_Roads, Path_Wrap)
 
@@ -93,9 +103,10 @@ before the place is taken, so it is rolled when it is taken, from the budget abo
   and half the smaller) get a straight road (the original's line with a fraction starting at one
   half), unless a square between them is water. The Range is measured without going around the
   world (the original's slip, kept), the line goes the short way.
-- Every city has a road on its square. Roads of Myrror are enchanted. MY CALL: city squares of
-  Myrror enchanted too (the original writes that flag beside the square by a slip, but every road of
-  Myrror moves as an enchanted one there).
+- Every city has a plain road on its square, on Myrror too (the original writes the flag of the
+  enchanted road beside the square by a slip; the stray flag is left out). The roads between towns
+  on Myrror are enchanted. Every road of Myrror moves as an enchanted one, whatever its flag
+  (Movement_Mode_Cost_Maps, `game.MyrrorRoadsEnchanted`).
 - Wizards' homes get no road to anything.
 
 ## Rivers (Init_New_Game, Generate_River)
@@ -112,10 +123,10 @@ before the place is taken, so it is rolled when it is taken, from the budget abo
 - The original then refuses a mouth on a shore that has no picture of a river mouth; here a river
   is refused when its squares or their neighbors find no picture (the fork's own check). The
   pictures are the fork's first fitting ones (the original picks among up to 4).
-- MY CALL: no river on a lair, tower or city square (the original lets the square become river
-  under them). Not ported: the original turns every one-square lake without a river into desert
-  and cuts extra rivers into a lake or shore to grassland; the fork keeps its lakes and refuses
-  such rivers.
+- A river may run under a lair, tower or city: the square becomes river under it, as in the
+  original. A one-square lake that no river runs into becomes a lone desert (River_Autotile,
+  `classicDryLakes`). Not ported: the original cuts extra rivers into a lake or a shore to
+  grassland; here the picture check refuses such a river.
 - Seen: 3 to 9 of the 10 made a plane, 9 to 47 river squares. A river may touch itself and make
   a small loop, as the original's may.
 

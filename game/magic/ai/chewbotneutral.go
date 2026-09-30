@@ -41,6 +41,8 @@ const (
     // Make_Raiders: Barbarian Spearmen and Swordsmen never raid (a comparison of unit numbers that
     // meant to leave out the units before them)
     quirkNoBarbarianRaiders = true
+    // Build_NPC_Stacks: the landmass flag of a stack is the wrong way round
+    quirkNeutralLandmassInverted = true
 
     // Make_Raiders: the accumulator starts raiders at this
     chewRaidersAt = 30
@@ -232,9 +234,12 @@ func (ai *ChewbotAI) neutralDestinations(self *playerlib.Player, world *chewWorl
 
         if !going {
             // Build_NPC_Stacks marks a stack of fliers or swimmers as bound to its landmass and a
-            // stack with walkers as free, the wrong way round; meant (and done here): walkers only
-            // go to cities on their landmass
+            // stack with walkers as free, the wrong way round (kept): walkers go for any city of
+            // their plane, fliers and swimmers only for cities on their landmass
             landOnly := stack.AnyLandWalkers()
+            if quirkNeutralLandmassInverted {
+                landOnly = !landOnly
+            }
             best := -1000
             var target *citylib.City
             examined := 0
