@@ -5509,9 +5509,27 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     cityPopulationLoss := 0
     var cityBuildingLoss []buildinglib.Building
 
-    if zone.City != nil && state == combat.CombatStateAttackerWin {
+    // End_Of_Combat: the damage to a city happens whoever wins (combat-rules.md)
+    cityDamaged := zone.City != nil && state == combat.CombatStateAttackerWin
+    if combat.ClassicRules {
+        cityDamaged = zone.City != nil && zone.City.Citizens() > 0 && !zone.City.Outpost
+    }
+
+    if cityDamaged {
+        attackerWon := state == combat.CombatStateAttackerWin || state == combat.CombatStateDefenderFlee
+        neutralAttacker := attacker.GetBanner() == data.BannerBrown
+
         // maximum chance is 50%, minimum is 10%
         chance := min(50, 10 + combatModel.CollateralDamage * 2)
+        if combat.ClassicRules {
+            chance = combatModel.CollateralDamage * 2
+            if attackerWon && neutralAttacker {
+                chance += 50
+            } else if attackerWon {
+                chance += 10
+            }
+            chance = min(50, chance)
+        }
         for range zone.City.Citizens() - 1 {
             if rand.N(100) < chance {
                 cityPopulationLoss += 1
@@ -5521,6 +5539,9 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
         minBuildingChance := 10
         if attacker.GetBanner() == data.BannerBrown {
             minBuildingChance = 50
+        }
+        if combat.ClassicRules && !attackerWon {
+            minBuildingChance = 0
         }
 
         chance = min(75, minBuildingChance + combatModel.CollateralDamage)
@@ -5595,8 +5616,32 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     relocateUnits(attacker, recalledAttackers)
     relocateUnits(defender, recalledDefenders)
 
+    // End_Of_Combat: the side that lost, whose units that stayed out of the battle die with it, and
+    // the side that won, which gets the items of every dead hero (combat-rules.md)
+    attackerLost := state == combat.CombatStateDefenderWin || state == combat.CombatStateAttackerFlee
+    defenderLost := state == combat.CombatStateAttackerWin || state == combat.CombatStateDefenderFlee
+    itemWinner := defender
+    if defenderLost {
+        itemWinner = attacker
+    }
+    itemsTaken := 0
+    const itemsMost = 18
+
     // remove dead units
     killUnits := func (player *playerlib.Player, stack *playerlib.UnitStack, landscape combat.CombatLandscape){
+        if combat.ClassicRules && ((player == attacker && attackerLost) || (player == defender && defenderLost)) {
+            for _, unit := range stack.Units() {
+                if unit.IsFlying() || unit.GetHealth() <= 0 {
+                    continue
+                }
+                // ships out of a city's battle, riders out of a sea battle
+                leftOut := (landscape == combat.CombatLandscapeWater && unit.IsLandWalker()) || (landscape != combat.CombatLandscapeWater && zone.City != nil && unit.IsSailing())
+                if leftOut {
+                    unit.AdjustHealth(-unit.GetHealth())
+                }
+            }
+        }
+
         // first remove sailing units
         for _, unit := range stack.Units() {
             if unit.IsSailing() && unit.GetHealth() <= 0 {
@@ -5620,8 +5665,22 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
                 if unit.IsHero() {
                     hero := unit.(*herolib.Hero)
-                    vaultEvents := game.Model.distributeEquipment(player, hero)
-                    if player.IsHuman() {
+                    receiver := player
+                    if combat.ClassicRules {
+                        receiver = itemWinner
+                        // at most 18 items go to the winner, the rest are lost
+                        for i, item := range hero.Equipment {
+                            if item == nil {
+                                continue
+                            }
+                            if itemsTaken >= itemsMost {
+                                hero.Equipment[i] = nil
+                            }
+                            itemsTaken += 1
+                        }
+                    }
+                    vaultEvents := game.Model.distributeEquipment(receiver, hero)
+                    if receiver.IsHuman() {
                         showHeroNotice = showHeroNotice || len(vaultEvents) > 0
                     }
 

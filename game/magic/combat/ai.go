@@ -98,7 +98,7 @@ func doAIClone(model *CombatModel, spellSystem SpellSystem, aiActions AIUnitActi
         })
 
         for _, candidate := range candidates {
-           if model.withinArrowRange(aiUnit, candidate) && model.canRangeAttack(aiUnit, candidate) {
+           if model.shootsAt(aiUnit, candidate) {
                aiActions.RangeAttack(aiUnit, candidate)
                return
            }

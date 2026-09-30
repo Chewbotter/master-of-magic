@@ -1080,7 +1080,7 @@ func (unit *ArmyUnit) GetToHitMelee(defender *ArmyUnit) int {
         modifier -= 20
     }
 
-    if defender.HasAbility(data.AbilityLucky) {
+    if defender.HasAbility(data.AbilityLucky) && !ClassicRules {
         modifier -= 10
     }
 
@@ -1089,7 +1089,7 @@ func (unit *ArmyUnit) GetToHitMelee(defender *ArmyUnit) int {
     }
 
     // FIXME: blur doesn't affect to hit, instead it directly reduces damage points
-    if unit.Model.IsEnchantmentActive(data.CombatEnchantmentBlur, oppositeTeam(unit.Team)) {
+    if unit.Model.IsEnchantmentActive(data.CombatEnchantmentBlur, oppositeTeam(unit.Team)) && !ClassicRules {
         modifier -= 10
     }
 
@@ -1186,7 +1186,14 @@ func (unit *ArmyUnit) GetResistance() int {
         modifier -= 2
     }
 
-    if unit.Model.IsEnchantmentActive(data.CombatEnchantmentHighPrayer, unit.Team) ||
+    if ClassicRules {
+        // Battle_Unit_Special_Stats: Prayer +1, High Prayer +3 in its place
+        if unit.Model.IsEnchantmentActive(data.CombatEnchantmentHighPrayer, unit.Team) {
+            modifier += 3
+        } else if unit.Model.IsEnchantmentActive(data.CombatEnchantmentPrayer, unit.Team) {
+            modifier += 1
+        }
+    } else if unit.Model.IsEnchantmentActive(data.CombatEnchantmentHighPrayer, unit.Team) ||
        unit.Model.IsEnchantmentActive(data.CombatEnchantmentPrayer, unit.Team) {
         modifier += 3
     }
@@ -1704,15 +1711,25 @@ func ComputeDefense(unit UnitDamage, damage units.Damage, source DamageSource, m
             defenseRolls = unit.GetDefense()
     }
 
+    weaponImmune := false
     switch damage {
         case units.DamageMeleePhysical, units.DamageRangedPhysical, units.DamageThrown:
             if unit.HasAbility(data.AbilityWeaponImmunity) && !modifiers.NegateWeaponImmunity && source == DamageSourceNormal {
-                defenseRolls = max(defenseRolls, 10)
+                // Battle_Unit_Attack_Immunities: thrown attacks never meet Weapon Immunity (the original's)
+                weaponImmune = !(ClassicRules && damage == units.DamageThrown)
+                if !ClassicRules {
+                    defenseRolls = max(defenseRolls, 10)
+                }
             }
     }
 
     if modifiers.ArmorPiercing {
         defenseRolls /= 2
+    }
+
+    // Battle_Unit_Defense_Special: Weapon Immunity keeps 10 after armor piercing
+    if weaponImmune && ClassicRules {
+        defenseRolls = max(defenseRolls, 10)
     }
 
     // after armor piercing, wall defense is applied
@@ -1807,7 +1824,7 @@ func ApplyAreaDamage(unit UnitDamage, attackStrength int, damageType units.Damag
 
     for range unit.Figures() {
         // FIXME: should this toHit=30 be based on the unit's toHitMelee?
-        damage := ComputeRoll(attackStrength, 30)
+        damage := spellRoll(unit, attackStrength)
 
         defense := ComputeDefense(unit, damageType, DamageSourceSpell, modifiers)
 
@@ -1955,6 +1972,21 @@ func (unit *ArmyUnit) ComputeRangeDamage(defender *ArmyUnit, tileDistance int) i
 
     }
 
+    if ClassicRules {
+        // Battle_Unit_Process_Attack: -10 for every full 3 squares, Long Range at most -10;
+        // magic none; at least 10 percent
+        toHit = unit.GetToHitMelee(defender)
+        if unit.Unit.GetRangedAttackDamageType() != units.DamageRangedMagical {
+            penalty := 10 * (tileDistance / 3)
+            if unit.HasAbility(data.AbilityLongRange) {
+                penalty = min(penalty, 10)
+            }
+            toHit -= penalty
+        }
+        damage := ComputeRoll(unit.GetRangedAttackPower(), classicToHit(toHit))
+        return defender.ReduceInvulnerability(classicBlur(unit, defender, damage))
+    }
+
     return defender.ReduceInvulnerability(ComputeRoll(unit.GetRangedAttackPower(), toHit))
 }
 
@@ -1975,6 +2007,13 @@ func (unit *ArmyUnit) ComputeMeleeDamage(defender *ArmyUnit, fearFigure int, cou
         if counterAttack {
             // counter attack to-hit might be penalized
             toHit = unit.GetCounterAttackToHit(defender)
+        }
+        if ClassicRules {
+            if quirkToBlockDoubleCount {
+                toHit -= classicToBlock(defender)
+            }
+            rolls = append(rolls, classicBlur(unit, defender, ComputeRoll(unit.GetMeleeAttackPower(), classicToHit(toHit))))
+            continue
         }
         rolls = append(rolls, ComputeRoll(unit.GetMeleeAttackPower(), toHit))
     }
@@ -2515,6 +2554,9 @@ func computeRangeToFortress(plane data.Plane, x int, y int, player ArmyPlayer) f
     }
 
     distance := fortressCity.TileDistance(x, y)
+    if ClassicRules {
+        distance = classicFortressDistance(fortressCity.X, fortressCity.Y, x, y, fortressCity.CatchmentProvider)
+    }
     switch {
         case distance == 0: return fraction.Make(1, 2)
         case distance <= 5: return fraction.FromInt(1)
@@ -2732,12 +2774,15 @@ func (model *CombatModel) NextTurn() {
             unit.Heal(1)
         }
 
-        if defenderWrack {
+        if defenderWrack && !classicWrackSpares(unit) {
             damage := 0
             for range unit.Figures() {
                 if rand.N(10) + 1 > unit.GetResistance() + 1 {
                     damage += 1
                 }
+            }
+            if ClassicRules && quirkWrackSquared {
+                damage *= damage
             }
             unit.TakeDamage(damage, DamageNormal)
             if unit.GetHealth() <= 0 {
@@ -2780,12 +2825,15 @@ func (model *CombatModel) NextTurn() {
             unit.Heal(1)
         }
 
-        if attackerWrack {
+        if attackerWrack && !classicWrackSpares(unit) {
             damage := 0
             for range unit.Figures() {
                 if rand.N(10) + 1 > unit.GetResistance() + 1 {
                     damage += 1
                 }
+            }
+            if ClassicRules && quirkWrackSquared {
+                damage *= damage
             }
             unit.TakeDamage(damage, DamageNormal)
             if unit.GetHealth() <= 0 {
@@ -3044,16 +3092,30 @@ func (model *CombatModel) DoDisenchantUnit(allSpells spellbook.Spells, unit *Arm
     var removedEnchantments []data.UnitEnchantment
 
     choices := append(unit.Unit.GetEnchantments(), unit.Enchantments...)
+    overland := len(unit.Unit.GetEnchantments())
 
     // if the unit has spell lock then only that spell can be dispelled. once it is dispelled then the
     // other choices become valid targets
-    if unit.HasEnchantment(data.UnitEnchantmentSpellLock) {
+    if unit.HasEnchantment(data.UnitEnchantmentSpellLock) && !ClassicRules {
         choices = []data.UnitEnchantment{data.UnitEnchantmentSpellLock}
     }
+    if ClassicRules && slices.Contains(unit.Unit.GetEnchantments(), data.UnitEnchantmentSpellLock) {
+        // Combat_Cast_Dispel: only a Spell Lock cast on the world map shields
+        choices = []data.UnitEnchantment{data.UnitEnchantmentSpellLock}
+        overland = 1
+    }
 
-    for _, enchantment := range choices {
+    for index, enchantment := range choices {
+        // Invulnerability is never dispelled (the original's loop stops before it)
+        if ClassicRules && enchantment == data.UnitEnchantmentInvulnerability {
+            continue
+        }
         spell := allSpells.FindByName(enchantment.SpellName())
         cost := spell.Cost(false)
+        if ClassicRules && index < overland && enchantment != data.UnitEnchantmentSpellLock {
+            // an enchantment cast on the world map counts 5 times its cost (the original's)
+            cost *= 5
+        }
         // spell lock has a unique cost for the purposes of dispelling
         if enchantment == data.UnitEnchantmentSpellLock {
             cost = 150
@@ -3072,6 +3134,11 @@ func (model *CombatModel) DoDisenchantUnit(allSpells spellbook.Spells, unit *Arm
 func (model *CombatModel) DoDisenchantUnitCurses(allSpells spellbook.Spells, unit *ArmyUnit, owner ArmyPlayer, disenchantStrength int) {
     var removedEnchantments []data.UnitEnchantment
     for _, enchantment := range unit.GetCurses() {
+        if ClassicRules {
+            // Combat_Cast_Dispel: the curses on one's own units always go (the original's)
+            removedEnchantments = append(removedEnchantments, enchantment)
+            continue
+        }
         spell := allSpells.FindByName(enchantment.SpellName())
         cost := spell.Cost(false)
         dispellChance := spellbook.ComputeDispelChance(disenchantStrength, cost, spell.Magic, owner.GetWizard())
@@ -3581,6 +3648,13 @@ func (model *CombatModel) doThrowAttack(attacker *ArmyUnit, defender *ArmyUnit) 
     if attacker.HasAbility(data.AbilityThrown) {
         strength := int(attacker.GetAbilityValue(data.AbilityThrown))
         var rolls []int
+        if ClassicRules {
+            // Battle_Unit_Process_Attack: every point of every figure rolls to hit
+            for range attacker.Figures() {
+                rolls = append(rolls, classicBlur(attacker, defender, ComputeRoll(strength, classicToHit(attacker.GetToHitMelee(defender)))))
+            }
+            return rolls, true
+        }
         for range attacker.Figures() {
             if rand.N(100) < attacker.GetToHitMelee(defender) {
                 // damage += defender.ApplyDamage(strength, units.DamageThrown, false)
@@ -3609,9 +3683,16 @@ func (model *CombatModel) doTouchAttack(attacker *ArmyUnit, defender *ArmyUnit, 
 
     if attacker.HasAbility(data.AbilityPoisonTouch) && !defender.HasAbility(data.AbilityPoisonImmunity) {
         damage := 0
-        for range int(attacker.GetAbilityValue(data.AbilityPoisonTouch)) {
-            if rand.N(10) + 1 > defender.GetResistance() {
-                damage += 1
+        figures := 1
+        if ClassicRules {
+            // Battle_Unit_Process_Attack: the rolls of poison for every attacking figure
+            figures = max(0, attacker.Figures() - fearFigure)
+        }
+        for range figures {
+            for range int(attacker.GetAbilityValue(data.AbilityPoisonTouch)) {
+                if rand.N(10) + 1 > defender.GetResistance() {
+                    damage += 1
+                }
             }
         }
 
@@ -4004,7 +4085,9 @@ func (model *CombatModel) canMeleeAttack(attacker *ArmyUnit, defender *ArmyUnit,
 
 func (model *CombatModel) meleeAttackWall(attacker *ArmyUnit, x int, y int) {
     pointsUsed := attacker.GetMovementSpeed().Divide(fraction.FromInt(2))
-    if pointsUsed.LessThan(fraction.FromInt(1)) {
+    if ClassicRules {
+        pointsUsed = classicMeleeCost(attacker)
+    } else if pointsUsed.LessThan(fraction.FromInt(1)) {
         pointsUsed = fraction.FromInt(1)
     }
 
@@ -4013,6 +4096,11 @@ func (model *CombatModel) meleeAttackWall(attacker *ArmyUnit, x int, y int) {
         attacker.MovesLeft = fraction.FromInt(0)
     }
 
+    model.crushWall(attacker, x, y)
+}
+
+// a Wall Crusher's chance to break the wall it strikes
+func (model *CombatModel) crushWall(attacker *ArmyUnit, x int, y int) {
     if attacker.HasAbility(data.AbilityWallCrusher) && rand.N(2) == 0 {
         if model.DestroyWall(x, y) {
             // since a wall went away, new paths need to be computed if the attacker still has moves left
@@ -4028,7 +4116,10 @@ func (model *CombatModel) meleeAttack(attacker *ArmyUnit, defender *ArmyUnit) (i
     // attacking takes 50% of movement points
     // FIXME: in some cases an extra 0.5 movements points is lost, possibly due to counter attacks?
     pointsUsed := attacker.GetMovementSpeed().Divide(fraction.FromInt(2))
-    if pointsUsed.LessThan(fraction.FromInt(1)) {
+    if ClassicRules {
+        // Battle_Unit_Attack, see classicrules.go
+        pointsUsed = classicMeleeCost(attacker)
+    } else if pointsUsed.LessThan(fraction.FromInt(1)) {
         pointsUsed = fraction.FromInt(1)
     }
 
@@ -4139,7 +4230,11 @@ func (model *CombatModel) meleeAttack(attacker *ArmyUnit, defender *ArmyUnit) (i
                 // if attacker is outside the wall of fire and the defender is inside (or vice-versa), then both side take immolation damage.
                 // if either side is flying then they do not take damage.
                 // for this to be false, either both are inside the wall of fire, or both are outside.
-                if model.InsideWallOfFire(defender.X, defender.Y) != model.InsideWallOfFire(attacker.X, attacker.Y) {
+                if ClassicRules {
+                    if model.classicWallOfFireBurns(attacker, defender) {
+                        totalDefenderDamage += model.ApplyWallOfFireDamage(attacker)
+                    }
+                } else if model.InsideWallOfFire(defender.X, defender.Y) != model.InsideWallOfFire(attacker.X, attacker.Y) {
                     if !attacker.IsFlying() {
                         totalDefenderDamage += model.ApplyWallOfFireDamage(attacker)
                     }
@@ -4150,7 +4245,13 @@ func (model *CombatModel) meleeAttack(attacker *ArmyUnit, defender *ArmyUnit) (i
                 }
 
             case 3:
-                if !defender.IsAsleep() && defender.HasAbility(data.AbilityCauseFear) {
+                if ClassicRules {
+                    // Apply_Fear_Attack: the defender's fear never works; the attacker's second roll
+                    // is taken off its own striking figures (quirkFearHitsOwnFigures)
+                    if quirkFearHitsOwnFigures && attacker.HasAbility(data.AbilityCauseFear) {
+                        attackerFear = defender.CauseFear()
+                    }
+                } else if !defender.IsAsleep() && defender.HasAbility(data.AbilityCauseFear) {
                     attackerFear = attacker.CauseFear()
                     model.AddLogEvent(fmt.Sprintf("%v causes fear in %v for %v figures", defender.Unit.GetName(), attacker.Unit.GetName(), attackerFear))
                     model.Observer.CauseFear(defender, attacker, attackerFear)
@@ -4200,7 +4301,7 @@ func (model *CombatModel) meleeAttack(attacker *ArmyUnit, defender *ArmyUnit) (i
                 attacks := 1
 
                 if didFirstStrike {
-                    if attacker.HasEnchantment(data.UnitEnchantmentHaste) {
+                    if attacker.HasEnchantment(data.UnitEnchantmentHaste) && !ClassicRules {
                         attacks = 1
                     } else {
                         // already melee attacked and doesn't have haste, so no more melee attacks
@@ -4310,7 +4411,12 @@ func (model *CombatModel) meleeAttack(attacker *ArmyUnit, defender *ArmyUnit) (i
 
     defender.Attacked += 1
 
-    model.meleeAttackWall(attacker, defender.X, defender.Y)
+    if ClassicRules {
+        // the moves were paid above (upstream paid them twice here)
+        model.crushWall(attacker, defender.X, defender.Y)
+    } else {
+        model.meleeAttackWall(attacker, defender.X, defender.Y)
+    }
 
     return totalAttackerDamage, totalDefenderDamage
 }
@@ -4907,6 +5013,10 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
     }
 
     warpCreatureTarget := func (target *ArmyUnit) bool {
+        if ClassicRules {
+            // Apply_Warp_Creature: any enemy unit; magic immunity only helps it resist
+            return true
+        }
         if target.GetRace() == data.RaceFantastic {
             return false
         }
@@ -4934,7 +5044,12 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
             }, targetNotImmune)
         case "Ice Bolt":
             model.DoTargetUnitSpell(army, spell, TargetEnemy, func(target *ArmyUnit){
-                model.AddProjectile(spellSystem.CreateIceBoltProjectile(target, spell.Cost(false)))
+                strength := spell.Cost(false)
+                if ClassicRules {
+                    // SPELLDAT: strength 5 at the cost of 10, a point for every extra mana
+                    strength -= 5
+                }
+                model.AddProjectile(spellSystem.CreateIceBoltProjectile(target, strength))
                 castedCallback(true)
             }, targetAny)
         case "Star Fires":
@@ -4981,7 +5096,12 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
             castedCallback(true)
         case "Life Drain":
             model.DoTargetUnitSpell(army, spell, TargetEnemy, func(target *ArmyUnit){
-                model.AddProjectile(spellSystem.CreateLifeDrainProjectile(target, spell.SpentAdditionalCost(false) / 5 + getSpellSave(unitCaster), army.Player, unitCaster))
+                reduce := spell.SpentAdditionalCost(false) / 5 + getSpellSave(unitCaster)
+                if ClassicRules {
+                    // Apply_Life_Drain: 1 for every 5 extra mana, no items of spell saving
+                    reduce = spell.SpentAdditionalCost(false) / 5
+                }
+                model.AddProjectile(spellSystem.CreateLifeDrainProjectile(target, reduce, army.Player, unitCaster))
                 castedCallback(true)
             }, targetNotImmune)
         case "Dispel Evil":
@@ -4989,6 +5109,9 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
                 model.AddProjectile(spellSystem.CreateDispelEvilProjectile(target, getSpellSave(unitCaster)))
                 castedCallback(true)
             }, func (target *ArmyUnit) bool {
+                if ClassicRules && quirkDispelEvilAnyTarget {
+                    return true
+                }
                 if target.Unit.GetRace() == data.RaceFantastic &&
                    (target.Unit.GetRealm() == data.ChaosMagic || target.Unit.GetRealm() == data.DeathMagic) {
                     return true
@@ -5057,7 +5180,7 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
             model.DoTargetUnitSpell(army, spell, TargetEither, func(target *ArmyUnit){
                 disenchantStrength := spell.Cost(false) * 3
 
-                if army.Player.GetWizard().RetortEnabled(data.RetortRunemaster) {
+                if army.Player.GetWizard().RetortEnabled(data.RetortRunemaster) && !(ClassicRules && quirkNoRunemasterDispel) {
                     disenchantStrength *= 2
                 }
 
@@ -5068,7 +5191,7 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
             model.DoTargetUnitSpell(army, spell, TargetEither, func(target *ArmyUnit){
                 disenchantStrength := spell.Cost(false)
 
-                if army.Player.GetWizard().RetortEnabled(data.RetortRunemaster) {
+                if army.Player.GetWizard().RetortEnabled(data.RetortRunemaster) && !(ClassicRules && quirkNoRunemasterDispel) {
                     disenchantStrength *= 2
                 }
 
@@ -5184,7 +5307,7 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
                 disenchantStrength = spell.Cost(false) * 3
             }
 
-            if army.Player.GetWizard().RetortEnabled(data.RetortRunemaster) {
+            if army.Player.GetWizard().RetortEnabled(data.RetortRunemaster) && !(ClassicRules && quirkNoRunemasterDispel) {
                 disenchantStrength *= 2
             }
 
@@ -6363,7 +6486,7 @@ func (model *CombatModel) Update(spellSystem SpellSystem, actions CombatActionsI
 
            if defender != nil {
                // try a ranged attack first
-               if model.withinArrowRange(attacker, defender) && model.canRangeAttack(attacker, defender) {
+               if model.shootsAt(attacker, defender) {
                    actions.RangeAttack(attacker, defender)
                // then fall back to melee
                } else if model.withinMeleeRange(attacker, defender) && model.canMeleeAttack(attacker, defender, true){
@@ -6420,7 +6543,7 @@ func (model *CombatModel) CreateMindStormProjectileEffect() func (*ArmyUnit) {
 
 func (model *CombatModel) CreateIceBoltProjectileEffect(strength int, damageIndicator AddDamageIndicators) func(*ArmyUnit) {
     return func(unit *ArmyUnit) {
-        hurt, _ := ApplyDamage(unit, []int{ComputeRoll(strength, 30)}, units.DamageCold, DamageSourceSpell, DamageModifiers{Magic: data.NatureMagic})
+        hurt, _ := ApplyDamage(unit, []int{spellRoll(unit, strength)}, units.DamageCold, DamageSourceSpell, DamageModifiers{Magic: data.NatureMagic})
         damageIndicator.AddDamageIndicator(unit, hurt)
         if unit.GetHealth() <= 0 {
             model.KillUnit(unit)
@@ -6430,7 +6553,7 @@ func (model *CombatModel) CreateIceBoltProjectileEffect(strength int, damageIndi
 
 func (model *CombatModel) CreateFireBoltProjectileEffect(strength int, damageIndicator AddDamageIndicators) func(*ArmyUnit) {
     return func(unit *ArmyUnit) {
-        fireDamage, _ := ApplyDamage(unit, []int{ComputeRoll(strength, 30)}, units.DamageFire, DamageSourceSpell, DamageModifiers{Magic: data.ChaosMagic})
+        fireDamage, _ := ApplyDamage(unit, []int{spellRoll(unit, strength)}, units.DamageFire, DamageSourceSpell, DamageModifiers{Magic: data.ChaosMagic})
         damageIndicator.AddDamageIndicator(unit, fireDamage)
 
         model.AddLogEvent(fmt.Sprintf("Firebolt hits %v for %v damage", unit.Unit.GetName(), fireDamage))
@@ -6490,8 +6613,18 @@ func (model *CombatModel) CreateDispelEvilProjectileEffect(damageIndicator AddDa
 
 func (model *CombatModel) CreatePsionicBlastProjectileEffect(strength int, damageIndicator AddDamageIndicators) func(*ArmyUnit) {
     return func(unit *ArmyUnit) {
-        _ = strength // strength currently unused; damage is fixed by spell rules
-        hurt, _ := ApplyDamage(unit, []int{ComputeRoll(15, 30)}, units.DamageRangedMagical, DamageSourceSpell, DamageModifiers{Magic: data.SorceryMagic})
+        roll := ComputeRoll(15, 30)
+        modifiers := DamageModifiers{Magic: data.SorceryMagic}
+        if ClassicRules {
+            // Compute_Battle_Unit_Damage_From_Spell: strength 5 and half the extra mana, an illusion
+            // (no defense but for the illusion-immune), nothing against magic immunity
+            if unit.HasAbility(data.AbilityMagicImmunity) {
+                return
+            }
+            roll = spellRoll(unit, strength)
+            modifiers.Illusion = true
+        }
+        hurt, _ := ApplyDamage(unit, []int{roll}, units.DamageRangedMagical, DamageSourceSpell, modifiers)
         damageIndicator.AddDamageIndicator(unit, hurt)
         if unit.GetHealth() <= 0 {
             model.KillUnit(unit)
@@ -6511,7 +6644,7 @@ func (model *CombatModel) CreateDoomBoltProjectileEffect(damageIndicator AddDama
 
 func (model *CombatModel) CreateLightningBoltProjectileEffect(strength int, damageIndicator AddDamageIndicators) func(*ArmyUnit) {
     return func(unit *ArmyUnit) {
-        hurt, _ := ApplyDamage(unit, []int{ComputeRoll(strength, 30)}, units.DamageRangedMagical, DamageSourceSpell, DamageModifiers{ArmorPiercing: true, Magic: data.ChaosMagic})
+        hurt, _ := ApplyDamage(unit, []int{spellRoll(unit, strength)}, units.DamageRangedMagical, DamageSourceSpell, DamageModifiers{ArmorPiercing: true, Magic: data.ChaosMagic})
         damageIndicator.AddDamageIndicator(unit, hurt)
         if unit.GetHealth() <= 0 {
             model.KillUnit(unit)
@@ -6537,13 +6670,20 @@ func (model *CombatModel) CreateWarpLightningProjectileEffect(damageIndicator Ad
 
 func (model *CombatModel) CreateLifeDrainProjectileEffect(reduceResistance int, player ArmyPlayer, unitCaster *ArmyUnit, damageIndicator AddDamageIndicators) func(*ArmyUnit) {
     return func(unit *ArmyUnit) {
-        resistance := GetResistanceFor(unit, data.LifeMagic) - reduceResistance
+        realm := data.LifeMagic
+        if ClassicRules {
+            realm = data.DeathMagic
+        }
+        resistance := GetResistanceFor(unit, realm) - reduceResistance
         damage := rand.N(10) + 1 - resistance
         if damage > 0 {
             unit.TakeDamage(damage, DamageUndead)
             damageIndicator.AddDamageIndicator(unit, damage)
             if unitCaster != nil {
                 unitCaster.Heal(damage)
+            } else if gainer, ok := player.(skillGainer); ok && ClassicRules {
+                // Apply_Life_Drain: three times the damage into the wizard's casting skill
+                gainer.AddCastingSkillPower(damage * 3)
             } else {
                 army := model.GetArmyForPlayer(player)
                 army.ManaPool += damage * 3

@@ -185,3 +185,20 @@ quirk constant where there is one: turning it is the change. New calls go here t
   halves by the balance of friend and foe), Endurance adding to road building, the Earth Gate and
   Plane Shift limits of 9, the riders who drown when the ships lose a sea battle, units evicted by a
   full square, the terrain costs kept after a volcano rises or cools (the original's mistake).
+
+## Tactical combat (combat-rules.md)
+
+- Kept, the original's: the second fear roll off the attacker's own figures
+  (`quirkFearHitsOwnFigures`); to-block counted twice in melee (`quirkToBlockDoubleCount`); Blur's
+  shrinking loop and its immunity test on the wrong unit (`quirkBlurLoop`); Dispel Evil on any enemy
+  (`quirkDispelEvilAnyTarget`); no Runemaster double for combat dispels (`quirkNoRunemasterDispel`);
+  Wrack squared and Wraith Form sparing it (`quirkWrackSquared`); thrown attacks past Weapon
+  Immunity; a dispel of one's own curses that never fails. Suggested: each the way the manual means.
+- MY CALL: every battle unit of a lost side that stayed out dies at the end whatever the reason it
+  stayed out (upstream's rules for who stays out).
+- Not ported yet: the cap of 9 units for summons, Raise Dead and Animate Dead (the fork has no place
+  to refuse the spell before its mana is paid); the ranged attack's flat cost of 10 moves;
+  Invulnerability after every defense roll; the items of stoned or disintegrated heroes lost; the
+  rest of the fleeing, experience, fame and regeneration rules; Wall of Stone in a city battle (the
+  original can not cast it in battle); the magic ranged shot of a hasted hero; the LOWs of combat
+  spells (rules-survey.md).

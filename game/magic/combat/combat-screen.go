@@ -3183,7 +3183,7 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
             newState := CombatNotOk
 
             // prioritize range attack over melee
-            if combat.Model.canRangeAttack(attacker, who) && combat.Model.withinArrowRange(attacker, who) {
+            if combat.Model.shootsAt(attacker, who) {
                 newState = CombatRangeAttackOk
             } else if combat.Model.canMeleeAttack(attacker, who, true) && combat.Model.withinMeleeRange(attacker, who) {
                 newState = CombatMeleeAttackOk

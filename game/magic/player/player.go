@@ -1184,6 +1184,11 @@ func (player *Player) ComputeOverworldCastingSkill() int {
     return base + int(heroes) / 2
 }
 
+// casting skill points won in battle (Life Drain, combat/classicrules.go)
+func (player *Player) AddCastingSkillPower(points int) {
+    player.CastingSkillPower += points
+}
+
 func (player *Player) ComputeCastingSkill() int {
     if player.CastingSkillPower == 0 {
         return 0
