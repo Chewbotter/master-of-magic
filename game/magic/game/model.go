@@ -188,6 +188,10 @@ func (model *GameModel) AddPlayer(wizard setup.WizardCustom, human bool) *player
     newPlayer.CastingSkillPower = computeInitialCastingSkillPower(newPlayer.Wizard.Books)
 
     newPlayer.InitializeResearchableSpells(&model.allSpells)
+    if playerlib.ClassicEconomy {
+        // the computer wizards' summoning spell, the Spell of Mastery's research (economy.go)
+        model.classicStartingMagic(newPlayer)
+    }
     newPlayer.UpdateResearchCandidates()
 
     // log.Printf("Research spells: %v", newPlayer.ResearchPoolSpells)

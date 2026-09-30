@@ -543,25 +543,23 @@ func ReadSpells(lbxFile *lbx.LbxFile, entry int) (Spells, error) {
                 }
             }
 
-            // for arcane the spells are
-            // common: magic spirit, dispel magic, spell of return, summoning circle
-            // uncommon: detect magic, recall hero, disenchant area, enchant item, summon hero
+            // for arcane the spells are, in the order of the data (ReMoM Build_Research_List:
+            // the tiers of arcane end at its 3rd and 8th spell)
+            // common: magic spirit, dispel magic, summoning circle
+            // uncommon: disenchant area, recall hero, detect magic, enchant item, summon hero
             // rare: awareness, disjunction, create artifact, summon champion
-            // very rare: spell of mastery
-
-            for i := 0; i < 4; i++ {
-                out <- MagicData{Magic: data.ArcaneMagic, Rarity: SpellRarityCommon}
+            // none, here very rare: spell of mastery, spell of return
+            arcaneTiers := []int{3, 5, 4, 2}
+            if !ClassicSpellCost {
+                // upstream's
+                arcaneTiers = []int{4, 5, 4, 1}
             }
 
-            for i := 0; i < 5; i++ {
-                out <- MagicData{Magic: data.ArcaneMagic, Rarity: SpellRarityUncommon}
+            for tier, count := range arcaneTiers {
+                for i := 0; i < count; i++ {
+                    out <- MagicData{Magic: data.ArcaneMagic, Rarity: rarities[tier]}
+                }
             }
-
-            for i := 0; i < 4; i++ {
-                out <- MagicData{Magic: data.ArcaneMagic, Rarity: SpellRarityRare}
-            }
-
-            out <- MagicData{Magic: data.ArcaneMagic, Rarity: SpellRarityVeryRare}
         }()
 
         return out

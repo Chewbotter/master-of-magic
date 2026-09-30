@@ -122,3 +122,25 @@ quirk constant where there is one: turning it is the change. New calls go here t
   to a banished wizard beyond upstream's; events that skip banished wizards.
 - The frame of the score's bar is drawn by eye (the original's remap blocks were not read).
 - The Hall of Fame is kept in a file of ours, not the original's MAGIC.SET.
+
+## Economy of mana and units (economy.md)
+
+- MY CALL, not reconstructed: the order within the mana groups of a human who can not pay (unit
+  enchantments from the newest unit, city and global enchantments in the order kept; each by its
+  upkeep, halved with Channeler as the creatures are).
+- MY CALL: Torin and all heroes have no mana upkeep of their own (the reconstruction's line about
+  the Chosen is doubtful; its intent is that Torin has none).
+- The research bonus of a realm is judged on its first spell (`quirkResearchBonusOfFirstSpell`):
+  here the first of the realm among the spells the wizard can research or knows, the original's
+  first of all. Suggested: the bonus of the spell itself.
+- At Hard a computer wizard that knows the granted summoning spell loses it
+  (`quirkHardGrantUnlearns`); the guard spell does not match the grant for most realms. Suggested:
+  guard and grant the same, and never unlearn.
+- The Spell of Mastery on the list is sorted by its present cost, the original by its table cost.
+- Only food is asked at the end of a turn, by the food total with starving cities, while units
+  desert only by the surplus of the cities with more than they need (the original's two sums).
+  Suggested: ask about gold and mana too, and by the same sums.
+- Not ported yet: the mana slider of overland spells (the original up to the table cost, the fork
+  4 times), computer wizards' Disenchant and Disjunction at three times cost and strength,
+  AI_Kill_Lame_Units (computer wizards dismiss their weakest units every 25 turns from turn 100),
+  Time Stop stopping events and the world's effects for everyone, a first level Sage giving 0.

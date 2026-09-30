@@ -261,6 +261,7 @@ Death Wish (stubs).
    DONE 2026-09-30, see conquest.md.
 3. The economy of mana and units: Channeler, Conjurer, disbanding, the Spell of Mastery's costs,
    research, arcane rarities (4-6, the magic MEDs).
+   DONE 2026-09-30, see economy.md (what is left is at the end of improvements.md).
 4. Cities: population cap, plague and boom, rebels, the smaller city rules.
 5. Movement: stack limit, ships, terrain table, Wind Walking, go-to.
 6. Combat: melee cost, then the MEDs of combat and combat spells.

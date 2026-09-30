@@ -23,6 +23,7 @@ import (
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
     herolib "github.com/kazzmir/master-of-magic/game/magic/hero"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
+    "github.com/kazzmir/master-of-magic/game/magic/spellbook"
 )
 
 // the clone's AI of a scenario: gives nothing, so every order is Chewbot's
@@ -47,6 +48,9 @@ func (stub *chewStubAI) DidConquerCity(*citylib.City, bool) {
 }
 
 func (stub *chewStubAI) DidLoseCity(*citylib.City) {
+}
+
+func (stub *chewStubAI) DidLearnSpell(spellbook.Spell) {
 }
 
 type chewScenario struct {

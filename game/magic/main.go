@@ -1061,6 +1061,9 @@ func startWatchMode(yield coroutine.YieldFunc, game *MagicGame) error {
 }
 
 // development: computer wizards of a quick start, 0 for a number by chance
+// -classic-economy
+var classicEconomy = true
+
 var captureOpponents int
 // development: the land size of a quick start, below 0 by chance
 var captureLandSize int
@@ -1473,6 +1476,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&gamelib.BattleLog, "capture-battle-log", false, "development: log every battle no screen shows: sides, power, Chewbot's strength, result, turns")
     flag.BoolVar(&ai.ChewbotNeutralLog, "capture-neutral-log", false, "development: log what Chewbot's neutral player does")
     flag.BoolVar(&citylib.ClassicDifficulty, "classic-difficulty", true, "development: false for no bonuses of computer wizards by difficulty (the original's difficulty table)")
+    flag.BoolVar(&classicEconomy, "classic-economy", true, "development: false for upstream's economy of mana and units (upkeep, disbanding, casting, research, costs, starting spells)")
     flag.IntVar(&captureDifficulty, "capture-difficulty", -1, "development: the difficulty of a quick start and -sim (0 intro, 1 easy, 2 average, 3 hard, 4 extreme, 5 impossible), -1 average")
     flag.IntVar(&captureLandSize, "capture-land-size", -1, "development: the land size of a quick start (0 small, 1 medium, 2 large), -1 by chance")
     flag.IntVar(&captureOpponents, "capture-opponents", 0, "development: the number of computer wizards of a quick start, 0 for 1 to 4 by chance")
@@ -1584,6 +1588,11 @@ func main() {
             log.Println(http.ListenAndServe("localhost:8000", nil))
         }()
     }
+
+    // the economy of mana and units, see docs/mod/economy.md
+    playerlib.ClassicEconomy = classicEconomy
+    spellbook.ClassicSpellCost = classicEconomy
+    setup.ClassicStartingSpells = classicEconomy
 
     developmentRun := capture.Corner || capture.Path != ""
     if developmentRun {
