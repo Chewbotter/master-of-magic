@@ -357,6 +357,9 @@ func (overland *chewOverland) evaluateContinents(world *chewWorld) {
             continue
         }
         if world.EvalAt(order.X, order.Y, chewPlaneIndex(order.Plane)) == 0 {
+            if order.Why == "target" {
+                chewMoveLog("%v: the target at %v,%v is empty, the order ends", world.Self.Wizard.Name, order.X, order.Y)
+            }
             delete(overland.Orders, key)
         }
     }

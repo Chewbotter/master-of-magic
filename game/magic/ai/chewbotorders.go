@@ -1132,7 +1132,21 @@ func (pass *chewPass) roamersTargetOrDeploy() {
         if slices.Contains(stack.Slots, nil) {
             continue
         }
+        if ChewbotMoveLog {
+            strength := 0
+            for _, unit := range stack.Slots {
+                strength += chewUnitStrength(unit) / 10
+            }
+            weakest := -1
+            for _, target := range pass.Targets {
+                if target.Value > 0 && (weakest < 0 || target.Strength < weakest) {
+                    weakest = target.Strength
+                }
+            }
+            chewMoveLog("%v: roamer of %v units at %v,%v, strength %v; %v targets on landmass %v, weakest %v (needs more than three quarters)", pass.World.Self.Wizard.Name, stack.Count(), stack.X, stack.Y, strength, len(pass.Targets), pass.Landmass, weakest)
+        }
         if x, y, ok := pass.assignTarget(stack); ok {
+            chewMoveLog("%v: %v units at %v,%v go for the target at %v,%v (eval %x)", pass.World.Self.Wizard.Name, stack.Count(), stack.X, stack.Y, x, y, pass.World.EvalAt(x, y, pass.WP))
             noTarget = false
             for slot := range stack.Slots {
                 pass.order(stack, slot, x, y)
@@ -1268,6 +1282,19 @@ func (pass *chewPass) stageExpeditionForces() {
         pass.Overland.reevaluateContinent(pass.World, pass.WP, pass.Landmass)
     }
     threshold := pass.Turn.ExpeditionSize
+    if ChewbotMoveLog && pass.World.Turn % 10 == 0 {
+        garrisoned, loose := 0, 0
+        for _, stack := range pass.Stacks {
+            if stack.Type == chewStackGarrison || stack.Type == chewStackFortress {
+                garrisoned += stack.Count()
+            } else {
+                loose += stack.Count()
+            }
+        }
+        if garrisoned + loose > 0 {
+            chewMoveLog("%v: landmass %v type %v: %v in garrisons, %v outside; staged %v, on the way %v, drafted %v, expedition size %v, targets %v", pass.World.Self.Wizard.Name, pass.Landmass, pass.landType(), garrisoned, loose, pass.Staged, pass.Enroute, len(pass.Drafted), threshold, len(pass.Targets))
+        }
+    }
     if pass.Staged + pass.Enroute >= threshold {
         return
     }

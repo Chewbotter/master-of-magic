@@ -66,9 +66,12 @@ func chewbotMovesActive() bool {
     return ChewbotMoves && display.ChewbotAI()
 }
 
+// the turn the log lines are of
+var chewLogTurn int
+
 func chewMoveLog(format string, args ...any) {
     if ChewbotMoveLog {
-        log.Printf("chewbot move: " + format, args...)
+        log.Printf("chewbot move: turn %v: " + format, append([]any{chewLogTurn}, args...)...)
     }
 }
 
@@ -154,6 +157,9 @@ func (overland *chewOverland) pruneOrders(self *playerlib.Player) {
             alive[chewKey(unit)] = true
             if order, has := overland.Orders[chewKey(unit)]; has && order.Kind == chewOrderGoto {
                 if stack.X() == order.X && stack.Y() == order.Y && stack.Plane() == order.Plane {
+                    if order.Why == "target" {
+                        chewMoveLog("%v: %v arrived at its target %v,%v", self.Wizard.Name, unit.GetName(), order.X, order.Y)
+                    }
                     delete(overland.Orders, chewKey(unit))
                 }
             }
@@ -179,10 +185,18 @@ func (ai *ChewbotAI) moveDecisions(self *playerlib.Player, services playerlib.AI
     overland := ai.overland
 
     world := makeChewWorld(self, services)
+    chewLogTurn = world.Turn
     overland.fit(world)
     overland.noteTreaties(world)
     overland.pruneOrders(self)
     overland.evaluateHostility(world)
+    if ChewbotMoveLog && world.Turn % 20 == 0 {
+        for _, other := range world.Players {
+            if other != self {
+                chewMoveLog("%v: toward %v hostility %v treaty %v", self.Wizard.Name, other.Wizard.Name, overland.hostilityOf(other), chewTreaty(self, other))
+            }
+        }
+    }
     world.makeEvaluationMap(overland.hostilityOf)
     overland.chooseWarLandmass(world)
     overland.evaluateContinents(world)
@@ -314,6 +328,7 @@ func (turn *chewTurn) findOpportunityCityTarget() {
             }
         }
         if found {
+            chewMoveLog("%v: the stack at %v,%v stops next to a weak city", world.Self.Wizard.Name, stack.X(), stack.Y())
             for _, unit := range stack.Units() {
                 delete(turn.Overland.Orders, chewKey(unit))
             }
