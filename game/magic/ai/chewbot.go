@@ -127,6 +127,8 @@ type ChewbotAI struct {
     magic *chewMagic
     // the tax the glue keeps (chewbotglue.go)
     glue *chewGlue
+    // the neutral player's accumulators and orders (chewbotneutral.go)
+    neutral *chewNeutral
     services playerlib.AIServices
     self *playerlib.Player
 }
@@ -208,6 +210,25 @@ func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIService
     if glue {
         // every computer player (chewbotglue.go)
         chewHopelessStasis(self)
+    }
+    // the neutral player's turn is the original's: none of the clone's units made from nothing,
+    // farmers or moves (chewbotneutral.go)
+    if ai.Neutral && chewbotNeutralActive() {
+        var out []playerlib.AIDecision
+        for _, decision := range decisions {
+            switch decision.(type) {
+                case *playerlib.AIProduceDecision, *playerlib.AICreateUnitDecision, *playerlib.AIUpdateCityDecision:
+                    continue
+            }
+            if chewIsMoveDecision(decision) {
+                continue
+            }
+            out = append(out, decision)
+        }
+        if cities {
+            out = append(out, ai.cityDecisions(self, services)...)
+        }
+        return append(out, ai.neutralDecisions(self, services)...)
     }
     if !cities && !moves && !spells {
         return decisions

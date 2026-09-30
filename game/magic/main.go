@@ -467,6 +467,10 @@ func initializeNeutralPlayer(game *gamelib.Game, arcanusCityArea gamelib.CityVal
             area[image.Pt(cityX, cityY)] = false
 
             player.AddCity(city)
+            if maplib.ClassicMaps {
+                // buildings and garrison (classicneutral.go)
+                classicNeutralSetup(player, city)
+            }
         }
     }
 
@@ -1456,6 +1460,8 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&ai.ChewbotDraftBeyondNeed, "chewbot-draft-beyond-need", true, "development: false gives Chewbot the original's rule for expeditions (units beyond 5 of a garrison)")
     flag.BoolVar(&maplib.ClassicMaps, "classic-maps", true, "development: false for the fork's worlds, as large as the Land Size")
     flag.BoolVar(&gamelib.ClassicContact, "classic-contact", true, "development: false for the fork's contact, every wizard meets every wizard it sees")
+    flag.BoolVar(&ai.ChewbotNeutral, "chewbot-neutral", true, "development: false for the clone's neutral player under the Enemy AI Chewbot")
+    flag.BoolVar(&ai.ChewbotNeutralLog, "capture-neutral-log", false, "development: log what Chewbot's neutral player does")
     flag.BoolVar(&citylib.ClassicDifficulty, "classic-difficulty", true, "development: false for no bonuses of computer wizards by difficulty (the original's difficulty table)")
     flag.IntVar(&captureDifficulty, "capture-difficulty", -1, "development: the difficulty of a quick start and -sim (0 intro, 1 easy, 2 average, 3 hard, 4 extreme, 5 impossible), -1 average")
     flag.IntVar(&captureLandSize, "capture-land-size", -1, "development: the land size of a quick start (0 small, 1 medium, 2 large), -1 by chance")
