@@ -50,6 +50,15 @@ type SpellValues struct {
     DebrisGravity float64
     DebrisColors []color.RGBA
 
+    // sparks that come off the pixels of the picture of a spell while it shows, in flight or not:
+    // how many a second, their own speed in art pixels a second, how long they live, how fast they
+    // get faster downward, their colors
+    SparkRate float64
+    SparkSpeed float64
+    SparkLife float64
+    SparkGravity float64
+    SparkColors []color.RGBA
+
     // the unit that is hit shows in one color: for how long in seconds, how much of it 0 to 1
     FlashTime float64
     FlashStrength float64
@@ -175,6 +184,9 @@ var lightningSparkColors = colors("d8ecff 90c4ff 4c8cff 2a5ce0 16309a")
 // dirt: one dark brown for every ground (user: "It doesn't need to be authored to match the
 // biome- a dark brown should work anywhere")
 var dirtColors = colors("5c3c22 4c301a 3c2412 2e1a0c")
+// the sparks that come off the bolt: bright (user, 2026-09-30: "I also don't see any bright blue
+// sparks off of the lightning bolt itself")
+var boltSparkColors = colors("ffffff c8f6ff 7ee0ff 36b4ff 1a78e0")
 var lifeColors = colors("ffffff fff8c0 ffe070 c0a040")
 var deathColors = colors("d0a0ff 8040c0 401870 200838")
 
@@ -309,13 +321,20 @@ func gameValues(name string) SpellValues {
             values.BurstLife = 0.45
             values.BurstColors = lightningSparkColors
             values.ImpactHeight = 2
-            // and dirt thrown up
-            values.DebrisCount = 26
-            values.DebrisSpeed = 28
-            values.DebrisLift = 120
-            values.DebrisLife = 0.9
-            values.DebrisGravity = 300
+            // and dirt thrown up, straight as by a mortar (user, 2026-09-30: "more and have them
+            // fly more vertically, like a mortar blast"; first 26 with 28 to the side and 120 up)
+            values.DebrisCount = 64
+            values.DebrisSpeed = 10
+            values.DebrisLift = 175
+            values.DebrisLife = 1.2
+            values.DebrisGravity = 320
             values.DebrisColors = dirtColors
+            // sparks off the bolt while it shows
+            values.SparkRate = 260
+            values.SparkSpeed = 38
+            values.SparkLife = 0.4
+            values.SparkGravity = 90
+            values.SparkColors = boltSparkColors
             values.FlashTime = 0.1
             values.HitStop = 0.06
             values.Decal = "spark"
@@ -379,6 +398,7 @@ var valueNames = []string{
     "trail-rate", "trail-life", "trail-speed", "trail-gravity", "trail-colors",
     "burst-count", "burst-speed", "burst-lift", "burst-life", "burst-gravity", "burst-colors", "impact-height",
     "debris-count", "debris-speed", "debris-lift", "debris-life", "debris-gravity", "debris-colors",
+    "spark-rate", "spark-speed", "spark-life", "spark-gravity", "spark-colors",
     "flash-time", "flash-strength", "flash-color",
     "hit-stop", "shake", "shake-time",
     "pulse-radius", "pulse-time", "pulse-strength", "pulse-color",
@@ -418,6 +438,11 @@ func (values *SpellValues) text(name string) string {
         case "debris-life": return number(values.DebrisLife)
         case "debris-gravity": return number(values.DebrisGravity)
         case "debris-colors": return colorsText(values.DebrisColors)
+        case "spark-rate": return number(values.SparkRate)
+        case "spark-speed": return number(values.SparkSpeed)
+        case "spark-life": return number(values.SparkLife)
+        case "spark-gravity": return number(values.SparkGravity)
+        case "spark-colors": return colorsText(values.SparkColors)
         case "impact-height": return number(values.ImpactHeight)
         case "flash-time": return number(values.FlashTime)
         case "flash-strength": return number(values.FlashStrength)
@@ -471,6 +496,9 @@ func (values *SpellValues) set(name string, text string) bool {
             return len(many) > 0 || strings.TrimSpace(text) == ""
         case "debris-colors":
             values.DebrisColors = many
+            return len(many) > 0 || strings.TrimSpace(text) == ""
+        case "spark-colors":
+            values.SparkColors = many
             return len(many) > 0 || strings.TrimSpace(text) == ""
         case "flash-color":
             if colorOk {
@@ -538,6 +566,10 @@ func (values *SpellValues) set(name string, text string) bool {
         case "debris-lift": values.DebrisLift = number
         case "debris-life": values.DebrisLife = number
         case "debris-gravity": values.DebrisGravity = number
+        case "spark-rate": values.SparkRate = number
+        case "spark-speed": values.SparkSpeed = number
+        case "spark-life": values.SparkLife = number
+        case "spark-gravity": values.SparkGravity = number
         case "impact-height": values.ImpactHeight = number
         case "flash-time": values.FlashTime = number
         case "flash-strength": values.FlashStrength = number
