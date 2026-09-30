@@ -144,3 +144,27 @@ quirk constant where there is one: turning it is the change. New calls go here t
   4 times), computer wizards' Disenchant and Disjunction at three times cost and strength,
   AI_Kill_Lame_Units (computer wizards dismiss their weakest units every 25 turns from turn 100),
   Time Stop stopping events and the world's effects for everyone, a first level Sage giving 0.
+
+## Cities (cities.md)
+
+- MY CALL: Gaia's Blessing pacifies 2 and Stream of Life ends rebels as the city enchantments (the
+  manual's and upstream's). The reconstruction reads two slots of the owner's GLOBAL enchantments
+  with the numbers of the city enchantments, which as written means Crusade +2 and Life Force: no
+  rebels in any city; it doubts itself there. Worth checking against the game as played.
+- MY CALL, the meaning: an outpost's minerals count 5 for iron and silver, 10 for the others (the
+  original reads the wrong square, a square by the city's number).
+- MY CALL: Dwarves' taxes are not doubled (the reconstruction doubles them, with no note and no
+  support in the manual; their minerals are doubled).
+- Not changed: the mana of guilds (the reconstruction gives the Animists' Guild +3 and the
+  Alchemists' none, and the Wizards' Guild +3; upstream and the manual: Alchemists' +3, Wizards'
+  -3); left as upstream until it is checked.
+- Kept, the original's: a city exactly at its maximum never shrinks, even starving; growth over a
+  whole person is lost; Great Wasting and Armageddon SET the pacification (`quirkWastingSetsPacification`);
+  Consecration's corruption block of 4 by 4 (`quirkConsecrationBlock`). Suggested: all four the way
+  the manual means them.
+- Kept from upstream (the reconstruction has only stubs): Gaia's Blessing turning desert to grass,
+  volcanoes to hills and clearing corruption each turn (its mistake of the square fixed), Chaos
+  Rift's damage.
+- Not ported: the random city of an event (the original's picks only cities whose race is content
+  under the capital's; the reconstruction's version is doubtful), a replaced building coming back
+  when its replacement is sold, production over 127 wrapping.

@@ -22,6 +22,11 @@ func (city *City) BuyCost() (int, float32) {
         return 0, 0
     }
 
+    // City_Can_Buy_Product: not what will be done in under 2 turns anyway
+    if ClassicCities && city.ProducingTurnsLeft() < 2 {
+        return 0, 0
+    }
+
     modifier := float32(2)
     switch {
         case city.Production == 0: modifier = 4

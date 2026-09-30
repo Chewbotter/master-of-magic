@@ -796,15 +796,29 @@ func (cityScreen *CityScreen) MakeUI(newBuilding buildinglib.Building) *uilib.UI
     })
 
     sellBuilding := func (toSell buildinglib.Building) {
-        // FIXME: Check if building is needed for other building
+        // the original's rules of selling (city/classiccity.go)
+        requiredBy := buildinglib.BuildingNone
+        ceases := ""
+        if citylib.ClassicCities {
+            requiredBy = cityScreen.City.RequiredBy(toSell)
+            ceases = cityScreen.City.ProductionNeeds(toSell)
+        }
+
         if cityScreen.City.SoldBuilding {
             ui.AddElement(uilib.MakeErrorElement(ui, cityScreen.LbxCache, &cityScreen.ImageCache, "You can only sell back one building per turn.", func(){}))
+        } else if requiredBy != buildinglib.BuildingNone {
+            ui.AddElement(uilib.MakeErrorElement(ui, cityScreen.LbxCache, &cityScreen.ImageCache, fmt.Sprintf("You cannot sell back the %v because it is required by the %v.", cityScreen.City.BuildingInfo.Name(toSell), cityScreen.City.BuildingInfo.Name(requiredBy)), func(){}))
         } else {
             group := uilib.MakeGroup()
             var confirmElements []*uilib.UIElement
 
             yes := func(){
                 cityScreen.SellBuilding(toSell)
+                if ceases != "" {
+                    // the production that needed it becomes Housing
+                    cityScreen.City.ProducingUnit = units.UnitNone
+                    cityScreen.City.ProducingBuilding = buildinglib.BuildingHousing
+                }
                 // update the ui
                 cityScreen.UI = cityScreen.MakeUI(buildinglib.BuildingNone)
                 ui.RemoveGroup(group)
@@ -814,7 +828,11 @@ func (cityScreen *CityScreen) MakeUI(newBuilding buildinglib.Building) *uilib.UI
                 ui.RemoveGroup(group)
             }
 
-            confirmElements = uilib.MakeConfirmDialog(group, cityScreen.LbxCache, &cityScreen.ImageCache, fmt.Sprintf("Are you sure you want to sell back the %v for %v gold?", cityScreen.City.BuildingInfo.Name(toSell), sellAmount(cityScreen.City, toSell)), true, yes, no)
+            question := fmt.Sprintf("Are you sure you want to sell back the %v for %v gold?", cityScreen.City.BuildingInfo.Name(toSell), sellAmount(cityScreen.City, toSell))
+            if ceases != "" {
+                question = fmt.Sprintf("Selling back your %v will cease production of your %v.", cityScreen.City.BuildingInfo.Name(toSell), ceases)
+            }
+            confirmElements = uilib.MakeConfirmDialog(group, cityScreen.LbxCache, &cityScreen.ImageCache, question, true, yes, no)
             group.AddElements(confirmElements)
             ui.AddGroup(group)
         }
@@ -862,6 +880,10 @@ func (cityScreen *CityScreen) MakeUI(newBuilding buildinglib.Building) *uilib.UI
 
     // true if there is something to buy
     canBuy := buyProduction > 0 && buyAmount <= cityScreen.Player.Gold
+    if citylib.ClassicCities && cityScreen.City.ProducingTurnsLeft() < 2 {
+        // City_Can_Buy_Product: not what will be done in under 2 turns anyway
+        canBuy = false
+    }
 
     buyButtons, _ := cityScreen.ImageCache.GetImages("backgrnd.lbx", 7)
     if !canBuy {

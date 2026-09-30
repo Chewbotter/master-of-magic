@@ -498,6 +498,11 @@ func (city *City) NonRebels() int {
 }
 
 func (city *City) ResetCitizens() {
+    if ClassicCities {
+        city.classicSetCitizens()
+        return
+    }
+
     // try to leave farmers alone, but adjust them if necessary
     minimumFarmers := city.ComputeSubsistenceFarmers()
     if city.Farmers < minimumFarmers {
@@ -525,6 +530,10 @@ func (city *City) ConvertWorkerToFarmer() bool {
  * https://masterofmagic.fandom.com/wiki/Farmer
  */
 func (city *City) ComputeSubsistenceFarmers() int {
+    if ClassicCities {
+        return city.classicMinimumFarmers()
+    }
+
     // each citizen needs 1 unit of food
     requiredFood := city.Citizens()
 
@@ -733,6 +742,11 @@ func (city *City) ComputePower() int {
 }
 
 func (city *City) UpdateUnrest() {
+    if ClassicCities {
+        city.classicSetCitizens()
+        return
+    }
+
     rebels := city.ComputeUnrest()
 
     if rebels > city.Rebels {
@@ -936,6 +950,10 @@ func (city *City) GetGarrison() []units.StackUnit {
 }
 
 func (city *City) ComputeUnrest() int {
+    if ClassicCities {
+        return city.classicRebels()
+    }
+
 
     if city.HasEnchantment(data.CityEnchantmentStreamOfLife) {
         return 0
@@ -1108,6 +1126,10 @@ func (city *City) EffectiveNightshade() int {
 /* returns the maximum number of citizens. population is citizens * 1000
  */
 func (city *City) MaximumCitySize() int {
+    if ClassicCities {
+        return min(MAX_CITY_CITIZENS, city.classicMaxSize())
+    }
+
     foodAvailability := city.BaseFoodLevel()
 
     bonus := 0
@@ -1124,6 +1146,10 @@ func (city *City) MaximumCitySize() int {
 }
 
 func (city *City) PopulationGrowthRate() int {
+    if ClassicCities {
+        return city.classicGrowth()
+    }
+
     base := 10 * (city.MaximumCitySize() - city.Citizens() + 1) / 2
     switch city.Race {
         case data.RaceBarbarian: base += 20
@@ -1205,6 +1231,13 @@ func (city *City) PopulationGrowthRate() int {
 }
 
 func (city *City) ResearchProduction() int {
+    if ClassicCities {
+        if city.Outpost || city.isNeutral() {
+            return 0
+        }
+        return city.difficultyYield(city.classicResearch(), func(modifiers DifficultyModifiers) int { return modifiers.Research })
+    }
+
     research := 0
 
     for _, building := range city.Buildings.Values() {
@@ -1262,6 +1295,10 @@ func (city *City) BaseFoodLevel() int {
 }
 
 func (city *City) FoodProductionRate() int {
+    if ClassicCities {
+        return city.difficultyYield(city.classicFood(city.Farmers), func(modifiers DifficultyModifiers) int { return modifiers.Food })
+    }
+
     base := city.foodProductionRate(city.Farmers)
 
     // foresters guild doesn't contribute to the food needed to support the town, instead the food is added to the global surplus
@@ -1452,6 +1489,11 @@ func (city *City) GoldProsperity() int {
 }
 
 func (city *City) GoldSurplus() int {
+    if ClassicCities {
+        gold := min(255, city.difficultyYield(city.classicGold(), func(modifiers DifficultyModifiers) int { return modifiers.Gold }))
+        return gold - city.ComputeUpkeep()
+    }
+
     income := city.GoldTaxation()
     income += city.GoldTradeGoods()
     income += city.GoldMinerals()
@@ -1545,6 +1587,10 @@ func (city *City) ProductionInspirations() float32 {
 }
 
 func (city *City) WorkProductionRate() float32 {
+    if ClassicCities {
+        return float32(city.difficultyYield(city.classicProduction(), func(modifiers DifficultyModifiers) int { return modifiers.Production }))
+    }
+
     result := city.ProductionWorkers() +
               city.ProductionFarmers() +
               city.ProductionMinersGuild() +
@@ -1566,6 +1612,10 @@ func (city *City) WorkProductionRate() float32 {
 }
 
 func (city *City) UnitProductionCost(unit *units.Unit) int {
+    if ClassicCities {
+        return city.classicUnitCost(unit)
+    }
+
 
     if !unit.ProductionCostReduction {
         return unit.ProductionCost
@@ -1592,6 +1642,10 @@ func (city *City) UnitProductionCost(unit *units.Unit) int {
 }
 
 func (city *City) GrowOutpost() CityEvent {
+    if ClassicCities {
+        return city.classicGrowOutpost()
+    }
+
 
     growRaceBonus := float64(0.0)
     growTerrainChance := 0.0
@@ -1727,7 +1781,12 @@ func (city *City) DoNextTurn(mapObject *maplib.Map) []CityEvent {
         city.SoldBuilding = false
 
         oldPopulation := city.Population
-        city.Population += city.PopulationGrowthRate()
+        if ClassicCities {
+            // Apply_City_Changes, see classiccity.go
+            city.classicApplyGrowth(city.PopulationGrowthRate())
+        } else {
+            city.Population += city.PopulationGrowthRate()
+        }
 
         if city.HasEnchantment(data.CityEnchantmentPestilence) {
             if city.Citizens() >= 11 || city.Citizens() > (rand.IntN(10) + 1) {
@@ -1736,8 +1795,13 @@ func (city *City) DoNextTurn(mapObject *maplib.Map) []CityEvent {
         }
 
         if city.CityServices.PlagueActive(city) {
-            // plague cannot reduce population below 2000
-            if city.Citizens() >= 3 {
+            if ClassicCities {
+                // Event_Twiddle: Random(10) below the people, more than 2
+                if rand.IntN(10) + 1 < city.Citizens() && city.Citizens() > 2 {
+                    city.Population -= 1000
+                }
+            } else if city.Citizens() >= 3 {
+                // plague cannot reduce population below 2000
                 city.Population -= 1000
             }
         }
@@ -1749,7 +1813,12 @@ func (city *City) DoNextTurn(mapObject *maplib.Map) []CityEvent {
         buildingCost := city.BuildingInfo.ProductionCost(city.ProducingBuilding)
 
         if buildingCost != 0 || !city.ProducingUnit.Equals(units.UnitNone) {
-            city.Production += city.WorkProductionRate()
+            if ClassicCities && buildingCost != 0 && city.isNeutral() {
+                // City_Apply_Production: neutral towns build buildings at half
+                city.Production += float32(int(city.WorkProductionRate()) / 2)
+            } else {
+                city.Production += city.WorkProductionRate()
+            }
 
             if buildingCost != 0 {
                 if city.Production >= float32(buildingCost) {
@@ -1776,7 +1845,8 @@ func (city *City) DoNextTurn(mapObject *maplib.Map) []CityEvent {
             }
         }
 
-        if city.Population > city.MaximumCitySize() * 1000 {
+        // the original never cuts a city down to its maximum: it shrinks only by starving
+        if !ClassicCities && city.Population > city.MaximumCitySize() * 1000 {
             city.Population = city.MaximumCitySize() * 1000
         }
 
@@ -1807,7 +1877,7 @@ func (city *City) DoNextTurn(mapObject *maplib.Map) []CityEvent {
 
                 // 10% chance to convert desert to grassland
                 if terrainType == terrain.Desert && rand.IntN(100) < 10 {
-                    mapObject.Map.SetTerrainAt(mx, mx, terrain.Grass, mapObject.Data, mapObject.Plane)
+                    mapObject.Map.SetTerrainAt(mx, my, terrain.Grass, mapObject.Data, mapObject.Plane)
                 }
 
                 // 20% chance to remove corruption
@@ -1818,7 +1888,9 @@ func (city *City) DoNextTurn(mapObject *maplib.Map) []CityEvent {
         }
     }
 
-    if city.HasEnchantment(data.CityEnchantmentConsecration) {
+    if city.HasEnchantment(data.CityEnchantmentConsecration) && ClassicCities {
+        city.classicConsecration(mapObject)
+    } else if city.HasEnchantment(data.CityEnchantmentConsecration) {
         // At the beginning of each turn, all tiles in a 5x5 square (minus corners) around any city with Consecration should lose corruption
         for point, _ := range city.GetCatchmentArea() {
             mapObject.RemoveCorruption(point.X, point.Y)

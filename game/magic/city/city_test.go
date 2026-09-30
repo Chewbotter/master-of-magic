@@ -177,16 +177,22 @@ func TestBasicCity(test *testing.T){
         test.Errorf("Unrest should have been 4 but was %v", city.ComputeUnrest())
     }
 
-    if city.Rebels != 3 {
-        test.Errorf("Rebels should have been 3 but was %v", city.Rebels)
+    // the original takes rebels from the farmers too, below the minimum (classiccity.go)
+    wantRebels, wantFarmers := 3, 3
+    if ClassicCities {
+        wantRebels, wantFarmers = 4, 2
+    }
+
+    if city.Rebels != wantRebels {
+        test.Errorf("Rebels should have been %v but was %v", wantRebels, city.Rebels)
     }
 
     if city.Workers != 0 {
         test.Errorf("Workers should have been 0 but was %v", city.Workers)
     }
 
-    if city.Farmers != 3 {
-        test.Errorf("Farmers should have been 3 but was %v", city.Farmers)
+    if city.Farmers != wantFarmers {
+        test.Errorf("Farmers should have been %v but was %v", wantFarmers, city.Farmers)
     }
 }
 
@@ -427,8 +433,8 @@ func TestEnchantments(test *testing.T){
     // Gaias Blessing
     city.AddEnchantment(data.CityEnchantmentGaiasBlessing, banner)
 
-    if city.FoodProductionRate() != 12 {
-        // 5 * 2 farmer + 0.2 * 10
+    if city.FoodProductionRate() != classicOr(10, 12) {
+        // 5 * 2 farmer + 0.2 * 10 (the original: no farmer food from Gaia's Blessing)
         test.Errorf("City FoodProductionRate is not correct: %v", city.FoodProductionRate())
     }
 
@@ -447,7 +453,7 @@ func TestEnchantments(test *testing.T){
         test.Errorf("City ComputeUnrest is not correct: %v", city.ComputeUnrest())
     }
 
-    if city.PopulationGrowthRate() != 80 {
+    if city.PopulationGrowthRate() != classicOr(40, 80) {
         // 10 * (18 - 10 + 1) / 2 max city size and population + (2.5 * 18) rounded to 10s gaias blessing
         test.Errorf("City PopulationGrowthRate is not correct: %v", city.PopulationGrowthRate())
     }
@@ -460,8 +466,8 @@ func TestEnchantments(test *testing.T){
     // Dark Rituals
     city.AddEnchantment(data.CityEnchantmentDarkRituals, banner)
 
-    if city.FoodProductionRate() != 12 {
-        // 5 * 2 farmer + 0.2 * 10
+    if city.FoodProductionRate() != classicOr(10, 12) {
+        // 5 * 2 farmer + 0.2 * 10 (the original: no farmer food from Gaia's Blessing)
         test.Errorf("City FoodProductionRate is not correct: %v", city.FoodProductionRate())
     }
 
@@ -480,7 +486,7 @@ func TestEnchantments(test *testing.T){
         test.Errorf("City ComputeUnrest is not correct: %v", city.ComputeUnrest())
     }
 
-    if city.PopulationGrowthRate() != 60 {
+    if city.PopulationGrowthRate() != classicOr(30, 60) {
         // (10 * (18 - 10 + 1) / 2 max city size and population + (2.5 * 18) rounded to 10s gaias blessing) * 0.75 dark rituals
         test.Errorf("City PopulationGrowthRate is not correct: %v", city.PopulationGrowthRate())
     }
@@ -492,8 +498,8 @@ func TestEnchantments(test *testing.T){
 
     // Stream of Life
     city.AddEnchantment(data.CityEnchantmentStreamOfLife, banner)
-    if city.FoodProductionRate() != 12 {
-        // 5 * 2 farmer + 0.2 * 10
+    if city.FoodProductionRate() != classicOr(10, 12) {
+        // 5 * 2 farmer + 0.2 * 10 (the original: no farmer food from Gaia's Blessing)
         test.Errorf("City FoodProductionRate is not correct: %v", city.FoodProductionRate())
     }
 
@@ -512,7 +518,7 @@ func TestEnchantments(test *testing.T){
         test.Errorf("City ComputeUnrest is not correct: %v", city.ComputeUnrest())
     }
 
-    if city.PopulationGrowthRate() != 120 {
+    if city.PopulationGrowthRate() != classicOr(60, 120) {
         // ((10 * (18 - 10 + 1) / 2 max city size and population + (2.5 * 18) rounded to 10s gaias blessing) * 2 stream of life) * 0.75 dark rituals
         test.Errorf("City PopulationGrowthRate is not correct: %v", city.PopulationGrowthRate())
     }
@@ -767,8 +773,8 @@ func TestScenario1(test *testing.T) {
     }
 
     // housing bonus is 1.15 due to builders hall
-    if city.PopulationGrowthRate() != 120 {
-        test.Errorf("City PopulationGrowthRate is not correct: actual=%v, expected=%v", city.PopulationGrowthRate(), 120)
+    if city.PopulationGrowthRate() != classicOr(110, 120) {
+        test.Errorf("City PopulationGrowthRate is not correct: actual=%v, expected=%v", city.PopulationGrowthRate(), classicOr(110, 120))
     }
 
     city.Farmers = 2
@@ -780,8 +786,8 @@ func TestScenario1(test *testing.T) {
     }
 
     // housing bonus is 1.65 due to builders hall and 2 workers, 1+0.15+2/4
-    if city.PopulationGrowthRate() != 170 {
-        test.Errorf("City PopulationGrowthRate is not correct: actual=%v, expected=%v", city.PopulationGrowthRate(), 170)
+    if city.PopulationGrowthRate() != classicOr(160, 170) {
+        test.Errorf("City PopulationGrowthRate is not correct: actual=%v, expected=%v", city.PopulationGrowthRate(), classicOr(160, 170))
     }
 }
 
@@ -984,4 +990,12 @@ func TestBuildUnits(test *testing.T) {
         test.Errorf("City should be able to build Beastmen Engineer")
     }
 
+}
+
+// the value under the original's rules of cities, or upstream's (classiccity.go)
+func classicOr(classic int, upstream int) int {
+    if ClassicCities {
+        return classic
+    }
+    return upstream
 }

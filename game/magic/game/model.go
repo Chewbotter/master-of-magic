@@ -1321,6 +1321,22 @@ func (model *GameModel) DoRandomEvents() {
     // add events to the 'keep' array to keep them for the next turn
     for _, event := range model.RandomEvents {
 
+        if citylib.ClassicCities && (event.Type == RandomEventPlague || event.Type == RandomEventPopulationBoom) {
+            // Event_Twiddle: a plague ends in a city under 2 people, which is set to 2; both end
+            // one time in 20 from the 5th turn on
+            if event.Type == RandomEventPlague && event.TargetCity.Citizens() < 2 {
+                event.TargetCity.Population = 2000
+                model.Events <- &GameEventShowRandomEvent{Event: event, Starting: false}
+                continue
+            }
+            if model.TurnNumber - event.BirthYear >= 5 && rand.N(20) == 0 {
+                model.Events <- &GameEventShowRandomEvent{Event: event, Starting: false}
+            } else {
+                keep = append(keep, event)
+            }
+            continue
+        }
+
         // once citizens has reached 2, plague will dissipate automatically
         if event.Type == RandomEventPlague && event.TargetCity.Citizens() <= 2 {
             model.Events <- &GameEventShowRandomEvent{Event: event, Starting: false}
