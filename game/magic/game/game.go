@@ -378,6 +378,11 @@ type Game struct {
     captureSkipping bool
     // development: what a game without a window counts for its summary (simstats.go); nil in a game
     Stats *SimStats
+    // a computer wizard's cast the human does not see: no camera move, animation or window (aicast.go)
+    quietCast bool
+    // how often a computer wizard's spell asked for a square (aicast.go)
+    aiCastTries map[*playerlib.Player]int
+
     // development: the game runs without a window (SimSkipHuman)
     headless bool
     // the wizards casting the Spell of Mastery at the last turn (doDiplomacyTurn)
@@ -2877,7 +2882,8 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                                 selectLocation.SelectedFunc(yield, tileX, tileY)
                             }
                         } else {
-                            // FIXME: implement AI location selection
+                            // the AI's square (aicast.go)
+                            game.aiSelectLocation(yield, selectLocation)
                         }
                     case *GameEventCastSpell:
                         castSpell := event.(*GameEventCastSpell)
@@ -3615,6 +3621,10 @@ func (game *Game) doInputZoom(yield coroutine.YieldFunc) bool {
 }
 
 func (game *Game) doMoveCamera(yield coroutine.YieldFunc, x int, y int) {
+    // a computer wizard's cast the human does not see (aicast.go)
+    if game.quietCast {
+        return
+    }
     camera := game.Camera
     // the limits are worked out for the target tile itself, not for where a pan left the camera
     camera.SetOffset(0, 0)

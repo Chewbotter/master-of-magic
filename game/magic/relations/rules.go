@@ -61,6 +61,11 @@ var personalityTreatyBonus = map[playerlib.Personality]int{
 }
 
 // the personality's bonus in the chance of hostility (TBL_AI_PRS_War_Mod)
+// TBL_AI_PRS_War_Mod of a personality, for other parts of the AI
+func WarBonus(personality playerlib.Personality) int {
+    return personalityWarBonus[personality]
+}
+
 var personalityWarBonus = map[playerlib.Personality]int{
     playerlib.PersonalityManiacal: 40,
     playerlib.PersonalityRuthless: 20,

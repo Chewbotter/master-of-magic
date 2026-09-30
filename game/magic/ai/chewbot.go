@@ -123,6 +123,8 @@ type ChewbotAI struct {
 
     // the overland AI's state from turn to turn (chewbotcontinents.go)
     overland *chewOverland
+    // the state of its magic from turn to turn (chewbotspells.go)
+    magic *chewMagic
     services playerlib.AIServices
     self *playerlib.Player
 }
@@ -198,7 +200,9 @@ func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIService
     cities := chewbotCitiesActive()
     // the neutral player's stacks move as the clone moves them
     moves := !ai.Neutral && chewbotMovesActive()
-    if !cities && !moves {
+    // the neutral player casts nothing
+    spells := !ai.Neutral && chewbotSpellsActive()
+    if !cities && !moves && !spells {
         return decisions
     }
 
@@ -211,6 +215,9 @@ func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIService
         if moves && chewIsMoveDecision(decision) {
             continue
         }
+        if spells && chewIsSpellDecision(decision) {
+            continue
+        }
         out = append(out, decision)
     }
 
@@ -220,7 +227,19 @@ func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIService
     if moves {
         out = append(out, ai.moveDecisions(self, services)...)
     }
+    if spells {
+        out = append(out, ai.spellDecisions(self, services)...)
+    }
     return out
+}
+
+// the clone's decisions of research and spells, which Chewbot makes itself (chewbotspells.go)
+func chewIsSpellDecision(decision playerlib.AIDecision) bool {
+    switch decision.(type) {
+        case *playerlib.AIResearchSpellDecision, *playerlib.AICastSpellDecision, *playerlib.AICastUnitSpellDecision:
+            return true
+    }
+    return false
 }
 
 // the objective of a wizard, picked by the rules of diplomacy at the start of a game

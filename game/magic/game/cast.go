@@ -113,6 +113,16 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
         game.maybeDoNaturesWrath(player)
     }
 
+    // a computer wizard's target comes from its AI (aicast.go)
+    if player.IsAI() {
+        if game.aiCastTries != nil {
+            game.aiCastTries[player] = 0
+        }
+        if game.doCastSpellAI(player, spell) {
+            return
+        }
+    }
+
     switch spell.Name {
         /*
             SUMMONING SPELLS
@@ -179,13 +189,13 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
 
             before := func (unit units.StackUnit) bool {
                 if unit.GetRace() == data.RaceFantastic {
-                    game.Events <- &GameEventNotice{Message: "That unit cannot be targeted"}
+                    game.spellNotice(player, "That unit cannot be targeted")
                     return false
                 }
 
                 for _, enchantment := range choices {
                     if unit.HasEnchantment(enchantment) {
-                        game.Events <- &GameEventNotice{Message: "That unit cannot be targeted"}
+                        game.spellNotice(player, "That unit cannot be targeted")
                         return false
                     }
                 }
@@ -245,17 +255,17 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
         case "Lycanthropy":
             before := func (unit units.StackUnit) bool {
                 if unit.GetRace() == data.RaceFantastic {
-                    game.Events <- &GameEventNotice{Message: "Summoned units may not have cast Lycanthropy on them"}
+                    game.spellNotice(player, "Summoned units may not have cast Lycanthropy on them")
                     return false
                 }
 
                 if unit.GetRace() == data.RaceHero {
-                    game.Events <- &GameEventNotice{Message: "Heroes units may not have cast Lycanthropy on them"}
+                    game.spellNotice(player, "Heroes units may not have cast Lycanthropy on them")
                     return false
                 }
 
                 if unit.IsUndead() || unit.HasEnchantment(data.UnitEnchantmentBlackChannels) || unit.HasEnchantment(data.UnitEnchantmentChaosChannelsDemonSkin) || unit.HasEnchantment(data.UnitEnchantmentChaosChannelsDemonWings) || unit.HasEnchantment(data.UnitEnchantmentChaosChannelsFireBreath) {
-                    game.Events <- &GameEventNotice{Message: "Chaos channeled and Undead units may not have cast Lycanthropy on them"}
+                    game.spellNotice(player, "Chaos channeled and Undead units may not have cast Lycanthropy on them")
                     return false
                 }
                return true
@@ -470,7 +480,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                 if stack != nil {
                     err := game.PlaneShift(stack, player)
                     if err != nil {
-                        game.Events <- &GameEventNotice{Message: fmt.Sprintf("%v", err)}
+                        game.spellNotice(player, fmt.Sprintf("%v", err))
                     } else {
                         game.Model.Plane = stack.Plane()
                     }
@@ -482,7 +492,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
         case "Subversion":
             uiGroup, quit, err := game.MakeSubversionUI(player, spell)
             if err != nil {
-                game.Events <- &GameEventNotice{Message: fmt.Sprintf("%v", err)}
+                game.spellNotice(player, fmt.Sprintf("%v", err))
             } else {
                 game.Events <- &GameEventRunUI{Group: uiGroup, Quit: quit}
             }
@@ -587,7 +597,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
         case "Spell Binding":
             uiGroup, quit, err := game.MakeSpellBindingUI(player, spell)
             if err != nil {
-                game.Events <- &GameEventNotice{Message: fmt.Sprintf("%v", err)}
+                game.spellNotice(player, fmt.Sprintf("%v", err))
             } else {
                 game.Events <- &GameEventRunUI{Group: uiGroup, Quit: quit}
             }
@@ -644,9 +654,9 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
         case "Resurrection":
             heroes := player.GetDeadHeroes()
             if len(heroes) == 0 {
-                game.Events <- &GameEventNotice{Message: "No dead heroes to resurrect"}
+                game.spellNotice(player, "No dead heroes to resurrect")
             } else if player.FreeHeroSlots() == 0 {
-                game.Events <- &GameEventNotice{Message: "No free hero slots to resurrect hero"}
+                game.spellNotice(player, "No free hero slots to resurrect hero")
             } else {
                 // show selection box for all dead heroes
 
@@ -730,7 +740,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
         case "Disjunction", "Disjunction True":
             uiGroup, quit, err := game.MakeDisjunctionUI(player, spell)
             if err != nil {
-                game.Events <- &GameEventNotice{Message: fmt.Sprintf("%v", err)}
+                game.spellNotice(player, fmt.Sprintf("%v", err))
             } else {
                 game.Events <- &GameEventRunUI{Group: uiGroup, Quit: quit}
             }
@@ -868,12 +878,12 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                 }
 
                 if unit.GetX() == summonCity.X && unit.GetY() == summonCity.Y {
-                    game.Events <- &GameEventNotice{Message: "Your unit is already in this city"}
+                    game.spellNotice(player, "Your unit is already in this city")
                     return false
                 }
 
                 if unit.GetPlane() != summonCity.Plane && game.IsGlobalEnchantmentActive(data.EnchantmentPlanarSeal) {
-                    game.Events <- &GameEventNotice{Message: "Your unit cannot planar travel to this location"}
+                    game.spellNotice(player, "Your unit cannot planar travel to this location")
                     return false
                 }
 
@@ -1080,26 +1090,14 @@ func (game *Game) MakeSpellBindingUI(caster *playerlib.Player, spell spellbook.S
     }
 
     selectedEnchantment := func (enchantment data.Enchantment, owner *playerlib.Player, uiTitle *string, faceRect image.Rectangle, fader *util.AlphaFadeFunc) {
-        dispelStrength := 20000
-
-        allSpells := game.AllSpells()
-        targetSpell := allSpells.FindByName(enchantment.String())
-
         sound, err := audio.LoadSound(game.Cache, spell.Sound)
         if err == nil {
             sound.Play()
         }
 
         group.AddElement(createSparksElement(faceRect, fader))
-        success := false
-
-        if spellbook.RollDispelChance(spellbook.ComputeDispelChance(dispelStrength, targetSpell.Cost(true), targetSpell.Magic, &owner.Wizard)) {
-            success = true
-            owner.RemoveEnchantment(enchantment)
-            caster.AddEnchantment(enchantment)
-
-            game.ApplyGlobalEnchantment(enchantment, caster)
-        }
+        // aicast.go
+        success := game.spellBindingEffect(caster, enchantment, owner)
 
         group.AddDelay(60, func(){
             if success {
@@ -1123,15 +1121,6 @@ func (game *Game) MakeSpellBindingUI(caster *playerlib.Player, spell spellbook.S
 }
 
 func (game *Game) MakeDisjunctionUI(caster *playerlib.Player, spell spellbook.Spell) (*uilib.UIElementGroup, context.Context, error) {
-    dispelStrength := spell.Cost(true)
-    if spell.Name == "Disjunction True" {
-        dispelStrength *= 3
-    }
-
-    if caster.Wizard.RetortEnabled(data.RetortRunemaster) {
-        dispelStrength *= 2
-    }
-
     var quit context.Context
     var cancel context.CancelFunc
     var group *uilib.UIElementGroup
@@ -1157,9 +1146,6 @@ func (game *Game) MakeDisjunctionUI(caster *playerlib.Player, spell spellbook.Sp
     }
 
     selectedEnchantment := func (enchantment data.Enchantment, owner *playerlib.Player, uiTitle *string, faceRect image.Rectangle, fader *util.AlphaFadeFunc) {
-        allSpells := game.AllSpells()
-        targetSpell := allSpells.FindByName(enchantment.String())
-
         group.AddElement(createSparksElement(faceRect, fader))
         // FIXME: verify this sound
         sound, err := audio.LoadSound(game.Cache, 29)
@@ -1167,13 +1153,8 @@ func (game *Game) MakeDisjunctionUI(caster *playerlib.Player, spell spellbook.Sp
             sound.Play()
         }
 
-        success := false
-
-        if spellbook.RollDispelChance(spellbook.ComputeDispelChance(dispelStrength, targetSpell.Cost(true), targetSpell.Magic, &owner.Wizard)) {
-            // show an animation/play a sound?
-            owner.RemoveEnchantment(enchantment)
-            success = true
-        }
+        // aicast.go
+        success := game.disjunctionEffect(caster, spell, enchantment, owner)
 
         group.AddDelay(60, func(){
             if success {
@@ -1528,7 +1509,7 @@ func (game *Game) doCastSpellWard(player *playerlib.Player, spell spellbook.Spel
         }
 
         if choices.Size() == 0 {
-            game.Events <- &GameEventNotice{Message: "No wards are available to cast on this city."}
+            game.spellNotice(player, "No wards are available to cast on this city.")
             game.Events <- &GameEventSelectLocationForSpell{Spell: spell, Player: player, LocationType: LocationTypeFriendlyCity, SelectedFunc: selectCity}
             return
         }
@@ -1631,9 +1612,17 @@ func (game *Game) doCastOnUnit(player *playerlib.Player, spell spellbook.Spell, 
     // AI unit-enchantment casts carry a pre-chosen target. Apply before/after
     // here so Lycanthropy, Chaos Channels, Black Channels, etc. still run,
     // instead of opening the human tile picker.
-    if player.IsAI() && player.CastingSpellTarget != nil {
+    if player.IsAI() {
         target := player.CastingSpellTarget
         player.CastingSpellTarget = nil
+        if target == nil {
+            // the AI picks it when the casting is done (aicast.go)
+            chosen, ok := game.aiSpellTarget(player, spell)
+            if !ok || chosen.Unit == nil {
+                return
+            }
+            target = chosen.Unit
+        }
 
         if player.FindStackByUnit(target) != nil && before(target) {
             after(target)
@@ -1678,7 +1667,7 @@ func (game *Game) doCastOnUnit(player *playerlib.Player, spell spellbook.Spell, 
 func (game *Game) doCastUnitEnchantmentFull(player *playerlib.Player, spell spellbook.Spell, enchantment data.UnitEnchantment, customBefore UnitEnchantmentCallback, customAfter UnitEnchantmentCallback) {
     before := func (unit units.StackUnit) bool {
         if unit.HasEnchantment(enchantment) {
-            game.Events <- &GameEventNotice{Message: fmt.Sprintf("That unit already has %v cast on it", spell.Name)}
+            game.spellNotice(player, fmt.Sprintf("That unit already has %v cast on it", spell.Name))
             return false
         }
 
@@ -1874,6 +1863,10 @@ func (game *Game) showCityEarthquake(yield coroutine.YieldFunc, city *citylib.Ci
 }
 
 func (game *Game) showCastNewBuilding(yield coroutine.YieldFunc, city *citylib.City, player *playerlib.Player, newBuilding building.Building, name string) {
+    // a computer wizard's cast the human does not see (aicast.go)
+    if game.quietCast {
+        return
+    }
     ui, quit, err := cityview.MakeNewBuildingView(game.Cache, city, player, newBuilding, name)
     if err != nil {
         log.Printf("Error making new building view: %v", err)
@@ -2278,7 +2271,7 @@ func (game *Game) doCastCityEnchantmentFull(spell spellbook.Spell, player *playe
         }
 
         if chosenCity.HasEnchantment(enchantment) {
-            game.Events <- &GameEventNotice{Message: fmt.Sprintf("This city already has a %v cast on it", spell.Name)}
+            game.spellNotice(player, fmt.Sprintf("This city already has a %v cast on it", spell.Name))
             game.Events <- &GameEventSelectLocationForSpell{Spell: spell, Player: player, LocationType: locationType, SelectedFunc: selected}
             return
         }
@@ -2306,7 +2299,7 @@ func (game *Game) doCastNewCityBuilding(spell spellbook.Spell, player *playerlib
         }
 
         if chosenCity.Buildings.Contains(newBuilding) {
-            game.Events <- &GameEventNotice{Message: errorMessage}
+            game.spellNotice(player, errorMessage)
             game.Events <- &GameEventSelectLocationForSpell{Spell: spell, Player: player, LocationType: locationType, SelectedFunc: selected}
             return
         }
@@ -2337,6 +2330,11 @@ func (game *Game) doCastCityEnchantment(spell spellbook.Spell, player *playerlib
 type UpdateMapFunction func (tileX int, tileY int, animationFrame int)
 
 func (game *Game) doCastOnMap(yield coroutine.YieldFunc, tileX int, tileY int, animationIndex int, soundIndex int, update UpdateMapFunction) {
+    if game.quietCast {
+        // a computer wizard's cast the human does not see (aicast.go): only the effect
+        update(tileX, tileY, 0)
+        return
+    }
     game.Camera.Zoom = camera.ZoomDefault
     game.doMoveCamera(yield, tileX, tileY)
 
@@ -2499,12 +2497,7 @@ func (game *Game) doCastCorruption(yield coroutine.YieldFunc, tileX int, tileY i
 func (game *Game) doCastSpellBlast(player *playerlib.Player) {
     var wizSelectionUiGroup *uilib.UIElementGroup
     onTargetSelectCallback := func(targetPlayer *playerlib.Player) bool {
-        if targetPlayer.Defeated || targetPlayer.Banished || !targetPlayer.CastingSpell.Valid() || targetPlayer.CastingSpellProgress > player.Mana {
-            return false
-        }
-        player.Mana -= targetPlayer.CastingSpellProgress
-        targetPlayer.InterruptCastingSpell()
-        return true
+        return spellBlastEffect(player, targetPlayer)
     }
     playersInGame := len(game.Model.Players)
     quit, cancel := context.WithCancel(context.Background())
@@ -2517,16 +2510,7 @@ func (game *Game) doCastSpellBlast(player *playerlib.Player) {
 
 func (game *Game) doCastCruelUnminding(player *playerlib.Player, spell spellbook.Spell) {
     onTargetSelectCallback := func(targetPlayer *playerlib.Player) (bool, string) {
-        if targetPlayer.Defeated || targetPlayer.Banished {
-            return false, ""
-        }
-        targetSkill := targetPlayer.ComputeCastingSkill()
-        minReduction := max(targetSkill / 100, 1)
-        maxReduction := max(targetSkill / 10, 1)
-        reductionRandomSpread := max(maxReduction - minReduction, 1) // It should never be zero, or rand.N will crash
-        reduction := minReduction + rand.N(reductionRandomSpread)
-        actuallyReduced := targetPlayer.ReduceCastingSkill(reduction)
-        return true, fmt.Sprintf("%s loses %d points of casting ability", targetPlayer.Wizard.Name, actuallyReduced)
+        return cruelUnmindingEffect(targetPlayer)
     }
     playersInGame := len(game.Model.Players)
     quit, cancel := context.WithCancel(context.Background())
@@ -2539,12 +2523,7 @@ func (game *Game) doCastCruelUnminding(player *playerlib.Player, spell spellbook
 
 func (game *Game) doCastDrainPower(player *playerlib.Player, spell spellbook.Spell) {
     onTargetSelectCallback := func(targetPlayer *playerlib.Player) (bool, string) {
-        if targetPlayer.Defeated || targetPlayer.Banished {
-            return false, ""
-        }
-        drainAmount := min(targetPlayer.Mana, 50 + rand.N(101)) // random 50-150, but don't drain more than the target has
-        targetPlayer.Mana -= drainAmount
-        return true, fmt.Sprintf("%s loses %d points of mana", targetPlayer.Wizard.Name, drainAmount)
+        return drainPowerEffect(targetPlayer)
     }
     playersInGame := len(game.Model.Players)
     quit, cancel := context.WithCancel(context.Background())
