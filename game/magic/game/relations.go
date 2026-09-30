@@ -29,13 +29,7 @@ type GameEventDiplomacyMessage struct {
 
 // the original's five levels, 0 intro to 4 impossible; the fork's Extreme counts as Impossible
 func originalDifficulty(difficulty data.DifficultySetting) int {
-    switch difficulty {
-        case data.DifficultyIntro: return 0
-        case data.DifficultyEasy: return 1
-        case data.DifficultyAverage: return 2
-        case data.DifficultyHard: return 3
-    }
-    return 4
+    return citylib.OriginalDifficulty(difficulty)
 }
 
 // the rules of diplomacy in the world as it is now

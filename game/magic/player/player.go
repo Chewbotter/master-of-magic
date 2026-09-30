@@ -1281,7 +1281,7 @@ func (player *Player) GoldPerTurn() int {
         gold += city.GoldSurplus()
     }
 
-    gold -= player.TotalUnitUpkeepGold()
+    gold -= player.difficultyUpkeep(player.TotalUnitUpkeepGold())
 
     gold += 10 * player.GetNobleHeroes()
 
@@ -1313,7 +1313,7 @@ func (player *Player) FoodPerTurn() int {
         food += city.SurplusFood()
     }
 
-    food -= player.TotalUnitUpkeepFood()
+    food -= player.difficultyUpkeep(player.TotalUnitUpkeepFood())
 
     return food
 }
@@ -1340,8 +1340,7 @@ func (player *Player) ManaPerTurn(power int, cityEnchantmentsProvider CityEnchan
 
     mana := 0
 
-    mana -= player.TotalUnitUpkeepMana()
-    mana -= player.TotalEnchantmentUpkeep(cityEnchantmentsProvider)
+    mana -= player.difficultyUpkeep(player.TotalUnitUpkeepMana() + player.TotalEnchantmentUpkeep(cityEnchantmentsProvider))
 
     manaFocusingBonus := float64(1)
 

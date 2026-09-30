@@ -729,7 +729,7 @@ func (city *City) ComputePower() int {
     religiousPower += city.PowerCathedral()
     religiousPower += city.PowerDarkRituals()
 
-    return power + int(religiousPower)
+    return city.difficultyYield(power + int(religiousPower), func(modifiers DifficultyModifiers) int { return modifiers.Mana })
 }
 
 func (city *City) UpdateUnrest() {
@@ -1201,7 +1201,7 @@ func (city *City) PopulationGrowthRate() int {
         return 0
     }
 
-    return base
+    return city.difficultyGrowth(base)
 }
 
 func (city *City) ResearchProduction() int {
@@ -1211,7 +1211,7 @@ func (city *City) ResearchProduction() int {
         research += city.BuildingInfo.ResearchProduction(building)
     }
 
-    return research
+    return city.difficultyYield(research, func(modifiers DifficultyModifiers) int { return modifiers.Research })
 }
 
 /* amount of food needed to feed the citizens
@@ -1273,7 +1273,7 @@ func (city *City) FoodProductionRate() int {
         base /= 2
     }
 
-    return base
+    return city.difficultyYield(base, func(modifiers DifficultyModifiers) int { return modifiers.Food })
 }
 
 func (city *City) FarmerFoodProduction(farmers int) int {
@@ -1345,7 +1345,7 @@ func (city *City) ComputeUpkeep() int {
         costs += city.BuildingInfo.UpkeepCost(building)
     }
 
-    return costs
+    return city.difficultyYield(costs, func(modifiers DifficultyModifiers) int { return modifiers.Maintenance })
 }
 
 func (city *City) GoldTaxation() int {
@@ -1460,6 +1460,7 @@ func (city *City) GoldSurplus() int {
     income += city.GoldBank()
     income += city.GoldMerchantsGuild()
     income += city.GoldProsperity()
+    income = city.difficultyYield(income, func(modifiers DifficultyModifiers) int { return modifiers.Gold })
 
     upkeepCosts := city.ComputeUpkeep()
 
@@ -1557,6 +1558,10 @@ func (city *City) WorkProductionRate() float32 {
         result /= 2
     }
 
+    if modifiers, ok := city.computerModifiers(); ok {
+        result = result * float32(modifiers.Production) / 100
+    }
+
     return result
 }
 
@@ -1617,6 +1622,8 @@ func (city *City) GrowOutpost() CityEvent {
     if city.HasEnchantment(data.CityEnchantmentStreamOfLife) {
         growChance += 0.1
     }
+
+    growChance = city.difficultyOutpostGrowth(growChance)
 
     shrinkSpellChance := 0.0
 

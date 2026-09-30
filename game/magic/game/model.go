@@ -1415,13 +1415,17 @@ func (model *GameModel) ComputePower(player *playerlib.Player) int {
         return nodePower * multiplier
     }
 
+    nodePower := float64(0)
+
     for _, node := range model.ArcanusMap.GetMeldedNodes(player) {
-        power += applyConjunction(node)
+        nodePower += applyConjunction(node)
     }
 
     for _, node := range model.MyrrorMap.GetMeldedNodes(player) {
-        power += applyConjunction(node)
+        nodePower += applyConjunction(node)
     }
+
+    power += difficultyNodePower(player, nodePower)
 
     power += float64(len(model.ArcanusMap.GetCastedVolcanoes(player)))
     power += float64(len(model.MyrrorMap.GetCastedVolcanoes(player)))

@@ -33,9 +33,6 @@ const (
     chewStasisHopeless = 7
 )
 
-// difficulty_modifiers_table, maintenance (percent) by the original's level, intro to impossible
-var chewMaintenance = []int{100, 90, 75, 60, 30}
-
 // the tax rates of the original by number
 func chewTaxRate(index int) fraction.Fraction {
     return fraction.Make(index, 2)
@@ -273,7 +270,8 @@ func (ai *ChewbotAI) disbandToBudget(self *playerlib.Player, services playerlib.
         return
     }
     ratios := ai.landmassRatios(world, spells, services)
-    maintenance := chewMaintenance[chewDifficulty(services)]
+    // difficulty_modifiers_table, maintenance (percent)
+    maintenance := citylib.DifficultyTable[chewDifficulty(services)].Maintenance
 
     ownUnits := func(summoned bool) []chewOwnUnit {
         var out []chewOwnUnit

@@ -36,7 +36,7 @@ cities and the orders of its units. Units of computer players in Stasis that can
 
 - While the gold or food income is below 0 (200 tries at most): the weakest normal unit on land goes
   (heroes too), making up 1 food and its gold upkeep times the difficulty's maintenance (100, 90,
-  75, 60, 30 percent from intro to impossible), at least 1.
+  75, 60, 30 percent from intro to impossible, the table of `docs/mod/difficulty.md`), at least 1.
 - While the mana income is below 0: the weakest summoned unit on land goes, making up its mana upkeep
   the same way.
 - The weakness: a tenth of its strength, twice on a landmass where the wizard is not clearly ahead

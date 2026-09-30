@@ -8286,6 +8286,8 @@ func (game *Game) EndOfTurn() {
 
     game.Model.TurnNumber += 1
 
+    capReserves(game.Model.Players)
+
      // gate random-event rolls behind the user toggle; in-flight events continue
      // their normal decay path inside DoRandomEvents and this just skips new rolls.
     if game.Settings.RandomEvents {

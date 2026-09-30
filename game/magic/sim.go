@@ -45,6 +45,7 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "github.com/kazzmir/master-of-magic/lib/lbx"
     "github.com/kazzmir/master-of-magic/lib/system"
+    citylib "github.com/kazzmir/master-of-magic/game/magic/city"
     gamelib "github.com/kazzmir/master-of-magic/game/magic/game"
     musiclib "github.com/kazzmir/master-of-magic/game/magic/music"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
@@ -255,6 +256,9 @@ func simQuickGame(magic *MagicGame) (*gamelib.Game, string, error) {
     if captureLandSize >= 0 {
         settings.LandSize = captureLandSize
     }
+    if captureDifficulty >= 0 {
+        settings.Difficulty = data.DifficultySetting(captureDifficulty)
+    }
     spells, err := spellbook.ReadSpellsFromCache(magic.Cache)
     if err != nil {
         return nil, "", err
@@ -264,7 +268,7 @@ func simQuickGame(magic *MagicGame) (*gamelib.Game, string, error) {
         return nil, "", fmt.Errorf("could not choose a wizard")
     }
     game := initializeGame(magic, settings, wizard)
-    return game, fmt.Sprintf("a quick start, %v computer wizards, land size %v (0 small, 1 medium, 2 large)\n%v", settings.Opponents, settings.LandSize, simWorld(game)), nil
+    return game, fmt.Sprintf("a quick start, %v computer wizards, land size %v (0 small, 1 medium, 2 large), difficulty %v (0 intro to 5 impossible), difficulty bonuses %v\n%v", settings.Opponents, settings.LandSize, settings.Difficulty, citylib.ClassicDifficulty, simWorld(game)), nil
 }
 
 // every wizard at war with every other (not the neutral player)

@@ -1053,6 +1053,8 @@ func startWatchMode(yield coroutine.YieldFunc, game *MagicGame) error {
 var captureOpponents int
 // development: the land size of a quick start, below 0 by chance
 var captureLandSize int
+// development: the difficulty of a quick start (0 intro to 5 impossible), below 0 Average
+var captureDifficulty int
 
 func startQuickGame(yield coroutine.YieldFunc, game *MagicGame, gameLoader *OriginalGameLoader) error {
     settings := setup.NewGameSettings{
@@ -1066,6 +1068,9 @@ func startQuickGame(yield coroutine.YieldFunc, game *MagicGame, gameLoader *Orig
     }
     if captureLandSize >= 0 {
         settings.LandSize = captureLandSize
+    }
+    if captureDifficulty >= 0 {
+        settings.Difficulty = data.DifficultySetting(captureDifficulty)
     }
 
     spells, err := spellbook.ReadSpellsFromCache(game.Cache)
@@ -1451,6 +1456,8 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&ai.ChewbotDraftBeyondNeed, "chewbot-draft-beyond-need", true, "development: false gives Chewbot the original's rule for expeditions (units beyond 5 of a garrison)")
     flag.BoolVar(&maplib.ClassicMaps, "classic-maps", true, "development: false for the fork's worlds, as large as the Land Size")
     flag.BoolVar(&gamelib.ClassicContact, "classic-contact", true, "development: false for the fork's contact, every wizard meets every wizard it sees")
+    flag.BoolVar(&citylib.ClassicDifficulty, "classic-difficulty", true, "development: false for no bonuses of computer wizards by difficulty (the original's difficulty table)")
+    flag.IntVar(&captureDifficulty, "capture-difficulty", -1, "development: the difficulty of a quick start and -sim (0 intro, 1 easy, 2 average, 3 hard, 4 extreme, 5 impossible), -1 average")
     flag.IntVar(&captureLandSize, "capture-land-size", -1, "development: the land size of a quick start (0 small, 1 medium, 2 large), -1 by chance")
     flag.IntVar(&captureOpponents, "capture-opponents", 0, "development: the number of computer wizards of a quick start, 0 for 1 to 4 by chance")
     flag.IntVar(&simTurns, "sim", 0, "development: play this many turns of the computer players without a window and write a summary (sim.go)")
