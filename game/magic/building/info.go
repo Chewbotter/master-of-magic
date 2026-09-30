@@ -142,6 +142,11 @@ func (info BuildingInfos) ResearchProduction(building Building) int {
     return info[info.GetBuildingIndex(building)].Research
 }
 
+// the category of a building in the data (builddat.lbx): what the original's AI weighs it by
+func (info BuildingInfos) GetCategory(building Building) int {
+    return info.BuildingInfo(building).Category
+}
+
 func (info BuildingInfos) Name(building Building) string {
     if building == BuildingFortress {
         return "Fortress"

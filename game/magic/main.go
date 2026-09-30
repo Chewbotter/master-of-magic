@@ -405,7 +405,7 @@ func initializeNeutralPlayer(game *gamelib.Game, arcanusCityArea gamelib.CityVal
     }
 
     player := game.AddPlayer(wizard, false)
-    player.AIBehavior = ai.MakeRaiderAI()
+    player.AIBehavior = ai.MakeChewbotAI(ai.MakeRaiderAI(), true)
     player.TaxRate = fraction.Zero()
 
     for _, plane := range []data.Plane{data.PlaneArcanus, data.PlaneMyrror} {
@@ -587,12 +587,19 @@ func runGameInstance(game *gamelib.Game, yield coroutine.YieldFunc, magic *Magic
         }
     }
 
-    if capture.PanX != 0 || capture.PanY != 0 || capture.DebugMenu || capture.Screen != "" || capture.CameraX >= 0 || capture.NextTurn || capture.CameraMove != "" || capture.Walk != "" || capture.Plan != "" {
+    if capture.PanX != 0 || capture.PanY != 0 || capture.DebugMenu || capture.Screen != "" || capture.CameraX >= 0 || capture.NextTurn || capture.CameraMove != "" || capture.Walk != "" || capture.Plan != "" || capture.Turns > 0 {
       capture.Later = func() {
         if capture.NextTurn {
             select {
                 case game.Events <- &gamelib.GameEventNextTurn{}:
                 default:
+            }
+        }
+        if capture.Turns > 0 {
+            // the player skips its turns, so no screen of its own stops them, until enough have passed
+            done := game.CaptureSkipTurns(capture.Turns)
+            capture.EachFrame = func(frame int) {
+                done()
             }
         }
         if capture.CameraX >= 0 {
@@ -1397,6 +1404,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&spellbook.CaptureFlipBack, "capture-flip-back", false, "development: the turn -capture-flip holds is one back")
     flag.IntVar(&capture.Leave, "capture-leave", 0, "development: the frame at which a debug battle is left as by Escape, counted from 250 frames before the capture")
     flag.BoolVar(&capture.EnemyMagic, "capture-enemy-magic", false, "development: the defender of a debug battle, when it is a wizard, knows every spell and has the mana to cast them")
+    flag.BoolVar(&ai.ChewbotCityLog, "capture-city-log", false, "development: every choice of Chewbot's cities in the log")
     flag.BoolVar(&combat.ChewbotLog, "capture-ai-log", false, "development: every decision of the combat AI of Chewbot in the log")
     flag.BoolVar(&capture.Auto, "capture-auto", false, "development: the army of the player of a random battle is set to auto")
     flag.BoolVar(&capture.DamageNumbers, "capture-damage-numbers", false, "development: keep damage numbers over the units of a random battle")
@@ -1417,6 +1425,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&capture.RandomBattle, "capture-random-battle", false, "development: start a random battle instead of the start screen")
     flag.StringVar(&capture.CityBattle, "capture-city-battle", "", "development: start a random battle for a city. a list of: walls, fortress, fire, darkness, outpost, myrror, size=N, or random")
     flag.StringVar(&capture.BattleGround, "capture-battle-ground", "", "development: the ground of a random battle. a list of: grass, desert, mountain, tundra, forest, hills, roads, road=N, enchanted")
+    flag.IntVar(&capture.Turns, "capture-turns", 0, "development: press Next Turn this many times during the capture, to watch the computer players")
     flag.BoolVar(&capture.NextTurn, "capture-next-turn", false, "development: press Next Turn, and trace the widescreen layout while the turn runs")
     flag.Float64Var(&capture.CameraX, "capture-camera-x", -1, "development: put the camera at this column before the capture, fractions allowed")
     flag.IntVar(&capture.DragSpeed, "capture-drag-speed", 1, "development: screen pixels the simulated drag moves each frame")

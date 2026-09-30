@@ -87,6 +87,9 @@ type frameCapture struct {
     CameraX float64
     // press Next Turn and trace the layout
     NextTurn bool
+    // the human player skips this many turns (about CaptureTurnFrames frames each): to watch the
+    // computer players over some turns
+    Turns int
     // start a random battle instead of the start screen
     RandomBattle bool
     // start a random battle for a city. a list of: walls, fortress, fire, darkness, outpost, myrror, size=N
@@ -151,6 +154,9 @@ func (capture *frameCapture) laterFrames() int {
     if capture.Drag > 0 {
         return capture.Drag + CaptureCoastFrames
     }
+    if capture.Turns > 0 {
+        return capture.Turns * CaptureTurnFrames + CaptureNextTurnFrames
+    }
     if capture.Spell != "" || capture.KillFigures > 0 || capture.AutoToggle > 0 || capture.UnitOrder || capture.Leave > 0 {
         // room for a spell to play and for figures to fall and lie
         return CaptureEffectFrames
@@ -167,6 +173,8 @@ const CaptureCoastFrames = 80
 const CaptureNextTurnFrames = 600
 // frames between the delayed capture options and a simulated walk
 const CaptureWalkDelayFrames = 60
+// frames a turn of -capture-turns gets
+const CaptureTurnFrames = 120
 
 // called at the end of every Draw. returns true once the frame has been written
 func (capture *frameCapture) Update(screen *ebiten.Image) bool {

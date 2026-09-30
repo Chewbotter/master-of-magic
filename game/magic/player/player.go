@@ -34,6 +34,11 @@ type PowerDistribution struct {
 type AIDecision interface {
 }
 
+// buy what the city is producing, at the price of the city screen (City.BuyCost)
+type AIBuyProductionDecision struct {
+    City *citylib.City
+}
+
 type AIProduceDecision struct {
     City *citylib.City
     Building buildinglib.Building

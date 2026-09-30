@@ -4501,6 +4501,14 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
                     log.Printf("Year=%v AI %v(%v) city %v producing %v %v", game.Model.TurnNumber, player.Wizard.Name, player.GetBanner(), produce.City.Name, game.Model.BuildingInfo.Name(produce.Building), produce.Unit.Name)
                     produce.City.ProducingBuilding = produce.Building
                     produce.City.ProducingUnit = produce.Unit
+                case *playerlib.AIBuyProductionDecision:
+                    buy := decision.(*playerlib.AIBuyProductionDecision)
+                    price, remaining := buy.City.BuyCost()
+                    if remaining > 0 && price <= player.Gold {
+                        log.Printf("Year=%v AI %v(%v) buys the production of %v for %v gold", game.Model.TurnNumber, player.Wizard.Name, player.GetBanner(), buy.City.Name, price)
+                        player.Gold -= price
+                        buy.City.Production += remaining
+                    }
                 case *playerlib.AIResearchSpellDecision:
                     research := decision.(*playerlib.AIResearchSpellDecision)
                     if player.ResearchingSpell.Invalid() {

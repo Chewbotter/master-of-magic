@@ -69,6 +69,27 @@ func (game *Game) CapturePlan(deltaX int, deltaY int) string {
 // development: the tile the surveyor looks at in a capture, nil to follow the mouse
 var CaptureSurveyorTile *image.Point
 
+// development: the human player skips its turns until this many have passed. the returned
+// function, called every frame, ends the skipping then
+func (game *Game) CaptureSkipTurns(turns int) func() {
+    human := game.Model.GetHumanPlayer()
+    if human == nil {
+        return func() {}
+    }
+    start := game.Model.TurnNumber
+    human.Skip = true
+    select {
+        case game.Events <- &GameEventNextTurn{}:
+        default:
+    }
+    return func() {
+        if human.Skip && game.Model.TurnNumber >= start + uint64(turns) {
+            human.Skip = false
+            log.Printf("capture: %v turns have passed", turns)
+        }
+    }
+}
+
 // puts the camera at a column, keeping its row
 func (game *Game) CaptureSetCameraX(x float64) {
     game.setCameraOffset(x, game.Camera.GetOffsetY())

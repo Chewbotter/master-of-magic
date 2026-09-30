@@ -198,12 +198,12 @@ func MakeModelFromSerialized(
 
         if !player.Human {
             if player.GetBanner() == data.BannerBrown {
-                player.AIBehavior = ai.MakeRaiderAI()
+                player.AIBehavior = ai.MakeChewbotAI(ai.MakeRaiderAI(), true)
             } else {
                 // use the same active wizard AI as a freshly-started game
                 // (model.go AddPlayer) so loading a save doesn't silently drop
                 // back to the legacy EnemyAI
-                player.AIBehavior = ai.MakeEnemy2AI()
+                player.AIBehavior = ai.MakeChewbotAI(ai.MakeEnemy2AI(), false)
             }
             player.StrategicCombat = true
         }

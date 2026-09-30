@@ -145,6 +145,11 @@ func (model *GameModel) AddPlayer(wizard setup.WizardCustom, human bool) *player
             case ai.AINet: newPlayer.AIBehavior = ai.MakeEnemyNetAI()
         }
 
+        // Chewbot takes over what it does and leaves the rest to the clone's AI, see ai/chewbot.go
+        if model.AIMode != ai.AINet {
+            newPlayer.AIBehavior = ai.MakeChewbotAI(newPlayer.AIBehavior, newPlayer.IsNeutral())
+        }
+
         newPlayer.StrategicCombat = true
     }
 
