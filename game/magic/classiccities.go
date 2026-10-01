@@ -162,6 +162,14 @@ func classicNeutralLocation(game *gamelib.Game, plane data.Plane, tries *int) (i
                 ok = false
             }
         }
+        // Generate_Neutral_Cities: never within 4 of a node, tower or lair (the fork's encounters
+        // are the lairs, the towers and the guarded nodes, each plane its own; the towers stand on
+        // both planes)
+        for _, site := range append(mapObject.GetEncounterLocations(), mapObject.GetMagicNodeLocations()...) {
+            if classicRange(x, y, site.X, site.Y) < 4 {
+                ok = false
+            }
+        }
         if ok {
             return x, y, true
         }

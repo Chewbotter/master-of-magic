@@ -478,9 +478,17 @@ func simPlay(game *gamelib.Game, description string, index int, count int) simRu
         return game.Update(yield), false
     }
 
+    duplicateSeen := false
     for game.Model.TurnNumber < startTurn + uint64(simTurns) {
         state, panicked := update()
         watchdog.alive()
+        if !duplicateSeen {
+            // the step of the loop that puts a unit in two stacks (game/simcheck.go)
+            if found := game.SimDuplicateUnit(); found != "" {
+                duplicateSeen = true
+                log.Printf("sim: DUPLICATE first seen at turn %v, current player %v: %v; the journal before it:%v%v", game.Model.TurnNumber, game.Model.CurrentPlayer, found, " | ", sink.recentText())
+            }
+        }
         if panicked {
             stalled = "a panic"
             break

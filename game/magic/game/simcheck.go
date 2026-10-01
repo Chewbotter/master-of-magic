@@ -6,6 +6,7 @@ package game
 
 import (
     "fmt"
+    "log"
     "sort"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -177,7 +178,11 @@ func (game *Game) SimCheck() {
                     note("dead unit on the map", "%v of %v at %v,%v", unit.GetName(), name, x, y)
                 }
                 if water && !carried && unit.IsLandWalker() && !simCityAt(game, x, y, plane) {
-                    note("walker on open water", "%v of %v at %v,%v", unit.GetName(), name, x, y)
+                    var with []string
+                    for _, other := range stackUnits {
+                        with = append(with, other.GetName())
+                    }
+                    note("walker on open water", "%v of %v at %v,%v (%v, busy %v), the stack %v", unit.GetName(), name, x, y, mapUse.GetTile(x, y).Tile.TerrainType(), unit.GetBusy(), with)
                 }
             }
         }
@@ -197,4 +202,49 @@ func (game *Game) SimCheck() {
 func simCityAt(game *Game, x int, y int, plane data.Plane) bool {
     city, _ := game.Model.FindCity(x, y, plane)
     return city != nil
+}
+
+// a unit in two stacks or twice in one, the first found; empty when none. Cheap enough to run after
+// every update of a run without a window, to find the step that makes it
+func (game *Game) SimDuplicateUnit() string {
+    for _, player := range game.Model.Players {
+        seen := make(map[units.StackUnit]*playerlib.UnitStack)
+        for _, stack := range player.Stacks {
+            for _, unit := range stack.Units() {
+                if other, ok := seen[unit]; ok {
+                    if other == stack {
+                        return fmt.Sprintf("%v of %v twice in its stack at %v,%v", unit.GetName(), player.Wizard.Name, stack.X(), stack.Y())
+                    }
+                    return fmt.Sprintf("%v of %v in two stacks, at %v,%v and %v,%v (the unit at %v,%v)", unit.GetName(), player.Wizard.Name, other.X(), other.Y(), stack.X(), stack.Y(), unit.GetX(), unit.GetY())
+                }
+                seen[unit] = stack
+            }
+        }
+    }
+    return ""
+}
+
+// the stack an AI's order is for, as it is now: the decisions of a turn are made first and applied
+// after, and a stack may have been merged into another in between (an earlier move, the clone's
+// tidying); splitting the stale stack put its units in two stacks. Nil when none of its units is
+// left
+func currentStackOf(player *playerlib.Player, stack *playerlib.UnitStack, group []units.StackUnit) *playerlib.UnitStack {
+    for _, current := range player.Stacks {
+        if current == stack {
+            return stack
+        }
+    }
+    look := group
+    if len(look) == 0 && stack != nil {
+        look = stack.Units()
+    }
+    for _, unit := range look {
+        if current := player.FindStackByUnit(unit); current != nil {
+            if playerlib.Noting() {
+                log.Printf("DEBUG the order of %v was for a stack that is gone; its units are in the stack at %v,%v", player.Wizard.Name, current.X(), current.Y())
+            }
+            return current
+        }
+    }
+    return nil
 }

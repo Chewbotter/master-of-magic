@@ -105,7 +105,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
         // Fizzle the spell and return
         game.ShowFizzleSpell(spell, player)
 
-        if reason.Owner == game.Model.GetHumanPlayer() || player == game.Model.GetHumanPlayer() {
+        if (reason.Owner != nil && reason.Owner.IsHuman()) || player.IsHuman() {
             game.ShowTranquilityFizzle(reason.Owner, player, spell)
         }
 

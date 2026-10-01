@@ -2770,6 +2770,10 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                                     cost = hire.Cost
                                 }
                                 player.AIBehavior.HandleHireHero(player, hire.Hero, cost, true, data.PlanePoint{})
+                                // the square the hero came to keeps 9 at most, as the human's hire does
+                                if hire.Hero.Status == herolib.StatusEmployed {
+                                    game.ResolveStackAt(hire.Hero.GetX(), hire.Hero.GetY(), hire.Hero.GetPlane())
+                                }
                             }
                         }
                     case *GameEventHireMercenaries:
@@ -2780,6 +2784,10 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                         } else {
                             if player.AIBehavior != nil {
                                 player.AIBehavior.HandleHireMercenaries(player, hire.Units, hire.Cost)
+                                // the square they came to keeps 9 at most, as the human's hire does
+                                if len(hire.Units) > 0 && player.FindStackByUnit(hire.Units[0]) != nil {
+                                    game.ResolveStackAt(hire.Units[0].GetX(), hire.Units[0].GetY(), hire.Units[0].GetPlane())
+                                }
                             }
                         }
                     case *GameEventPauseWatchMode:
@@ -2797,6 +2805,10 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                         }
                     case *GameEventRunUI:
                         runUI := event.(*GameEventRunUI)
+                        if game.headless {
+                            // development: no window, nobody to click the window away (sim.go)
+                            break
+                        }
                         if runUI.Song != musiclib.SongNone {
                             game.Music.PushSong(runUI.Song)
                         }
@@ -4649,7 +4661,11 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
             switch decision.(type) {
                 case *playerlib.AIMoveStackDecision:
                     moveDecision := decision.(*playerlib.AIMoveStackDecision)
-                    useStack := moveDecision.Stack
+                    useStack := currentStackOf(player, moveDecision.Stack, moveDecision.Units)
+                    if useStack == nil {
+                        break
+                    }
+                    moveDecision.Stack = useStack
 
                     if len(moveDecision.Units) > 0 && len(moveDecision.Units) != len(moveDecision.Stack.Units()) {
                         useStack = player.SplitStack(moveDecision.Stack, moveDecision.Units)
@@ -4684,7 +4700,11 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
                     }
                 case *playerlib.AIBuildRoadDecision:
                     build := decision.(*playerlib.AIBuildRoadDecision)
-                    roadStack := build.Stack
+                    roadStack := currentStackOf(player, build.Stack, build.Units)
+                    if roadStack == nil {
+                        break
+                    }
+                    build.Stack = roadStack
                     if len(build.Units) > 0 && len(build.Units) != len(roadStack.Units()) {
                         roadStack = player.SplitStack(roadStack, build.Units)
                     }
@@ -5299,6 +5319,9 @@ func (game *Game) ApplyTreasure(yield coroutine.YieldFunc, player *playerlib.Pla
                 } else {
                     if player.AIBehavior != nil {
                         player.AIBehavior.HandleHireHero(player, hero.Hero, 0, false, treasure.Point)
+                        if hero.Hero.Status == herolib.StatusEmployed {
+                            game.ResolveStackAt(hero.Hero.GetX(), hero.Hero.GetY(), hero.Hero.GetPlane())
+                        }
                     }
                 }
             case *TreasureSpell:

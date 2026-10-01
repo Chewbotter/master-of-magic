@@ -318,3 +318,19 @@ spells of both books; the computer's slider 3 times lost on save and load; `clas
 pruned; a Time Stop that lapses costs 200 with `-classic-economy=false`; damaged units of an old
 save whose table hits went down load with negative health (saves may break, project rule); some
 rules of units and magic sit behind other switches than `-classic-units` and `-classic-magic`.
+
+## Found by many runs (testing.md, 2026-09-30)
+
+- FIXED: the AI's hires of mercenaries and heroes did not keep 9 to a square (the clone's handlers
+  have a FIXME; the human's hires did); the orders of a turn are applied after all are made, and a
+  stack merged in between was split as it was, putting its units in two stacks (units then moved
+  two or three steps a step, off the map: the crash of a stack at row -37); neutral towns ignored
+  the original's distance of 4 to nodes, towers and lairs (my port of the world builder), so a town
+  could stand on a lair and an army that won the lair stood in the town with its garrison; the
+  fizzle window of Tranquility and Suppress Magic opened for the player of slot 0 even when it is a
+  computer wizard; a run without a window skips every window that waits for a click.
+- Seen, the original's rules as ported: allied computer wizards turn an alliance into a pact at the
+  next negotiation and back (`relations.quirkAllianceBecomesPact`); two wizards at war can go
+  straight to an alliance; computer wizards never meet each other by sight (contact.md), so an
+  all-AI game has little diplomacy; AI_Kill_Lame_Units dismisses many of the Spearmen and Swordsmen
+  the cities build.

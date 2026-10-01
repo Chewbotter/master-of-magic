@@ -58,6 +58,8 @@ type simJournalLine struct {
 // the journal of one run: lines to a file, counts by player and kind
 type simJournalSink struct {
     lock sync.Mutex
+    // the last lines, for the moment something breaks
+    recent []simJournalLine
     game *gamelib.Game
     file *os.File
     encoder *json.Encoder
@@ -93,6 +95,10 @@ func (sink *simJournalSink) note(player *playerlib.Player, kind string, what str
         sink.Counts[line.Player] = counts
     }
     counts[kind] += 1
+    sink.recent = append(sink.recent, line)
+    if len(sink.recent) > 30 {
+        sink.recent = sink.recent[len(sink.recent) - 30:]
+    }
     if sink.encoder != nil {
         sink.encoder.Encode(line)
     }
@@ -328,4 +334,18 @@ func (watchdog *simWatchdog) alive() {
 
 func (watchdog *simWatchdog) close() {
     close(watchdog.stop)
+}
+
+// the last lines of the journal, as text
+func (sink *simJournalSink) recentText() string {
+    if sink == nil {
+        return ""
+    }
+    sink.lock.Lock()
+    defer sink.lock.Unlock()
+    out := ""
+    for _, line := range sink.recent {
+        out += fmt.Sprintf("  turn %v %v %v: %v (%v)\n", line.Turn, line.Player, line.Kind, line.What, line.Why)
+    }
+    return out
 }

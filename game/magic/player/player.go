@@ -1,6 +1,8 @@
 package player
 
 import (
+    "log"
+    "runtime/debug"
     "slices"
     "math"
     "math/rand/v2"
@@ -1800,6 +1802,16 @@ func (player *Player) SplitActiveStack(stack *UnitStack) *UnitStack {
 
 // stack2 gets absorbed into stack1
 func (player *Player) MergeStacks(stack1 *UnitStack, stack2 *UnitStack) *UnitStack {
+    if stack1 == stack2 {
+        // a stack merged into itself doubles its units and leaves the player's list
+        if Noting() {
+            log.Printf("DEBUG merge of a stack into itself, %v units: %v", len(stack1.units), string(debug.Stack()))
+        }
+        return stack1
+    }
+    if Noting() {
+        debugUnitsElsewhere(player, stack2.units, stack2, "merge")
+    }
     // FIXME: if a transport unit is in the stack then always put it in front
     stack1.units = append(stack1.units, stack2.units...)
 
@@ -1926,6 +1938,9 @@ func (player *Player) CreateUnit(unit units.StackUnit) units.StackUnit {
 }
 
 func (player *Player) AddUnit(unit units.StackUnit) units.StackUnit {
+    if Noting() {
+        debugUnitsElsewhere(player, []units.StackUnit{unit}, nil, "add")
+    }
     stack := player.FindStack(unit.GetX(), unit.GetY(), unit.GetPlane())
     if stack == nil {
         stack = MakeUnitStack()
@@ -2041,4 +2056,29 @@ func (player *Player) TransportUnits(plane data.Plane) int {
     }
 
     return count
+}
+
+// development (runs with a journal): a unit that is added while it is in a stack of the player
+// already, other than the one it comes from, is logged with the call's stack, once a place
+var debugUnitsReported = make(map[string]bool)
+
+func debugUnitsElsewhere(player *Player, added []units.StackUnit, from *UnitStack, what string) {
+    for _, stack := range player.Stacks {
+        if stack == from {
+            continue
+        }
+        for _, unit := range added {
+            for _, there := range stack.units {
+                if there == unit {
+                    trace := string(debug.Stack())
+                    key := what + trace[min(len(trace), 200):min(len(trace), 900)]
+                    if !debugUnitsReported[key] {
+                        debugUnitsReported[key] = true
+                        log.Printf("DEBUG %v of %v of %v while it is in another stack at %v,%v: %v", what, unit.GetName(), player.Wizard.Name, stack.X(), stack.Y(), trace)
+                    }
+                    return
+                }
+            }
+        }
+    }
 }
