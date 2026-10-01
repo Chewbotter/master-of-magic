@@ -400,6 +400,8 @@ func unitPickerRows() []unitPickerRow {
         apart = false
 
         if unitPickerExpanded[race] {
+            all := allUnitOf(race)
+            rows = append(rows, unitPickerRow{Text: all.Name, Unit: all, Race: race})
             for _, unit := range list {
                 rows = append(rows, unitPickerRow{Text: unit.Name, Unit: unit, Race: race})
             }
@@ -583,9 +585,61 @@ func unitFullName(unit *units.Unit) string {
     return fmt.Sprintf("%v %v", unit.Race, unit.Name)
 }
 
+// ALL OF A RACE (user, 2026-09-30: "a new category in test combat under each race that says 'All
+// High Men' for example, which adds one of each type to the army. Exclude settlers for every
+// race"). The row stands first under its race. It is a unit of its own that stands for all of
+// them, so the button of the last battle, "Again" and debug.json take it as they take a unit;
+// the battle puts one of each unit of the race but settlers in each army (unitsOfAll), times the
+// army size. An army has room for 40, the rest has no place (combat/deploy.go)
+var allOfRace = make(map[data.Race]*units.Unit)
+
+// the unit that stands for all units of a race
+func allUnitOf(race data.Race) *units.Unit {
+    if unit, ok := allOfRace[race]; ok {
+        return unit
+    }
+    name := fmt.Sprintf("All %v", race)
+    switch race {
+        case data.RaceHero: name = "All Heroes"
+        case data.RaceAll: name = "All of them"
+    }
+    unit := &units.Unit{Name: name, Race: race}
+    allOfRace[race] = unit
+    return unit
+}
+
+// true if a unit stands for all units of its race
+func isAllOfRace(unit *units.Unit) bool {
+    return unit != nil && allOfRace[unit.Race] == unit
+}
+
+// the units an army of a test battle has of a unit: all of its race but settlers for the one that
+// stands for all of them, else that unit as often as a test battle has it
+func testArmyUnits(unit *units.Unit, scale int) []units.Unit {
+    var out []units.Unit
+    if isAllOfRace(unit) {
+        for range scale {
+            for _, each := range unitsOfRace(unit.Race) {
+                if !each.IsSettlers() {
+                    out = append(out, *each)
+                }
+            }
+        }
+        return out
+    }
+    for range TestBattleUnits * scale {
+        out = append(out, *unit)
+    }
+    return out
+}
+
 // development: the unit of a name as unitFullName gives it, or of its name alone
 func findUnit(name string) *units.Unit {
     for _, race := range unitPickerRaces {
+        all := allUnitOf(race)
+        if strings.EqualFold(unitFullName(all), name) || strings.EqualFold(all.Name, name) {
+            return all
+        }
         for _, unit := range unitsOfRace(race) {
             if strings.EqualFold(unitFullName(unit), name) || strings.EqualFold(unit.Name, name) {
                 return unit

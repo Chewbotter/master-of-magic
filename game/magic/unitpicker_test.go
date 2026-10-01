@@ -3,6 +3,8 @@ package main
 import (
     "testing"
 
+    "github.com/kazzmir/master-of-magic/game/magic/data"
+
     "github.com/kazzmir/master-of-magic/game/magic/combat"
     "github.com/kazzmir/master-of-magic/game/magic/mod"
 )
@@ -120,5 +122,37 @@ func TestTestBattleGround(test *testing.T) {
 
     if testGroundByName("what is not there") != 0 || testCoastByName("nowhere") != combat.CoastNone {
         test.Fatalf("names that are not there")
+    }
+}
+
+// all of a race: one of each of its units but settlers, as often as the army size says, and it is
+// found again by its name
+func TestAllOfRace(test *testing.T) {
+    all := allUnitOf(data.RaceHighMen)
+    if !isAllOfRace(all) || all.Name != "All High Men" || findUnit(unitFullName(all)) != all {
+        test.Fatalf("all of the High Men: %+v", all)
+    }
+    if isAllOfRace(findUnit("High Men Swordsmen")) {
+        test.Fatalf("one unit counts as all")
+    }
+
+    kinds := 0
+    for _, unit := range unitsOfRace(data.RaceHighMen) {
+        if !unit.IsSettlers() {
+            kinds += 1
+        }
+    }
+    army := testArmyUnits(all, 2)
+    if kinds == 0 || len(army) != kinds * 2 {
+        test.Fatalf("%v units in the army, %v kinds", len(army), kinds)
+    }
+    for _, unit := range army {
+        if unit.IsSettlers() || unit.Race != data.RaceHighMen {
+            test.Fatalf("%v in the army", unit.Name)
+        }
+    }
+
+    if one := testArmyUnits(findUnit("High Men Swordsmen"), 1); len(one) != TestBattleUnits {
+        test.Fatalf("one kind: %v units", len(one))
     }
 }

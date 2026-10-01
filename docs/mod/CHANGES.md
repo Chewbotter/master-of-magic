@@ -134,7 +134,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - A tool that writes the game's pictures as png files, the surroundings of battles under names that say what each picture is for, and Aseprite files for figures and spells with an export back into the replacement folder.
 
 ## For testing (debug)
-- A Debug list on the start screen: World Map, Random Battle, Random City Battle, Test Battle of a unit picked from a list (with its biome, coast, river, farmland, roads and weather, or a coast or river by chance; a button starts the last unit again on what is picked), Army Size. Random battles have a landscape, a biome, a coast, farmland and roads or a river by chance.
+- A Debug list on the start screen: World Map, Random Battle, Random City Battle, Test Battle of a unit picked from a list, or of all units of a race but settlers, (with its biome, coast, river, farmland, roads and weather, or a coast or river by chance; a button starts the last unit again on what is picked), Army Size. Random battles have a landscape, a biome, a coast, farmland and roads or a river by chance.
 - World Map: a quick game with unlimited moves, no greetings of rival wizards, 3 more units around the city, and units that are never disbanded.
 - In debug battles the player knows every spell and does not run out of mana.
 - Escape in anything started from the Debug list goes back to the start screen.
