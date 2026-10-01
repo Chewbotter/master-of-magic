@@ -119,3 +119,8 @@ Shift only for stacks with settlers, Enchant Road on the city's square.
 250 turns, 4 wizards: summons (the costliest they know), Floating Island, unit buffs (many without a
 target: early armies are spearmen without upkeep), research. Their mana ends at 0: summons cost mana
 every turn and the original's trimming of the army to the budget is not ported yet.
+
+CHEWBOT'S OWN (user 2026-10-01): a spell that makes a unit of mana upkeep (a summon) is only started
+while the planned mana income with the unit's upkeep stays at 0 or more (`ChewbotSummonKeepsIncome`).
+The original asks the casting cost alone, and a wizard with an income of about 0 summoned and then
+disbanded its weakest creature, often the new one, turn after turn.

@@ -101,6 +101,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - With the Enemy AI Chewbot, a computer wizard's group that sets out for a target keeps its units: in the original the gathering of expeditions took the strongest units away the same turn and the rest attacked alone, so most of its attacks at long odds were the leftovers of such groups.
 - A computer army that loses a battle to you and lives (it fled, or held out to the turn limit) no longer comes straight back with the same order: as in the original, every computer unit in a battle on the battlefield loses its order and plans anew.
 - With the Enemy AI Chewbot, a computer army keeps to the way it chose, as in the original: the rest of its path is kept after every move, so it no longer turns back when other units block a road for a turn (and walks into an enemy that stands on its way).
+- With the Enemy AI Chewbot, a computer wizard summons a creature only while it can pay the creature's mana upkeep (not the original's): before, a wizard short of mana summoned and disbanded creatures turn after turn.
 
 ## Battles
 - The battlefield, the places of figures, deployment, timing, trees, rocks, houses and walls follow the original.

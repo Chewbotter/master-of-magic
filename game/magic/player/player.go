@@ -1445,15 +1445,21 @@ func (player *Player) TotalEnchantmentUpkeep(cityEnchantmentsProvider CityEnchan
 }
 
 func (player *Player) ManaPerTurn(power int, cityEnchantmentsProvider CityEnchantmentsProvider) int {
-    return player.manaPerTurn(power, cityEnchantmentsProvider, false)
+    return player.manaPerTurn(power, cityEnchantmentsProvider, false, 0)
 }
 
 // the mana income of the original's summary (see PlanningGoldPerTurn)
 func (player *Player) PlanningManaPerTurn(power int, cityEnchantmentsProvider CityEnchantmentsProvider) int {
-    return player.manaPerTurn(power, cityEnchantmentsProvider, true)
+    return player.manaPerTurn(power, cityEnchantmentsProvider, true, 0)
 }
 
-func (player *Player) manaPerTurn(power int, cityEnchantmentsProvider CityEnchantmentsProvider, planning bool) int {
+// the planned mana income with one more unit of that mana upkeep (as UnitManaUpkeep gives it), for
+// an AI that asks whether it can keep a creature it would summon
+func (player *Player) PlanningManaPerTurnWith(power int, cityEnchantmentsProvider CityEnchantmentsProvider, extraUnitMana int) int {
+    return player.manaPerTurn(power, cityEnchantmentsProvider, true, extraUnitMana)
+}
+
+func (player *Player) manaPerTurn(power int, cityEnchantmentsProvider CityEnchantmentsProvider, planning bool, extraUnitMana int) int {
     if player.HasEnchantment(data.EnchantmentTimeStop) {
         return 0
     }
@@ -1462,10 +1468,10 @@ func (player *Player) manaPerTurn(power int, cityEnchantmentsProvider CityEnchan
 
     if ClassicEconomy {
         income, _, _ := player.classicPowerSplit(power)
-        return income - player.planningUpkeep(planning, player.classicManaUpkeep(cityEnchantmentsProvider))
+        return income - player.planningUpkeep(planning, player.classicManaUpkeepWith(cityEnchantmentsProvider, extraUnitMana))
     }
 
-    mana -= player.planningUpkeep(planning, player.TotalUnitUpkeepMana() + player.TotalEnchantmentUpkeep(cityEnchantmentsProvider))
+    mana -= player.planningUpkeep(planning, player.TotalUnitUpkeepMana() + extraUnitMana + player.TotalEnchantmentUpkeep(cityEnchantmentsProvider))
 
     manaFocusingBonus := float64(1)
 

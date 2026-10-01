@@ -364,9 +364,15 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
   income is below 0. MEASURED (round 6, 30 games): 1,470 creatures disbanded for mana, 328 of them
   summoned that turn, by 56 of 105 wizards; that wastes 2.2 percent of the mana the computer
   wizards cast with, but 13 to 24 percent for the worst five (a median of 52 mana a wizard, the
-  most 1,980). Options for a change of our own, not made: summon only while the income after the
-  creature's upkeep stays at 0 or more; or keep a creature summoned this turn out of the disband
-  (the next weakest goes, which may leave the deficit standing).
+  most 1,980). TAKEN (user 2026-10-01: "Summon only while income stays positive after upkeep"):
+  `ChewbotSummonKeepsIncome` (chewbotspellgroups.go, flag `-chewbot-summon-keeps-income=false` for
+  the original): a spell that makes a unit of mana upkeep is started only while the planned income
+  with that upkeep (`Player.PlanningManaPerTurnWith`, Conjurer, Channeler and difficulty as for
+  the rest) stays at 0 or more; else nothing is started that turn ("spell skipped"). Same build and
+  30 seeds (`_build/a/fuzz20`): creatures disbanded the turn they came 394 to 79, mana wasted so
+  3.3 to 0.7 percent of the cast mana, 961 summons skipped, mana at the end 76 to 127 (median);
+  cities, units and strength about the same. The disbands for mana that are left (1,325 of 1,711)
+  come from income that falls for other reasons (enchantments, lost nodes, the split of power).
 
 - FIXED (2026-10-01, item 2 of the user's list, battles to the turn limit): most of the 121 battles
   that went to the turn limit in fought-out runs were one stack attacking again and again (item 1

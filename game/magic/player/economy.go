@@ -45,7 +45,12 @@ func (player *Player) unitManaUpkeep(unit units.StackUnit) int {
 // Player_Armies_And_Enchantments_Mana_Upkeep: units, city enchantments the player cast (curses
 // too) and global enchantments; Channeler halves the sum, once
 func (player *Player) classicManaUpkeep(cityEnchantmentsProvider CityEnchantmentsProvider) int {
-    upkeep := player.TotalUnitUpkeepMana() + player.TotalEnchantmentUpkeep(cityEnchantmentsProvider)
+    return player.classicManaUpkeepWith(cityEnchantmentsProvider, 0)
+}
+
+// the same with the upkeep of one more unit
+func (player *Player) classicManaUpkeepWith(cityEnchantmentsProvider CityEnchantmentsProvider, extraUnitMana int) int {
+    upkeep := player.TotalUnitUpkeepMana() + extraUnitMana + player.TotalEnchantmentUpkeep(cityEnchantmentsProvider)
     if player.Wizard.RetortEnabled(data.RetortChanneler) {
         upkeep /= 2
     }

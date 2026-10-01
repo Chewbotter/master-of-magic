@@ -92,6 +92,30 @@ func chewSlotRange(from int, to int) []int {
 }
 
 // a weighted pick of a slot of a table of spells: the spell's name, "" for none
+// CHEWBOT'S OWN, not the original's (user 2026-10-01: "Summon only while income stays positive
+// after upkeep"): a spell that makes a unit is only started while the planned mana income with the
+// unit's upkeep stays at 0 or more. The original's AI_Spell_Select asks the casting cost alone, so a
+// wizard with an income of about 0 summoned, went below 0, and AI_Disband_To_Balance_Budget
+// disbanded the weakest creature, often the new one, again and again (round 6: 328 creatures
+// disbanded the turn they came, 13 to 24 percent of the cast mana of the worst five wizards).
+// false: the original
+var ChewbotSummonKeepsIncome = true
+
+// the mana upkeep of the unit a spell makes and the income with it; ok when the spell makes no unit
+// of mana upkeep, or the income stays at 0 or more
+func chewSummonKeepsIncome(self *playerlib.Player, services playerlib.AIServices, power int, spell spellbook.Spell) (int, int, bool) {
+    if !ChewbotSummonKeepsIncome {
+        return 0, 0, true
+    }
+    unit := units.GetUnitByName(spell.Name)
+    if unit.IsNone() || unit.UpkeepMana <= 0 {
+        return 0, 0, true
+    }
+    upkeep := self.UnitManaUpkeep(units.MakeOverworldUnit(unit, 0, 0, data.PlaneArcanus))
+    after := self.PlanningManaPerTurnWith(power, services, upkeep)
+    return upkeep, after, after >= 0
+}
+
 func chewPickSlot(weights []int, names map[int]string) string {
     return names[chewWeightedChoice(weights)]
 }
@@ -124,6 +148,11 @@ func (ai *ChewbotAI) pickSpell(self *playerlib.Player, services playerlib.AIServ
     if spell.CastCost / 50 > perTurn {
         chewSpellLog(self, "kind %v, %v is too costly (%v a turn)", kind, name, perTurn)
         playerlib.Note(self, "spell skipped", name, fmt.Sprintf("kind %v, costs %v, more than 50 turns of %v a turn", chewSpellKindName(kind), spell.CastCost, perTurn))
+        return spellbook.Spell{}, false
+    }
+    if upkeep, after, ok := chewSummonKeepsIncome(self, services, power, spell); !ok {
+        chewSpellLog(self, "kind %v, %v would cost %v mana a turn, income after it %v", kind, name, upkeep, after)
+        playerlib.Note(self, "spell skipped", name, fmt.Sprintf("kind %v, its upkeep of %v would take the mana income to %v", chewSpellKindName(kind), upkeep, after))
         return spellbook.Spell{}, false
     }
     chewSpellLog(self, "kind %v, casts %v", kind, name)

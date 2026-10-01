@@ -1485,6 +1485,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&ai.ChewbotTurnGlue, "chewbot-turn-glue", true, "development: false leaves the economy of Chewbot's wizards (reserves, tax, farmers, disbanding) to the clone")
     flag.BoolVar(&ai.ChewbotExpeditionByEmpire, "chewbot-expedition-by-empire", true, "development: false gives Chewbot the original's size of expeditions (2 and 1 more every 30 turns)")
     flag.BoolVar(&gamelib.BattleEndsOrders, "battle-ends-orders", true, "development: false keeps the orders of computer units that lived through a battle on the battlefield (not the original)")
+    flag.BoolVar(&ai.ChewbotSummonKeepsIncome, "chewbot-summon-keeps-income", true, "development: false lets Chewbot summon a creature whose upkeep takes its mana income below 0 (the original)")
     flag.BoolVar(&ai.ChewbotPathStore, "chewbot-path-store", true, "development: false makes Chewbot search every path anew (the original keeps the rest of a path after a move)")
     flag.BoolVar(&ai.ChewbotStageSparesOrdered, "chewbot-stage-spares-ordered", true, "development: false lets the stage step of Chewbot's expeditions take units that got a target in the same turn, as the original")
     flag.BoolVar(&ai.ChewbotDraftBeyondNeed, "chewbot-draft-beyond-need", true, "development: false gives Chewbot the original's rule for expeditions (units beyond 5 of a garrison)")
