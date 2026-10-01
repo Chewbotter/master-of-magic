@@ -174,6 +174,14 @@ func (game *Game) classicDisenchant(player *playerlib.Player, spell spellbook.Sp
         strength *= 2
     }
     allSpells := game.AllSpells()
+    // the spell of an enchantment: two names of the enchantments are spelled otherwise in the data
+    spellOf := func(name string) spellbook.Spell {
+        switch name {
+            case "Lion Heart": name = "Lionheart"
+            case "Invisibility": name = "Invisiblity"
+        }
+        return allSpells.FindByName(name)
+    }
     roll := func(cost int, magic data.MagicType, owner spellbook.RetortOwner) bool {
         return spellbook.RollDispelChance(spellbook.ComputeDispelChance(strength, cost, magic, owner))
     }
@@ -191,8 +199,8 @@ func (game *Game) classicDisenchant(player *playerlib.Player, spell spellbook.Sp
             if enchantment.Owner == player.GetBanner() {
                 continue
             }
-            target := allSpells.FindByName(enchantment.Enchantment.SpellName())
-            if roll(target.CastCost, target.Magic, ownerOf(enchantment.Owner)) {
+            target := spellOf(enchantment.Enchantment.SpellName())
+            if target.Valid() && roll(target.CastCost, target.Magic, ownerOf(enchantment.Owner)) {
                 city.RemoveEnchantments(enchantment.Enchantment)
             }
         }
@@ -218,8 +226,8 @@ func (game *Game) classicDisenchant(player *playerlib.Player, spell spellbook.Sp
             }
             var toRemove []data.UnitEnchantment
             for _, enchantment := range unit.GetEnchantments() {
-                target := allSpells.FindByName(enchantment.SpellName())
-                if roll(target.CastCost, target.Magic, &owner.Wizard) {
+                target := spellOf(enchantment.SpellName())
+                if target.Valid() && roll(target.CastCost, target.Magic, &owner.Wizard) {
                     toRemove = append(toRemove, enchantment)
                 }
             }
@@ -267,7 +275,8 @@ func (game *Game) classicWorldTries(enchantment data.Enchantment, fits func(play
         if player.Defeated || !player.GlobalEnchantments.Contains(enchantment) {
             continue
         }
-        for range rand.N(3) + 3 {
+        // Random(3) + 3 with the original's Random from 1: 4 to 6
+        for range rand.N(3) + 4 {
             for range 50 {
                 mapUse := maps[rand.N(2)]
                 if mapUse == nil {
@@ -330,6 +339,10 @@ func (game *Game) classicMeteorStorm() {
                     continue
                 }
                 for _, building := range city.Buildings.Values() {
+                    if building == buildinglib.BuildingFortress || building == buildinglib.BuildingSummoningCircle {
+                        // the wizard's own marks are no buildings to break (MY CALL)
+                        continue
+                    }
                     if rand.N(100) == 0 {
                         city.Buildings.Remove(building)
                     }
@@ -429,8 +442,13 @@ func (game *Game) classicPlaneShift(stack *playerlib.UnitStack, player *playerli
             return false
         }
     }
-    // the fork keeps refusing a lair there (MY CALL: a lair holds no units in the original)
+    // the fork keeps refusing a lair there (MY CALL: a lair holds no units in the original), and a
+    // city of another (MY CALL: the original's empty enemy city has no units to stop it, and the
+    // fork would put both on one square)
     if mapUse.GetEncounter(stack.X(), stack.Y()) != nil {
+        return false
+    }
+    if city, owner := game.Model.FindCity(stack.X(), stack.Y(), other); city != nil && owner != player {
         return false
     }
     // nobody stands there, so nothing to merge with

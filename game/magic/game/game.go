@@ -6477,6 +6477,14 @@ func (game *Game) tryMeldNode(stack *playerlib.UnitStack, player *playerlib.Play
         return false
     }
     node := useMap.GetMagicNode(stack.X(), stack.Y())
+    if units.ClassicUnits {
+        // Army_Do_Meld: one spirit an order, a Guardian Spirit first (unitsclassic.go)
+        if !classicCanMeld(stack.Units(), player, node) {
+            return false
+        }
+        game.DoMeld(classicMelder(stack.Units()), player, node)
+        return true
+    }
     if node == nil || node.Warped || node.MeldingWizard == player {
         return false
     }
@@ -8058,13 +8066,16 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
     // timestop may have dissipated by now
     timeStop := player.HasEnchantment(data.EnchantmentTimeStop) || stoppedAtStart
 
-    player.Gold += player.GoldPerTurn()
-    if player.Gold < 0 {
-        player.Gold = 0
-    }
+    if !stoppedAtStart {
+        // Next_Turn_Calc: no incomes while time stands still, the turn it runs out too
+        player.Gold += player.GoldPerTurn()
+        if player.Gold < 0 {
+            player.Gold = 0
+        }
 
-    if !returning {
-        player.Mana += player.ManaPerTurn(power, game.Model)
+        if !returning {
+            player.Mana += player.ManaPerTurn(power, game.Model)
+        }
     }
 
     if timeStop && !playerlib.ClassicEconomy {

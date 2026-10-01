@@ -1607,7 +1607,7 @@ func (unit *ArmyUnit) GetMovementSpeed() fraction.Fraction {
 
     base = unit.Unit.MovementSpeedEnchantmentBonus(base, unit.Enchantments)
 
-    if unit.Model.IsEnchantmentActive(data.CombatEnchantmentEntangle, oppositeTeam(unit.Team)) {
+    if !ClassicRules && unit.Model.IsEnchantmentActive(data.CombatEnchantmentEntangle, oppositeTeam(unit.Team)) {
         unaffected := unit.IsFlying() || unit.HasAbility(data.AbilityNonCorporeal)
 
         if !unaffected {
@@ -1904,8 +1904,8 @@ func ApplyAreaDamage(unit UnitDamage, attackStrength int, damageType units.Damag
 // returns damage taken and the number of visible figures lost
 func ApplyDamage(unit UnitDamage, damageRolls []int, damageType units.Damage, source DamageSource, modifiers DamageModifiers) (int, int) {
     isMagic := damageType == units.DamageRangedMagical || damageType == units.DamageFire || damageType == units.DamageCold
-    if ClassicRules && damageType == units.DamageRangedMagical {
-        // Battle_Unit_Attack: a magic shot meets a defense of 50 against Magic Immunity
+    if ClassicRules && damageType == units.DamageRangedMagical && source != DamageSourceSpell {
+        // Battle_Unit_Attack: a unit's magic shot meets a defense of 50 against Magic Immunity
         isMagic = false
     }
     if isMagic && unit.HasAbility(data.AbilityMagicImmunity) {
@@ -4798,7 +4798,12 @@ func (model *CombatModel) FinishCombat(state CombatState) {
             }
 
             if unit.GetHealth() > 0 {
-                if unit.HasCurse(data.UnitCurseCreatureBinding) || unit.HasCurse(data.UnitCursePossession) || unit.Summoned {
+                controlled := unit.HasCurse(data.UnitCurseCreatureBinding) || unit.HasCurse(data.UnitCursePossession)
+                if ClassicRules && controlled && !wonBattle {
+                    // End_Of_Combat: a unit the loser controls goes back to its owner
+                    unit.RemoveCurse(data.UnitCurseCreatureBinding)
+                    unit.RemoveCurse(data.UnitCursePossession)
+                } else if controlled || unit.Summoned {
                     unit.TakeDamage(unit.GetHealth(), DamageNormal)
                 }
             }
@@ -5192,7 +5197,7 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
         return
     }
 
-    if ClassicRules && (spell.IsSummoning() || spell.Name == "Raise Dead" || spell.Name == "Animate Dead") && model.classicTooManyUnits(army) {
+    if ClassicRules && spell.Name != "Summon Demons" && (spell.IsSummoning() || spell.Name == "Raise Dead" || spell.Name == "Animate Dead") && model.classicTooManyUnits(army) {
         // Do_Legal_Spell_Check: refused before anything is paid
         return
     }
@@ -5513,6 +5518,16 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
                 castedCallback(true)
             })
         case "Summon Demons":
+            if ClassicRules {
+                // Summon_Demon: in the middle of the caster's side
+                x, y, err := model.FindEmptyTile(model.GetSideForPlayer(army.Player))
+                if err == nil {
+                    spellSystem.CreateSummoningCircle(x, y)
+                    model.summonUnit(army, x, y, units.Demon, units.FacingDown, true)
+                    castedCallback(true)
+                }
+                break
+            }
             model.DoSummoningSpell(spellSystem, army, spell, func(x int, y int){
                 model.summonUnit(army, x, y, units.Demon, units.FacingDown, true)
                 castedCallback(true)
@@ -7272,8 +7287,9 @@ func (model *CombatModel) CreateHolyWordProjectileEffect(damageIndicator AddDama
 
         resistance := GetResistanceFor(unit, data.LifeMagic) - modifier - reduceResistance
         if ClassicRules {
-            // Apply_Holy_Word: a death roll at -2 always, no spell saving
-            resistance = GetResistanceFor(unit, data.DeathMagic) - 2
+            // Apply_Holy_Word: a roll at -2 always, no spell saving; Combat_Effective_Resistance has
+            // no bonus for Death Immunity (read by a realm without one)
+            resistance = GetResistanceFor(unit, data.LifeMagic) - 2
         }
 
         damage := 0

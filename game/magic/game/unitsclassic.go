@@ -121,12 +121,9 @@ func (game *Game) classicEvictWeakest(x int, y int, plane data.Plane) {
 func (game *Game) classicEvictPlace(stack *playerlib.UnitStack, player *playerlib.Player, unit units.StackUnit) (image.Point, bool) {
     mapUse := game.GetMap(stack.Plane())
     plane := stack.Plane()
-    water := unit.IsFlying() || unit.IsSwimmer() || unit.IsSailing()
-    for _, other := range stack.Units() {
-        if other.HasAbility(data.AbilityWindWalking) {
-            water = true
-        }
-    }
+    // Unit_Space_At_Square: water for a unit that flies, swims, sails or walks the wind itself, or
+    // onto a square where a wind walker stands
+    water := unit.IsFlying() || unit.IsSwimmer() || unit.IsSailing() || unit.HasAbility(data.AbilityWindWalking)
 
     for dy := -1; dy <= 1; dy++ {
         for dx := -1; dx <= 1; dx++ {
@@ -149,7 +146,15 @@ func (game *Game) classicEvictPlace(stack *playerlib.UnitStack, player *playerli
                 continue
             }
             isWater := mapUse.GetTile(cx, cy).Tile.IsWater()
-            if isWater && !water {
+            carried := false
+            if other != nil {
+                for _, there := range other.Units() {
+                    if there.HasAbility(data.AbilityWindWalking) {
+                        carried = true
+                    }
+                }
+            }
+            if isWater && !water && !carried {
                 continue
             }
             if !isWater && unit.IsSailing() {

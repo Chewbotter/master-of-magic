@@ -59,4 +59,13 @@ func TestClassicEntangle(test *testing.T) {
     if !defender.MovesLeft.Equals(defender.GetMovementSpeed().Subtract(fraction.FromInt(1))) {
         test.Errorf("Entangle takes a move from a flier, moves %v of %v", defender.MovesLeft, defender.GetMovementSpeed())
     }
+
+    walker := classicTarget()
+    walker.MovementSpeed = 3
+    model, _, defender = classicBattle(units.LizardSpearmen, walker)
+    model.AttackingArmy.Enchantments = append(model.AttackingArmy.Enchantments, data.CombatEnchantmentEntangle)
+    defender.ResetTurnData()
+    if !defender.MovesLeft.Equals(fraction.FromInt(2)) {
+        test.Errorf("Entangle takes one move from a walker of 3, it has %v", defender.MovesLeft)
+    }
 }

@@ -83,9 +83,11 @@ func (model *CombatModel) chooseNextInOrder(army *Army, team Team) *ArmyUnit {
             continue
         }
 
-        // spend a turn to remove the web
+        // spend a turn to remove the web (with the original's rules it is torn in NextTurn)
         if unit.IsWebbed() {
-            unit.ProcessWeb()
+            if !ClassicRules {
+                unit.ProcessWeb()
+            }
             continue
         }
 

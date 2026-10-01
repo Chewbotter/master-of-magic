@@ -181,10 +181,9 @@ quirk constant where there is one: turning it is the change. New calls go here t
 - MY CALL: every rider counts against the seats, heroes too (the original counts heroes one way in
   one function and the other way in another).
 - MY CALL: the poles are closed only on maps higher than 2 rows (tests use maps of one row).
-- Not ported yet: Wind Mastery's count of wizards (the original multiplies by one and a half or
-  halves by the balance of friend and foe), Endurance adding to road building, the Earth Gate and
-  Plane Shift limits of 9, the riders who drown when the ships lose a sea battle, units evicted by a
-  full square, the terrain costs kept after a volcano rises or cools (the original's mistake).
+- Not ported yet: the terrain costs kept after a volcano rises or cools (the original's mistake).
+  (Wind Mastery's count, Endurance on roads, the limits of 9, the drowning riders and the eviction
+  were ported with the smaller rules.)
 
 ## Tactical combat (combat-rules.md)
 
@@ -296,3 +295,26 @@ quirk constant where there is one: turning it is the change. New calls go here t
   a refused Earth Gate left the waiting units as a second stack. MY CALL: a hero's worth for the
   dismissal of weak units is 100 + 10 for every point of fame it asks (the fork has no table cost
   for heroes).
+
+## The review of item 9 (2026-09-30)
+
+Four read-only reviewers went through the units, magic, battle and leftover commits; their reports
+are in the session's scratchpad (review-*.md). FIXED: the gold floor of the walk-in capture; riders
+of a Floating Island; sea losses on the winner and of heroes; heroes worth 0 when weak units are
+dismissed; a refused Earth Gate; Wind Mastery in battles; an evicted unit put on the sea because a
+unit it left walked the wind; the computer's melding spending several spirits an order; Armageddon
+and Great Wasting 3 to 5 tries (4 to 6 now); Resurrection, Summon Hero and Incarnation with no
+circle; the computer's Floating Island onto a full or foreign stack; Plane Shift into an empty enemy
+city; Meteor Storm breaking the Fortress and the Summoning Circle; Disenchant always removing Lion
+Heart and Invisibility (their names are spelled otherwise in the data); incomes on the turn a Time
+Stop runs out; Holy Word reading the +50 of Death Immunity (undead never died); Entangle taking two
+moves from walkers; a hero possessed by the side that lost dying (it goes back to its owner); webs
+torn twice; Magic Immunity no longer shielding from Chaos Rift; the Demon Lord's Summon Demons.
+LEFT, low: Metal Fires takes its to-hit off magic shots and thrown attacks too; thrown and breath
+get no wall bonus; Raise Dead brings back the figures of a battle Lion Heart; Call Lightning picks
+by its own tries, not the original's list; the battle AI keeps planning around walls a Disenchant
+removed; the battle log calls a win in turn 50 "out of turns"; the human's Spell Blast price for
+spells of both books; the computer's slider 3 times lost on save and load; `classicStasisNew` is not
+pruned; a Time Stop that lapses costs 200 with `-classic-economy=false`; damaged units of an old
+save whose table hits went down load with negative health (saves may break, project rule); some
+rules of units and magic sit behind other switches than `-classic-units` and `-classic-magic`.

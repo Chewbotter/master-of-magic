@@ -1043,10 +1043,11 @@ func (game *Game) MakeResurrectionUI(caster *playerlib.Player, heroes []*herolib
             LeftClick: func(element *uilib.UIElement) {
                 cancel()
                 hero.SetStatus(herolib.StatusEmployed)
+                // the fortress takes the circle first when there is none (magicclassic.go)
+                summoningCity := classicSummonCity(caster)
                 caster.AddHeroToSummoningCircle(hero)
                 game.ResolveStackAt(hero.GetX(), hero.GetY(), hero.GetPlane())
 
-                summoningCity := classicSummonCity(caster)
                 if summoningCity != nil {
                     game.Model.Plane = summoningCity.Plane
                     game.Events <- &GameEventInvokeRoutine{
@@ -1766,7 +1767,8 @@ func (game *Game) doSelectUnit(yield coroutine.YieldFunc, player *playerlib.Play
 
 func (game *Game) doSummonHero(player *playerlib.Player, champion bool) {
     if ClassicMagic {
-        // Cast_Summon_Hero, see magicclassic.go
+        // Cast_Summon_Hero, see magicclassic.go; the fortress takes the circle when there is none
+        classicSummonCity(player)
         hero := classicSummonPick(player, champion)
         if hero == nil {
             return
@@ -1821,6 +1823,8 @@ func (game *Game) doSummonHero(player *playerlib.Player, champion bool) {
 }
 
 func (game *Game) doIncarnation(player *playerlib.Player) {
+    // the fortress takes the circle when there is none (magicclassic.go)
+    classicSummonCity(player)
     for _, hero := range player.HeroPool {
         if hero.HeroType == herolib.HeroTorin && hero.Status != herolib.StatusEmployed {
             event := GameEventHireHero{
@@ -2836,6 +2840,14 @@ func (game *Game) doCastGlobalEnchantment(yield coroutine.YieldFunc, player *pla
 }
 
 func (game *Game) doCastFloatingIsland(yield coroutine.YieldFunc, player *playerlib.Player, tileX int, tileY int) {
+    if ClassicMagic {
+        // Cast_Floating_Island: not onto another's units or a full stack (the computer's target too)
+        stack, owner := game.Model.FindStack(tileX, tileY, game.Model.Plane)
+        if stack != nil && (owner != player || len(stack.Units()) >= data.MaxUnitsInStack) {
+            game.ShowFizzleSpell(spellbook.Spell{Name: "Floating Island"}, player)
+            return
+        }
+    }
     update := func (x int, y int, frame int) {
         if frame == 5 {
             overworldUnit := units.MakeOverworldUnitFromUnit(units.FloatingIsland, tileX, tileY, game.Model.CurrentMap().Plane, player.Wizard.Banner, player.MakeExperienceInfo(), player.MakeUnitEnchantmentProvider())
