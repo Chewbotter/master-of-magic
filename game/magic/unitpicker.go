@@ -400,8 +400,10 @@ func unitPickerRows() []unitPickerRow {
         apart = false
 
         if unitPickerExpanded[race] {
-            all := allUnitOf(race)
-            rows = append(rows, unitPickerRow{Text: all.Name, Unit: all, Race: race})
+            if hasAllOfRace(race) {
+                all := allUnitOf(race)
+                rows = append(rows, unitPickerRow{Text: all.Name, Unit: all, Race: race})
+            }
             for _, unit := range list {
                 rows = append(rows, unitPickerRow{Text: unit.Name, Unit: unit, Race: race})
             }
@@ -593,17 +595,22 @@ func unitFullName(unit *units.Unit) string {
 // army size. An army has room for 40, the rest has no place (combat/deploy.go)
 var allOfRace = make(map[data.Race]*units.Unit)
 
+// the races that have it: the races of towns, which have armies of their own (user, 2026-09-30:
+// "only for standard races with army units"); not the fantastic creatures, the heroes, and the
+// units of every race
+func hasAllOfRace(race data.Race) bool {
+    switch race {
+        case data.RaceFantastic, data.RaceHero, data.RaceAll, data.RaceNone: return false
+    }
+    return true
+}
+
 // the unit that stands for all units of a race
 func allUnitOf(race data.Race) *units.Unit {
     if unit, ok := allOfRace[race]; ok {
         return unit
     }
-    name := fmt.Sprintf("All %v", race)
-    switch race {
-        case data.RaceHero: name = "All Heroes"
-        case data.RaceAll: name = "All of them"
-    }
-    unit := &units.Unit{Name: name, Race: race}
+    unit := &units.Unit{Name: fmt.Sprintf("All %v", race), Race: race}
     allOfRace[race] = unit
     return unit
 }
@@ -636,8 +643,7 @@ func testArmyUnits(unit *units.Unit, scale int) []units.Unit {
 // development: the unit of a name as unitFullName gives it, or of its name alone
 func findUnit(name string) *units.Unit {
     for _, race := range unitPickerRaces {
-        all := allUnitOf(race)
-        if strings.EqualFold(unitFullName(all), name) || strings.EqualFold(all.Name, name) {
+        if all := allUnitOf(race); hasAllOfRace(race) && (strings.EqualFold(unitFullName(all), name) || strings.EqualFold(all.Name, name)) {
             return all
         }
         for _, unit := range unitsOfRace(race) {

@@ -8,6 +8,7 @@ import (
     "slices"
 
     "github.com/kazzmir/master-of-magic/game/magic/scale"
+    "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/unitview"
 
     "github.com/hajimehoshi/ebiten/v2"
@@ -220,6 +221,43 @@ func (combat *CombatScreen) structureDrawables(render func(x int, y int, extra T
 
 // the figures of a unit, each in its own place of the order. render draws one figure of the unit,
 // and with it what is shown over the whole unit if overlays is set
+// A UNIT THAT WALKS IS SORTED BY A CELL, NOT BY WHERE IT IS (user, 2026-09-30: "long characters
+// like horse riders will pop back and forth when trying to determine who should be in front").
+// The order is by the row of cells, then the cell (DrawOrder). Sorted by where they were, the
+// figures of a unit that walks crossed into the next row of cells one after the other, so two
+// horses of one unit, or a horse and the figure beside it, went in front of each other and back
+// again during a step. Now all figures of a unit are sorted by one cell, as a unit that stands is,
+// with their places in it: while it walks, the one of the cells it is between that is drawn last,
+// so it goes over what it passes in front of. The order changes once a step, not every pixel.
+
+// the middle on the original's screen of the cell a unit at a place is sorted by. facing is the way
+// it walks
+func sortCellMiddle(x float64, y float64, facing units.Facing) (float64, float64) {
+    field := MakeBattlefieldMatrix()
+
+    // the two cells it is between. a unit walks straight from the middle of a cell to the middle
+    // of a cell next to it. on a diagonal of the grid it is between the corners of a square of
+    // four cells: the way it faces says which two. a step to more x and more y faces right on the
+    // screen, to less of both left; the other diagonal faces up or down (faceTowards)
+    lowX, highX := math.Floor(x), math.Ceil(x)
+    lowY, highY := math.Floor(y), math.Ceil(y)
+    cells := [2][2]float64{{lowX, lowY}, {highX, highY}}
+    if lowX != highX && lowY != highY && (facing == units.FacingUp || facing == units.FacingDown) {
+        cells = [2][2]float64{{lowX, highY}, {highX, lowY}}
+    }
+
+    best := 0
+    var bestX, bestY float64
+    for index, cell := range cells {
+        middleX, middleY := field.Apply(cell[0], cell[1])
+        order := DrawOrder(int(math.Floor(middleX)), int(math.Floor(middleY)))
+        if index == 0 || order > best {
+            best, bestX, bestY = order, middleX, middleY
+        }
+    }
+    return bestX, bestY
+}
+
 func (combat *CombatScreen) unitDrawables(unit *ArmyUnit, render func(unit *ArmyUnit, figure int, overlays bool)) []fieldDrawable {
     var out []fieldDrawable
 
@@ -233,9 +271,8 @@ func (combat *CombatScreen) unitDrawables(unit *ArmyUnit, render func(unit *Army
         x, y = unit.MoveX, unit.MoveY
     }
 
-    // the middle of the unit's cell on the original's screen
-    field := MakeBattlefieldMatrix()
-    middleX, middleY := field.Apply(x, y)
+    // the middle of the cell the unit is sorted by on the original's screen
+    middleX, middleY := sortCellMiddle(x, y, unit.Facing)
 
     last := 0
     for index, point := range points {
