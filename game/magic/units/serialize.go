@@ -45,6 +45,7 @@ type SerializedOverworldUnit struct {
     Undead bool `json:"undead"`
 
     Busy BusyStatus `json:"busy"`
+    PurifyTurns int `json:"purify-turns,omitempty"`
 
     // for engineers to follow
     BuildRoadPath pathfinding.Path `json:"build-road-path"`
@@ -65,6 +66,7 @@ func SerializeOverworldUnit(overworldUnit *OverworldUnit) SerializedOverworldUni
         WeaponBonus: overworldUnit.WeaponBonus,
         Undead: overworldUnit.Undead,
         Busy: overworldUnit.Busy,
+        PurifyTurns: overworldUnit.PurifyTurns,
         BuildRoadPath: append(make(pathfinding.Path, 0), overworldUnit.BuildRoadPath...),
         Enchantments: append(make([]data.UnitEnchantment, 0), overworldUnit.Enchantments...),
     }
@@ -83,6 +85,7 @@ func ReconstructOverworldUnit(serialized *SerializedOverworldUnit, globalEnchant
         WeaponBonus: serialized.WeaponBonus,
         Undead: serialized.Undead,
         Busy: serialized.Busy,
+        PurifyTurns: serialized.PurifyTurns,
         BuildRoadPath: serialized.BuildRoadPath,
         Enchantments: serialized.Enchantments,
         GlobalEnchantments: globalEnchantmentProvider,

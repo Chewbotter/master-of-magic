@@ -565,6 +565,11 @@ func (node *ExtraMagicNode) Meld(meldingWizard Wizard, spirit units.Unit) bool {
     } else {
         // can't meld the same node twice
         if node.MeldingWizard == meldingWizard {
+            if units.ClassicUnits && !node.GuardianSpiritMeld && spirit.Equals(units.GuardianSpirit) {
+                // Army_Do_Meld: a Guardian Spirit on the wizard's own node guards it
+                node.GuardianSpiritMeld = true
+                return true
+            }
             return false
         }
 

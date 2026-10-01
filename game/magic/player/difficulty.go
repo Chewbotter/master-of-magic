@@ -5,6 +5,7 @@ package player
 // Player_Resource_Income_Total). The code is ours.
 
 import (
+    "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
 )
@@ -80,4 +81,9 @@ func (player *Player) difficultyUpkeep(upkeep int) int {
         return upkeep
     }
     return citylib.ScaleByDifficulty(upkeep, citylib.DifficultyTable[owner.Level].Maintenance)
+}
+
+// the gold a unit costs its owner a turn, as Unit_Gold_Upkeep counts it
+func (player *Player) UnitGoldUpkeep(unit units.StackUnit) int {
+    return player.difficultyUnitGold(unit.GetUpkeepGold())
 }

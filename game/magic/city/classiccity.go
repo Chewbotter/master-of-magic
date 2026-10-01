@@ -11,6 +11,7 @@ package city
 
 import (
     "math/rand/v2"
+    "slices"
 
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -633,4 +634,39 @@ func ClassicRaceIndexOf(race data.Race) int {
 // the unrest of a city's race under the capital's race, in tens of percent (TBL_Unrest)
 func ClassicRaceUnrest(capital int, own int) int {
     return classicRaceUnrest[capital][own]
+}
+
+// the number of a unit in the original's table: units1 entries 0 to 119, units2 from 120
+func classicUnitType(unit units.Unit) int {
+    if unit.LbxFile == "units2.lbx" {
+        return 120 + unit.Index
+    }
+    return unit.Index
+}
+
+// Calculate_Product_Array: the units in the table's order, at most 12; when there are 12, the
+// list made again without Spearmen and Swordsmen
+func (city *City) classicPossibleUnits() []units.Unit {
+    all := city.AllPossibleUnits()
+    slices.SortStableFunc(all, func(a units.Unit, b units.Unit) int {
+        return classicUnitType(a) - classicUnitType(b)
+    })
+    take := func(skipBasic bool) []units.Unit {
+        var out []units.Unit
+        for _, unit := range all {
+            if len(out) >= 12 {
+                break
+            }
+            if skipBasic && (unit.Name == "Spearmen" || unit.Name == "Swordsmen") {
+                continue
+            }
+            out = append(out, unit)
+        }
+        return out
+    }
+    out := take(false)
+    if len(out) >= 12 {
+        out = take(true)
+    }
+    return out
 }

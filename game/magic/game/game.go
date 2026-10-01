@@ -482,7 +482,7 @@ func computeUnitBuildPowers(stack *playerlib.UnitStack) UnitBuildPowers {
     var powers UnitBuildPowers
 
     for _, check := range stack.ActiveUnits() {
-        if check.HasAbility(data.AbilityCreateOutpost) {
+        if canSettle(check) {
             powers.CreateOutpost = true
         }
 
@@ -3709,6 +3709,12 @@ func (game *Game) doMoveCamera(yield coroutine.YieldFunc, x int, y int) {
 }
 
 func (game *Game) ResolveStackAt(x int, y int, plane data.Plane) {
+    if units.ClassicUnits {
+        // Evict_Weakest_Unit, see unitsclassic.go
+        game.classicEvictWeakest(x, y, plane)
+        return
+    }
+
     stack, player := game.Model.FindStack(x, y, plane)
     if stack == nil {
         return
@@ -4620,7 +4626,7 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
                 case *playerlib.AIBuildOutpostDecision:
                     build := decision.(*playerlib.AIBuildOutpostDecision)
 
-                    stack := build.Stack.GetActiveUnitWithAbility(data.AbilityCreateOutpost)
+                    stack := stackSettler(build.Stack)
                     if stack != nil {
                         game.CreateOutpost(stack, player)
                     }
@@ -6415,7 +6421,7 @@ func (game *Game) DoBuildAction(player *playerlib.Player){
         if powers.CreateOutpost {
             // search for the settlers (the only unit with the create outpost ability
             for _, settlers := range player.SelectedStack.ActiveUnits() {
-                if game.Model.IsSettlableLocation(settlers.GetX(), settlers.GetY(), settlers.GetPlane()) && settlers.HasAbility(data.AbilityCreateOutpost) {
+                if game.Model.IsSettlableLocation(settlers.GetX(), settlers.GetY(), settlers.GetPlane()) && canSettle(settlers) {
                     game.CreateOutpost(settlers, player)
                     game.RefreshUI()
                     return
@@ -6425,6 +6431,14 @@ func (game *Game) DoBuildAction(player *playerlib.Player){
 
         if powers.Meld {
             node := game.GetMap(player.SelectedStack.Plane()).GetMagicNode(player.SelectedStack.X(), player.SelectedStack.Y())
+            if node != nil && units.ClassicUnits {
+                // Army_Do_Meld, see unitsclassic.go
+                if classicCanMeld(player.SelectedStack.ActiveUnits(), player, node) {
+                    game.DoMeld(classicMelder(player.SelectedStack.ActiveUnits()), player, node)
+                    game.RefreshUI()
+                }
+                return
+            }
             if node != nil {
                 for _, melder := range player.SelectedStack.ActiveUnits() {
                     if melder.HasAbility(data.AbilityMeld) && !node.Warped {
@@ -7237,7 +7251,7 @@ func (game *Game) MakeHudUI() *uilib.UI {
             // hasCity := game.Model.ContainsCity(player.SelectedStack.X(), player.SelectedStack.Y(), player.SelectedStack.Plane())
             node := game.GetMap(player.SelectedStack.Plane()).GetMagicNode(player.SelectedStack.X(), player.SelectedStack.Y())
             isCorrupted := game.GetMap(player.SelectedStack.Plane()).HasCorruption(player.SelectedStack.X(), player.SelectedStack.Y())
-            canSettle := player.SelectedStack.ActiveUnitsHasAbility(data.AbilityCreateOutpost) && game.Model.IsSettlableLocation(player.SelectedStack.X(), player.SelectedStack.Y(), player.SelectedStack.Plane())
+            canSettle := stackSettler(player.SelectedStack) != nil && game.Model.IsSettlableLocation(player.SelectedStack.X(), player.SelectedStack.Y(), player.SelectedStack.Plane())
 
             elements = append(elements, &uilib.UIElement{
                 Rect: buildRect,
@@ -7272,6 +7286,9 @@ func (game *Game) MakeHudUI() *uilib.UI {
                         canMeld := false
                         if node != nil && !node.Warped {
                             canMeld = true
+                        }
+                        if units.ClassicUnits {
+                            canMeld = classicCanMeld(player.SelectedStack.ActiveUnits(), player, node)
                         }
 
                         if !canMeld {
@@ -7310,6 +7327,9 @@ func (game *Game) MakeHudUI() *uilib.UI {
                         canMeld := false
                         if node != nil && !node.Warped {
                             canMeld = true
+                        }
+                        if units.ClassicUnits {
+                            canMeld = classicCanMeld(player.SelectedStack.ActiveUnits(), player, node)
                         }
 
                         if canMeld {
@@ -8111,6 +8131,7 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
                     if overworldUnit.GetRace() != data.RaceFantastic {
                         overworldUnit.SetWeaponBonus(newUnit.WeaponBonus)
                     }
+                    classicAlchemyWeapon(player, overworldUnit)
 
                     // automatically apply chaos channels to new normal units
                     // checking the race is probably redundant because a new unit built by the city will never be a hero nor fantastic
@@ -8178,7 +8199,19 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
 
         handleStasis(stack)
 
-        stack.NaturalHeal(rate)
+        if units.ClassicUnits && rate < 1 {
+            // Heal_All_Units: 1 in 20, 10 in an own city, 6 with an Animists' Guild
+            divisor := 20
+            if city != nil {
+                divisor = 10
+                if city.Buildings.Contains(buildinglib.BuildingAnimistsGuild) {
+                    divisor = 6
+                }
+            }
+            classicHealStack(stack, divisor)
+        } else {
+            stack.NaturalHeal(rate)
+        }
         stack.ResetMoves()
         stack.EnableMovers()
     }

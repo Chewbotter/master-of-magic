@@ -197,6 +197,9 @@ type Unit struct {
 
     // For fantastic units
     CastingCost int
+
+    // the original's table cost where it is not the spell's (classicunits.go), 0 otherwise
+    TableCost int
 }
 
 // make a deep clone

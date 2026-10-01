@@ -295,6 +295,15 @@ func (city *City) ComputePossibleBuildings(concrete bool) *set.Set[buildinglib.B
 }
 
 func (city *City) ComputePossibleUnits() []units.Unit {
+    if ClassicCities {
+        // Calculate_Product_Array, see classiccity.go
+        return city.classicPossibleUnits()
+    }
+    return city.AllPossibleUnits()
+}
+
+// every unit the city can build, no limit
+func (city *City) AllPossibleUnits() []units.Unit {
     var out []units.Unit
     for _, unit := range units.AllUnits {
         if unit.Race == data.RaceAll || unit.Race == city.Race {
@@ -1835,7 +1844,12 @@ func (city *City) DoNextTurn(mapObject *maplib.Map) []CityEvent {
                 experience := 0
                 switch {
                     case city.HasEnchantment(data.CityEnchantmentAltarOfBattle): experience = 120
-                    case city.Buildings.Contains(buildinglib.BuildingWarCollege): experience = 61
+                    case city.Buildings.Contains(buildinglib.BuildingWarCollege):
+                        experience = 61
+                        if ClassicCities {
+                            // Create_Unit: 60
+                            experience = 60
+                        }
                     case city.Buildings.Contains(buildinglib.BuildingFightersGuild): experience = 20
                 }
 

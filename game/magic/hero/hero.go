@@ -882,16 +882,18 @@ func (hero *Hero) GetUpkeepGold() int {
 func (hero *Hero) GetMovementSpeed(overworld bool) fraction.Fraction {
     base := hero.OverworldUnit.GetBaseMovementSpeed(overworld)
 
+    items := 0
     for _, item := range hero.Equipment {
         if item != nil {
-            base += item.MovementBonus()
+            items += item.MovementBonus()
         }
     }
 
     if overworld && units.ClassicMovement {
-        // Unit_Moves2, see units/classicmove.go
-        return units.ClassicOverlandMoves(base, hero.GetEnchantments())
+        // Unit_Moves2, see units/classicmove.go: the moves of items after the least of Flight
+        return units.ClassicOverlandMoves(base, hero.GetEnchantments()).Add(fraction.FromInt(items))
     }
+    base += items
 
     return hero.OverworldUnit.MovementSpeedEnchantmentBonus(fraction.FromInt(base), hero.GetEnchantments())
 }
@@ -1331,6 +1333,15 @@ func (hero *Hero) GetFullHitPoints() int {
         base += hero.HitPointsEnchantmentBonus(enchantment)
     }
 
+    if ClassicAbilities {
+        // Unit_Hit_Points: Constitution before Charm of Life
+        base += hero.GetAbilityHealth()
+        if hero.OverworldUnit.GlobalEnchantments.HasFriendlyEnchantment(data.EnchantmentCharmOfLife) {
+            base = units.ClassicCharmOfLife(base)
+        }
+        return base
+    }
+
     if hero.OverworldUnit.GlobalEnchantments.HasFriendlyEnchantment(data.EnchantmentCharmOfLife) {
         base = int(math.Ceil(float64(base) * 1.25))
     }
@@ -1344,6 +1355,10 @@ func (hero *Hero) GetHitPoints() int {
 
 func (hero *Hero) GetBaseHitPoints() int {
     level := hero.GetHeroExperienceLevel()
+    if ClassicAbilities {
+        // Unit_Hit_Points: a hero gets 1 a level and none of a normal unit's
+        return hero.OverworldUnit.Unit.GetHitPoints() + hero.getBaseHitPointsProgression(level)
+    }
     return hero.OverworldUnit.GetBaseHitPoints() + hero.getBaseHitPointsProgression(level)
 }
 

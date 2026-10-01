@@ -230,3 +230,16 @@ quirk constant where there is one: turning it is the change. New calls go here t
   Suggested: a gift for computer wizards too.
 - Kept, the original's: the first 5 turns of every session have no event (the delay is not saved).
 - Not ported yet: the order of the steps of a turn; RANDOM EVENTS in the chancellor's scroll.
+
+## Units (units.md)
+
+- Kept, the original's: an evicted unit may not go into a city of its own owner; the weakest of
+  equals is the newest. Suggested: let it into its own city.
+- MY CALL: Stream of Life heals fully, as upstream (the original's per turn hook for it,
+  CTY_StreamOfLife, is a stub in the reconstruction).
+- MY CALL: an evicted unit never goes off the map (the original takes the edge row again at the top
+  of the map); a unit lost for want of room is only logged (the original tells the human).
+- Not ported: the healer's mark that slows the healing of units made after the healer to about
+  1 in 66 (the original's, likely a mistake); Torin's table cost of 600 for a rare foe.
+- Fixed, the fork's: the squares around a unit or city skipped the row above and could reach past
+  the bottom of the map (`FindEscapePosition`, the city's squares: `dy` tested for `cy`).
