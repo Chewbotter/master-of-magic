@@ -12,7 +12,7 @@ package game
 import (
     "fmt"
     "log"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "slices"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -197,7 +197,7 @@ func (game *Game) classicUpkeep(player *playerlib.Player, power int) []string {
 
     // food: what the cities with a surplus have over their people
     excess := 0
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         excess += max(0, city.SurplusFood())
     }
     foodUpkeep := player.TotalUnitUpkeepFood()

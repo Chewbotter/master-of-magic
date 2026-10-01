@@ -27,7 +27,7 @@ import (
     "encoding/json"
     "fmt"
     "log"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "os"
     "path/filepath"
     "runtime/debug"
@@ -98,7 +98,7 @@ func simTake(player *playerlib.Player) simSnapshot {
         Spells: len(player.KnownSpells.Spells),
         Out: player.Defeated || player.Banished,
     }
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         snapshot.Citizens += city.Citizens()
     }
     for _, stack := range player.Stacks {
@@ -343,6 +343,16 @@ func runSimulation(config GameConfig) error {
     var runs []simRun
     var summary strings.Builder
     for index := range repeat {
+        if simSeed != 0 {
+            // every draw of chance from here on, the world included, comes from this seed (lib/chance)
+            rand.Seed(simSeed + uint64(index))
+            if simSeedTrace != "" && index == 0 {
+                // the line of every draw, to find where two runs of one seed part
+                if file, err := os.Create(simSeedTrace); err == nil {
+                    rand.TraceTo(file, 2000000)
+                }
+            }
+        }
         var game *gamelib.Game
         description := ""
         if loadPath != "" {
@@ -359,6 +369,9 @@ func runSimulation(config GameConfig) error {
             }
             game = made
             description = text
+        }
+        if simSeed != 0 {
+            description += fmt.Sprintf(", seed %v", simSeed + uint64(index))
         }
         if simWar {
             simDeclareWar(game)
@@ -478,6 +491,16 @@ func simPlay(game *gamelib.Game, description string, index int, count int) simRu
         return game.Update(yield), false
     }
 
+    // -sim-state-log: every city and stack at every turn (simrecord.go)
+    var stateLog *bufio.Writer
+    if path := simRunPath(simStateLog, index, count); path != "" {
+        if file, err := os.Create(path); err == nil {
+            stateLog = bufio.NewWriter(file)
+            defer file.Close()
+            defer stateLog.Flush()
+        }
+    }
+
     duplicateSeen := false
     traced := make(map[string]bool)
     for game.Model.TurnNumber < startTurn + uint64(simTurns) {
@@ -515,6 +538,9 @@ func simPlay(game *gamelib.Game, description string, index int, count int) simRu
         if game.Model.TurnNumber != lastTurn {
             lastTurn = game.Model.TurnNumber
             lastProgress = time.Now()
+            if stateLog != nil {
+                simWriteState(stateLog, game)
+            }
             // the checks of every turn (game/simcheck.go)
             game.SimCheck()
             if simTimeline > 0 && (lastTurn - startTurn) % uint64(simTimeline) == 0 {
@@ -636,8 +662,8 @@ func simNearest(game *gamelib.Game, players []*playerlib.Player) string {
             }
             best := -1
             sameLand := false
-            for _, a := range first.Cities {
-                for _, b := range second.Cities {
+            for _, a := range first.CitiesInOrder() {
+                for _, b := range second.CitiesInOrder() {
                     if a.Plane != b.Plane {
                         continue
                     }

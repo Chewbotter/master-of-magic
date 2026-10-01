@@ -8,7 +8,7 @@ package game
 // Combat.c: End_Of_Combat). The code is ours.
 
 import (
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/artifact"
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -68,7 +68,7 @@ func (game *Game) classicOfferChance(player *playerlib.Player, base int, per int
 // wizard's
 func classicPickHero(player *playerlib.Player) *herolib.Hero {
     var all []*herolib.Hero
-    for _, hero := range player.HeroPool {
+    for _, hero := range player.HeroesInOrder() {
         if hero.HeroType != herolib.HeroTorin {
             all = append(all, hero)
         }
@@ -222,7 +222,7 @@ func (game *Game) classicMercenaryPlanes(player *playerlib.Player) (bool, bool) 
             myrror = true
         }
     }
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         if city.Plane == data.PlaneArcanus {
             arcanus = true
         } else {

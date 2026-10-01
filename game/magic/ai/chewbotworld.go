@@ -139,7 +139,7 @@ func makeChewWorld(self *playerlib.Player, services playerlib.AIServices) *chewW
     world.Players = append(world.Players, self)
     world.Players = append(world.Players, services.GetEnemies(self)...)
     for _, player := range world.Players {
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             world.Cities = append(world.Cities, chewCity{City: city, Owner: player})
         }
     }

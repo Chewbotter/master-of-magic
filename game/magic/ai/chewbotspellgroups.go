@@ -494,7 +494,7 @@ func chewSummonAtFortress(self *playerlib.Player) bool {
 func chewMoreMyrrorCities(self *playerlib.Player, world *chewSpellWorld) bool {
     count := func(player *playerlib.Player) int {
         total := 0
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             if city.Plane == data.PlaneMyrror {
                 total += 1
             }

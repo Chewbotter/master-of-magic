@@ -2,7 +2,7 @@ package spellbook
 
 import (
     "slices"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "strings"
     "fmt"
     "bytes"

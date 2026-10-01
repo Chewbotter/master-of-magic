@@ -20,6 +20,9 @@ turn; many runs at once go through `util/simbatch/simbatch.py`, which also write
 | `-sim-json FILE` | the record of the run as JSON: settings, every player at the start and the end, a timeline every `-sim-timeline` turns (10), battles, conquests, contacts, the broken states found, a panic, the winner, the counts of the journal |
 | `-sim-journal FILE` | the journal: one JSON line for every key decision or happening: turn, player, kind, what, why |
 | `-sim-stop-alone` | end the run when one wizard is left (always with `-sim-all-ai`) |
+| `-sim-seed N` | the seed of all chance (`lib/chance`): a run of one seed plays the same game again, turn by turn, so a problem can be watched as often as needed; `-sim-repeat` adds the index to the seed |
+| `-sim-seed-trace FILE` | with `-sim-seed`: the line of the game behind every draw (and the line that called it), so two runs that should be the same show where they part |
+| `-sim-state-log FILE` | every city and stack of every player at every turn, one line each, so two runs show the first thing that differs |
 | `-sim-trace` | the checks run after every step of the game's loop, and the first time each kind of broken state is seen the log gets a line `TRACE <kind> first seen` with the example and the 30 lines of the journal before it (slower; how the causes of the broken states were found) |
 
 The journal's kinds:
@@ -46,8 +49,15 @@ A panic of the AI's goroutine or of the game's loop ends the run and is recorded
 whose loop does not come back for 90 seconds is ended by a watchdog that writes the record so far and
 the stacks of every goroutine into the log.
 
-The game's own chance can not be seeded (Go's `math/rand/v2`), so runs differ every time; the batch
-runner seeds only its picks of settings.
+RUNS OF ONE SEED ARE THE SAME GAME (2026-10-01). The game draws all its chance from `lib/chance`,
+imported under the name `rand` in place of Go's `math/rand/v2`, which can not be seeded; with
+`-sim-seed` every draw comes from one generator. Go also ranges over a map in an order of its own
+chance, so anything that ranges over a map and decides, or draws, by it, must go in one order:
+`Player.CitiesInOrder()`, `RelationsInOrder()`, `HeroesInOrder()`, `GetCities()`, `chance.SortedKeys`
+for a map of weights, and `lib/set` gives its values in the order they were put in. A NEW RANGE OVER
+A MAP THAT DECIDES ANYTHING BREAKS THE SEED: check with two runs of one seed and `-sim-state-log`
+(or `-sim-seed-trace`), as `util/simbatch/seedcheck.sh` does. Checked: three five-wizard games of 300
+turns each played the same twice.
 
 ## Many runs and the report
 

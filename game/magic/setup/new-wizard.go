@@ -3,7 +3,7 @@ package setup
 import (
     "fmt"
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "image"
     "image/color"
     "log"

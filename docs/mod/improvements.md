@@ -321,6 +321,18 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
 
 ## Found by many runs (testing.md, 2026-09-30)
 
+- FIXED (2026-10-01): a unit in battle had the base hit points and the spells of the battle only
+  (`ArmyUnit.GetFullHitPoints`), not what it has on the map: its own enchantments (Lionheart +3,
+  Black Channels +1), a hero's Constitution (`ClassicAbilities`) and Charm of Life. It fought with
+  fewer hits than the original gives it, and a unit killed in battle kept the difference on the
+  map and lived (a hero lost to a node 40 times in one run). Under `combat.ClassicRules` the battle
+  starts from `Unit.GetFullHitPoints()`; and dead in battle is dead on the map (`TakeDamage`).
+- FIXED (2026-10-01): a battle on a Shore or Lake square was fought on grass (`GetCombatLandscape`,
+  an upstream FIXME), while those squares are water for moving and in the quick resolution: ships
+  were left out of the battle and walkers stranded at sea fought; a lone ship then "lost" every
+  attack with no unit lost and tried again each turn (1,301 lost attacks in the final round of
+  2026-09-30, many repeated 10 times and more). Under `combat.ClassicRules` they are water battles.
+
 - FIXED: the AI's hires of mercenaries and heroes did not keep 9 to a square (the clone's handlers
   have a FIXME; the human's hires did); the orders of a turn are applied after all are made, and a
   stack merged in between was split as it was, putting its units in two stacks (units then moved

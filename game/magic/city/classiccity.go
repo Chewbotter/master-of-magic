@@ -10,7 +10,7 @@ package city
 // of races). The code is ours.
 
 import (
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "slices"
 
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"

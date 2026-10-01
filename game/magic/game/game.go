@@ -4,7 +4,7 @@ import (
     "runtime/debug"
     "image/color"
     "image"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "encoding/json"
     "log"
     "math"
@@ -379,6 +379,8 @@ type Game struct {
     captureSkipping bool
     // development: what a game without a window counts for its summary (simstats.go); nil in a game
     Stats *SimStats
+    // development: how many attackers went into the last battle, for its note (simjournal.go)
+    simFought int
     // a computer wizard's cast the human does not see: no camera move, animation or window (aicast.go)
     quietCast bool
     // how often a computer wizard's spell asked for a square (aicast.go)
@@ -1938,7 +1940,7 @@ func (game *Game) maybeHireHero(player *playerlib.Player) {
 
     if rand.N(100) < chance {
         var heroCandidates []*herolib.Hero
-        for _, hero := range player.HeroPool {
+        for _, hero := range player.HeroesInOrder() {
             // torin can never be hired
             if hero.HeroType == herolib.HeroTorin {
                 continue
@@ -2059,7 +2061,7 @@ func (game *Game) maybeHireMercenaries(player *playerlib.Player) {
     // unit type
     presentOnArcanus := false
     presentOnMyrror := false
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         if city.Plane == data.PlaneArcanus {
             presentOnArcanus = true
         }
@@ -4541,7 +4543,11 @@ func (handlers *GameMoveHandlers) ShowMovement(x int, y int, stack *playerlib.Un
 
 func (handlers *GameMoveHandlers) DoEncounter(player *playerlib.Player, stack *playerlib.UnitStack, encounter *maplib.ExtraEncounter, map_ *maplib.Map, x int, y int) combat.CombatState {
     battle := simEncounterStart(player, stack, encounter, map_.Plane)
+    handlers.Game.simFought = -1
     state := handlers.Game.doEncounter(handlers.Yield, player, stack, encounter, map_, x, y)
+    if battle != nil {
+        battle.fought = handlers.Game.simFought
+    }
     handlers.Game.Stats.encounter(player, state)
     battle.end(state)
     return state
@@ -4549,7 +4555,11 @@ func (handlers *GameMoveHandlers) DoEncounter(player *playerlib.Player, stack *p
 
 func (handlers *GameMoveHandlers) DoCombat(player *playerlib.Player, stack *playerlib.UnitStack, enemy *playerlib.Player, enemyStack *playerlib.UnitStack, zone combat.ZoneType) combat.CombatState {
     battle := simBattleStart(player, stack, enemy, enemyStack, handlers.Game.simWhere(enemyStack))
+    handlers.Game.simFought = -1
     state := handlers.Game.doCombat(handlers.Yield, player, stack, enemy, enemyStack, zone)
+    if battle != nil {
+        battle.fought = handlers.Game.simFought
+    }
     handlers.Game.Stats.combat(player, enemy, state)
     battle.end(state)
     return state
@@ -4850,7 +4860,7 @@ func (game *Game) doCityScreen(yield coroutine.YieldFunc, city *citylib.City, pl
     var fog data.FogMap
 
     for i, player := range game.Model.Players {
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             if city.Plane == game.Model.Plane {
                 cities = append(cities, city)
             }
@@ -5185,7 +5195,7 @@ func (game *Game) createTreasure(encounterType maplib.EncounterType, budget int,
         log.Printf("Error: unable to read spells: %v", err)
     } else {
         var heroes []*herolib.Hero
-        for _, hero := range player.HeroPool {
+        for _, hero := range player.HeroesInOrder() {
             // only include available heroes that are not champions
             if hero.Status == herolib.StatusAvailable && !hero.IsChampion() {
                 heroes = append(heroes, hero)
@@ -5359,6 +5369,13 @@ func (game *Game) ApplyTreasure(yield coroutine.YieldFunc, player *playerlib.Pla
 func (game *Game) GetCombatLandscape(x int, y int, plane data.Plane) combat.CombatLandscape {
     tile := game.GetMap(plane).GetTile(x, y)
 
+    if combat.ClassicRules && tile.Tile.IsWater() {
+        // a coast square and a lake are water in the original, as they are for moving: on grass a
+        // battle there left the ships out and let walkers on the water fight (ships then lost every
+        // attack on them and tried again each turn, found by the test runs)
+        return combat.CombatLandscapeWater
+    }
+
     switch tile.Tile.TerrainType() {
         case terrain.Hill, terrain.Grass,
              terrain.Forest, terrain.River, terrain.Shore,
@@ -5395,7 +5412,7 @@ func (game *Game) GetInfluenceMagic(x int, y int, plane data.Plane) data.MagicTy
 // 5% chance to destroy a building in every city, and 15% chance to destroy a garrisoned unit
 func (game *Game) maybeDoNaturesWrath(caster *playerlib.Player) {
     if game.Model.HasRivalEnchantment(caster, data.EnchantmentNaturesWrath) {
-        for _, city := range caster.Cities {
+        for _, city := range caster.CitiesInOrder() {
             var toRemove []buildinglib.Building
             for _, building := range city.Buildings.Values() {
                 if rand.N(100) < 5 {
@@ -5486,6 +5503,8 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
     attackingArmy := createArmy(attacker, attackerStack)
     defendingArmy := createArmy(defender, defenderStack)
+    // the journal of a run without a window notes how many of the attackers fought (simjournal.go)
+    game.simFought = len(attackingArmy.GetUnits())
 
     var state combat.CombatState
     var defeatedDefenders int
@@ -8230,7 +8249,7 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
     var removeCities []*citylib.City
 
     if !timeStop {
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             cityEvents := city.DoNextTurn(game.GetMap(city.Plane))
             for _, event := range cityEvents {
                 switch event.(type) {
@@ -8651,7 +8670,7 @@ func (game *Game) doMeteorStorm() {
 
         if affectedPlayers.Contains(player) {
             var removeCities []*citylib.City
-            for _, city := range player.Cities {
+            for _, city := range player.CitiesInOrder() {
                 // chaos ward and consecration protect the city
                 if city.HasEnchantment(data.CityEnchantmentChaosWard) || city.HasEnchantment(data.CityEnchantmentConsecration) {
                     continue
@@ -9357,7 +9376,7 @@ func (game *Game) DrawGame(screen *ebiten.Image){
     var fog data.FogMap
 
     for i, player := range game.Model.Players {
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             if city.Plane == game.Model.Plane {
                 cities = append(cities, city)
                 citiesMiniMap = append(citiesMiniMap, city)

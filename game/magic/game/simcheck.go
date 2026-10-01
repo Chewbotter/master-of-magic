@@ -143,7 +143,7 @@ func (game *Game) simCheckInto(stats *SimStats) {
                 note("defeated wizard keeps units", "%v has %v", name, count)
             }
         }
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             if city.GetBanner() != player.GetBanner() {
                 note("city of the wrong banner", "%v of %v shows %v", city.Name, name, city.GetBanner())
             }

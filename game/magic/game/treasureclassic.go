@@ -8,7 +8,7 @@ package game
 // docs/mod/worlds.md. The code is ours.
 
 import (
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "slices"
 
     "github.com/kazzmir/master-of-magic/game/magic/artifact"

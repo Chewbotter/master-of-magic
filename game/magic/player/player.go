@@ -5,7 +5,7 @@ import (
     "runtime/debug"
     "slices"
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "iter"
     "image"
     "maps"
@@ -526,7 +526,7 @@ func createHeroes(names map[herolib.HeroType]string) map[herolib.HeroType]*herol
 func (player *Player) GetDeadHeroes() []*herolib.Hero {
     var dead []*herolib.Hero
 
-    for _, hero := range player.HeroPool {
+    for _, hero := range player.HeroesInOrder() {
         if hero != nil && hero.HeroType != herolib.HeroTorin && hero.Status == herolib.StatusDead {
             dead = append(dead, hero)
         }
@@ -551,7 +551,7 @@ func (player *Player) FreeHeroSlots() int {
 func (player *Player) GetKnownPlayers() []*Player {
     var out []*Player
 
-    for other, _ := range player.PlayerRelations {
+    for other, _ := range player.RelationsInOrder() {
         out = append(out, other)
     }
 
@@ -716,7 +716,7 @@ func (player *Player) RemoveEnchantment(enchantment data.Enchantment) {
 // how much gold is stored in this city relative to the player's overall wealth
 func (player *Player) ComputePlunderedGold(city *citylib.City) int {
     totalPopulation := 0
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         totalPopulation += city.Citizens()
     }
 
@@ -834,7 +834,7 @@ func (player *Player) AliveHeroes() []*herolib.Hero {
 
 /* return the city that contains the summoning circle */
 func (player *Player) FindFortressCity() *citylib.City {
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         if city.HasFortress() {
             return city
         }
@@ -845,7 +845,7 @@ func (player *Player) FindFortressCity() *citylib.City {
 
 /* return the city that contains the summoning circle */
 func (player *Player) FindSummoningCity() *citylib.City {
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         if city.HasSummoningCircle() {
             return city
         }
@@ -1139,7 +1139,9 @@ func (player *Player) InitializeResearchableSpells(spells *spellbook.Spells) {
     for _, book := range player.Wizard.Books {
         realmSpells := spells.GetSpellsByMagic(book.Magic)
 
-        for rarity, countFunc := range rarityCount {
+        // in the order of rarity, not of the map (a run of one seed repeats it)
+        for _, rarity := range []spellbook.SpellRarity{spellbook.SpellRarityCommon, spellbook.SpellRarityUncommon, spellbook.SpellRarityRare, spellbook.SpellRarityVeryRare} {
+            countFunc := rarityCount[rarity]
             raritySpells := realmSpells.GetSpellsByRarity(rarity)
 
             alreadyKnown := player.KnownSpells.GetSpellsByMagic(book.Magic).GetSpellsByRarity(rarity)
@@ -1313,7 +1315,7 @@ func (player *Player) ComputeEffectiveResearchPerTurn(research float64, spell sp
 func (player *Player) BaseResearchPerTurn() float64 {
     var research float64
 
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         research += float64(city.ResearchProduction())
     }
 
@@ -1368,7 +1370,7 @@ func (player *Player) goldPerTurn(planning bool) int {
 
     gold := 0
 
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         gold += city.GoldSurplus()
     }
 
@@ -1413,7 +1415,7 @@ func (player *Player) foodPerTurn(planning bool) int {
 
     food := 0
 
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         food += city.SurplusFood()
     }
 
@@ -1497,7 +1499,7 @@ func (player *Player) NextTaxRate(rate fraction.Fraction) (fraction.Fraction, bo
 }
 
 func (player *Player) UpdateUnrest(){
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         city.UpdateUnrest()
     }
 }
@@ -1529,7 +1531,7 @@ func (player *Player) AllStacksOutOfMoves() bool {
 }
 
 func (player *Player) OwnsCity(city *citylib.City) bool {
-    for _, ownedCity := range player.Cities {
+    for _, ownedCity := range player.CitiesInOrder() {
         if ownedCity == city {
             return true
         }
@@ -1716,7 +1718,7 @@ func (player *Player) UpdateFogVisibility() {
             }
             player.ScoutFogSquare(unit.GetX(), unit.GetY(), sight, unit.GetPlane())
         }
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             player.ScoutFogSquare(city.X, city.Y, city.GetSightRange(), city.Plane)
         }
         return
@@ -1727,7 +1729,7 @@ func (player *Player) UpdateFogVisibility() {
         player.LiftFogSquare(unit.GetX(), unit.GetY(), unit.GetSightRange(), unit.GetPlane())
     }
 
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         player.LiftFogSquare(city.X, city.Y, city.GetSightRange(), city.Plane)
     }
 }
@@ -1908,7 +1910,75 @@ func (player *Player) RemoveUnit(unit units.StackUnit) {
 }
 
 func (player *Player) GetCities() []*citylib.City {
-    return slices.Collect(maps.Values(player.Cities))
+    var out []*citylib.City
+    for _, city := range player.CitiesInOrder() {
+        out = append(out, city)
+    }
+    return out
+}
+
+// the relations of the player in the order of the others' banners, for a range in place of the
+// map, whose keys are pointers (a run of one seed repeats it)
+func (player *Player) RelationsInOrder() iter.Seq2[*Player, *Relationship] {
+    return func(yield func(*Player, *Relationship) bool) {
+        others := slices.Collect(maps.Keys(player.PlayerRelations))
+        slices.SortFunc(others, func(a *Player, b *Player) int {
+            return int(a.GetBanner()) - int(b.GetBanner())
+        })
+        for _, other := range others {
+            relation, ok := player.PlayerRelations[other]
+            if !ok {
+                continue
+            }
+            if !yield(other, relation) {
+                return
+            }
+        }
+    }
+}
+
+// the heroes of the pool in the order of their kind, for a range in place of the map (a run of
+// one seed repeats it)
+func (player *Player) HeroesInOrder() []*herolib.Hero {
+    keys := slices.Collect(maps.Keys(player.HeroPool))
+    slices.Sort(keys)
+    out := make([]*herolib.Hero, 0, len(keys))
+    for _, key := range keys {
+        out = append(out, player.HeroPool[key])
+    }
+    return out
+}
+
+// the places of cities in one order: plane, row, column
+func SortedPlaces[Value any](places map[data.PlanePoint]Value) []data.PlanePoint {
+    keys := slices.Collect(maps.Keys(places))
+    slices.SortFunc(keys, func(a data.PlanePoint, b data.PlanePoint) int {
+        if a.Plane != b.Plane {
+            return int(a.Plane) - int(b.Plane)
+        }
+        if a.Y != b.Y {
+            return a.Y - b.Y
+        }
+        return a.X - b.X
+    })
+    return keys
+}
+
+// the cities of the player in one order (plane, row, column), for a range in place of the map: Go
+// ranges over a map in an order of its own chance, which a run of one seed (-sim-seed) can not
+// repeat. A city taken out during the range is skipped, as a range over the map does
+func (player *Player) CitiesInOrder() iter.Seq2[data.PlanePoint, *citylib.City] {
+    return func(yield func(data.PlanePoint, *citylib.City) bool) {
+        for _, key := range SortedPlaces(player.Cities) {
+            city, ok := player.Cities[key]
+            if !ok {
+                continue
+            }
+            if !yield(key, city) {
+                return
+            }
+        }
+    }
 }
 
 func (player *Player) AddCity(city *citylib.City) *citylib.City {
@@ -2000,7 +2070,7 @@ func (player *Player) GetTaxRate() fraction.Fraction {
 func (player *Player) GetAllCatchmentArea() *set.Set[data.PlanePoint] {
     catchment := set.MakeSet[data.PlanePoint]()
 
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         for point, _ := range city.CatchmentProvider.GetCatchmentArea(city.X, city.Y) {
             catchment.Insert(data.PlanePoint{X: point.X, Y: point.Y, Plane: city.Plane})
         }
@@ -2011,7 +2081,7 @@ func (player *Player) GetAllCatchmentArea() *set.Set[data.PlanePoint] {
 
 // true if there are any workers that can be converted into farmers
 func (player *Player) CanRebalanceFood() bool {
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         if city.Workers > 0 {
             return true
         }
@@ -2024,7 +2094,8 @@ func (player *Player) CanRebalanceFood() bool {
 // and convert one worker to one farmer until eithere there are no more workers left
 // or food per turn becomes non-negative
 func (player *Player) RebalanceFood() {
-    cities := slices.Collect(maps.Values(player.Cities))
+    // in one order, not the map's (a run of one seed repeats it)
+    cities := player.GetCities()
 
     for player.FoodPerTurn() < 0 && len(cities) > 0 {
 

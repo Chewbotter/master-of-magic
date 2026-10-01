@@ -104,7 +104,7 @@ func (ai *ChewbotAI) spellWorld(self *playerlib.Player, services playerlib.AISer
 
     fortress := self.FindFortressCity()
     for _, player := range world.Players {
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             world.Cities = append(world.Cities, city)
             world.Owners[city] = player
         }

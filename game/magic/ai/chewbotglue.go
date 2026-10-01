@@ -230,7 +230,7 @@ func (ai *ChewbotAI) updateIncome(self *playerlib.Player, services playerlib.AIS
     }
     missing := -food
     var own []*citylib.City
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
         own = append(own, city)
     }
     chewSortCities(own)

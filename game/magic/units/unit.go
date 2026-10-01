@@ -1,7 +1,7 @@
 package units
 
 import (
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/building"

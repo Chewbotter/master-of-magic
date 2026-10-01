@@ -177,7 +177,7 @@ func (game *Game) CaptureOpenScreen(name string) bool {
             if player == nil {
                 return false
             }
-            for _, city := range player.Cities {
+            for _, city := range player.CitiesInOrder() {
                 point := image.Pt(city.X, city.Y)
                 CaptureSurveyorTile = &point
                 break
@@ -189,7 +189,7 @@ func (game *Game) CaptureOpenScreen(name string) bool {
             if player == nil {
                 return false
             }
-            for _, city := range player.Cities {
+            for _, city := range player.CitiesInOrder() {
                 point := image.Pt(game.Model.CurrentMap().WrapX(city.X + 1), city.Y)
                 CaptureSurveyorTile = &point
                 break
@@ -205,7 +205,7 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                 return false
             }
             var city *citylib.City
-            for _, check := range player.Cities {
+            for _, check := range player.CitiesInOrder() {
                 city = check
                 break
             }
@@ -229,7 +229,7 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                 Routine: func(yield coroutine.YieldFunc) {
                     switch name {
                         case "hirehero", "hireprisoner":
-                            for _, hero := range player.HeroPool {
+                            for _, hero := range player.HeroesInOrder() {
                                 cost := 0
                                 if name == "hirehero" {
                                     cost = 250
@@ -277,14 +277,14 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                 return false
             }
             var city *citylib.City
-            for _, check := range player.Cities {
+            for _, check := range player.CitiesInOrder() {
                 city = check
                 break
             }
             event = &GameEventInvokeRoutine{
                 Routine: func(yield coroutine.YieldFunc) {
                     if name == "levelup" {
-                        for _, hero := range player.HeroPool {
+                        for _, hero := range player.HeroesInOrder() {
                             if len(hero.GetAbilities()) < 3 {
                                 continue
                             }
@@ -303,7 +303,7 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                 return false
             }
             var city *citylib.City
-            for _, check := range player.Cities {
+            for _, check := range player.CitiesInOrder() {
                 city = check
                 break
             }
@@ -363,14 +363,14 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                 return false
             }
             var city *citylib.City
-            for _, check := range player.Cities {
+            for _, check := range player.CitiesInOrder() {
                 city = check
                 break
             }
             player.Gold = 1234
             player.Mana = 567
             added := 0
-            for _, hero := range player.HeroPool {
+            for _, hero := range player.HeroesInOrder() {
                 if added < 3 && player.AddHero(hero, city.X, city.Y, city.Plane) {
                     hero.SetStatus(herolib.StatusEmployed)
                     added += 1
@@ -496,7 +496,7 @@ func (game *Game) CaptureOpenScreen(name string) bool {
                 return false
             }
             var city *citylib.City
-            for _, candidate := range player.Cities {
+            for _, candidate := range player.CitiesInOrder() {
                 city = candidate
                 break
             }

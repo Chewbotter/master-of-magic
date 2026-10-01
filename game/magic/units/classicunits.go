@@ -7,7 +7,7 @@ package units
 // NEXTTURN.c: Heal_Unit, Heal_All_Units; CITYCALC.c: Calc_Unit_Level). The code is ours.
 
 import (
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
 )

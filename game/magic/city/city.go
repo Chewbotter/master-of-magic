@@ -5,7 +5,7 @@ import (
     "bytes"
     "fmt"
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "image"
 
     "github.com/kazzmir/master-of-magic/lib/set"

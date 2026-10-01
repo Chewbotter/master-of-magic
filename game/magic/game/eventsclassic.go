@@ -8,7 +8,7 @@ package game
 // ours.
 
 import (
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/artifact"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
@@ -121,7 +121,7 @@ func (model *GameModel) classicEventVictim(good bool) *playerlib.Player {
 func classicEventCity(player *playerlib.Player) *citylib.City {
     var choices []*citylib.City
     capital := citylib.ClassicRaceIndexOf(player.Wizard.Race)
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         if city.Outpost {
             continue
         }

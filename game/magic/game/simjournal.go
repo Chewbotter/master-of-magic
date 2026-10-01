@@ -53,13 +53,45 @@ type simBattle struct {
     defendUnits int
     attackStack *playerlib.UnitStack
     defendStack *playerlib.UnitStack
+    // the attacker's units by name, and how many of them went into the battle (doCombat leaves out
+    // ships on land and walkers on water)
+    attackNames string
+    fought int
+}
+
+// the units of a stack by name and count, "2 Swordsmen, Trireme"
+func simUnitNames(stack *playerlib.UnitStack) string {
+    if stack == nil {
+        return ""
+    }
+    var order []string
+    counts := make(map[string]int)
+    for _, unit := range stack.Units() {
+        name := unit.GetName()
+        if counts[name] == 0 {
+            order = append(order, name)
+        }
+        counts[name] += 1
+    }
+    out := ""
+    for i, name := range order {
+        if i > 0 {
+            out += ", "
+        }
+        if counts[name] > 1 {
+            out += fmt.Sprintf("%v ", counts[name])
+        }
+        out += name
+    }
+    return out
 }
 
 func simBattleStart(attacker *playerlib.Player, attackStack *playerlib.UnitStack, defender *playerlib.Player, defendStack *playerlib.UnitStack, where string) *simBattle {
     if !playerlib.Noting() {
         return nil
     }
-    battle := &simBattle{attacker: attacker, defender: defender, where: where, attackStack: attackStack, defendStack: defendStack}
+    battle := &simBattle{attacker: attacker, defender: defender, where: where, attackStack: attackStack, defendStack: defendStack, fought: -1}
+    battle.attackNames = simUnitNames(attackStack)
     battle.attackStrength, battle.attackUnits = simStackStrength(attackStack)
     battle.defendStrength, battle.defendUnits = simStackStrength(defendStack)
     return battle
@@ -76,7 +108,10 @@ func (battle *simBattle) end(state combat.CombatState) {
         defenderName = battle.defender.Wizard.Name
     }
     what := fmt.Sprintf("%v at %v against %v: %v", "battle", battle.where, defenderName, simStateName(state))
-    why := fmt.Sprintf("strength %v (%v units) against %v (%v units); units left %v and %v", battle.attackStrength, battle.attackUnits, battle.defendStrength, battle.defendUnits, attackLeft, defendLeft)
+    why := fmt.Sprintf("strength %v (%v units) against %v (%v units); units left %v and %v; attackers %v", battle.attackStrength, battle.attackUnits, battle.defendStrength, battle.defendUnits, attackLeft, defendLeft, battle.attackNames)
+    if battle.fought >= 0 && battle.fought < battle.attackUnits {
+        why += fmt.Sprintf("; only %v of them in the battle", battle.fought)
+    }
     playerlib.Note(battle.attacker, "battle", what, why)
 }
 
@@ -135,7 +170,8 @@ func simEncounterStart(player *playerlib.Player, stack *playerlib.UnitStack, enc
     if !playerlib.Noting() || encounter == nil {
         return nil
     }
-    battle := &simBattle{attacker: player, where: simEncounterName(encounter), attackStack: stack}
+    battle := &simBattle{attacker: player, where: simEncounterName(encounter), attackStack: stack, fought: -1}
+    battle.attackNames = simUnitNames(stack)
     battle.attackStrength, battle.attackUnits = simStackStrength(stack)
     for _, guardian := range encounter.Units {
         made := units.MakeOverworldUnit(guardian, 0, 0, plane)

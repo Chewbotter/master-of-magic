@@ -33,7 +33,7 @@ func (game *Game) doSurveyor(yield coroutine.YieldFunc) {
         var fog data.FogMap
 
         for i, player := range game.Model.Players {
-            for _, city := range player.Cities {
+            for _, city := range player.CitiesInOrder() {
                 if city.Plane == game.Model.Plane {
                     cities = append(cities, city)
                     cityMap[image.Pt(city.X, city.Y)] = city

@@ -1,7 +1,7 @@
 package combat
 
 import (
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "slices"
     "cmp"
     "image"

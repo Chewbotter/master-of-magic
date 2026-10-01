@@ -12,7 +12,7 @@ package combat
 // Combat_Cast_Disenchant, Cast_Raise_Dead; Spells133.c: Apply_Call_Lightning). The code is ours.
 
 import (
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/artifact"
     "github.com/kazzmir/master-of-magic/game/magic/data"

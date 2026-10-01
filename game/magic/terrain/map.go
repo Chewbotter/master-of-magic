@@ -5,7 +5,7 @@ import (
     "log"
     "time"
     "image"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "math"
 
     "github.com/kazzmir/master-of-magic/lib/set"

@@ -17,7 +17,7 @@ package main
 import (
     "image"
     "log"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
@@ -289,7 +289,7 @@ func classicRoads(game *gamelib.Game, plane data.Plane) {
         if !player.IsNeutral() {
             continue
         }
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             if city.Plane == plane {
                 neutral = append(neutral, city)
             }

@@ -9,7 +9,7 @@ import (
     "image"
     "slices"
     "encoding/json/v2"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "math"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -139,7 +139,7 @@ func MakeEnemyNetAI() *EnemyNetAI {
 
 func countArcanusCities(player *playerlib.Player) int {
     count := 0
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         if city.Plane == data.PlaneArcanus {
             count += 1
         }
@@ -150,7 +150,7 @@ func countArcanusCities(player *playerlib.Player) int {
 
 func countMyrrorCities(player *playerlib.Player) int {
     count := 0
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         if city.Plane == data.PlaneMyrror {
             count += 1
         }
@@ -190,7 +190,7 @@ func countSettlers(units iter.Seq[units.StackUnit]) int {
 
 func totalPopulation(player *playerlib.Player) int {
     population := 0
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         population += city.Population
     }
 
@@ -459,7 +459,7 @@ func (ai *EnemyNetAI) DoAttackEnemies(self *playerlib.Player, aiServices playerl
             }
         }
 
-        for _, enemyCity := range enemyPlayer.Cities {
+        for _, enemyCity := range enemyPlayer.CitiesInOrder() {
             // in theory we can see cities that on tiles that we have explored in the past
             if self.IsVisible(enemyCity.X, enemyCity.Y, enemyCity.Plane) {
                 possibleCities = append(possibleCities, enemyCity)
@@ -563,7 +563,7 @@ func (ai *EnemyNetAI) DoBuildArmy(self *playerlib.Player, aiServices playerlib.A
         return self.TransportUnits(plane)
     })
 
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
         // possibly switch away from whatever is currently being built to build combat units
         if !isMakingSomething(city) || (!isBuildingCombatUnit(city) && buildPercent(city) < strength) {
 
@@ -773,7 +773,7 @@ func (ai *EnemyNetAI) DoBuildCities(self *playerlib.Player, aiServices playerlib
         }
     }
 
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
         if !isMakingSomething(city) && chance(int(strength * 100)) {
             locations := aiServices.FindSettlableLocations(city.X, city.Y, city.Plane, self.GetFog(city.Plane))
             if len(locations) > 0 && self.FoodPerTurn() > 0 && chance(len(locations) * 10) {
@@ -968,7 +968,7 @@ func (ai *EnemyNetAI) DoIncreasePopulation(self *playerlib.Player, aiServices pl
 
     buildings := populationBuildings.Values()
 
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
 
         // whatever the city is currently doing, don't change it
         if city.Population >= city.MaximumCitySize() {
@@ -1028,7 +1028,7 @@ func (ai *EnemyNetAI) DoIncreasePower(self *playerlib.Player, aiServices playerl
     isFoodDependency := functional.Memoize2(checkDependency(buildinglib.Building.ProducesFood))
 
     // feels awkward to build buildings in cities here
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
         if !isMakingSomething(city) {
             // create housing
             switch {
@@ -1127,7 +1127,7 @@ func (ai *EnemyNetAI) DoDefendCities(self *playerlib.Player, aiServices playerli
         cityPaths := make(map[*citylib.City]pathfinding.Path)
 
         var cityChoices []*citylib.City
-        for _, city := range self.Cities {
+        for _, city := range self.CitiesInOrder() {
             if city.Plane == stack.Plane() {
 
                 stacks := cityStackInfo.ArcanusStacks
@@ -1165,7 +1165,7 @@ func (ai *EnemyNetAI) DoDefendCities(self *playerlib.Player, aiServices playerli
         }
     }
 
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
         garrison := city.GetGarrison()
         if unitAttackPower(garrison...) < int(strength * 40) {
             if city.ProducingUnit.Equals(units.UnitNone) {

@@ -3,7 +3,7 @@ package main
 import (
     "log"
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "sync"
     "slices"
     // "context"

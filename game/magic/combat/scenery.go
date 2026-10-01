@@ -12,7 +12,7 @@ package combat
 // Set_Entity_Draw_Order, Set_Movement_Cost_Maps. MoM/src/LOADER.c for the pictures. The code here is ours.)
 
 import (
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/mod"

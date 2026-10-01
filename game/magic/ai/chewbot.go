@@ -376,7 +376,7 @@ func chewUnitWeight(unit *units.Unit) int {
 func (ai *ChewbotAI) cityDecisions(self *playerlib.Player, services playerlib.AIServices) []playerlib.AIDecision {
     var decisions []playerlib.AIDecision
 
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
         if city.Outpost {
             continue
         }
@@ -468,7 +468,7 @@ func (ai *ChewbotAI) pickWizard(self *playerlib.Player, services playerlib.AISer
     // Trade Goods is picked more while few cities make it: 40 and 10 for every 8 cities, less 10
     // for every city on it (see quirkTradeGoodsCountsCity)
     cities, onTradeGoods := 0, 0
-    for _, other := range self.Cities {
+    for _, other := range self.CitiesInOrder() {
         if other.Outpost {
             continue
         }
@@ -514,7 +514,7 @@ func (ai *ChewbotAI) pickWizard(self *playerlib.Player, services playerlib.AISer
             }
         }
     }
-    for _, other := range self.Cities {
+    for _, other := range self.CitiesInOrder() {
         if other == city || other.ProducingUnit.IsNone() {
             continue
         }

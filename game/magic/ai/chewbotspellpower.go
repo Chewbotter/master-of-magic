@@ -148,7 +148,7 @@ func (ai *ChewbotAI) evaluateMagicStrategy(self *playerlib.Player, services play
     }
     state.StrategyCountdown = 15 + 1 + chewRoll(10)
     strategy := 1
-    for _, relation := range self.PlayerRelations {
+    for _, relation := range self.RelationsInOrder() {
         if relation.Hostility >= 3 {
             strategy = 4
         }

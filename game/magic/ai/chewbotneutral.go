@@ -123,7 +123,7 @@ func chewNeutralFarmers(self *playerlib.Player, services playerlib.AIServices) [
 // number of the city, which the game does not keep)
 func chewSortedCities(player *playerlib.Player) []*citylib.City {
     var out []*citylib.City
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         out = append(out, city)
     }
     chewSortCityList(out)

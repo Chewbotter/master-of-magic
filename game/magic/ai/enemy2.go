@@ -18,7 +18,7 @@ import (
     "slices"
     "cmp"
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "image"
     "strings"
 
@@ -1004,7 +1004,7 @@ func strongestUnit(list []units.StackUnit) units.StackUnit {
 
 // aiHasCityOnPlane reports whether the wizard owns at least one city on a plane.
 func aiHasCityOnPlane(self *playerlib.Player, plane data.Plane) bool {
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
         if city.Plane == plane {
             return true
         }
@@ -1034,7 +1034,7 @@ const minCitiesBeforeOffPlaneExpansion = 4
 // plane.
 func aiNoRoomToSettle(self *playerlib.Player, aiServices playerlib.AIServices, plane data.Plane) bool {
     fog := self.GetFog(plane)
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
         if city.Plane != plane {
             continue
         }
@@ -1180,7 +1180,7 @@ func countSettlerPipeline(self *playerlib.Player) int {
             }
         }
     }
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
         if city.ProducingUnit.IsSettlers() {
             count++
         }
@@ -1426,7 +1426,7 @@ func (ai *Enemy2AI) updateScoutMemory(self *playerlib.Player, aiServices playerl
 
     // record enemy cities on tiles we have explored
     for _, enemy := range aiServices.GetEnemies(self) {
-        for _, city := range enemy.Cities {
+        for _, city := range enemy.CitiesInOrder() {
             if !self.IsExplored(city.X, city.Y, city.Plane) {
                 continue
             }
@@ -1685,7 +1685,7 @@ func (ai *Enemy2AI) GoalDecisions(self *playerlib.Player, aiServices playerlib.A
                     }
                 }
 
-                for _, enemyCity := range enemyPlayer.Cities {
+                for _, enemyCity := range enemyPlayer.CitiesInOrder() {
                     // in theory we can see cities that on tiles that we have explored in the past
                     if self.IsVisible(enemyCity.X, enemyCity.Y, enemyCity.Plane) {
                         possibleCities = append(possibleCities, enemyCity)
@@ -1853,7 +1853,7 @@ func (ai *Enemy2AI) GoalDecisions(self *playerlib.Player, aiServices playerlib.A
 
             turn := aiServices.GetTurnNumber()
 
-            for _, city := range self.Cities {
+            for _, city := range self.CitiesInOrder() {
                 // don't override a settler this empire is trying to build: either
                 // one BuildCities just queued this turn, or one already in
                 // progress from a previous turn. Otherwise expansion gets starved
@@ -2112,7 +2112,7 @@ func (ai *Enemy2AI) GoalDecisions(self *playerlib.Player, aiServices playerlib.A
             }
             settlerChance := knobs.settlerChance()
             if knobs.canQueueSettler(aiData.FoodPerTurn()) && countSettlerPipeline(self) < maxConcurrentSettlers {
-                for _, city := range self.Cities {
+                for _, city := range self.CitiesInOrder() {
                     if !isMakingSomething(city) && chance(settlerChance) {
                         locations := aiServices.FindSettlableLocations(city.X, city.Y, city.Plane, self.GetFog(city.Plane))
                         if len(locations) > 0 {
@@ -2321,7 +2321,7 @@ func (ai *Enemy2AI) GoalDecisions(self *playerlib.Player, aiServices playerlib.A
                 return self.TransportUnits(plane)
             })
 
-            for _, city := range self.Cities {
+            for _, city := range self.CitiesInOrder() {
                 if !isMakingSomething(city) {
 
                     useMap := aiServices.GetMap(city.Plane)
@@ -2438,7 +2438,7 @@ func (ai *Enemy2AI) GoalDecisions(self *playerlib.Player, aiServices playerlib.A
             isFoodDependency := functional.Memoize2(checkDependency(buildinglib.Building.ProducesFood))
 
             // feels awkward to build buildings in cities here
-            for _, city := range self.Cities {
+            for _, city := range self.CitiesInOrder() {
                 // don't clobber a settler that GoalBuildCities reserved this turn:
                 // both goals target start-of-turn-idle cities and the engine
                 // applies production with a last-wins override, so without this
@@ -2537,7 +2537,7 @@ func (ai *Enemy2AI) GoalDecisions(self *playerlib.Player, aiServices playerlib.A
 
             // produce another engineer if we are under budget and can afford it
             if currentEngineers < engineerBudget && aiData.GoldPerTurn() > 0 && self.Gold > 20 {
-                for _, city := range self.Cities {
+                for _, city := range self.CitiesInOrder() {
                     if isMakingSomething(city) || ai.reservedSettlerCities[city] {
                         continue
                     }
@@ -2554,7 +2554,7 @@ func (ai *Enemy2AI) GoalDecisions(self *playerlib.Player, aiServices playerlib.A
 
             // index our city tiles per plane for the road-connectivity test
             cityPointsByPlane := make(map[data.Plane]map[image.Point]bool)
-            for _, city := range self.Cities {
+            for _, city := range self.CitiesInOrder() {
                 m := cityPointsByPlane[city.Plane]
                 if m == nil {
                     m = make(map[image.Point]bool)
@@ -2581,7 +2581,7 @@ func (ai *Enemy2AI) GoalDecisions(self *playerlib.Player, aiServices playerlib.A
                 // home = nearest owned city to the engineer on this plane
                 var home *citylib.City
                 homeDist := math.MaxInt
-                for _, city := range self.Cities {
+                for _, city := range self.CitiesInOrder() {
                     if city.Plane != stack.Plane() {
                         continue
                     }
@@ -2599,7 +2599,7 @@ func (ai *Enemy2AI) GoalDecisions(self *playerlib.Player, aiServices playerlib.A
                 // reachable on foot from the engineer's position
                 var bestTarget *citylib.City
                 bestDist := math.MaxInt
-                for _, city := range self.Cities {
+                for _, city := range self.CitiesInOrder() {
                     if city.Plane != stack.Plane() || city == home {
                         continue
                     }
@@ -2815,7 +2815,7 @@ func (ai *Enemy2AI) GoalDecisions(self *playerlib.Player, aiServices playerlib.A
             if len(undefendedNodes) > 0 && aiData.GoldPerTurn() > 0 && self.Gold > 20 && aiData.FoodPerTurn() > 0 {
                 var bestCity *citylib.City
                 bestDist := math.MaxInt
-                for _, city := range self.Cities {
+                for _, city := range self.CitiesInOrder() {
                     if isMakingSomething(city) || ai.reservedSettlerCities[city] {
                         continue
                     }
@@ -3186,7 +3186,7 @@ func (ai *Enemy2AI) NewTurn(player *playerlib.Player) {
     player.TaxRate = fraction.FromInt(1)
 
     // make sure cities have enough farmers
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         // try to maximize the number of workers
         city.Workers = city.Citizens()
         city.ResetCitizens()

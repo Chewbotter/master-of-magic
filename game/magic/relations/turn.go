@@ -126,7 +126,7 @@ func (rules *Rules) EndOfTurn(timeStop bool) {
 // Decrease_Peace_Duration
 func (rules *Rules) decreasePeace() {
     for _, player := range rules.wizards() {
-        for _, relation := range player.PlayerRelations {
+        for _, relation := range player.RelationsInOrder() {
             relation.PeaceCounter = max(relation.PeaceCounter - 1, 0)
         }
     }
@@ -269,7 +269,7 @@ func (rules *Rules) firstContacts() {
 // End_Of_Turn_Diplomacy_Adjustments: every patience comes back by 10 a turn while below 100
 func (rules *Rules) endOfTurnAdjustments() {
     for _, player := range rules.wizards() {
-        for _, relation := range player.PlayerRelations {
+        for _, relation := range player.RelationsInOrder() {
             if relation.TreatyInterest < 100 {
                 relation.TreatyInterest += 10
             }
@@ -288,7 +288,7 @@ func (rules *Rules) endOfTurnAdjustments() {
 // the grievances and orders of the turn are forgotten
 func (rules *Rules) modifierAdjustments() {
     for _, player := range rules.wizards() {
-        for other, relation := range player.PlayerRelations {
+        for other, relation := range player.RelationsInOrder() {
             if other.IsHuman() {
                 continue
             }
@@ -304,7 +304,7 @@ func (rules *Rules) modifierAdjustments() {
         }
     }
     for _, player := range rules.wizards() {
-        for _, relation := range player.PlayerRelations {
+        for _, relation := range player.RelationsInOrder() {
             relation.ActionStrength = 0
             relation.Action = ActionNone
             relation.ActionSpell = ""
@@ -360,7 +360,7 @@ func (rules *Rules) EvaluateHostility(player *playerlib.Player) {
     resetHostilityCountdown(player)
     player.RaiderHostility = 3
 
-    for other, relation := range player.PlayerRelations {
+    for other, relation := range player.RelationsInOrder() {
         relation.Hostility = 0
         if !isWizard(other) {
             continue

@@ -7,7 +7,7 @@ import (
     "context"
     "slices"
     "cmp"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "errors"
 
     "github.com/kazzmir/master-of-magic/lib/coroutine"
@@ -462,7 +462,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     game.doCastOnMap(yield, tileX, tileY, 44, spell.Sound, func (x int, y int, animationFrame int) {})
                     player.Banished = false
 
-                    for _, check := range player.Cities {
+                    for _, check := range player.CitiesInOrder() {
                         check.RemoveBuilding(building.BuildingSummoningCircle)
                         check.RemoveBuilding(building.BuildingFortress)
                     }
@@ -858,7 +858,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             game.doCastNewCityBuilding(spell, player, LocationTypeFriendlyCity, building.BuildingCityWalls, "This city already has a Wall of Stone", after)
         case "Summoning Circle":
             after := func(chosenCity *citylib.City) bool {
-                for _, city := range player.Cities {
+                for _, city := range player.CitiesInOrder() {
                     if city != chosenCity && city.Buildings.Contains(building.BuildingSummoningCircle) {
                         city.Buildings.Remove(building.BuildingSummoningCircle)
                         break
@@ -871,7 +871,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             after := func(chosenCity *citylib.City) bool {
                 player.Wizard.Race = chosenCity.Race
 
-                for _, city := range player.Cities {
+                for _, city := range player.CitiesInOrder() {
                     if city != chosenCity && city.Buildings.Contains(building.BuildingFortress) {
                         city.Buildings.Remove(building.BuildingFortress)
 
@@ -1789,7 +1789,7 @@ func (game *Game) doSummonHero(player *playerlib.Player, champion bool) {
     }
 
     var choices []*herolib.Hero
-    for _, hero := range player.HeroPool {
+    for _, hero := range player.HeroesInOrder() {
         // torin is not summonable through this method
         if hero.Status == herolib.StatusAvailable && hero.IsChampion() == champion && hero.HeroType != herolib.HeroTorin {
             choices = append(choices, hero)
@@ -1828,7 +1828,7 @@ func (game *Game) doSummonHero(player *playerlib.Player, champion bool) {
 func (game *Game) doIncarnation(player *playerlib.Player) {
     // the fortress takes the circle when there is none (magicclassic.go)
     classicSummonCity(player)
-    for _, hero := range player.HeroPool {
+    for _, hero := range player.HeroesInOrder() {
         if hero.HeroType == herolib.HeroTorin && hero.Status != herolib.StatusEmployed {
             event := GameEventHireHero{
                 Hero: hero,
@@ -1957,7 +1957,7 @@ func (game *Game) selectLocationForSpell(yield coroutine.YieldFunc, spell spellb
         var fog data.FogMap
 
         for i, player := range game.Model.Players {
-            for _, city := range player.Cities {
+            for _, city := range player.CitiesInOrder() {
                 if city.Plane == game.Model.Plane {
                     cities = append(cities, city)
                     citiesMiniMap = append(citiesMiniMap, city)

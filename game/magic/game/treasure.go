@@ -3,7 +3,7 @@ package game
 import (
     "fmt"
     "slices"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/artifact"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
@@ -125,7 +125,9 @@ func chooseValue[T comparable](choices map[T]int) T {
     }
 
     pick := rand.N(total)
-    for key, value := range choices {
+    // in one order of the keys, not the map's (a run of one seed repeats it)
+    for _, key := range rand.SortedKeys(choices) {
+        value := choices[key]
         if pick < value {
             return key
         }

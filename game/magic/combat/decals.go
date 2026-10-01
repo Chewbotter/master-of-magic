@@ -18,7 +18,7 @@ import (
     "fmt"
     "image"
     "image/png"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "sort"
     "strings"
 

@@ -2,7 +2,7 @@ package main
 
 import (
     "log"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "os"
 
     ailib "github.com/kazzmir/master-of-magic/game/magic/ai"

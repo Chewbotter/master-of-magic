@@ -7,7 +7,7 @@ import (
     "io"
     "errors"
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "os"
     "slices"
     "cmp"
@@ -581,7 +581,7 @@ func centerOnCity(game *gamelib.Game) {
     humanPlayer := game.Model.GetHumanPlayer()
     if humanPlayer != nil {
         if len(humanPlayer.Cities) > 0 {
-            for _, city := range humanPlayer.Cities {
+            for _, city := range humanPlayer.CitiesInOrder() {
                 game.Camera.Center(city.X, city.Y)
                 game.Model.Plane = city.Plane
             }
@@ -1513,6 +1513,9 @@ func loadGameConfig() GameConfig {
     flag.StringVar(&simJSON, "sim-json", "", "development: write the record of a -sim run as JSON to this file (simrecord.go)")
     flag.StringVar(&simJournal, "sim-journal", "", "development: write the key decisions and happenings of a -sim run, one JSON line each, to this file")
     flag.IntVar(&simTimeline, "sim-timeline", 10, "development: the turns between two lines of the timeline of -sim-json")
+    flag.Uint64Var(&simSeed, "sim-seed", 0, "development: the seed of all chance of a -sim run (lib/chance), 0 for none; -sim-repeat adds the index")
+    flag.StringVar(&simSeedTrace, "sim-seed-trace", "", "development: with -sim-seed, write the line of the game behind every draw to this file (to find where two runs of one seed part)")
+    flag.StringVar(&simStateLog, "sim-state-log", "", "development: write every city and stack of every player at every turn of a -sim run to this file, one line each")
     flag.BoolVar(&simTrace, "sim-trace", false, "development: run the checks of a -sim run after every update and log the journal before the first of each kind of broken state")
     flag.BoolVar(&simStopAlone, "sim-stop-alone", false, "development: a -sim run ends when one wizard is left (always with -sim-all-ai)")
     flag.BoolVar(&simWar, "sim-war", false, "development: every wizard at war with every other at the start of a -sim run")

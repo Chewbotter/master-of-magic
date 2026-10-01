@@ -3,7 +3,7 @@ package maplib
 import (
     "log"
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "image"
     "image/color"
     "slices"
@@ -326,6 +326,11 @@ type ExtraEncounter struct {
 // an individual int is a percentage chance to choose the given key
 // for example, choices might be the map {"a": 30, "b": 30, "c": 40}
 // which means that a and b should both have a 30% chance of being picked, and c has a 40% chance of being picked
+// the keys of a map in one order (lib/chance)
+func keysInOrder[T comparable](values map[T]int) []T {
+    return rand.SortedKeys(values)
+}
+
 func chooseValue[T comparable](choices map[T]int) T {
     total := 0
     for _, value := range choices {
@@ -333,7 +338,8 @@ func chooseValue[T comparable](choices map[T]int) T {
     }
 
     pick := rand.N(total)
-    for key, value := range choices {
+    for _, key := range keysInOrder(choices) {
+        value := choices[key]
         if pick < value {
             return key
         }

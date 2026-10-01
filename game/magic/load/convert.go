@@ -4,7 +4,7 @@ import (
     "image"
     "fmt"
     "maps"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "log"
 
     "github.com/kazzmir/master-of-magic/lib/fraction"

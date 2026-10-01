@@ -22,7 +22,7 @@ func treatyBonus(player *playerlib.Player) int {
 // empire_mini_pops: the citizens of all cities, in tens
 func population(player *playerlib.Player) int {
     total := 0
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         total += city.Citizens()
     }
     return total / 10
@@ -340,7 +340,7 @@ func worstPatience(relation *playerlib.Relationship) int {
 // Limit_Treaty_Modifiers: the treaty patience stays within -200 and 120
 func (rules *Rules) limitTreatyPatience() {
     for _, player := range rules.wizards() {
-        for _, relation := range player.PlayerRelations {
+        for _, relation := range player.RelationsInOrder() {
             relation.TreatyInterest = clamp(relation.TreatyInterest, -200, 120)
         }
     }

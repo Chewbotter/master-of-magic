@@ -39,7 +39,7 @@ package game
 import (
     "fmt"
     "log"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
@@ -391,7 +391,7 @@ func (game *Game) endScore(caster *playerlib.Player) halloffame.Score {
     human := game.Model.GetHumanPlayer()
 
     townsfolk := 0
-    for _, city := range human.Cities {
+    for _, city := range human.CitiesInOrder() {
         townsfolk += city.Citizens()
     }
 

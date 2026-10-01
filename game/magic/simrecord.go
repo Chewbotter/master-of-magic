@@ -13,6 +13,7 @@ package main
 //                        notes battles, cities, events, casts, conquests)
 //   -sim-timeline N      the turns between two lines of the timeline (10)
 //   -sim-stop-alone      the run ends when one wizard is left (with -sim-all-ai, on by default)
+//   -sim-seed N          the seed of all chance (lib/chance), so a run can be played again
 //   -sim-trace           the checks after every update; the first of each kind is logged with the
 //                        journal before it (finds the step that breaks something)
 //
@@ -24,6 +25,7 @@ import (
     "bytes"
     "encoding/json"
     "fmt"
+    "io"
     "log"
     "os"
     "runtime/pprof"
@@ -43,6 +45,33 @@ var simJSON string
 var simJournal string
 var simTimeline int = 10
 var simStopAlone bool
+// -sim-seed: the seed of chance of a run (0: none, the game's own chance); repeats add their index
+var simSeed uint64
+// -sim-seed-trace FILE: the line of the game behind every draw of a seeded run
+var simSeedTrace string
+// -sim-state-log FILE: every city and stack of every player at every turn, one line each, so two
+// runs of one seed show the first thing that differs
+var simStateLog string
+
+// one turn of the state log
+func simWriteState(writer io.Writer, game *gamelib.Game) {
+    turn := game.Model.TurnNumber
+    for _, player := range game.Model.Players {
+        fmt.Fprintf(writer, "%v %v gold %v mana %v research %v skill %v\n", turn, player.Wizard.Name, player.Gold, player.Mana, player.ResearchProgress, player.CastingSkillPower)
+        for _, city := range player.CitiesInOrder() {
+            fmt.Fprintf(writer, "%v %v city %v at %v,%v people %v farmers %v workers %v production %.3f making %v%v gold %v food %v work %.3f\n",
+                turn, player.Wizard.Name, city.Name, city.X, city.Y, city.Population, city.Farmers, city.Workers, city.Production,
+                city.ProducingBuilding, city.ProducingUnit.Name, city.GoldSurplus(), city.FoodProductionRate(), city.WorkProductionRate())
+        }
+        for _, stack := range player.Stacks {
+            fmt.Fprintf(writer, "%v %v stack at %v,%v,%v units", turn, player.Wizard.Name, stack.X(), stack.Y(), stack.Plane())
+            for _, unit := range stack.Units() {
+                fmt.Fprintf(writer, " %v/%v", unit.GetName(), unit.GetHealth())
+            }
+            fmt.Fprintf(writer, "\n")
+        }
+    }
+}
 // -sim-trace: after every update the checks run, and the first time each kind of broken state is
 // seen the journal before it is logged (slower)
 var simTrace bool

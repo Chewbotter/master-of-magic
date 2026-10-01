@@ -3,7 +3,7 @@ package maplib
 import (
     "image"
     // "log"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -121,7 +121,8 @@ func chooseEnemy[E comparable](enemyCosts map[E]int, budget int, numChoices int)
         var enemyChoice E
         maxCost := 0
 
-        for unit, cost := range enemyCosts {
+        for _, unit := range keysInOrder(enemyCosts) {
+            cost := enemyCosts[unit]
             if cost > maxCost && cost <= budget / divisor {
                 enemyChoice = unit
                 maxCost = cost

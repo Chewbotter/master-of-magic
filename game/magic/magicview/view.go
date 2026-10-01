@@ -5,7 +5,7 @@ import (
     "image"
     "cmp"
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "slices"
 
     "github.com/kazzmir/master-of-magic/lib/lbx"
@@ -485,7 +485,7 @@ func (magic *MagicScreen) MakeUI(player *playerlib.Player, enemies []*playerlib.
                 positionStart := gemPositions[i]
                 positionStart.X += gemUnknown.Bounds().Dx() + 2
                 positionStart.Y -= 2
-                for otherPlayer, relationship := range enemy.PlayerRelations {
+                for otherPlayer, relationship := range enemy.RelationsInOrder() {
                     treatyIcon := getTreatyIcon(otherPlayer, relationship.Treaty)
                     if treatyIcon != nil {
                         usePosition := positionStart

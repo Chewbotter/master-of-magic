@@ -6,7 +6,7 @@ import (
     "slices"
     "cmp"
     "log"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     _ "log"
 
     "github.com/kazzmir/master-of-magic/lib/lbx"

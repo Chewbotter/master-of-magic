@@ -7,7 +7,7 @@ import (
     "log"
     "slices"
     "cmp"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/lib/functional"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
@@ -104,7 +104,7 @@ func (ai *EnemyAI) Update(self *playerlib.Player, aiServices playerlib.AIService
 
     }
 
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
         // outpost can't do anything
         if city.Outpost {
             continue
@@ -227,7 +227,7 @@ func (ai *EnemyAI) Update(self *playerlib.Player, aiServices playerlib.AIService
                         if self.FindCity(stack.X(), stack.Y(), stack.Plane()) == nil && !nonSettlers {
                             // just go back to a town?
                             var candidateCities []*citylib.City
-                            for _, city := range self.Cities {
+                            for _, city := range self.CitiesInOrder() {
                                 _, ok := aiServices.FindPath(stack.X(), stack.Y(), city.X, city.Y, self, stack, self.GetFog(stack.Plane()))
                                 if city.Plane == stack.Plane() && ok {
                                     candidateCities = append(candidateCities, city)
@@ -319,7 +319,7 @@ func (ai *EnemyAI) PreTurn(player *playerlib.Player) {
 
 func (ai *EnemyAI) NewTurn(player *playerlib.Player) {
     // make sure cities have enough farmers
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         city.ResetCitizens()
     }
 
@@ -329,7 +329,7 @@ func (ai *EnemyAI) NewTurn(player *playerlib.Player) {
         // try to update farmers in cities
 
         moreFood = false
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             if player.FoodPerTurn() >= 0 {
                 break
             }
@@ -342,7 +342,7 @@ func (ai *EnemyAI) NewTurn(player *playerlib.Player) {
         }
     }
 
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         log.Printf("ai %v city %v farmer=%v worker=%v rebel=%v", player.Wizard.Name, city.Name, city.Farmers, city.Workers, city.Rebels)
     }
 }

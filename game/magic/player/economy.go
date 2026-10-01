@@ -9,7 +9,7 @@ package player
 // Build_Research_List, Sort_Research_List). The code is ours.
 
 import (
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "slices"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -70,7 +70,7 @@ func (player *Player) foodSale(planning bool) int {
         return max(0, player.foodPerTurn(true) / 2)
     }
     sale := 0
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         sale += max(0, city.SurplusFood()) / 2
     }
     return max(0, sale - player.NormalUnits() / 2)

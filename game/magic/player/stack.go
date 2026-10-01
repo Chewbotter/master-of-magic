@@ -135,7 +135,9 @@ func (stack *UnitStack) SplitActiveUnits() *UnitStack {
     /*
     var out []units.StackUnit
     var oldUnits []units.StackUnit
-    for unit, active := range stack.active {
+    // in the order of the stack, not of the map (a run of one seed repeats it)
+    for _, unit := range stack.units {
+        active := stack.active[unit]
         if active {
             out = append(out, unit)
         } else {
@@ -159,7 +161,9 @@ func (stack *UnitStack) SplitActiveUnits() *UnitStack {
 
 func (stack *UnitStack) ActiveUnits() []units.StackUnit {
     out := make([]units.StackUnit, 0, len(stack.active))
-    for unit, active := range stack.active {
+    // in the order of the stack, not of the map (a run of one seed repeats it)
+    for _, unit := range stack.units {
+        active := stack.active[unit]
         if active {
             out = append(out, unit)
         }
@@ -170,7 +174,9 @@ func (stack *UnitStack) ActiveUnits() []units.StackUnit {
 
 func (stack *UnitStack) InactiveUnits() []units.StackUnit {
     var inactive []units.StackUnit
-    for unit, active := range stack.active {
+    // in the order of the stack, not of the map (a run of one seed repeats it)
+    for _, unit := range stack.units {
+        active := stack.active[unit]
         if !active {
             inactive = append(inactive, unit)
         }
@@ -259,7 +265,9 @@ func (stack *UnitStack) HasHero() bool {
 
 // returns true if any of the active units in the stack have the given ability
 func (stack *UnitStack) ActiveUnitsHasAbility(ability data.AbilityType) bool {
-    for unit, active := range stack.active {
+    // in the order of the stack, not of the map (a run of one seed repeats it)
+    for _, unit := range stack.units {
+        active := stack.active[unit]
         if active && unit.HasAbility(ability) {
             return true
         }
@@ -269,7 +277,9 @@ func (stack *UnitStack) ActiveUnitsHasAbility(ability data.AbilityType) bool {
 }
 
 func (stack *UnitStack) ActiveUnitsHasEnchantment(ability data.UnitEnchantment) bool {
-    for unit, active := range stack.active {
+    // in the order of the stack, not of the map (a run of one seed repeats it)
+    for _, unit := range stack.units {
+        active := stack.active[unit]
         if active && unit.HasEnchantment(ability) {
             return true
         }
@@ -279,7 +289,9 @@ func (stack *UnitStack) ActiveUnitsHasEnchantment(ability data.UnitEnchantment) 
 }
 
 func (stack *UnitStack) GetActiveUnitWithAbility(ability data.AbilityType) units.StackUnit {
-    for unit, active := range stack.active {
+    // in the order of the stack, not of the map (a run of one seed repeats it)
+    for _, unit := range stack.units {
+        active := stack.active[unit]
         if active && unit.HasAbility(ability) {
             return unit
         }
@@ -291,7 +303,9 @@ func (stack *UnitStack) GetActiveUnitWithAbility(ability data.AbilityType) units
 // returns true if none of the active units in the stack have the given ability
 // if a single unit has the ability then return false
 func (stack *UnitStack) ActiveUnitsDoesntHaveAbility(ability data.AbilityType) bool {
-    for unit, active := range stack.active {
+    // in the order of the stack, not of the map (a run of one seed repeats it)
+    for _, unit := range stack.units {
+        active := stack.active[unit]
         if active && unit.HasAbility(ability) {
             return false
         }

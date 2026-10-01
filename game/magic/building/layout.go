@@ -3,7 +3,7 @@ package building
 import (
     "image"
     "slices"
-    randomlib "math/rand/v2"
+    randomlib "github.com/kazzmir/master-of-magic/lib/chance"
     "cmp"
 )
 

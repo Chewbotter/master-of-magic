@@ -39,7 +39,7 @@ func (game *Game) garrisonStrength(player *playerlib.Player, city *citylib.City)
 // of plane, row and column, the first of equals
 func (game *Game) returnCity(player *playerlib.Player) *citylib.City {
     var cities []*citylib.City
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         cities = append(cities, city)
     }
     slices.SortFunc(cities, func(a *citylib.City, b *citylib.City) int {

@@ -8,7 +8,7 @@ import (
     "slices"
     "sync"
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     _ "log"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -336,7 +336,7 @@ func (model *GameModel) FindPath(oldX int, oldY int, newX int, newY int, player 
             for _, enemyStack := range enemy.Stacks {
                 enemyStacks[image.Pt(enemyStack.X(), enemyStack.Y())] = struct{}{}
             }
-            for _, enemyCity := range enemy.Cities {
+            for _, enemyCity := range enemy.CitiesInOrder() {
                 enemyCities[image.Pt(enemyCity.X, enemyCity.Y)] = struct{}{}
             }
         }
@@ -424,7 +424,7 @@ func (model *GameModel) AllCities() []*citylib.City {
     var out []*citylib.City
 
     for _, player := range model.Players {
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             out = append(out, city)
         }
     }
@@ -620,7 +620,7 @@ func (model *GameModel) ComputeCityStackInfo() playerlib.CityStackInfo {
             }
         }
 
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             switch city.Plane {
                 case data.PlaneArcanus: out.ArcanusCities[image.Pt(city.X, city.Y)] = city
                 case data.PlaneMyrror: out.MyrrorCities[image.Pt(city.X, city.Y)] = city
@@ -1361,7 +1361,7 @@ func (model *GameModel) DoRandomEvents() {
 
                         if neutralPlayer != nil {
                             var choices []*citylib.City
-                            for _, city := range target.Cities {
+                            for _, city := range target.CitiesInOrder() {
                                 if city.HasFortress() || city.HasSummoningCircle() {
                                     continue
                                 }
@@ -1527,7 +1527,7 @@ func (model *GameModel) ComputePower(player *playerlib.Player) int {
 
     power := float64(0)
 
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         power += float64(city.ComputePower())
     }
 
@@ -1911,7 +1911,7 @@ func (model *GameModel) GetCityEnchantmentsByBanner(banner data.BannerType) []pl
     var result []playerlib.CityEnchantment
 
     for _, player := range model.Players {
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             for _, enchantment := range city.GetEnchantmentsCastBy(banner) {
                 result = append(result, playerlib.CityEnchantment{City: city, Enchantment: enchantment})
             }
@@ -1971,7 +1971,7 @@ func (model *GameModel) FindCitiesOnContinent(x int, y int, plane data.Plane, pl
 
     var out []*citylib.City
 
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         if city.Plane == plane && tileSet.Contains(image.Pt(city.X, city.Y)) {
             out = append(out, city)
         }

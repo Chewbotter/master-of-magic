@@ -6,16 +6,26 @@ import (
 )
 
 // The set type is a generic set implementation that uses a map as the underlying data structure.
-// Note that iterating over its Values() is non-deterministic. The order of the elements may be
-// different each time.
+// Its Values() come in the order the values were inserted (a value inserted again keeps its
+// place): a range over a map goes in an order Go picks by chance, which a run of one seed of the
+// game (-sim-seed) could not repeat.
+
+type setEntry[T comparable] struct {
+    value T
+    alive bool
+}
 
 type Set[T comparable] struct {
-    data map[T]bool
+    // the place of each value in order
+    data map[T]int
+    order []setEntry[T]
+    // removed places still in order
+    gone int
 }
 
 func MakeSet[T comparable]() *Set[T] {
     return &Set[T]{
-        data: make(map[T]bool),
+        data: make(map[T]int),
     }
 }
 
@@ -29,24 +39,30 @@ func NewSet[T comparable](values ...T) *Set[T] {
 
 func (set *Set[T]) Clone() *Set[T] {
     newSet := MakeSet[T]()
-    for k := range set.data {
-        newSet.data[k] = true
+    for _, value := range set.Values() {
+        newSet.Insert(value)
     }
     return newSet
 }
 
 func (set *Set[T]) Insert(v T){
-    set.data[v] = true
+    if _, ok := set.data[v]; ok {
+        return
+    }
+    set.data[v] = len(set.order)
+    set.order = append(set.order, setEntry[T]{value: v, alive: true})
 }
 
 func (set *Set[T]) InsertMany(values ...T) {
     for _, value := range values {
-        set.data[value] = true
+        set.Insert(value)
     }
 }
 
 func (set *Set[T]) Clear() {
-    set.data = make(map[T]bool)
+    set.data = make(map[T]int)
+    set.order = nil
+    set.gone = 0
 }
 
 func (set *Set[T]) Contains(v T) bool {
@@ -63,12 +79,34 @@ func (set *Set[T]) Size() int {
 }
 
 func (set *Set[T]) Remove(v T) {
+    place, ok := set.data[v]
+    if !ok {
+        return
+    }
     delete(set.data, v)
+    set.order[place].alive = false
+    set.gone += 1
+    if set.gone > 32 && set.gone * 2 > len(set.order) {
+        set.compact()
+    }
+}
+
+// the removed places out of order
+func (set *Set[T]) compact() {
+    kept := make([]setEntry[T], 0, len(set.data))
+    for _, entry := range set.order {
+        if entry.alive {
+            set.data[entry.value] = len(kept)
+            kept = append(kept, entry)
+        }
+    }
+    set.order = kept
+    set.gone = 0
 }
 
 func (set *Set[T]) RemoveMany(values ...T) {
     for _, value := range values {
-        delete(set.data, value)
+        set.Remove(value)
     }
 }
 
@@ -78,9 +116,11 @@ func (set *Set[T]) Values() []T {
         return nil
     }
 
-    var out []T
-    for k := range set.data {
-        out = append(out, k)
+    out := make([]T, 0, len(set.data))
+    for _, entry := range set.order {
+        if entry.alive {
+            out = append(out, entry.value)
+        }
     }
     return out
 }

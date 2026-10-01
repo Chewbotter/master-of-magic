@@ -12,7 +12,7 @@ package game
 // Next_Turn_Calc, Pick_Random_Hero, Do_All_Units_XP_Check). The code is ours.
 
 import (
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
@@ -248,7 +248,7 @@ func (game *Game) classicDisenchant(player *playerlib.Player, spell spellbook.Sp
 
 // within 2 squares of a city of the player on the plane (the larger of the distances, x wraps)
 func classicNearOwnCity(player *playerlib.Player, mapUse *maplib.Map, x int, y int) bool {
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         if city.Plane != mapUse.Plane {
             continue
         }
@@ -329,7 +329,7 @@ func (game *Game) classicMeteorStorm() {
         }
         info := game.Model.ComputeCityStackInfo()
         for _, owner := range game.Model.Players {
-            for _, city := range owner.Cities {
+            for _, city := range owner.CitiesInOrder() {
                 counterCaster := caster
                 if quirkMeteorStormHumanCounter {
                     // the human as the caster, with no strength of a spell of his
@@ -386,7 +386,7 @@ func classicSummonCity(player *playerlib.Player) *citylib.City {
 // gets one more draw among all
 func classicSummonPick(player *playerlib.Player, champion bool) *herolib.Hero {
     var class, all []*herolib.Hero
-    for _, hero := range player.HeroPool {
+    for _, hero := range player.HeroesInOrder() {
         if hero.HeroType == herolib.HeroTorin {
             continue
         }

@@ -10,7 +10,7 @@ package combat
 import (
     "image/color"
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 )
 
 // no more than this many at a time. the oldest go first

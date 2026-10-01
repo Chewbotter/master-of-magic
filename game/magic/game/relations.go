@@ -88,7 +88,7 @@ func (model *GameModel) unitNearCity(cityOwner *playerlib.Player, unitOwner *pla
         if !fighting {
             continue
         }
-        for _, city := range cityOwner.Cities {
+        for _, city := range cityOwner.CitiesInOrder() {
             if city.Plane != stack.Plane() {
                 continue
             }
@@ -113,7 +113,7 @@ func (model *GameModel) unitNearCity(cityOwner *playerlib.Player, unitOwner *pla
 func (model *GameModel) cancelCityEnchantments(a *playerlib.Player, b *playerlib.Player) {
     for _, pair := range [][2]*playerlib.Player{{a, b}, {b, a}} {
         caster, owner := pair[0], pair[1]
-        for _, city := range owner.Cities {
+        for _, city := range owner.CitiesInOrder() {
             for _, enchantment := range city.Enchantments.Values() {
                 if enchantment.Owner == caster.GetBanner() {
                     city.RemoveEnchantments(enchantment.Enchantment)
@@ -184,7 +184,7 @@ func (game *Game) citySizeNamed(name string) string {
         return ""
     }
     for _, player := range game.Model.Players {
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             if city.Name == name {
                 return city.GetSize().String()
             }
@@ -328,7 +328,7 @@ func (game *Game) cityCurseReaction(caster *playerlib.Player, spell string, city
 func (game *Game) curseReactionAt(caster *playerlib.Player, spell string, x int, y int, plane data.Plane) {
     mapObject := game.Model.GetMap(plane)
     for _, player := range game.Model.Players {
-        for _, city := range player.Cities {
+        for _, city := range player.CitiesInOrder() {
             if city.Plane != plane || player == caster {
                 continue
             }

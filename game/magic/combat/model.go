@@ -5,7 +5,7 @@ import (
     "fmt"
     "slices"
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "time"
 
     "github.com/kazzmir/master-of-magic/lib/fraction"
@@ -875,6 +875,12 @@ func (unit *ArmyUnit) GetBaseResistance() int {
 
 func (unit *ArmyUnit) GetFullHitPoints() int {
     base := unit.GetBaseHitPoints()
+    if ClassicRules {
+        // Unit_Hit_Points: a unit has in a battle what it has on the map (its own enchantments, a
+        // hero's Constitution, Charm of Life) and the spells of the battle on top; with the base
+        // alone a unit killed in a battle kept the difference on the map and lived on
+        base = unit.Unit.GetFullHitPoints()
+    }
     for _, enchantment := range unit.Enchantments {
         base += unit.Unit.HitPointsEnchantmentBonus(enchantment)
     }
@@ -1839,6 +1845,10 @@ func (unit *ArmyUnit) TakeDamage(damage int, damageType DamageType) int {
 
     // the first figure should take damage, and if it dies then the next unit takes damage, etc
     unit.Unit.AdjustHealth(-damage)
+    if unit.GetHealth() <= 0 && unit.Unit.GetHealth() > 0 {
+        // dead in the battle is dead on the map
+        unit.Unit.AdjustHealth(-unit.Unit.GetHealth())
+    }
 
     switch damageType {
         case DamageNormal: unit.NormalDamage += damage

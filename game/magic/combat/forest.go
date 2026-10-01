@@ -17,7 +17,7 @@ package combat
 
 import (
     "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
 )
 
 // false scatters the trees of a forest as the original does

@@ -2,7 +2,7 @@ package ai
 
 import (
     "log"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "image"
 
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
@@ -108,7 +108,7 @@ func (raider *RaiderAI) MoveStacks(player *playerlib.Player, enemies []*playerli
             var currentPath pathfinding.Path
 
             for _, enemy := range enemies {
-                for _, city := range enemy.Cities {
+                for _, city := range enemy.CitiesInOrder() {
                     if city.Plane != stack.Plane() {
                         continue
                     }
@@ -450,7 +450,7 @@ func (raider *RaiderAI) CreateUnits(player *playerlib.Player, aiServices playerl
         decisions = append(decisions, raider.CreateRampagingMonsters(player, aiServices)...)
     }
 
-    for _, city := range player.Cities {
+    for _, city := range player.CitiesInOrder() {
         stack := player.FindStack(city.X, city.Y, city.Plane)
 
         makeUnit := false
@@ -480,7 +480,7 @@ func (raider *RaiderAI) CreateUnits(player *playerlib.Player, aiServices playerl
 func (raider *RaiderAI) UpdateCities(self *playerlib.Player) []playerlib.AIDecision {
     var decisions []playerlib.AIDecision
 
-    for _, city := range self.Cities {
+    for _, city := range self.CitiesInOrder() {
         // request the number of farmers to be the maximum possible
         decisions = append(decisions, &playerlib.AIUpdateCityDecision{
             City: city,

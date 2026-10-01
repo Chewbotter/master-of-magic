@@ -3,7 +3,7 @@ package main
 import (
     "fmt"
     // "math"
-    "math/rand/v2"
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "github.com/kazzmir/master-of-magic/lib/deep"
     "github.com/kazzmir/master-of-magic/game/magic/ai"
 	deep_train "github.com/kazzmir/master-of-magic/lib/deep/training"
