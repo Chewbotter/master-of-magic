@@ -107,6 +107,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Cursors sit on the tile they act on and are drawn on the pixels of the field. After a click that sends a unit to strike or to shoot the cursor fades away until the mouse moves.
 - Figures of a unit move and strike each with timing of their own.
 - In a battle, a right click cancels a spell while its target is being picked, as the Cancel button does (modern controls).
+- Units that shoot, throw magic or cast a spell show their attack frames while they do, all the frames their art has; before, only units with added frames did, and casters stood still.
 - Figures are drawn in front of or behind each other by where their feet are, so riders, hounds and figures that walk or strike past each other no longer pop in front of and behind their neighbors.
 - A strike is a swing of steps: back, forward, the blow where the swing lands. Units that fight across a corner close in. With the setting "Single strikes" off, the simpler strike of before.
 - Killed figures are thrown back and fall; corpses stay on the field, gray, and the oldest fade when a tile has more than 4.

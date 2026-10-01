@@ -590,6 +590,9 @@ type ArmyUnit struct {
     Defending bool
     // it shows the frames of a shot, see shoot.go
     Shooting bool
+    // it has cast a spell: its frames of a shot start at the next tick, and end at CastEnds
+    CastPending bool
+    CastEnds uint64
     // its swing: the tick of the battle it started at, and how many redraws of the original
     // later than that it starts, for the unit that is attacked. see strikeswing.go
     SwingStart uint64
@@ -4984,6 +4987,10 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
     castedCallback = func(success bool){
         if success {
             spellSystem.CastMessage(castMessageText(army, unitCaster, spell))
+            // the unit that casts shows the frames of a shot, see shoot.go
+            if unitCaster != nil {
+                unitCaster.CastPending = true
+            }
         }
         announce(success)
     }

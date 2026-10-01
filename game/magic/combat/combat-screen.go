@@ -2501,6 +2501,8 @@ func (combat *CombatScreen) UpdateAnimations(){
 
     // particles and what else goes with spells, see spelleffects.go
     combat.updateSpellEffects()
+    // units that cast show the frames of a shot, see shoot.go
+    combat.updateCastFrames()
 
     for _, unit := range combat.Model.MagicVortexes {
         if combat.Counter % 6 == 0 {
