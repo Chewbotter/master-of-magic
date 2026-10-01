@@ -1826,9 +1826,7 @@ func (player *Player) MergeStacks(stack1 *UnitStack, stack2 *UnitStack) *UnitSta
         stack1.active[unit] = active
     }
 
-    player.Stacks = slices.DeleteFunc(player.Stacks, func (s *UnitStack) bool {
-        return s == stack2
-    })
+    player.Stacks = withoutStack(player.Stacks, stack2)
 
     if player.SelectedStack == stack2 {
         player.SelectedStack = stack1
@@ -1845,9 +1843,7 @@ func (player *Player) UpdateUnitLocation(unit units.StackUnit, x int, y int, pla
     if oldStack != nil {
         oldStack.RemoveUnit(unit)
         if oldStack.IsEmpty() {
-            player.Stacks = slices.DeleteFunc(player.Stacks, func (s *UnitStack) bool {
-                return s == oldStack
-            })
+            player.Stacks = withoutStack(player.Stacks, oldStack)
         }
     }
 
@@ -1903,9 +1899,7 @@ func (player *Player) RemoveUnit(unit units.StackUnit) {
         stack.RemoveUnit(unit)
 
         if stack.IsEmpty() {
-            player.Stacks = slices.DeleteFunc(player.Stacks, func (s *UnitStack) bool {
-                return s == stack
-            })
+            player.Stacks = withoutStack(player.Stacks, stack)
 
             if player.SelectedStack == stack {
                 player.SelectedStack = nil
@@ -1984,6 +1978,24 @@ func (player *Player) CitiesInOrder() iter.Seq2[data.PlanePoint, *citylib.City] 
             }
         }
     }
+}
+
+// the list of stacks without one, as a new list: slices.DeleteFunc moves the stacks in place and
+// clears the end, so a loop over the list at that moment met nil stacks (Great Unsummoning crashed
+// on it)
+func withoutStack(stacks []*UnitStack, remove *UnitStack) []*UnitStack {
+    kept := make([]*UnitStack, 0, len(stacks))
+    for _, stack := range stacks {
+        if stack != remove {
+            kept = append(kept, stack)
+        }
+    }
+    return kept
+}
+
+// the list of stacks without one (for other packages)
+func WithoutStack(stacks []*UnitStack, remove *UnitStack) []*UnitStack {
+    return withoutStack(stacks, remove)
 }
 
 // counts every change of any player's cities, so an index of the cities of the game knows when it

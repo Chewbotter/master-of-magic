@@ -383,6 +383,8 @@ type Game struct {
     simFought int
     // development: the human's seat is played by Chewbot in a run without a window (standin.go)
     StandInHuman bool
+    // development: what the last battle of a -sim-tactical run noted beside its result (simtactical.go)
+    simTacticalNote string
     // a computer wizard's cast the human does not see: no camera move, animation or window (aicast.go)
     quietCast bool
     // how often a computer wizard's spell asked for a square (aicast.go)
@@ -4566,9 +4568,11 @@ func (handlers *GameMoveHandlers) ShowMovement(x int, y int, stack *playerlib.Un
 func (handlers *GameMoveHandlers) DoEncounter(player *playerlib.Player, stack *playerlib.UnitStack, encounter *maplib.ExtraEncounter, map_ *maplib.Map, x int, y int) combat.CombatState {
     battle := simEncounterStart(player, stack, encounter, map_.Plane)
     handlers.Game.simFought = -1
+    handlers.Game.simTacticalNote = ""
     state := handlers.Game.doEncounter(handlers.Yield, player, stack, encounter, map_, x, y)
     if battle != nil {
         battle.fought = handlers.Game.simFought
+        battle.tactical = handlers.Game.simTacticalNote
     }
     handlers.Game.Stats.encounter(player, state)
     battle.end(state)
@@ -4581,9 +4585,11 @@ func (handlers *GameMoveHandlers) DoCombat(player *playerlib.Player, stack *play
         battle.atSea = handlers.Game.GetMap(enemyStack.Plane()).GetTile(enemyStack.X(), enemyStack.Y()).Tile.IsWater()
     }
     handlers.Game.simFought = -1
+    handlers.Game.simTacticalNote = ""
     state := handlers.Game.doCombat(handlers.Yield, player, stack, enemy, enemyStack, zone)
     if battle != nil {
         battle.fought = handlers.Game.simFought
+        battle.tactical = handlers.Game.simTacticalNote
     }
     handlers.Game.Stats.combat(player, enemy, state)
     battle.end(state)
@@ -5598,6 +5604,17 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     // the original resolves every battle without the human, and the human's own with Strategic
     // Combat Only, by its quick resolution (combat/strategicclassic.go)
     classicQuick := combat.ClassicAutoResolve && (useStrategicCombat || !(useHuman || game.WatchMode || standInBattle))
+    // development: every battle of a -sim-tactical run is fought out, and the quick resolution is
+    // only asked what it would have said (simtactical.go)
+    game.simTacticalNote = ""
+    tacticalTest := SimTactical && game.Stats != nil && !useHuman && !game.WatchMode
+    quickWould := combat.CombatStateRunning
+    if tacticalTest && classicQuick {
+        quickWould = game.simQuickWould(combatModel, attacker, attackerStack, defender, defenderStack, zone, createArmy)
+        classicQuick = false
+        attackingArmy.Auto = attackingArmy.Auto || attacker.IsHuman()
+        defendingArmy.Auto = defendingArmy.Auto || defender.IsHuman()
+    }
     if classicQuick {
         // the original's quick resolution reads the node of the last battle that was fought on a
         // screen, which it never sets itself: no node helps its creatures here (MY CALL for that
@@ -5646,6 +5663,9 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     } else {
         // do non-graphical combat (ai vs ai)
         state = combat.Run(combatModel)
+        if game.Stats != nil {
+            game.simTacticalNote = simTacticalWords(combatModel, state, quickWould)
+        }
     }
 
     if !useStrategicCombat {

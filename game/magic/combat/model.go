@@ -2422,9 +2422,16 @@ func (army *Army) KillUnit(kill *ArmyUnit){
 }
 
 func (army *Army) RemoveUnit(remove *ArmyUnit){
-    army.units = slices.DeleteFunc(army.units, func(check *ArmyUnit) bool {
-        return check == remove
-    })
+    // a new list: slices.DeleteFunc moves the units in place and clears the end, so a loop over the
+    // army at that moment (the start of a turn, where Wrack kills) met nil units and crashed (found
+    // by test runs with every battle fought out)
+    kept := make([]*ArmyUnit, 0, len(army.units))
+    for _, check := range army.units {
+        if check != remove {
+            kept = append(kept, check)
+        }
+    }
+    army.units = kept
 }
 
 // a special kind of unit

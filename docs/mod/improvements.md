@@ -334,6 +334,25 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
 
 ## Found by many runs (testing.md, 2026-09-30)
 
+- BATTLES FOUGHT OUT (2026-10-01, item 2 of the user's list): `-sim-tactical` (game/simtactical.go).
+  48 games of 300 turns, 5,958 battles fought out. FOUND AND FIXED: removing a unit from an army,
+  a player's stacks or a stack moved the list in place (slices.DeleteFunc) and cleared its end, so a
+  loop over it at that moment met nil (6 crashes in 48 games, at the start of a battle turn when
+  Wrack kills; also the cause of Great Unsummoning's crash): every removal makes a new list now
+  (`Army.RemoveUnit`, `withoutStack`, `UnitStack.RemoveUnit`); the attackers of a battle that
+  ended at the turn limit stood in the city they had emptied: an attacker's units step back after
+  any loss. MEASURED, tactical against quick on the same battles: they agree on the winner in 4,091
+  of 5,958; at 0.75 to 1 times the defender's strength the attacker wins 21 percent fought out and
+  53 quick, at 1 to 1.5 33 and 61; lairs fall 600 times fought out and 1,772 quick (the quick
+  resolution gives every computer wizard half again, the original's help for the battles nobody
+  watches); raiders win more fought out (375 to 124). Attackers fled 706 times (12 percent), 121
+  battles went to the turn limit, most of them ground units against a flier they can not strike in
+  melee (Check_Attack_Melee) while the flier, a guardian, finds them not worth attacking (2 Cavalry
+  against a Great Drake 70 turns running). A stack that loses without dying keeps its target order
+  and attacks again every turn (orders end on arrival or death): never seen with the quick
+  resolution, where the loser dies; in a real game, an AI stack that survives a lost battle against
+  the human comes back.
+
 - THE STAND-IN (2026-10-01, the user: "Go ahead with 1, then 2, then 3"; 1 was: the rules that
   single out the human never ran in all-AI runs). `-sim-stand-in` (game/standin.go): the human's
   seat played by Chewbot, still the human for the rules. `Player.StandIn`, `IsAI()` true for it

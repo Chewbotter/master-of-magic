@@ -2194,9 +2194,11 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
                     // units of the beaten defender that were not in the battle stood on the
                     // winner's square; they get away as fleeing units do, or are lost
                     model.doMoveFleeingDefender(enemy, enemyStack)
-                } else if state == combat.CombatStateDefenderWin && !stack.IsEmpty() && len(enemyStack.Units()) > 0 {
-                    // units of the attacker that were not in the battle (a ship in a battle on
-                    // land) go back to where they came from instead of standing with the winner
+                } else if state == combat.CombatStateDefenderWin && !stack.IsEmpty() {
+                    // units of the attacker that are left go back to where they came from: units
+                    // that were not in the battle (a ship in a battle on land), and the attackers of
+                    // a battle that ended at the turn limit, which stood in the city they had
+                    // emptied of defenders
                     stack.SetX(oldX)
                     stack.SetY(oldY)
                 }
@@ -2270,9 +2272,7 @@ func (model *GameModel) doMoveFleeingDefender(player *playerlib.Player, stack *p
 
     // the stack they left is gone (it stayed in the player's list without units)
     if stack.IsEmpty() {
-        player.Stacks = slices.DeleteFunc(player.Stacks, func (other *playerlib.UnitStack) bool {
-            return other == stack
-        })
+        player.Stacks = playerlib.WithoutStack(player.Stacks, stack)
     }
 }
 
