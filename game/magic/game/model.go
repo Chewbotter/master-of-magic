@@ -1859,7 +1859,7 @@ func (model *GameModel) DoEarthquake(city *citylib.City, player *playerlib.Playe
         roll := rand.N(100)
         if roll < 15 {
             destroyedBuildings = append(destroyedBuildings, building)
-            city.Buildings.Remove(building)
+            city.RemoveBuilding(building)
         }
     }
 
@@ -1875,7 +1875,7 @@ func (model *GameModel) doCallTheVoid(city *citylib.City, player *playerlib.Play
     for _, building := range city.Buildings.Values() {
         if rand.N(2) == 0 {
             destroyedBuildings = append(destroyedBuildings, building)
-            city.Buildings.Remove(building)
+            city.RemoveBuilding(building)
         }
     }
 

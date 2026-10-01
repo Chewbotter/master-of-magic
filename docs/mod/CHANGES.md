@@ -154,6 +154,11 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The spell under the mouse pulses softly to the color of its realm (green for nature, blue for sorcery, red for chaos, white for life, purple for death), in the book for casting and when a spell to research is picked. The pulse starts when the mouse comes over the spell.
 - Bookmarks at the right edge of the book for casting, one for every kind of spell with a symbol of its own: a click turns the book to that kind.
 - The dark behind the spellbook fades in and out with it, and in a battle it covers the whole width of the window.
+- Nature's Wrath strikes a chaos or death caster only after a cast that went through, as in the original, and tells you each time it strikes.
+- A city's Nightshade counters spells by the count of the start of the turn, and keeps its old count when it loses its shrine or guild.
+- Wall of Stone can not be cast on walls sold or destroyed this turn, and no longer changes what the city builds.
+- Your Spell Blast costs the progress of the spell it stops.
+- Death Wish and Great Unsummoning are stopped by a city's Consecration, ward or Nightshade for the units in it.
 
 ## For artists
 - A replacement folder (`mod/`): a picture in it takes the place of the game's own. Figures, cursors, spells, the surroundings of battles, and any picture of the game's archives.

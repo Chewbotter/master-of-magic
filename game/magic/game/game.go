@@ -419,6 +419,8 @@ type Game struct {
     MouseData *mouselib.MouseData
 
     Events chan GameEvent
+    // a chaos or death cast that may call down Nature's Wrath, see natureswrath.go
+    wrathCast *naturesWrathCast
 
     WatchMode bool
     WatchModePaused bool
@@ -2886,6 +2888,9 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                     case *GameEventShowBanish:
                         banishEvent := event.(*GameEventShowBanish)
                         game.doBanish(yield, banishEvent.Attacker, banishEvent.Defender)
+                    case *GameEventNaturesWrath:
+                        // after a chaos or death cast that went through, see natureswrath.go
+                        game.doNaturesWrath(event.(*GameEventNaturesWrath).Cast)
                     case *GameEventNotice:
                         notice := event.(*GameEventNotice)
                         game.doNotice(yield, game.HudUI, notice.Message)
@@ -2974,6 +2979,8 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                                     selectLocation.SelectedFunc(yield, tileX, tileY)
                                     break
                                 }
+                                // a cast that was called off is no cast for Nature's Wrath
+                                game.naturesWrathFailed(selectLocation.Player)
                                 if !returning || len(selectLocation.Player.Cities) == 0 {
                                     break
                                 }
@@ -5798,7 +5805,7 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
         zone.City.Population -= cityPopulationLoss * 1000
         for _, building := range cityBuildingLoss {
-            zone.City.Buildings.Remove(building)
+            zone.City.RemoveBuilding(building)
         }
         zone.City.ResetCitizens()
     }
@@ -8685,7 +8692,7 @@ func (game *Game) doChaosRift() {
 
             for _, building := range destroyedBuildings {
                 // emit a notice?
-                city.Buildings.Remove(building)
+                city.RemoveBuilding(building)
             }
         }
     }
@@ -8765,7 +8772,7 @@ func (game *Game) doMeteorStorm() {
                 }
 
                 for _, building := range destroyedBuildings {
-                    city.Buildings.Remove(building)
+                    city.RemoveBuilding(building)
                 }
 
             }
@@ -8816,6 +8823,9 @@ func (game *Game) ComputeWizardPower(player *playerlib.Player) playerlib.WizardP
 
 func (game *Game) EndOfTurn() {
     // put stuff here that should happen when all players have taken their turn
+
+    // All_City_Nightshade_Count, then All_City_Removed_Buildings (magicclassic.go)
+    game.classicCityRecords()
 
     for _, player := range game.Model.Players {
         if !player.Defeated {

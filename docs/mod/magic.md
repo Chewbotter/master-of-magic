@@ -74,3 +74,28 @@ Storm are checked; Earthquake, Raise Volcano and Warp Node are not.
 - Magic power of minerals per square in whole numbers (dwarves twice, Miners' Guild half again,
   shared squares half).
 - The skill shown counts half the skill of each hero at the fortress.
+
+## The last of the spells (2026-10-01)
+
+User: "Let's update all spells to be classic". Read for this by three helpers (ReMoM OverSpel.c
+Cast_Spell_Overland, Spells129.c Call_Forth_The_Force_Of_Nature and Apply_Automatic_Spell_Counters,
+Terrain.c All_City_Nightshade_Count, City_ovr55.c All_City_Removed_Buildings, Spells132.c
+Cast_Wall_Of_Stone, Spells137.c the Spell Blast of the human). Tests `TestClassicRemovedThisTurn`,
+`TestClassicSpellBlastHumanPrice`.
+
+- Nature's Wrath strikes after a chaos or death cast that went through: not when the human calls
+  it off, a computer wizard finds no target or a city counters it (`game/natureswrath.go`: the
+  strike is an event queued behind the cast). The human is told "Nature's Wrath strikes you" or
+  "strikes <name>" every time.
+- A city's Nightshade is counted once a turn, when all players have played, and kept
+  (`City.NightshadeCount`, saved): only when the city has people and a building of religion or
+  learning (one sold or destroyed in the turn counts); else the old count stays, never cleared. The
+  counters read that count, not the city as it is now.
+- A building sold or destroyed is remembered until the end of the turn (`City.RemovedThisTurn`,
+  `City.RemoveBuilding`, every sale and destruction goes through it): Wall of Stone is refused on
+  walls sold or destroyed in the turn, by the human and the computer. Wall of Stone leaves the
+  city's build as it is.
+- Spell Blast cast by the human costs the cost the spell was started at less what is left of it:
+  for a spell of both books its progress, which the screen shows.
+- Death Wish and Great Unsummoning: the units in a city meet its counters (Consecration, the ward,
+  Nightshade), rolled once a city.

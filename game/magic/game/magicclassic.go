@@ -48,19 +48,20 @@ func classicCastStrength(player *playerlib.Player, spell spellbook.Spell) int {
     return max(spell.CastCost, player.ComputeEffectiveSpellCost(spell, true))
 }
 
-// All_City_Nightshade_Count: the Nightshade of the squares a city works, when it has a building of
-// religion or learning
+// All_City_Nightshade_Count (Terrain.c): the Nightshade of the squares a city works, when it has a
+// building of religion or learning, one sold or destroyed in this turn too. -1: the city has none
+// or no people, and its count is left as it is (the original never clears it)
 func classicNightshadeCount(city *citylib.City) int {
     any := false
     for _, building := range []buildinglib.Building{buildinglib.BuildingShrine, buildinglib.BuildingTemple,
         buildinglib.BuildingParthenon, buildinglib.BuildingCathedral, buildinglib.BuildingSagesGuild,
         buildinglib.BuildingOracle, buildinglib.BuildingAlchemistsGuild, buildinglib.BuildingWizardsGuild} {
-        if city.Buildings.Contains(building) {
+        if city.HasOrRemovedThisTurn(building) {
             any = true
         }
     }
-    if !any {
-        return 0
+    if !any || city.Outpost || city.Citizens() <= 0 {
+        return -1
     }
     count := 0
     for _, tile := range city.GetCatchmentArea() {
@@ -96,7 +97,8 @@ func classicCountered(city *citylib.City, spell spellbook.Spell, caster *playerl
     if ward := classicWardOf(spell.Magic); ward != data.CityEnchantmentNone && city.HasEnchantment(ward) {
         countered = true
     }
-    if count := classicNightshadeCount(city); count > 0 {
+    // the count of the start of the turn (classicCityRecords), not the city as it is now
+    if count := city.NightshadeCount; count > 0 {
         var owner spellbook.RetortOwner = noRetorts{}
         if caster != nil {
             owner = &caster.Wizard
@@ -114,9 +116,30 @@ func (game *Game) cityCounters(city *citylib.City, spell spellbook.Spell, caster
         return false
     }
     if ClassicMagic {
-        return classicCountered(city, spell, caster, classicCastStrength(caster, spell))
+        countered := classicCountered(city, spell, caster, classicCastStrength(caster, spell))
+        if countered {
+            // a countered cast is no cast for Nature's Wrath (natureswrath.go)
+            game.naturesWrathFailed(caster)
+        }
+        return countered
     }
     return city.CheckDispel(spell)
+}
+
+// once a turn, when all players have played (NEXTTURN.c Next_Turn_Calc): every city counts its
+// Nightshade (All_City_Nightshade_Count), then forgets what was sold or destroyed in the turn
+// (All_City_Removed_Buildings)
+func (game *Game) classicCityRecords() {
+    for _, player := range game.Model.Players {
+        for _, city := range player.Cities {
+            if ClassicMagic {
+                if count := classicNightshadeCount(city); count >= 0 {
+                    city.NightshadeCount = count
+                }
+            }
+            city.RemovedThisTurn = nil
+        }
+    }
 }
 
 // upstream refuses a spell at a stack in a city warded against it; the original lets the counters
@@ -344,7 +367,7 @@ func (game *Game) classicMeteorStorm() {
                         continue
                     }
                     if rand.N(100) == 0 {
-                        city.Buildings.Remove(building)
+                        city.RemoveBuilding(building)
                     }
                 }
             }
@@ -456,4 +479,22 @@ func (game *Game) classicPlaneShift(stack *playerlib.UnitStack, player *playerli
     player.UpdateFogVisibility()
     game.discoverWizards(nil)
     return true
+}
+
+// a spell of the whole world that hits units (Death Wish, Great Unsummoning): true if a city keeps
+// it off the units in it. the original rolls its counters once a city (CTY_CounterSpell);
+// upstream asks only the ward of the realm
+func (game *Game) citySparesUnits(spell spellbook.Spell, caster *playerlib.Player) func(*citylib.City) bool {
+    rolled := make(map[*citylib.City]bool)
+    return func(city *citylib.City) bool {
+        if !ClassicMagic {
+            return !city.CanTarget(spell)
+        }
+        spared, ok := rolled[city]
+        if !ok {
+            spared = classicCountered(city, spell, caster, classicCastStrength(caster, spell))
+            rolled[city] = spared
+        }
+        return spared
+    }
 }

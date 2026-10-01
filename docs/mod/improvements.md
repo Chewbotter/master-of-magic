@@ -263,12 +263,16 @@ quirk constant where there is one: turning it is the change. New calls go here t
 - MY CALL: Plane Shift still refuses a lair on the other side (a lair holds no units in the
   original); Disenchant read by its checked combat twin (the overland one as written can not be
   right).
-- Not ported: Nature's Wrath striking only after a cast that went through (here at the start of
-  every chaos and death cast, as upstream); the Nightshade count of a turn before and never cleared;
-  Wall of Stone refused on walls sold or destroyed this turn (the fork keeps no such state); a
-  computer wizard's Move Fortress moving the HUMAN's fortress (the original's mistake); Death Wish
-  and Great Unsummoning counters (stubs in the reconstruction); the Stasis of the new units is not
-  saved (a load lets them roll at once).
+- Ported 2026-10-01 ("The last of the spells" in magic.md): Nature's Wrath after a cast that went
+  through, the Nightshade count kept from the turn, Wall of Stone on walls sold or destroyed this
+  turn, the human's Spell Blast price, the counters of cities for Death Wish and Great Unsummoning.
+- Not ported: a computer wizard's Move Fortress moving the HUMAN's fortress (ReMoM's
+  Cast_Move_Fortress has the human's index written in; not checked against the program, no
+  community report of it, and AITP_Move_Fortress itself reads the caster's fortress: likely a
+  mistake of the reconstruction; for the user to decide); what Death Wish and Great Unsummoning do
+  (stubs in the reconstruction: as written they do nothing; the fork's effects stay); Nature's
+  Wrath on a building another one needs (the reconstruction's Apply_Damage_To_City is garbled);
+  the Stasis of the new units is not saved (a load lets them roll at once).
 
 ## The leftovers (item 9, last part)
 

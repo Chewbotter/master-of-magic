@@ -57,11 +57,14 @@ func (game *Game) aiSelectLocation(yield coroutine.YieldFunc, event *GameEventSe
         game.aiCastTries = make(map[*playerlib.Player]int)
     }
     if game.aiCastTries[player] >= aiCastTriesMost {
+        game.naturesWrathFailed(player)
         return
     }
     game.aiCastTries[player] += 1
     target, ok := game.aiSpellTarget(player, event.Spell)
     if !ok {
+        // no target: no cast for Nature's Wrath (natureswrath.go)
+        game.naturesWrathFailed(player)
         return
     }
     game.runAiCast(target.X, target.Y, target.Plane, func() {
@@ -99,6 +102,7 @@ func (game *Game) doCastSpellAI(player *playerlib.Player, spell spellbook.Spell)
     }
     target, ok := game.aiSpellTarget(player, spell)
     if !ok {
+        game.naturesWrathFailed(player)
         return true
     }
     switch spell.Name {
@@ -262,7 +266,10 @@ func classicSpellBlast(caster *playerlib.Player, target *playerlib.Player) bool 
             return false
         }
     } else {
-        price = max(0, target.CastingSpell.Cost(true) - remaining)
+        // Spells137.c: the cost the spell was started at (the table's or the wizard's, whichever
+        // is higher, see classicCastStrength) less what is left: for a spell of both books that is
+        // the progress, which the screen shows
+        price = max(0, classicCastStrength(target, target.CastingSpell) - remaining)
         if price > caster.Mana {
             return false
         }
