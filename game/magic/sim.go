@@ -424,13 +424,17 @@ func simPlay(game *gamelib.Game, description string, index int, count int) simRu
         // every wizard a computer one (simrecord.go)
         simMakeAllAI(game)
         description += ", the human's slot played by Chewbot"
+    } else if simStandIn {
+        // the human's seat played by Chewbot, still the human for the rules (game/standin.go)
+        simMakeStandIn(game)
+        description += ", the human played by a stand-in (Chewbot)"
     }
     var sink *simJournalSink
     if simJournal != "" || simJSON != "" {
         sink = simOpenJournal(game, simRunPath(simJournal, index, count))
         defer sink.close()
     }
-    stopAlone := simStopAlone || simAllAI
+    stopAlone := simStopAlone || simAllAI || simStandIn
 
     players := slices.Clone(game.Model.Players)
     before := make(map[*playerlib.Player]simSnapshot)
@@ -439,7 +443,7 @@ func simPlay(game *gamelib.Game, description string, index int, count int) simRu
     }
 
     game.SimSkipHuman()
-    if simAllAI {
+    if simAllAI || simStandIn {
         // the human's slot plays its turns
         game.Model.GetHumanPlayer().Skip = false
     }

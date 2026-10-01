@@ -13,6 +13,8 @@ turn; many runs at once go through `util/simbatch/simbatch.py`, which also write
 |---|---|
 | `-sim N` | play N turns, then write the summary (`-sim-out`) |
 | `-sim-all-ai` | the human's slot is a computer wizard played by Chewbot, so every wizard plays; the run ends when one wizard is left, not when the wizard of the human's slot falls (`-sim-play-on` is set) |
+| `-sim-stand-in` | the human's seat is played by Chewbot but stays the human for every rule: no difficulty bonuses, the computer wizards' rules that single out the human (defense on its land, raiders' and wars' preference for it, diplomacy toward it), the human's upkeep. Its turns are the computer players' turns; every window the game would open for the human is left out or answered by the AI (game/standin.go); its battles are fought out on the battlefield with Chewbot leading both armies, as the human on auto. The diplomacy addressed to the human is never answered. The run goes on when it falls |
+| `-sim-stand-in-quick` | with `-sim-stand-in`: its battles by the quick resolution, as Strategic Combat Only |
 | `-sim-play-on` | without `-sim-all-ai`: the run goes on when the idle human is beaten |
 | `-sim-war` | every wizard at war with every other at the start |
 | `-capture-opponents N` | computer wizards beside the human's slot (1 to 4: 2 to 5 wizards) |
@@ -68,6 +70,10 @@ turns each played the same twice.
     python util/simbatch/simbatch.py run --name trace --out D:/x/fuzz --runs 10 --turns 300 \
         --all-ai --extra=-sim-trace
     grep -h "TRACE" D:/x/fuzz/trace/*.log
+
+`--stand-in` plays the human's seat by the stand-in (`--stand-in-quick` for quick battles); the
+report then has a part on how the human's seat fared. `--exe` runs a given build in place of the
+newest (two builds on the same seeds).
 
 `run` picks every run's settings by chance from the lists (the fuzzing) and a seed of its own
 (`-sim-seed`), copies the newest build of the lane into the batch's folder (`game.exe`, so building

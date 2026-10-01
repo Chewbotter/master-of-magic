@@ -113,13 +113,18 @@ def one_run(args, root, out, index, seed, exe):
         flags += ["-sim-trace", "-sim-save-every", "10"]
     if args.all_ai:
         flags.append("-sim-all-ai")
+    elif args.stand_in:
+        # the human's seat played by Chewbot, still the human for the rules (game/standin.go)
+        flags.append("-sim-stand-in")
+        if args.stand_in_quick:
+            flags.append("-sim-stand-in-quick")
     else:
         flags.append("-sim-play-on")
     if war:
         flags.append("-sim-war")
     flags += args.extra.split() if args.extra else []
     config = {"index": index, "difficulty": difficulty, "land": land, "opponents": opponents, "war": war,
-              "allAI": args.all_ai, "turns": args.turns, "seed": seed, "lane": args.lane, "build": exe.name, "flags": flags}
+              "allAI": args.all_ai, "standIn": args.stand_in, "turns": args.turns, "seed": seed, "lane": args.lane, "build": exe.name, "flags": flags}
     code, seconds = start_game(root, args.lane, exe, flags, out / f"{name}.log", args.timeout)
     config["seconds"] = seconds
     config["exit"] = code
@@ -302,7 +307,7 @@ def ending_of(run):
         return "stalled"
     if stalled == "one wizard left":
         return "one wizard left"
-    if stalled == "the game ended" or record.get("GameOver"):
+    if stalled == "the game ended":
         return "game over"
     return "all turns played"
 
@@ -386,7 +391,7 @@ def report_batch(name, runs):
             if player["Neutral"]:
                 for key, value in row.items():
                     neutral[key].append(value)
-            elif not player["Human"] or run["config"]["allAI"]:
+            elif not player["Human"] or run["config"]["allAI"] or run["config"].get("standIn"):
                 for key, value in row.items():
                     wizards[key].append(value)
                 kind = f"{player['Personality']} {player['Objective']}"
@@ -400,6 +405,21 @@ def report_batch(name, runs):
     out["wizardsOut"] = sum(1 for value in wizards.get("out", []) if value)
     out["wizardCount"] = len(wizards.get("out", []))
     out["neutral"] = {key: stats_of([float(value) for value in values]) for key, values in neutral.items()}
+    # the human's seat played by the stand-in: how it fared beside the computer wizards
+    seat = collections.defaultdict(list)
+    for run in records:
+        if not run["config"].get("standIn"):
+            continue
+        for player in run["record"]["Players"]:
+            if player["Human"]:
+                end, stats = player["End"], player["Stats"]
+                for key, value in (("cities", end["Cities"]), ("units", end["Units"]), ("strength", end["Strength"]), ("out", 1 if end["Out"] else 0),
+                                   ("defenses", stats["Defenses"]), ("defensesWon", stats["DefensesWon"]), ("attacks", stats["Attacks"]),
+                                   ("attacksWon", stats["AttacksWon"]), ("lairs", stats["LairsFought"]), ("lairsWon", stats["LairsWon"]),
+                                   ("founded", stats["CitiesFounded"]), ("lost", stats["CitiesLost"])):
+                    seat[key].append(value)
+    out["humanSeat"] = {key: stats_of([float(value) for value in values]) for key, values in seat.items()} if seat else None
+    out["humanSeatOut"] = sum(seat.get("out", [])) if seat else None
     out["byPersonality"] = {kind: {"wizards": len(values["cities"]), "cities": stats_of(values["cities"]), "strength": stats_of(values["strength"]), "out": sum(values["out"])} for kind, values in sorted(personalities.items())}
 
     # the journal
@@ -580,6 +600,13 @@ def markdown(reports):
             for title, groups in report["bySettings"].items():
                 lines.append(f"- {title}: " + "; ".join(f"{value}: {group['runs']} runs, treaties {group['treatiesPerRun']['median'] if group['treatiesPerRun'] else '-'}, wars {group['warsPerRun']['median'] if group['warsPerRun'] else '-'}, battles {group['battlesPerRun']['median'] if group['battlesPerRun'] else '-'}, cities taken {group['citiesTakenPerRun']['median'] if group['citiesTakenPerRun'] else '-'}, cities {group['citiesOfAWizard']['median'] if group['citiesOfAWizard'] else '-'}" for value, group in groups.items()))
             lines.append("")
+        if report.get("humanSeat"):
+            lines += ["### The human's seat, played by the stand-in (median, min to max)", ""]
+            for key, value in report["humanSeat"].items():
+                if value:
+                    lines.append(f"- {key}: {value['median']} ({value['min']} to {value['max']})")
+            lines.append(f"- out of the game: {report['humanSeatOut']} of {report['runs']}")
+            lines.append("")
         wizards = report["wizards"]
         if wizards:
             lines += ["### The computer wizards at the end (median, min to max)", ""]
@@ -678,6 +705,8 @@ def main():
     run.add_argument("--land", default="0,1,2", help="land size 0 to 2, a list")
     run.add_argument("--war", type=float, default=0.0, help="the chance of every wizard at war at the start")
     run.add_argument("--all-ai", action="store_true", help="the human's slot played by Chewbot")
+    run.add_argument("--stand-in", action="store_true", help="the human's seat played by Chewbot but still the human for the rules; its battles on the battlefield")
+    run.add_argument("--stand-in-quick", action="store_true", help="with --stand-in: its battles by the quick resolution")
     run.add_argument("--timeline", type=int, default=10)
     run.add_argument("--timeout", type=int, default=1800, help="seconds before a run is killed")
     run.add_argument("--seed", type=int, default=1, help="picks the settings and the seed (-sim-seed) of every run")

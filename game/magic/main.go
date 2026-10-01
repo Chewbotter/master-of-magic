@@ -1510,6 +1510,8 @@ func loadGameConfig() GameConfig {
     flag.StringVar(&simLoad, "sim-load", "", "development: a -sim run starts from this saved game (a name in the folder scenarios, or a path; .GAM of the original too)")
     flag.StringVar(&simSave, "sim-save", "", "development: a -sim run saves the game at its end (a bare name goes to the folder scenarios)")
     flag.IntVar(&simRepeat, "sim-repeat", 1, "development: play the saved game of -sim-load this many times, with averages")
+    flag.BoolVar(&simStandIn, "sim-stand-in", false, "development: the human's seat of a -sim run is played by Chewbot but stays the human for every rule (game/standin.go)")
+    flag.BoolFunc("sim-stand-in-quick", "development: with -sim-stand-in, the stand-in's battles by the quick resolution, not on the battlefield", func(string) error { gamelib.StandInTactical = false; return nil })
     flag.BoolVar(&simAllAI, "sim-all-ai", false, "development: the human's slot of a -sim run is played by Chewbot too (simrecord.go)")
     flag.StringVar(&simJSON, "sim-json", "", "development: write the record of a -sim run as JSON to this file (simrecord.go)")
     flag.StringVar(&simJournal, "sim-journal", "", "development: write the key decisions and happenings of a -sim run, one JSON line each, to this file")

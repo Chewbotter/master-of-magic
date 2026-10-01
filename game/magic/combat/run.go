@@ -1,6 +1,8 @@
 package combat
 
 import (
+    stdlog "log"
+    "sync/atomic"
     "github.com/kazzmir/master-of-magic/game/magic/pathfinding"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "github.com/kazzmir/master-of-magic/game/magic/unitview"
@@ -562,6 +564,12 @@ func (actions *ProxyActions) SingleAuto() bool {
     return false
 }
 
+// the updates of combat.Run with no turn passing before the battle counts as stuck
+const runStallUpdates = 200000
+
+// the battles combat.Run found stuck (development: the runs without a window record it)
+var RunStalls atomic.Int64
+
 // Run combat without a UI, and no user input. This is useful for simulating combat
 // scenarios, running automated tests, or benchmarking performance.
 func Run(model *CombatModel) CombatState {
@@ -575,7 +583,19 @@ func Run(model *CombatModel) CombatState {
     }
 
     state := CombatStateRunning
+    // a battle where no turn passes in this many updates is stuck (an army nobody leads, a unit
+    // that never ends its turn): it ends, and the log says so (RunStalls counts them)
+    lastTurn, sameTurn := model.CurrentTurn, 0
     for state == CombatStateRunning {
+        if model.CurrentTurn != lastTurn {
+            lastTurn, sameTurn = model.CurrentTurn, 0
+        }
+        sameTurn += 1
+        if sameTurn > runStallUpdates {
+            RunStalls.Add(1)
+            stdlog.Printf("BATTLE STALLED: no turn passed in %v updates at turn %v; the battle ends as the defender's", runStallUpdates, model.CurrentTurn)
+            return CombatStateDefenderWin
+        }
 
         // let magic vortexes move around randomly, the ai won't move them on its own
         for _, vortex := range model.MagicVortexes {

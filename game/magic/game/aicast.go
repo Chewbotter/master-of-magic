@@ -230,7 +230,7 @@ func (game *Game) spellBindingEffect(caster *playerlib.Player, enchantment data.
     allSpells := game.AllSpells()
     targetSpell := allSpells.FindByName(enchantment.String())
     strength := spellBindingStrength
-    if ClassicMagic && caster.IsAI() {
+    if ClassicMagic && !caster.IsHuman() {
         // Cast_Spell_Binding: a computer wizard binds with the spell's table cost
         binding := game.AllSpells()
         strength = binding.FindByName("Spell Binding").CastCost
@@ -256,7 +256,7 @@ func classicSpellBlast(caster *playerlib.Player, target *playerlib.Player) bool 
     }
     remaining := target.ComputeEffectiveSpellCost(target.CastingSpell, true) - target.CastingSpellProgress
     var price int
-    if caster.IsAI() {
+    if !caster.IsHuman() {
         price = max(0, target.CastingSpell.CastCost - remaining)
         if caster.Mana <= price {
             return false

@@ -624,14 +624,20 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                 cityStackInfo := game.Model.ComputeCityStackInfo()
 
                 for _, player := range game.Model.Players {
-                    for _, stack := range player.Stacks {
+                    // over copies: a unit removed takes its stack out of the list when it was the
+                    // last, which left empty places in the list being walked (a crash, found by a
+                    // test run with the stand-in)
+                    for _, stack := range slices.Clone(player.Stacks) {
+                        if stack.IsEmpty() {
+                            continue
+                        }
 
                         city := cityStackInfo.FindCity(stack.X(), stack.Y(), stack.Plane())
                         if city != nil && !city.CanTarget(spell) {
                             continue
                         }
 
-                        for _, unit := range stack.Units() {
+                        for _, unit := range slices.Clone(stack.Units()) {
                             if unit.GetRace() == data.RaceFantastic {
 
                                 if unit.HasEnchantment(data.UnitEnchantmentSpellLock) ||
