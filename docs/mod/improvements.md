@@ -350,12 +350,12 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
   on arrival or when a move fails, and Stack_Move_To attacks whatever stands at the destination: a
   unit sent to garrison a city the wizard has lost since, a settler whose site an enemy stands on, an
   engineer whose road ends in a city that changed hands. The original moves only the units with one
-  destination together (Build_RoadBuilder_Stack), as ours. MEASURED, A SWITCH OF OURS (off):
+  destination together (Build_RoadBuilder_Stack), as ours. MEASURED, A SWITCH OF OURS, TURNED ON BY THE USER (2026-10-01, "Turn on the stage switch"):
   `ChewbotStageSparesOrdered` (`-chewbot-stage-spares-ordered`) leaves a unit that got an order in the
   turn to that order. On the same 30 seeds (`_build/a/fuzz15/spares`): target attacks at under half
   253 to 42; lairs won 524 of 930 to 603 of 945; cities taken 181 of 574 to 281 of 808; battles in
   the field won 222 of 382 to 385 of 577; cities and units of a wizard at the end about the same
-  (7.7 to 8.2 cities, 77 to 75 units, mean). The user's call; until then the original.
+  (7.7 to 8.2 cities, 77 to 75 units, mean). `false` gives the original.
 
 - BATTLES FOUGHT OUT (2026-10-01, item 2 of the user's list): `-sim-tactical` (game/simtactical.go).
   48 games of 300 turns, 5,958 battles fought out. FOUND AND FIXED: removing a unit from an army,

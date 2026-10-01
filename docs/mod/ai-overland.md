@@ -87,8 +87,9 @@ again only when the old one holds none of those cities any more, or the army wai
     THE COST OF IT (measured 2026-10-01): the survey takes the strongest units, so a group that
     has picked a target loses its best units to the stage point in the same turn and the rest
     walks on alone. In 30 games of 300 turns 225 of the 253 attacks of a target order at under half
-    the defender's strength had fewer units than were sent (4 fewer, median). Switch
-    `ChewbotStageSparesOrdered` (off, the original) leaves a unit that got an order in the turn.
+    the defender's strength had fewer units than were sent (4 fewer, median). CHEWBOT'S OWN, ON (user 2026-10-01): switch
+    `ChewbotStageSparesOrdered` leaves a unit that got an order in the turn to that order; false
+    gives the original.
 13. **Garrisons**: the fortress wants 9, a city 2 and a unit for 3 citizens (for 4 where the wizard
     feels safe or the race is dwarf, troll or draconian), a free node 8. Unknown stacks and
     roamers away from the stage point send units to the site with the smallest distance less what

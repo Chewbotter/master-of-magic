@@ -434,13 +434,13 @@ func (pass *chewPass) surveyStack(stack *chewAIStack, excess int) {
     }
 }
 
-// NOT THE ORIGINAL'S, a switch to measure it (2026-10-01, item 3 of the user's list, attacks at
-// long odds): the survey drafts the roamers before they pick targets and the stage step comes after
+// CHEWBOT'S OWN, not the original's (user 2026-10-01: "Turn on the stage switch"; measured first,
+// item 3 of the user's list, attacks at long odds): the survey drafts the roamers before they pick targets and the stage step comes after
 // (AI_Set_Unit_Orders), so the stage point takes the strongest units of a group that has just picked
 // a target and the rest walks on alone: 225 of 253 attacks at under half strength by a target order
 // in 30 games. true: the stage step leaves a unit that was given an order in the same turn. false:
 // the original
-var ChewbotStageSparesOrdered = false
+var ChewbotStageSparesOrdered = true
 
 // the player that holds a node, nil when nobody does
 func (world *chewWorld) nodeOwner(x int, y int, wp int) *playerlib.Player {
