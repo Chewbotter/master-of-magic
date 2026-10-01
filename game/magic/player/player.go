@@ -371,6 +371,9 @@ type Player struct {
     // the banners of the wizards this one banished or defeated, each once: the score counts them
     // (the original's Defeated_Wizards, conquest.go)
     DefeatedWizards []data.BannerType
+    // AI_Calculate_Average_Unit_Cost: the average worth of a computer wizard's units, counted every
+    // 25 turns (game/leftoversclassic.go)
+    AverageUnitCost int
 
     // what kind of wizard a computer wizard is, picked at the start of a game (personality.go)
     Personality Personality
@@ -742,6 +745,17 @@ func (provider *PlayerEnchantmentProvider) HasFriendlyEnchantment(enchantment da
 
 func (provider *PlayerEnchantmentProvider) HasRivalEnchantment(enchantment data.Enchantment) bool {
     return provider.Player.GlobalEnchantmentsProvider.HasRivalEnchantment(provider.Player, enchantment)
+}
+
+// how many other wizards have the enchantment, when the game can count them
+func (provider *PlayerEnchantmentProvider) RivalEnchantmentCount(enchantment data.Enchantment) int {
+    if counter, ok := provider.Player.GlobalEnchantmentsProvider.(interface{ RivalEnchantmentCount(*Player, data.Enchantment) int }); ok {
+        return counter.RivalEnchantmentCount(provider.Player, enchantment)
+    }
+    if provider.HasRivalEnchantment(enchantment) {
+        return 1
+    }
+    return 0
 }
 
 func (player *Player) MakeUnitEnchantmentProvider() units.GlobalEnchantmentProvider {

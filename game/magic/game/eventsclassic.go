@@ -56,8 +56,8 @@ func classicMoonOrConjunction(kind RandomEventType) bool {
 func (model *GameModel) classicEventFires() bool {
     last := max(model.LastEventTurn, classicFirstEventTurn)
     pressure := 0
-    if model.TurnNumber > last {
-        pressure = int(model.TurnNumber - last)
+    if turn := model.classicEventTurn(); turn > last {
+        pressure = int(turn - last)
     }
     if model.eventDelay < 5 {
         model.eventDelay += 1
@@ -192,7 +192,7 @@ func (model *GameModel) classicPickEvent() (classicEventPick, bool) {
                 continue
             }
         }
-        if (kind == RandomEventDiplomaticMarriage || kind == RandomEventGreatMeteor) && model.TurnNumber < 150 {
+        if (kind == RandomEventDiplomaticMarriage || kind == RandomEventGreatMeteor) && model.classicEventTurn() < 150 {
             continue
         }
         if kind == RandomEventRebellion {
@@ -260,3 +260,12 @@ func classicDonation() int {
 // the item of a Gift: a new random item of the original (Make_Item(2, ...)); set by the game,
 // which has the archive
 var classicGiftItem func() (artifact.Artifact, bool)
+
+// the turn the events are rolled for: the turn just played (EndOfTurn has counted on already,
+// the original rolls before its counter moves)
+func (model *GameModel) classicEventTurn() uint64 {
+    if model.TurnNumber == 0 {
+        return 0
+    }
+    return model.TurnNumber - 1
+}

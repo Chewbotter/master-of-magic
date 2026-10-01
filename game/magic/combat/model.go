@@ -2174,6 +2174,8 @@ type Army struct {
     RecalledUnits []*ArmyUnit
     // units that died by irreversible damage: a hero's items are lost (End_Of_Combat)
     GoneUnits []*ArmyUnit
+    // the human casts the Spell of Return: no Word of Recall, no Recall Hero (set by the game)
+    Banished bool
 
     Enchantments []data.CombatEnchantment
     Cleanups []func()
@@ -5183,6 +5185,11 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
             }
         }
         announce(success)
+    }
+
+    if army.Banished && (spell.Name == "Word of Recall" || spell.Name == "Recall Hero") {
+        model.Events <- &CombatEventMessage{Message: "Word of Recall and Recall Hero may not be cast while you are banished"}
+        return
     }
 
     if ClassicRules && (spell.IsSummoning() || spell.Name == "Raise Dead" || spell.Name == "Animate Dead") && model.classicTooManyUnits(army) {

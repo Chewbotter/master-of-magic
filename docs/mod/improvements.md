@@ -270,3 +270,22 @@ quirk constant where there is one: turning it is the change. New calls go here t
   computer wizard's Move Fortress moving the HUMAN's fortress (the original's mistake); Death Wish
   and Great Unsummoning counters (stubs in the reconstruction); the Stasis of the new units is not
   saved (a load lets them roll at once).
+
+## The leftovers (item 9, last part)
+
+- Kept, the original's: Arcane Power never for the Knight (`hero.quirkArcanePowerKnight`, meant for
+  the Elven Archer); a Lucky roll gives Agility too (`hero.quirkLuckyFallsIntoAgility`); the plain
+  inner desert gives no production (`city.quirkPlainDesertBarren`). Suggested: each as meant.
+- DOUBTS FOR THE USER, not ported: production over 127 wrapping (the city's byte; with the
+  computer's multiplier it would wrap from 32 at Impossible); the mana of the guilds (the
+  reconstruction: Animists' +3, Wizards' +3, Alchemists' none; the manual and upstream:
+  Alchemists' +3, Wizards' -3); Evil Presence taking no religious power (the reconstruction has no
+  test, the manual says it stops the power); Super Sage 9 a level (kept 4.5). Each can be settled
+  in the real game (cities.md and spec notes say how).
+- MY CALL: a hero's Caster pick adds 2.5 (the fork's unit), the original's +1 of its own count.
+- Not ported: movement costs frozen when the terrain changes (the original keeps the old costs, its
+  mistake); the order of the turn: a computer wizard's spell lands at the end of the turn in the
+  original, at its next turn here (a human turn later), events act before the incomes of the next
+  turn here, a city taken by the human from a computer misses a turn of growth here; towers that
+  see both planes; the fleeing defender's place (combat); the human's line in UNITS DISBANDED for a
+  unit evicted from a full square; the running events not aging while time stands still.

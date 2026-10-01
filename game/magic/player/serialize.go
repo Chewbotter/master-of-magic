@@ -81,6 +81,7 @@ type SerializedPlayer struct {
     BookOrderSeed2 uint64 `json:"book-order-seed_2"`
     Banished bool `json:"banished"`
     DefeatedWizards []data.BannerType `json:"defeated-wizards,omitempty"`
+    AverageUnitCost int `json:"average-unit-cost,omitempty"`
     Personality Personality `json:"personality"`
     Objective Objective `json:"objective"`
     HostilityCountdown int `json:"hostility-countdown"`
@@ -241,6 +242,7 @@ func SerializePlayer(player *Player) SerializedPlayer {
         BookOrderSeed2: player.BookOrderSeed2,
         Banished: player.Banished,
         DefeatedWizards: player.DefeatedWizards,
+        AverageUnitCost: player.AverageUnitCost,
         Personality: player.Personality,
         Objective: player.Objective,
         HostilityCountdown: player.HostilityCountdown,
@@ -422,6 +424,7 @@ func ReconstructPlayer(serialized *SerializedPlayer, globalEnchantmentsProvider 
         BookOrderSeed2: serialized.BookOrderSeed2,
         Banished: serialized.Banished,
         DefeatedWizards: serialized.DefeatedWizards,
+        AverageUnitCost: serialized.AverageUnitCost,
         Personality: serialized.Personality,
         Objective: serialized.Objective,
         HostilityCountdown: serialized.HostilityCountdown,

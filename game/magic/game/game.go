@@ -1050,6 +1050,11 @@ func (game *Game) GetEnemyWizards() []*playerlib.Player {
 }
 
 func (game *Game) EnterDiplomacy(player *playerlib.Player, enemy *playerlib.Player) {
+    if player.IsHuman() && classicReturning(player) {
+        // the magic screen: no talks while banished
+        game.Events <- &GameEventNotice{Message: "You may not contact other wizards while you are banished."}
+        return
+    }
     game.Events <- &GameEventDiplomacy{
         Player: player,
         Enemy: enemy,
@@ -2853,7 +2858,12 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                         notice := event.(*GameEventNotice)
                         game.doNotice(yield, game.HudUI, notice.Message)
                     case *GameEventCastSpellBook:
-                        game.ShowSpellBookCastUI(yield, game.Model.GetHumanPlayer())
+                        if human := game.Model.GetHumanPlayer(); classicReturning(human) {
+                            // Main_Screen: no spells while banished
+                            game.doNotice(yield, game.HudUI, fmt.Sprintf("You may not throw any spells while you are banished.  There are at least %v turns remaining until you may return.", turnsToReturn(human)))
+                        } else {
+                            game.ShowSpellBookCastUI(yield, game.Model.GetHumanPlayer())
+                        }
                     case *GameEventCityListView:
                         game.doCityListView(yield)
                     case *GameEventNewOutpost:
@@ -2878,7 +2888,14 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
                         scroll := event.(*GameEventScroll)
                         if OneScrollForAllEvents && scroll.All {
                             // the chancellor, see scrollevents.go
-                            game.showScrollEvents(yield, game.Model.ScrollEvents)
+                            events := game.Model.ScrollEvents
+                            if ClassicEvents {
+                                // Chancellor_Screen: the running events first
+                                if running := game.classicRandomEventLines(); running != nil {
+                                    events = append([]*GameEventScroll{running}, events...)
+                                }
+                            }
+                            game.showScrollEvents(yield, events)
                         } else if OneScrollForAllEvents && !scroll.Old {
                             // shown with the others of the turn when no more events wait
                             game.Model.ScrollEvents = append(game.Model.ScrollEvents, scroll)
@@ -4255,6 +4272,14 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
                                 }
                             }
 
+                            if canMove && units.ClassicMovement {
+                                // EarthGateTeleport: no more than 9 in the city
+                                if there := player.FindStack(newX, newY, stack.Plane()); there != nil && len(there.Units()) + len(stack.Units()) > data.MaxUnitsInStack {
+                                    canMove = false
+                                    game.Events <- &GameEventNotice{Message: "There is no room in " + newCity.Name + " for these units."}
+                                }
+                            }
+
                             if canMove {
                                 stack.UseMovement(fraction.FromInt(1))
                                 newCityStack := player.FindStack(newX, newY, stack.Plane())
@@ -5411,6 +5436,9 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
     combatModel := combat.MakeCombatModel(game.AllSpells(), defendingArmy, attackingArmy, landscape, defenderStack.Plane(), zone, game.GetInfluenceMagic(attackerStack.X(), attackerStack.Y(), attackerStack.Plane()), attackerStack.X(), attackerStack.Y(), events)
     combatModel.EasyRetreat = game.Model.Settings.Difficulty <= data.DifficultyEasy
+    // Do_Legal_Spell_Check: no recalls for a human casting the Spell of Return
+    attackingArmy.Banished = attacker.IsHuman() && classicReturning(attacker)
+    defendingArmy.Banished = defender.IsHuman() && classicReturning(defender)
 
     if zone.City != nil && zone.City.HasEnchantment(data.CityEnchantmentHeavenlyLight) {
         combatModel.AddGlobalEnchantment(data.CombatEnchantmentTrueLight)
@@ -5724,12 +5752,20 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
         transport := stack.HasSailingUnits(false)
 
+        // Retreat_From_Combat: the riders beyond the seats of the ships left drown
+        var drowned map[units.StackUnit]bool
+        if units.ClassicMovement && landscape == combat.CombatLandscapeWater {
+            drowned = classicDrowned(stack.Units())
+        }
+
         for _, unit := range stack.Units() {
             dead := unit.GetHealth() <= 0
 
             // if combat was on water and there are no sailing ships left then all units should die
             // FIXME: handle the case that there were originally two ships and one died, thus not being able to transport some units
-            if landscape == combat.CombatLandscapeWater && unit.IsLandWalker() && !transport {
+            if drowned != nil {
+                dead = dead || drowned[unit]
+            } else if landscape == combat.CombatLandscapeWater && unit.IsLandWalker() && !transport {
                 dead = true
             }
 
@@ -6573,6 +6609,10 @@ func (game *Game) PlaneShift(stack *playerlib.UnitStack, player *playerlib.Playe
     if canMove {
         // if there is a friendly stack at the new location then merge the stacks
         mergeStack := cityStackInfo.FindFriendlyStack(stack.X(), stack.Y(), stack.Plane().Opposite(), player)
+        if units.ClassicMovement && mergeStack != nil && len(mergeStack.Units()) + len(stack.Units()) > data.MaxUnitsInStack {
+            // Check_Stack_Plane_Shift: no more than 9 on the square
+            return errors.New("The selected units cannot planar travel at this location.")
+        }
         stack.SetPlane(stack.Plane().Opposite())
         if mergeStack != nil {
             player.MergeStacks(stack, mergeStack)
@@ -7964,6 +8004,9 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
     player.MovedStacksThisTurn = 0
     player.SuppressAutoNextTurn = false
 
+    // AI_Kill_Lame_Units, see leftoversclassic.go
+    game.classicKillLameUnits(player)
+
     var disbandedMessages []string
     if !playerlib.ClassicEconomy {
         disbandedMessages = game.DisbandUnits(player)
@@ -8033,8 +8076,10 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
             player.CastingSpellProgress = 0
         }
     } else if playerlib.ClassicEconomy {
-        // the skill of this turn first, then the spell (economy.go)
-        player.CastingSkillPower += player.CastingSkillPerTurn(power)
+        // the skill of this turn first, then the spell (economy.go); none while time stands still
+        if !stoppedAtStart {
+            player.CastingSkillPower += player.CastingSkillPerTurn(power)
+        }
         game.classicCasting(player)
     } else if !player.CastingSpell.Invalid() {
         // mana spent on the skill is the minimum of {player's mana, casting skill, remaining cost for spell}

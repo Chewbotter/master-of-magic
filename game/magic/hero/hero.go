@@ -408,6 +408,11 @@ func (hero *Hero) AddAbility(ability data.AbilityType) bool {
 
 // add N random abilities
 func (hero *Hero) SetExtraAbilities() {
+    if ClassicAbilities {
+        // Init_Heroes, see classic.go
+        hero.classicExtraAbilities()
+        return
+    }
     // totalLoops := 0
     for range hero.HeroType.RandomAbilityCount() {
 
@@ -1305,6 +1310,15 @@ func (hero *Hero) GetAbilityResearch() int {
         extra = (level.ToInt() + 1) * 3
     } else if hero.HasAbility(data.AbilitySuperSage) {
         extra = int(float64((level.ToInt() + 1) * 3) * 1.5)
+    }
+    if ClassicAbilities {
+        // Player_Magic_Power_Distribution: by the level counted from 0, so a first level Sage
+        // gives nothing (Super Sage: the reconstruction's 9 a level is doubtful, kept at 4.5)
+        if hero.HasAbility(data.AbilitySage) {
+            extra = level.ToInt() * 3
+        } else if hero.HasAbility(data.AbilitySuperSage) {
+            extra = level.ToInt() * 9 / 2
+        }
     }
 
     return extra

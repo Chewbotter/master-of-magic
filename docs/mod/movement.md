@@ -74,3 +74,11 @@ desert and sorcery nodes 4, rivers, nature and chaos nodes 5, forest, hills, tun
 swamp, volcano 8. Purifying takes 5 turns with one unit and 3 with two; melding a node with an
 enemy's Guardian Spirit on it works one time in 4; cities are at least 4 squares apart (as upstream
 had them).
+
+## Added with the smaller rules
+
+- Wind Mastery, for ships with seats: the owner's +1, every other wizard's -1; above 0 half again
+  as fast, below 0 half.
+- Plane travel and the Earth Gate take no more than 9 units onto a square.
+- After a lost sea battle the seats of the ships left carry the riders that can not fly or swim,
+  heroes take no seat while a ship is left; the others drown (with no ship every rider).

@@ -102,3 +102,11 @@ Everyone knows Magic Spirit and the Spell of Return; Artificers Enchant Item and
 
 200 turns, 4 computer wizards, 2 runs each: with the original's rules they keep 37 to 103 units
 at the end (nobody but the human disbands), with upstream's 27 to 80.
+
+## Added with the smaller rules
+
+- From turn 100 a computer wizard dismisses its units outside its cities that cost less than half
+  the average of its units (settlers, melding spirits, engineers and ships left out of the
+  average); every 25 turns it counts the average anew and dismisses the first such unit of every
+  garrison (`classicKillLameUnits`, `Player.AverageUnitCost`).
+- While time stands still the caster gains no casting skill either.

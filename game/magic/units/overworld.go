@@ -638,6 +638,25 @@ func (unit *OverworldUnit) GetMovementSpeed(overworld bool) fraction.Fraction {
 
     modifier := fraction.FromInt(1)
 
+    if overworld && ClassicMovement && unit.IsTransport() {
+        // Unit_Moves2: the owner's Wind Mastery +1, every other wizard's -1; above 0 half again,
+        // below 0 half
+        net := 0
+        if unit.GlobalEnchantments.HasFriendlyEnchantment(data.EnchantmentWindMastery) {
+            net += 1
+        }
+        if counter, ok := unit.GlobalEnchantments.(interface{ RivalEnchantmentCount(data.Enchantment) int }); ok {
+            net -= counter.RivalEnchantmentCount(data.EnchantmentWindMastery)
+        } else if unit.GlobalEnchantments.HasRivalEnchantment(data.EnchantmentWindMastery) {
+            net -= 1
+        }
+        switch {
+            case net > 0: modifier = fraction.Make(3, 2)
+            case net < 0: modifier = fraction.Make(1, 2)
+        }
+        return base.Multiply(modifier)
+    }
+
     if unit.IsSailing() {
         if unit.GlobalEnchantments.HasFriendlyEnchantment(data.EnchantmentWindMastery) {
             modifier = modifier.Add(fraction.Make(1, 2))

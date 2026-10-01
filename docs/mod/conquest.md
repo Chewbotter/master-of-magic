@@ -101,3 +101,10 @@ and from the start screen. The percent is the score out of 8000.
 `-capture-screen score`, `halloffame`, `lose` (`-capture-lose-stage N` for a later stage of the
 fall), `resign`. `-sim-play-on` keeps a headless run going after the human is out; the `-sim`
 summary lists every banishment and defeat and how the game ended.
+
+## Added with the smaller rules
+
+- Raiders that take a wizard's fortress: "Raiders destroy X's fortress." ("Raiders destroy X." when
+  it was the last city).
+- While you cast the Spell of Return: no spellbook ("You may not throw any spells while you are
+  banished. ..."), no talks with wizards, no Word of Recall or Recall Hero in battle.

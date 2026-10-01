@@ -16,6 +16,7 @@ import (
     buildinglib "github.com/kazzmir/master-of-magic/game/magic/building"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
+    "github.com/kazzmir/master-of-magic/game/magic/terrain"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/lib/fraction"
 )
@@ -405,7 +406,7 @@ func (city *City) classicProduction() int {
     percent := 100
     gaia := city.HasEnchantment(data.CityEnchantmentGaiasBlessing)
     for _, tile := range city.GetCatchmentArea() {
-        value := tile.ProductionBonus(gaia)
+        value := classicSquareProduction(tile, gaia)
         if tile.IsShared {
             value /= 2
         }
@@ -669,4 +670,25 @@ func (city *City) classicPossibleUnits() []units.Unit {
         out = take(true)
     }
     return out
+}
+
+// Square_Production_Bonus: the plain inner desert (the first of its four pictures) gives nothing;
+// a nature node 6 with Gaia's Blessing
+const quirkPlainDesertBarren = true
+
+func classicSquareProduction(tile maplib.FullTile, gaia bool) int {
+    if tile.Corrupted() {
+        return 0
+    }
+    switch tile.Tile.TerrainType() {
+        case terrain.Desert:
+            if quirkPlainDesertBarren && tile.Tile.Index(data.PlaneArcanus) == terrain.IndexDesert1 {
+                return 0
+            }
+        case terrain.NatureNode:
+            if gaia {
+                return 6
+            }
+    }
+    return tile.ProductionBonus(gaia)
 }

@@ -222,6 +222,17 @@ func (model *GameModel) HasEnchantment(enchantment data.Enchantment) bool {
 }
 
 // true if any alive player that is not the given one has the given enchantment enabled
+// the other wizards who have the enchantment (Unit_Moves2 counts them for Wind Mastery)
+func (model *GameModel) RivalEnchantmentCount(original *playerlib.Player, enchantment data.Enchantment) int {
+    count := 0
+    for _, player := range model.Players {
+        if player != original && !player.Defeated && player.HasEnchantment(enchantment) {
+            count += 1
+        }
+    }
+    return count
+}
+
 func (model *GameModel) HasRivalEnchantment(original *playerlib.Player, enchantment data.Enchantment) bool {
     for _, player := range model.Players {
         if !player.Defeated && player != original && player.HasEnchantment(enchantment) {
@@ -1406,6 +1417,9 @@ func (model *GameModel) DoRandomEvents() {
                 newEvent, extraEvent := makeEvent(choice, targetWizard)
                 if newEvent != nil {
                     model.LastEventTurn = model.TurnNumber
+                    if model.classicPick != nil {
+                        model.LastEventTurn = model.classicEventTurn()
+                    }
                     model.eventDelay = 0
                     log.Printf("Random event at turn %v: %v for %v", model.TurnNumber, choice, targetWizard.Wizard.Name)
 

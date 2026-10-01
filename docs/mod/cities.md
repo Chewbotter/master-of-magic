@@ -88,3 +88,8 @@ cost, City Walls half that. Buying is not possible when it would be done in unde
 Every turn it ends Chaos Rift, Evil Presence, Cursed Lands, Famine and Pestilence on the city, and
 clears corruption on a block of 4 by 4 squares from 2 up and left of it
 (`quirkConsecrationBlock`).
+
+## Added with the smaller rules
+
+- The plain inner desert (one of its four pictures) gives no production; a nature node gives 6
+  with Gaia's Blessing (`quirkPlainDesertBarren`, `classicSquareProduction`).

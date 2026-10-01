@@ -277,3 +277,5 @@ Death Wish (stubs).
    UNITS DONE 2026-09-30, see units.md (what is left is at the end of improvements.md).
    OVERLAND MAGIC DONE 2026-09-30, see magic.md.
    COMBAT DONE 2026-09-30, see combat-rules.md "Smaller rules".
+   THE LEFTOVERS DONE 2026-09-30 (the area pages, "Added with the smaller rules"); item 9 DONE;
+   doubts and what was not ported at the end of improvements.md.

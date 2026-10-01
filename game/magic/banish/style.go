@@ -12,6 +12,7 @@ package banish
 //   "<winner> banishes <loser>" when the loser has cities left, else "<winner> defeats <loser>"
 
 import (
+    "strings"
     "image/color"
     "log"
 
@@ -64,6 +65,24 @@ func banishText(cache *lbx.LbxCache) *font.StyledFont {
 
     own := &fontslib.Original{Fonts: game.Fonts, Blocks: blocks, Palette: palette}
     return own.Style(banishFont, own.Set(banishColorSet, -1), font.ShadowOutlineHeavy, banishOutline)
+}
+
+// Conquest_Animation: "Raiders destroy X's fortress." when raiders take the fortress of a wizard
+// with cities left, "Raiders destroy X." when it was the last (on with the original's conquest)
+var ClassicRaidersText = true
+
+func possessive(name string) string {
+    if strings.HasSuffix(name, "s") || strings.HasSuffix(name, "S") {
+        return name + "'"
+    }
+    return name + "'s"
+}
+
+func raidersWords(loser string, citiesLeft int) string {
+    if citiesLeft > 0 {
+        return "Raiders destroy " + possessive(loser) + " fortress."
+    }
+    return "Raiders destroy " + loser + "."
 }
 
 func banishWords(winner string, loser string, citiesLeft int) string {

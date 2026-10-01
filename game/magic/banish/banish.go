@@ -206,7 +206,11 @@ func ShowBanishAnimation(cache *lbx.LbxCache, attackingWizard *playerlib.Player,
         }
 
         if original != nil {
-            original.Print(screen, banishTextMiddle, banishTextY, font.FontOptions{Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount}, banishWords(attackingWizard.Wizard.Name, defeatedWizard.Wizard.Name, len(defeatedWizard.Cities)))
+            words := banishWords(attackingWizard.Wizard.Name, defeatedWizard.Wizard.Name, len(defeatedWizard.Cities))
+            if ClassicRaidersText && attackingWizard.IsNeutral() {
+                words = raidersWords(defeatedWizard.Wizard.Name, len(defeatedWizard.Cities))
+            }
+            original.Print(screen, banishTextMiddle, banishTextY, font.FontOptions{Justify: font.FontJustifyCenter, Scale: scale.ScaleAmount}, words)
             return
         }
 

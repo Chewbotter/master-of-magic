@@ -49,3 +49,13 @@ The winner +1 for 4 dead enemy units or more, and +1 once when a dead enemy unit
 - Jewelry pays twice for its basic powers only.
 - Destroying an item gives half its cost in mana, for every wizard.
 - The items of dead heroes go to the winner of the battle (combat-rules.md).
+
+## Added with the smaller rules
+
+- The heroes' random abilities as the original picks them (`hero.classicExtraAbilities`): rolls of 1
+  in 14 while picks are left, warrior picks for warriors, mage picks for mages; Torin is never
+  Noble, a Magic Immune hero never Charmed, the Knight never gets Arcane Power
+  (`quirkArcanePowerKnight`); Super Arcane Power only for heroes who shoot bolts; a Lucky roll also
+  gives Agility (`quirkLuckyFallsIntoAgility`).
+- Sage: 3 a level counted from 0, so a first level Sage gives nothing; Super Sage 4.5 a level from
+  0 (the reconstruction's 9 is doubtful).

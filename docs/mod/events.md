@@ -55,3 +55,10 @@ What an event does is upstream's, but for these:
 - Razing pays a tenth of the cost of every building that stood.
 - A city that is taken builds Trade Goods.
 - The loser's gold never goes below 0.
+
+## The turn of the roll
+
+The events are rolled for the turn just played: the game has counted the turn on when it rolls, so
+the rules read one less (`classicEventTurn`). The chancellor lists the running events first, under
+RANDOM EVENTS: Plague and Population Boom in your cities, Good and Bad Moon, the Red, Green and
+Blue Conjunctions, Mana Short.
