@@ -334,6 +334,11 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
 
 ## Found by many runs (testing.md, 2026-09-30)
 
+- FIXED (2026-10-01, round 6): a unit pushed out of a square of more than 9 (Evict_Unit, here
+  `classicEvictPlace`; a mercenary hired at a full fortress) went to a square beside it that had
+  room by the first of its owner's stacks there, and a computer wizard's groups stand in several
+  stacks within its turn: 10 on a square (seed 132848743, turn 71). It counts all of them now.
+
 - ATTACKS AT LONG ODDS, LOOKED INTO (2026-10-01, item 3 of the user's list: 536 attacks of wizards at
   under half the defender's strength in round 4, 20 won). The battle notes now name the orders that
   sent the attackers (`sent by`), and the report counts them. 30 games of 300 turns (seed 503, the

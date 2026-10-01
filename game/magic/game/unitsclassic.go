@@ -142,18 +142,27 @@ func (game *Game) classicEvictPlace(stack *playerlib.UnitStack, player *playerli
                 continue
             }
             other, owner := game.Model.FindStack(cx, cy, plane)
-            if other != nil && (owner != player || len(other.Units()) >= data.MaxUnitsInStack) {
+            if other != nil && owner != player {
                 continue
             }
-            isWater := mapUse.GetTile(cx, cy).Tile.IsWater()
+            // all the owner's stacks there: a computer wizard's groups stand on a square in several
+            // stacks within its turn, and counting the first put a tenth unit beside a fortress
+            // that took a hire (found by a test run, 2026-10-01)
+            mine := player.FindAllStacks(cx, cy, plane)
+            count := 0
             carried := false
-            if other != nil {
-                for _, there := range other.Units() {
-                    if there.HasAbility(data.AbilityWindWalking) {
+            for _, there := range mine {
+                count += len(there.Units())
+                for _, rider := range there.Units() {
+                    if rider.HasAbility(data.AbilityWindWalking) {
                         carried = true
                     }
                 }
             }
+            if count >= data.MaxUnitsInStack {
+                continue
+            }
+            isWater := mapUse.GetTile(cx, cy).Tile.IsWater()
             if isWater && !water && !carried {
                 continue
             }
