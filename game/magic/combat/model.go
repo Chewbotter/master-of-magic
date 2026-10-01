@@ -2093,6 +2093,9 @@ type Army struct {
     // its units stand apart, a cell between any two, as on a checkerboard. set by the test
     // battles of all units of a race only, see deploy.go
     SpreadOut bool
+    // its side has the first move of the battle, which is the defender's in the original. set by
+    // the test battles only (user, 2026-09-30: "First move" in the list of the test battle)
+    MovesFirst bool
     Fled bool
     Casted bool
     RecalledUnits []*ArmyUnit
@@ -2451,8 +2454,14 @@ func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingA
     tiles := makeTiles(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone)
     ground.applyTo(tiles)
 
+    // the defender moves first, as in the original, but for an attacker a test battle lets go first
+    first := TeamDefender
+    if attackingArmy.MovesFirst && !defendingArmy.MovesFirst {
+        first = TeamAttacker
+    }
+
     model := &CombatModel{
-        Turn: TeamDefender,
+        Turn: first,
         Plane: plane,
         SelectedUnit: nil,
         Tiles: tiles,
@@ -2474,7 +2483,7 @@ func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingA
     model.Initialize(allSpells, overworldX, overworldY)
 
     model.NextTurn()
-    model.SelectedUnit = model.ChooseNextUnit(TeamDefender)
+    model.SelectedUnit = model.ChooseNextUnit(first)
 
     return model
 }

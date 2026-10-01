@@ -144,3 +144,4 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Escape in anything started from the Debug list goes back to the start screen.
 - A Debug menu on the world map: Reveal All, Unlimited Moves, No Greetings.
 - Under the Debug list: which build this is (lane, commit, time).
+- Test battles have a First move choice: the player's army or the enemy's moves first (the player by default).
