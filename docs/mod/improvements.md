@@ -329,6 +329,24 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
   could stand on a lair and an army that won the lair stood in the town with its garrison; the
   fizzle window of Tranquility and Suppress Magic opened for the player of slot 0 even when it is a
   computer wizard; a run without a window skips every window that waits for a click.
+- FIXED with `-sim-trace` (the step that first breaks each thing): the room of a square counted one
+  stack of its owner, while a computer wizard's groups stand there in several stacks within a turn,
+  merged at its end into one of 10 or 11 (`classicRoomAmong`, `stacksBeside` in movement.go); an AI
+  attack fought one of the defender's stacks on a square (the clone's FIXME) and the winner stood
+  beside the other: they are merged before the battle (doAiMoveUnit); a walker that boarded a ship
+  stayed a stack of its own until the end of the turn, so the ship sailed off and left it on the
+  water: it joins the ship's stack at once, and a ship that leaves a square of water takes the
+  riders of its owner there along (the orders of a turn gave ship and riders different ways and
+  split them); units that were not in a battle (a ship in a battle on land) stood on the square of
+  the other side: an attacker's go back, a beaten defender's get away as fleeing ones do or are
+  lost; `Player.RemoveUnit` took the unit from the first stack on its square, so a dead unit of a
+  second stack stayed on the map: it takes it from its own; `ResolveStackAt` (9 a square after
+  hires, units built, summons) looked at one stack: it merges the player's stacks on the square
+  first. The merges within the AI's moves left the stack merged away with its units in the loop of
+  moves, which then walked them off (unit away from its stack): the loop skips a stack that is no
+  longer the player's; a fleeing defender's emptied stack is removed. All-AI runs go on when the
+  wizard of the human's slot falls (`-sim-all-ai` sets `SimPlayOn`). OPEN: a settler alone on a
+  square of water in 2 of 20 traced runs after these fixes, cause not found.
 - Seen, the original's rules as ported: allied computer wizards turn an alliance into a pact at the
   next negotiation and back (`relations.quirkAllianceBecomesPact`); two wizards at war can go
   straight to an alliance; computer wizards never meet each other by sight (contact.md), so an

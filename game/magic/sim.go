@@ -479,9 +479,19 @@ func simPlay(game *gamelib.Game, description string, index int, count int) simRu
     }
 
     duplicateSeen := false
+    traced := make(map[string]bool)
     for game.Model.TurnNumber < startTurn + uint64(simTurns) {
         state, panicked := update()
         watchdog.alive()
+        if simTrace {
+            // the step of the loop that first makes each kind of broken state (game/simcheck.go)
+            for kind, example := range game.SimBrokenNow() {
+                if !traced[kind] {
+                    traced[kind] = true
+                    log.Printf("sim: TRACE %v first seen at turn %v, current player %v: %v; the journal before it: | %v", kind, game.Model.TurnNumber, game.Model.CurrentPlayer, example, sink.recentText())
+                }
+            }
+        }
         if !duplicateSeen {
             // the step of the loop that puts a unit in two stacks (game/simcheck.go)
             if found := game.SimDuplicateUnit(); found != "" {

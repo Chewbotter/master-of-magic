@@ -13,6 +13,8 @@ package main
 //                        notes battles, cities, events, casts, conquests)
 //   -sim-timeline N      the turns between two lines of the timeline (10)
 //   -sim-stop-alone      the run ends when one wizard is left (with -sim-all-ai, on by default)
+//   -sim-trace           the checks after every update; the first of each kind is logged with the
+//                        journal before it (finds the step that breaks something)
 //
 // A panic of the AI's goroutine or of the game's loop ends the run with the panic recorded; a run
 // that hangs (the game's loop never comes back) is ended by a watchdog that writes what it knows
@@ -41,6 +43,9 @@ var simJSON string
 var simJournal string
 var simTimeline int = 10
 var simStopAlone bool
+// -sim-trace: after every update the checks run, and the first time each kind of broken state is
+// seen the journal before it is logged (slower)
+var simTrace bool
 
 // how long the game's loop may not come back before the watchdog ends the run
 const simHangTime = 90 * time.Second
@@ -137,6 +142,9 @@ func simMakeAllAI(game *gamelib.Game) {
     human.Human = false
     human.AIBehavior = ai.MakeChewbotAI(ai.MakeEnemy2AI(), false)
     human.Personality, human.Objective = relations.PickPersonality(human.Wizard)
+    // the wizard of the human's slot is one of the computer wizards: its fall does not end the run
+    // (the game's own end after a conquest is the human's)
+    gamelib.SimPlayOn = true
 }
 
 // one line of the timeline: every player at one turn

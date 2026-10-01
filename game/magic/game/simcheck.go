@@ -76,7 +76,24 @@ type simSquare struct {
 
 // checks the state of the game once; called by the runner at every new turn
 func (game *Game) SimCheck() {
-    stats := game.Stats
+    game.simCheckInto(game.Stats)
+}
+
+// the kinds of broken state there are right now, each with an example (the runner calls this after
+// every update, to log the step that first makes each kind)
+func (game *Game) SimBrokenNow() map[string]string {
+    probe := MakeSimStats()
+    game.simCheckInto(probe)
+    out := make(map[string]string)
+    for _, found := range probe.ViolationList() {
+        if len(found.Examples) > 0 {
+            out[found.Kind] = found.Examples[0]
+        }
+    }
+    return out
+}
+
+func (game *Game) simCheckInto(stats *SimStats) {
     if stats == nil {
         return
     }

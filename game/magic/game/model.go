@@ -2028,6 +2028,17 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
     to := path[0]
     path = path[1:]
 
+    if units.ClassicMovement && stack.HasSailingUnits(false) && !model.GetMap(stack.Plane()).GetTile(stack.X(), stack.Y()).Tile.IsLand() {
+        // a ship carries the riders of its square: the orders of a turn can give the ship and its
+        // riders different ways, and the split left a settler alone on the water when the ship
+        // sailed (found by -sim-trace)
+        for _, other := range player.FindAllStacks(stack.X(), stack.Y(), stack.Plane()) {
+            if other != stack && other.AnyLandWalkers() && !other.HasSailingUnits(true) {
+                stack = player.MergeStacks(stack, other)
+            }
+        }
+    }
+
     // log.Printf("  moving stack %v to %v, %v", stack, to.X, to.Y)
     getStack := func(x int, y int) (playerlib.PathStack, bool) {
         found := player.FindStack(x, y, stack.Plane())
@@ -2082,6 +2093,17 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
         player.LiftFogSquare(stack.X(), stack.Y(), stack.GetSightRange(), stack.Plane())
         handlers.DiscoverWizards()
 
+        if units.ClassicMovement && !mapUse.GetTile(stack.X(), stack.Y()).Tile.IsLand() && stack.AnyLandWalkers() && !stack.HasSailingUnits(true) {
+            // walkers that board a ship join its stack and go where it goes (the stacks were only
+            // merged at the end of the turn, after the ship had sailed off and left them in the sea)
+            for _, other := range player.FindAllStacks(stack.X(), stack.Y(), stack.Plane()) {
+                if other != stack && other.HasSailingUnits(false) {
+                    player.MergeStacks(other, stack)
+                    return nil
+                }
+            }
+        }
+
         if encounter != nil {
             // game.doEncounter(yield, player, stack, encounter, mapUse, stack.X(), stack.Y())
             state := handlers.DoEncounter(player, stack, encounter, mapUse, stack.X(), stack.Y())
@@ -2100,6 +2122,13 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
             // FIXME: this should get all stacks at the given location and merge them into a single stack for combat
             enemyStack := enemy.FindStack(stack.X(), stack.Y(), stack.Plane())
             if enemyStack != nil {
+                // the battle is against all the defender's units on the square: a second stack of
+                // its was left standing beside a winner (two players on one square)
+                for _, other := range enemy.FindAllStacks(stack.X(), stack.Y(), stack.Plane()) {
+                    if other != enemyStack {
+                        enemyStack = enemy.MergeStacks(enemyStack, other)
+                    }
+                }
                 city := enemy.FindCity(stack.X(), stack.Y(), stack.Plane())
                 zone := combat.ZoneType{
                     City: city,
@@ -2113,6 +2142,15 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
                     stack.SetY(oldY)
                 } else if state == combat.CombatStateDefenderFlee {
                     model.doMoveFleeingDefender(enemy, enemyStack)
+                } else if state == combat.CombatStateAttackerWin && len(enemyStack.Units()) > 0 {
+                    // units of the beaten defender that were not in the battle stood on the
+                    // winner's square; they get away as fleeing units do, or are lost
+                    model.doMoveFleeingDefender(enemy, enemyStack)
+                } else if state == combat.CombatStateDefenderWin && !stack.IsEmpty() && len(enemyStack.Units()) > 0 {
+                    // units of the attacker that were not in the battle (a ship in a battle on
+                    // land) go back to where they came from instead of standing with the winner
+                    stack.SetX(oldX)
+                    stack.SetY(oldY)
                 }
 
                 return nil
@@ -2169,6 +2207,13 @@ func (model *GameModel) doMoveFleeingDefender(player *playerlib.Player, stack *p
         for i := 1; i < len(allStacks); i++ {
             player.MergeStacks(allStacks[0], allStacks[i])
         }
+    }
+
+    // the stack they left is gone (it stayed in the player's list without units)
+    if stack.IsEmpty() {
+        player.Stacks = slices.DeleteFunc(player.Stacks, func (other *playerlib.UnitStack) bool {
+            return other == stack
+        })
     }
 }
 

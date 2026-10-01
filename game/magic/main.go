@@ -1513,6 +1513,7 @@ func loadGameConfig() GameConfig {
     flag.StringVar(&simJSON, "sim-json", "", "development: write the record of a -sim run as JSON to this file (simrecord.go)")
     flag.StringVar(&simJournal, "sim-journal", "", "development: write the key decisions and happenings of a -sim run, one JSON line each, to this file")
     flag.IntVar(&simTimeline, "sim-timeline", 10, "development: the turns between two lines of the timeline of -sim-json")
+    flag.BoolVar(&simTrace, "sim-trace", false, "development: run the checks of a -sim run after every update and log the journal before the first of each kind of broken state")
     flag.BoolVar(&simStopAlone, "sim-stop-alone", false, "development: a -sim run ends when one wizard is left (always with -sim-all-ai)")
     flag.BoolVar(&simWar, "sim-war", false, "development: every wizard at war with every other at the start of a -sim run")
     flag.BoolVar(&gamelib.SimPlayOn, "sim-play-on", false, "development: a -sim run goes on when the human is defeated or wins, to see the computer wizards conquer")

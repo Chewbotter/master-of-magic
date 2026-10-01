@@ -1887,6 +1887,11 @@ func (player *Player) RemoveUnit(unit units.StackUnit) {
     }
 
     stack := player.FindStack(unit.GetX(), unit.GetY(), unit.GetPlane())
+    if stack != nil && !stack.ContainsUnit(unit) {
+        // the player has more than one stack on the square (a computer wizard's groups within a
+        // turn): the unit's own, else a dead unit stayed on the map (found by -sim-trace)
+        stack = player.FindStackByUnit(unit)
+    }
     if stack != nil {
         stack.RemoveUnit(unit)
 

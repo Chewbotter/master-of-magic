@@ -12,7 +12,7 @@ turn; many runs at once go through `util/simbatch/simbatch.py`, which also write
 | flag | what |
 |---|---|
 | `-sim N` | play N turns, then write the summary (`-sim-out`) |
-| `-sim-all-ai` | the human's slot is a computer wizard played by Chewbot, so every wizard plays; the run ends when one wizard is left |
+| `-sim-all-ai` | the human's slot is a computer wizard played by Chewbot, so every wizard plays; the run ends when one wizard is left, not when the wizard of the human's slot falls (`-sim-play-on` is set) |
 | `-sim-play-on` | without `-sim-all-ai`: the run goes on when the idle human is beaten |
 | `-sim-war` | every wizard at war with every other at the start |
 | `-capture-opponents N` | computer wizards beside the human's slot (1 to 4: 2 to 5 wizards) |
@@ -20,6 +20,7 @@ turn; many runs at once go through `util/simbatch/simbatch.py`, which also write
 | `-sim-json FILE` | the record of the run as JSON: settings, every player at the start and the end, a timeline every `-sim-timeline` turns (10), battles, conquests, contacts, the broken states found, a panic, the winner, the counts of the journal |
 | `-sim-journal FILE` | the journal: one JSON line for every key decision or happening: turn, player, kind, what, why |
 | `-sim-stop-alone` | end the run when one wizard is left (always with `-sim-all-ai`) |
+| `-sim-trace` | the checks run after every step of the game's loop, and the first time each kind of broken state is seen the log gets a line `TRACE <kind> first seen` with the example and the 30 lines of the journal before it (slower; how the causes of the broken states were found) |
 
 The journal's kinds:
 
@@ -53,17 +54,22 @@ runner seeds only its picks of settings.
     python util/simbatch/simbatch.py run --name two --out D:/x/fuzz --runs 16 --turns 300 \
         --opponents 1 --all-ai --difficulty 0,1,2,3,4,5 --land 0,1,2 --war 0.3 --parallel 8
     python util/simbatch/simbatch.py report D:/x/fuzz/two D:/x/fuzz/max --out D:/x/fuzz/report
+    python util/simbatch/simbatch.py run --name trace --out D:/x/fuzz --runs 10 --turns 300 \
+        --all-ai --extra=-sim-trace
+    grep -h "TRACE" D:/x/fuzz/trace/*.log
 
 `run` picks every run's settings by chance from the lists (the fuzzing), starts the newest build of
 the lane through dev.sh, a few at a time, and keeps for every run its record, journal, summary, log
-and settings (`run-NNN.*`); a run over `--timeout` seconds is killed. `report` writes `report.json`
+and settings (`run-NNN.*`); a run over `--timeout` seconds is killed. `--extra=...` passes flags to every run (the `=` form,
+for flags that start with a dash). `report` writes `report.json`
 and `report.md`: how the runs ended, panics and hangs, the broken states, the computer wizards at the
 end, by personality, battles and lairs by the strength of the sides, diplomacy, the decisions of the
 journal by kind with their commonest reasons, and the growth by turn.
 
 ## The page of a report
 
-    python util/simbatch/report_html.py --round "Round 1=D:/x/fuzz/report/report.json"         --round "Round 2=D:/x/fuzz2/report/report.json" --notes notes.json --out report.html
+    python util/simbatch/report_html.py --round "Round 1=D:/x/fuzz/report/report.json" \
+        --round "Round 2=D:/x/fuzz2/report/report.json" --notes notes.json --out report.html
 
 One page with the findings of `notes.json` first (title, subtitle, summary, and lists fixed, open,
 behavior, tools), the rounds compared by broken state, then a tab for every batch: how the runs

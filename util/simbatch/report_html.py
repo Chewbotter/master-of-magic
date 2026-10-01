@@ -125,7 +125,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
     }).join("")}</tr>`;
   const problems = r => r.batches.reduce((n, b) => n + (b.problems || []).filter(p => p.kind !== "debug").length, 0);
   document.getElementById("compare").innerHTML = `<h2>Rounds compared</h2>
-    <p class="sub">Runs with each broken state that the checks of every turn found, by round. Round 2 ran on the build with the fixes.</p>
+    <p class="sub">Runs with each broken state that the checks of every turn found, by round; each round ran on the build of its time, with the fixes found before it.</p>
     <div class="scroll"><table><thead><tr><th>Broken state</th>${DATA.rounds.map(r => `<th class="num">${esc(r.name)}</th>`).join("")}</tr></thead>
     <tbody>${[...kinds].sort().map(row).join("") || `<tr><td colspan="9">none</td></tr>`}
     <tr><td><b>Panics, crashes and hangs</b></td>${DATA.rounds.map(r => { const n = problems(r); return `<td class="num"><span class="pill ${n ? "bad" : "good"}">${n}</span></td>`; }).join("")}</tr>

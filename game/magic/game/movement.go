@@ -9,6 +9,7 @@ package game
 // dumped in its doc/___LBX). The code is ours.
 
 import (
+    "slices"
     "sync"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
@@ -216,18 +217,47 @@ func shipSeats(stack *playerlib.UnitStack) int {
 // the stack limit and the seats of ships, for a step onto a square with another stack of the
 // player's: false when it may not
 func classicRoomAt(stack *playerlib.UnitStack, other *playerlib.UnitStack, water bool) bool {
-    if other == nil || other == stack {
+    return classicRoomAmong(stack, []*playerlib.UnitStack{other}, water)
+}
+
+// the same against all the stacks of the player's on the square: the units of a square are one
+// group in the original, and a computer wizard's army can stand there in several stacks within a
+// turn (its groups go their own ways), which were merged into one of more than 9 at the end of it
+func classicRoomAmong(stack *playerlib.UnitStack, others []*playerlib.UnitStack, water bool) bool {
+    there := 0
+    riders := boatRiders(stack)
+    seats := shipSeats(stack)
+    for _, other := range others {
+        if other == nil || other == stack {
+            continue
+        }
+        there += other.Size()
+        riders += boatRiders(other)
+        seats += shipSeats(other)
+    }
+    if there == 0 {
         return true
     }
     moving := len(stack.ActiveUnits())
-    if other.Size() + moving > data.MaxUnitsInStack {
+    if there + moving > data.MaxUnitsInStack {
         return false
     }
     if water {
         // Eval_Move_Path: riders there and riders coming against the seats of both
-        return boatRiders(other) + boatRiders(stack) <= shipSeats(other) + shipSeats(stack)
+        return riders <= seats
     }
     return true
+}
+
+// every stack of the owner of a stack on its square
+func (model *GameModel) stacksBeside(other *playerlib.UnitStack, x int, y int) []*playerlib.UnitStack {
+    for _, player := range model.Players {
+        all := player.FindAllStacks(x, y, other.Plane())
+        if slices.Contains(all, other) {
+            return all
+        }
+    }
+    return []*playerlib.UnitStack{other}
 }
 
 // the cost of a step as a fraction of moves and whether it can be made, from classicStepCost
@@ -244,7 +274,7 @@ func (model *GameModel) classicTerrainCost(pathStack playerlib.PathStack, destX 
     }
 
     if found, ok := getStack(destX, destY); ok {
-        if other, ok := found.(*playerlib.UnitStack); ok && !classicRoomAt(stack, other, !tileTo.Tile.IsLand()) {
+        if other, ok := found.(*playerlib.UnitStack); ok && !classicRoomAmong(stack, model.stacksBeside(other, destX, destY), !tileTo.Tile.IsLand()) {
             return fraction.Zero(), false
         }
     }

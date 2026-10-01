@@ -3739,6 +3739,15 @@ func (game *Game) doMoveCamera(yield coroutine.YieldFunc, x int, y int) {
 }
 
 func (game *Game) ResolveStackAt(x int, y int, plane data.Plane) {
+    // the units of a player on a square are one group: a computer wizard's army can stand there in
+    // several stacks within a turn, and only the first was looked at (found by -sim-trace)
+    for _, player := range game.Model.Players {
+        all := player.FindAllStacks(x, y, plane)
+        for i := 1; i < len(all); i++ {
+            player.MergeStacks(all[0], all[i])
+        }
+    }
+
     if units.ClassicUnits {
         // Evict_Weakest_Unit, see unitsclassic.go
         game.classicEvictWeakest(x, y, plane)
@@ -4782,8 +4791,10 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
         moveHandlers := MakeMoveHandlers(game, yield)
 
         for _, stack := range slices.Clone(player.Stacks) {
-            // stop moving once any unit in the stack has no moves left
-            for !stack.AnyOutOfMoves() && len(stack.CurrentPath) > 0 {
+            // stop moving once any unit in the stack has no moves left; a stack merged into another
+            // on the way (riders into their ship, a square made one group) still holds its units
+            // and is not moved (its units walked off from the stack they are in)
+            for !stack.AnyOutOfMoves() && len(stack.CurrentPath) > 0 && slices.Contains(player.Stacks, stack) {
                 stack.CurrentPath = game.Model.doAiMoveUnit(moveHandlers, player, stack)
             }
         }
