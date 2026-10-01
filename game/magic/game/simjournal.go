@@ -57,6 +57,8 @@ type simBattle struct {
     // ships on land and walkers on water)
     attackNames string
     fought int
+    // the orders of the AI that sent the attackers ("target, turn 115"; Chewbot's wizards only)
+    orders string
     // fought on a square of water (a sea battle)
     atSea bool
     // fought out on the battlefield in a run without a window: how, and what the quick resolution
@@ -97,9 +99,42 @@ func simBattleStart(attacker *playerlib.Player, attackStack *playerlib.UnitStack
     }
     battle := &simBattle{attacker: attacker, defender: defender, where: where, attackStack: attackStack, defendStack: defendStack, fought: -1}
     battle.attackNames = simUnitNames(attackStack)
+    battle.orders = simOrders(attacker, attackStack)
     battle.attackStrength, battle.attackUnits = simStackStrength(attackStack)
     battle.defendStrength, battle.defendUnits = simStackStrength(defendStack)
     return battle
+}
+
+// the orders the AI of a player gave the units of a stack, by order with their count:
+// "target, turn 115; 1 garrison, turn 180"
+func simOrders(player *playerlib.Player, stack *playerlib.UnitStack) string {
+    if player == nil || stack == nil {
+        return ""
+    }
+    teller, ok := player.AIBehavior.(interface{ SimOrderOf(units.StackUnit) string })
+    if !ok {
+        return ""
+    }
+    var order []string
+    counts := make(map[string]int)
+    for _, unit := range stack.Units() {
+        name := teller.SimOrderOf(unit)
+        if name == "" {
+            name = "none"
+        }
+        if counts[name] == 0 {
+            order = append(order, name)
+        }
+        counts[name] += 1
+    }
+    out := ""
+    for i, name := range order {
+        if i > 0 {
+            out += "; "
+        }
+        out += fmt.Sprintf("%v %v", counts[name], name)
+    }
+    return out
 }
 
 func (battle *simBattle) end(state combat.CombatState) {
@@ -116,6 +151,9 @@ func (battle *simBattle) end(state combat.CombatState) {
     why := fmt.Sprintf("strength %v (%v units) against %v (%v units); units left %v and %v; attackers %v", battle.attackStrength, battle.attackUnits, battle.defendStrength, battle.defendUnits, attackLeft, defendLeft, battle.attackNames)
     if battle.fought >= 0 && battle.fought < battle.attackUnits {
         why += fmt.Sprintf("; only %v of them in the battle", battle.fought)
+    }
+    if battle.orders != "" {
+        why += "; sent by " + battle.orders
     }
     if battle.atSea {
         why += "; at sea"
@@ -183,6 +221,7 @@ func simEncounterStart(player *playerlib.Player, stack *playerlib.UnitStack, enc
     }
     battle := &simBattle{attacker: player, where: simEncounterName(encounter), attackStack: stack, fought: -1}
     battle.attackNames = simUnitNames(stack)
+    battle.orders = simOrders(player, stack)
     battle.attackStrength, battle.attackUnits = simStackStrength(stack)
     for _, guardian := range encounter.Units {
         made := units.MakeOverworldUnit(guardian, 0, 0, plane)

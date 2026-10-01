@@ -124,6 +124,8 @@ type chewOrder struct {
     Plane data.Plane
     // the step of the original that gave it, for the log
     Why string
+    // the turn it was given (for the notes of test runs)
+    Turn int
 }
 
 // one turn of the overland AI of a wizard
@@ -156,8 +158,21 @@ func (turn *chewTurn) order(unit units.StackUnit, x int, y int, plane data.Plane
     if value & chewEvalSite == 0 && value & chewEvalStrength != 0 {
         kind = chewOrderAttack
     }
-    turn.Overland.Orders[chewKey(unit)] = &chewOrder{Kind: kind, X: turn.World.WrapX(x), Y: y, Plane: plane, Why: turn.Why}
+    turn.Overland.Orders[chewKey(unit)] = &chewOrder{Kind: kind, X: turn.World.WrapX(x), Y: y, Plane: plane, Why: turn.Why, Turn: turn.World.Turn}
     chewCountOrder(turn.World.Self.Wizard.Name, turn.Why, 1)
+}
+
+// the order a unit of the wizard follows, as the notes of a battle in a test run name it: the step
+// that gave it and the turn ("target, turn 115"); empty when it has none
+func (ai *ChewbotAI) SimOrderOf(unit units.StackUnit) string {
+    if ai.overland == nil {
+        return ""
+    }
+    order, has := ai.overland.Orders[chewKey(unit)]
+    if !has {
+        return ""
+    }
+    return fmt.Sprintf("%v, turn %v", order.Why, order.Turn)
 }
 
 // on its way, building a road or purifying: the original's units that are left out of the plans

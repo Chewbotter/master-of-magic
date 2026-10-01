@@ -434,6 +434,14 @@ func (pass *chewPass) surveyStack(stack *chewAIStack, excess int) {
     }
 }
 
+// NOT THE ORIGINAL'S, a switch to measure it (2026-10-01, item 3 of the user's list, attacks at
+// long odds): the survey drafts the roamers before they pick targets and the stage step comes after
+// (AI_Set_Unit_Orders), so the stage point takes the strongest units of a group that has just picked
+// a target and the rest walks on alone: 225 of 253 attacks at under half strength by a target order
+// in 30 games. true: the stage step leaves a unit that was given an order in the same turn. false:
+// the original
+var ChewbotStageSparesOrdered = false
+
 // the player that holds a node, nil when nobody does
 func (world *chewWorld) nodeOwner(x int, y int, wp int) *playerlib.Player {
     node := world.Maps[wp].GetMagicNode(x, y)
@@ -1373,7 +1381,7 @@ func (pass *chewPass) stageExpeditionForces() {
         draft := pass.Drafted[index]
         if draft.Stack.Slots[draft.Slot] == draft.Unit {
             pass.order(draft.Stack, draft.Slot, stageX, stageY)
-        } else {
+        } else if !ChewbotStageSparesOrdered {
             // it was given another order in this turn; the original gives it this one after it
             pass.Turn.order(draft.Unit, stageX, stageY, pass.plane())
         }

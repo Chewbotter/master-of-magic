@@ -38,7 +38,9 @@ The journal's kinds:
   settler too many), `hire hero`, `hire mercenaries`;
 - diplomacy: `treaty`, `peace`, `war`, `break treaty`, each with its reason (negotiation, need for
   war, superiority, threats to the human, units near a city, an ally's war) and the relation;
-- the game: `battle` (where, against whom, the result, both strengths and the units left), `take
+- the game: `battle` (where, against whom, the result, both strengths and the units left; for
+  Chewbot's wizards also the orders that sent the attackers, `sent by 3 target, turn 92; 1 chase,
+  turn 93`: the step of the AI that gave each order and the turn it was given), `take
   city`, `raze city`, `found city`, `event`, `cast` (a spell that lands), `dismiss` (weak units of
   computer wizards), `conquest`.
 
@@ -96,7 +98,8 @@ for flags that start with a dash). `report` writes `report.json`
 and `report.md`: how the runs ended, panics and hangs, the broken states and the first trace of each
 (turn, whose turn, the journal before it, the save before it), the computer wizards at the end, by
 personality, the same split by the settings of the runs (war at the start, wizards, difficulty,
-land), battles and lairs by the strength of the sides, diplomacy, the decisions of the
+land), battles and lairs by the strength of the sides, the battles of wizards by the order that
+sent the attackers (with the ones at under half strength), diplomacy, the decisions of the
 journal by kind with their commonest reasons, and the growth by turn.
 
 ## The page of a report

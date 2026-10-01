@@ -250,6 +250,9 @@ def ratio_bucket(attack, defend):
 
 
 BATTLE = re.compile(r"strength (\d+) \((\d+) units\) against (\d+) \((\d+) units\)")
+# the orders of the AI that sent the attackers, in a battle note: "sent by 3 target, turn 92; 1 chase, turn 93"
+SENT_BY = re.compile(r"sent by (.*?)(?:; at sea|; tactical|$)")
+SENT_ORDER = re.compile(r"(\d+) ([\w ]+?)(?:, turn \d+)?(?:;|$)")
 
 
 def load_batch(folder):
@@ -429,6 +432,9 @@ def report_batch(name, runs):
     battles = collections.defaultdict(lambda: {"fought": 0, "won": 0})
     lairs = collections.defaultdict(lambda: {"fought": 0, "won": 0})
     raids = collections.defaultdict(lambda: {"fought": 0, "won": 0})
+    # the battles of wizards by the order that sent most of the attackers, and of them the ones at
+    # under half the defender's strength
+    sent_by = collections.defaultdict(lambda: {"fought": 0, "won": 0, "underHalf": 0, "underHalfWon": 0})
     first_war = []
     first_treaty = []
     for run in runs:
@@ -464,6 +470,16 @@ def report_batch(name, runs):
                         bucket = table[ratio_bucket(attack, defend)]
                         bucket["fought"] += 1
                         bucket["won"] += 1 if won else 0
+                    sent = SENT_BY.search(line.get("why") or "")
+                    if sent and line.get("banner") != "brown":
+                        orders = SENT_ORDER.findall(sent.group(1))
+                        if orders:
+                            entry = sent_by[max(orders, key=lambda order: int(order[0]))[1]]
+                            entry["fought"] += 1
+                            entry["won"] += 1 if won else 0
+                            if defend > 0 and attack / defend < 0.5:
+                                entry["underHalf"] += 1
+                                entry["underHalfWon"] += 1 if won else 0
             if kind == "war" and not war_seen:
                 war_seen = True
                 first_war.append(line["turn"])
@@ -495,6 +511,7 @@ def report_batch(name, runs):
     out["battlesByRatio"] = {bucket: battles[bucket] for bucket in order if bucket in battles}
     out["lairsByRatio"] = {bucket: lairs[bucket] for bucket in order if bucket in lairs}
     out["raidsByRatio"] = {bucket: raids[bucket] for bucket in order if bucket in raids}
+    out["battlesBySender"] = dict(sorted(sent_by.items(), key=lambda item: -item[1]["fought"]))
 
     # one line a run, and the slowest turns of the AI
     lines = []
@@ -626,6 +643,11 @@ def markdown(reports):
             if table:
                 lines.append(f"- {title}: " + "; ".join(f"{bucket} {value['won']}/{value['fought']}" for bucket, value in table.items()))
         lines.append("")
+        if report.get("battlesBySender"):
+            lines += ["### Battles of wizards by the order that sent the attackers (won of fought; at under half strength)", ""]
+            for sender, value in report["battlesBySender"].items():
+                lines.append(f"- {sender}: {value['won']}/{value['fought']}; under half {value['underHalfWon']}/{value['underHalf']}")
+            lines.append("")
         if report.get("milestones"):
             lines += ["### Milestones: the first turn a wizard did it (median, min to max, wizards that did)", ""]
             for kind, value in report["milestones"].items():
