@@ -256,9 +256,13 @@ func (model *GameModel) GetMap(plane data.Plane) *maplib.Map {
 }
 
 func (model *GameModel) FindPath(oldX int, oldY int, newX int, newY int, player *playerlib.Player, stack playerlib.PathStack, fog data.FogMap) (pathfinding.Path, bool) {
-    if unitStack, ok := stack.(*playerlib.UnitStack); ok && units.ClassicMovement {
-        // the stack's modes once for the whole search (movement.go)
-        defer keepStackModes(unitStack)()
+    if unitStack, ok := stack.(*playerlib.UnitStack); ok {
+        // what the stack can do, once for the whole search
+        defer unitStack.KeepTraits()()
+        if units.ClassicMovement {
+            // the stack's modes once for the whole search (movement.go)
+            defer keepStackModes(unitStack)()
+        }
     }
 
     useMap := model.GetMap(stack.Plane())
@@ -325,8 +329,20 @@ func (model *GameModel) FindPath(oldX int, oldY int, newX int, newY int, player 
         return normalized(a) == normalized(b)
     }
 
+    // the player's stacks on the plane by square, the first of the list on a square as
+    // player.FindStack finds it: the search asks for many squares and the stacks stay where they are
+    ownStacks := make(map[image.Point]*playerlib.UnitStack)
+    for _, own := range player.Stacks {
+        if own.Plane() != stack.Plane() {
+            continue
+        }
+        at := image.Pt(own.X(), own.Y())
+        if _, ok := ownStacks[at]; !ok {
+            ownStacks[at] = own
+        }
+    }
     getStack := func (x int, y int) (playerlib.PathStack, bool) {
-        found := player.FindStack(x, y, stack.Plane())
+        found := ownStacks[image.Pt(x, y)]
         return found, found != nil
     }
 

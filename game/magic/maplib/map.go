@@ -1300,27 +1300,43 @@ func PointsInOrder[Value any](values map[image.Point]Value) []image.Point {
     for point := range values {
         points = append(points, point)
     }
+    sortPointsInOrder(points)
+    return points
+}
+
+// rows then columns, the order of PointsInOrder
+func sortPointsInOrder(points []image.Point) {
     slices.SortFunc(points, func(a image.Point, b image.Point) int {
         if a.Y != b.Y {
             return a.Y - b.Y
         }
         return a.X - b.X
     })
-    return points
+}
+
+// the points of ExtraMap with an extra of the kind that keep takes (nil: every one), in the order
+// of ExtraPointsInOrder. the map is gone through as it is and only the points found are sorted:
+// these lists are asked for many times a turn, and the extras of a map (roads most of all) are many
+func (mapObject *Map) extraPointsOf(kind ExtraKind, keep func(ExtraTile) bool) []image.Point {
+    var out []image.Point
+    for point, extras := range mapObject.ExtraMap {
+        extra, ok := extras[kind]
+        if ok && (keep == nil || keep(extra)) {
+            out = append(out, point)
+        }
+    }
+    sortPointsInOrder(out)
+    return out
 }
 
 func (mapObject *Map) GetMeldedNodes(melder Wizard) []*ExtraMagicNode {
     var out []*ExtraMagicNode
 
-    for _, point := range mapObject.ExtraPointsInOrder() {
-        extras := mapObject.ExtraMap[point]
-        node, ok := extras[ExtraKindMagicNode]
-        if ok {
-            magic := node.(*ExtraMagicNode)
-            if magic.MeldingWizard == melder {
-                out = append(out, magic)
-            }
-        }
+    points := mapObject.extraPointsOf(ExtraKindMagicNode, func(node ExtraTile) bool {
+        return node.(*ExtraMagicNode).MeldingWizard == melder
+    })
+    for _, point := range points {
+        out = append(out, mapObject.ExtraMap[point][ExtraKindMagicNode].(*ExtraMagicNode))
     }
 
     return out
@@ -1329,15 +1345,11 @@ func (mapObject *Map) GetMeldedNodes(melder Wizard) []*ExtraMagicNode {
 func (mapObject *Map) GetCastedVolcanoes(caster Wizard) []*ExtraVolcano {
     var out []*ExtraVolcano
 
-    for _, point := range mapObject.ExtraPointsInOrder() {
-        extras := mapObject.ExtraMap[point]
-        extra, ok := extras[ExtraKindVolcano]
-        if ok {
-            volcano := extra.(*ExtraVolcano)
-            if volcano.CastingWizard == caster {
-                out = append(out, volcano)
-            }
-        }
+    points := mapObject.extraPointsOf(ExtraKindVolcano, func(extra ExtraTile) bool {
+        return extra.(*ExtraVolcano).CastingWizard == caster
+    })
+    for _, point := range points {
+        out = append(out, mapObject.ExtraMap[point][ExtraKindVolcano].(*ExtraVolcano))
     }
 
     return out
@@ -1390,48 +1402,18 @@ func (mapObject *Map) GetEncounter(x int, y int) *ExtraEncounter {
 }
 
 func (mapObject *Map) GetEncounterLocations() []image.Point {
-    var out []image.Point
-
-    for _, point := range mapObject.ExtraPointsInOrder() {
-        extras := mapObject.ExtraMap[point]
-        _, exists := extras[ExtraKindEncounter]
-        if exists {
-            out = append(out, point)
-        }
-    }
-
-    return out
+    return mapObject.extraPointsOf(ExtraKindEncounter, nil)
 }
 
 func (mapObject *Map) GetMagicNodeLocations() []image.Point {
-    var out []image.Point
-
-    for _, point := range mapObject.ExtraPointsInOrder() {
-        extras := mapObject.ExtraMap[point]
-        _, exists := extras[ExtraKindMagicNode]
-        if exists {
-            out = append(out, point)
-        }
-    }
-
-    return out
+    return mapObject.extraPointsOf(ExtraKindMagicNode, nil)
 }
 
 // GetOpenTowerLocations returns every tile on this map that holds an open
 // (already-cleared) plane tower. A unit standing on an open tower can planar
 // travel to the same tile on the opposite plane.
 func (mapObject *Map) GetOpenTowerLocations() []image.Point {
-    var out []image.Point
-
-    for _, point := range mapObject.ExtraPointsInOrder() {
-        extras := mapObject.ExtraMap[point]
-        _, exists := extras[ExtraKindOpenTower]
-        if exists {
-            out = append(out, point)
-        }
-    }
-
-    return out
+    return mapObject.extraPointsOf(ExtraKindOpenTower, nil)
 }
 
 func (mapObject *Map) RemoveEncounter(x int, y int) {

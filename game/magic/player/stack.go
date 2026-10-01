@@ -33,6 +33,46 @@ type UnitStack struct {
     // non-zero while animating movement on the overworld
     offsetX float64
     offsetY float64
+
+    // what the stack can do, kept while a path is searched for it (KeepTraits)
+    kept *stackTraits
+}
+
+// the answers of the stack's questions that do not change while a path is searched for it: the
+// search asks them for every square it looks at, and every answer went through the units again
+type stackTraits struct {
+    allFlyers bool
+    anyLandWalkers bool
+    // by onlyActive: [false] all units, [true] the active ones
+    hasSailing [2]bool
+    canMoveOnLand [2]bool
+}
+
+// keeps the answers of AllFlyers, AnyLandWalkers, HasSailingUnits and CanMoveOnLand until the
+// returned function is called. the units of the stack and which are active must not change
+// meanwhile, as in a path search
+func (stack *UnitStack) KeepTraits() func() {
+    if stack.kept != nil {
+        // a search inside a search: the outer one lets go
+        return func() {}
+    }
+    traits := &stackTraits{
+        allFlyers: stack.AllFlyers(),
+        anyLandWalkers: stack.AnyLandWalkers(),
+        hasSailing: [2]bool{stack.HasSailingUnits(false), stack.HasSailingUnits(true)},
+        canMoveOnLand: [2]bool{stack.CanMoveOnLand(false), stack.CanMoveOnLand(true)},
+    }
+    stack.kept = traits
+    return func() {
+        stack.kept = nil
+    }
+}
+
+func traitIndex(onlyActive bool) int {
+    if onlyActive {
+        return 1
+    }
+    return 0
 }
 
 func MakeUnitStack() *UnitStack {
@@ -186,6 +226,9 @@ func (stack *UnitStack) InactiveUnits() []units.StackUnit {
 }
 
 func (stack *UnitStack) CanMoveOnLand(onlyActive bool) bool {
+    if stack.kept != nil {
+        return stack.kept.canMoveOnLand[traitIndex(onlyActive)]
+    }
     use := stack.units
     if onlyActive {
         use = stack.ActiveUnits()
@@ -206,6 +249,9 @@ func (stack *UnitStack) CanMoveOnLand(onlyActive bool) bool {
 // pass in true to only check active units
 // FIXME: this should probably be HasTransport
 func (stack *UnitStack) HasSailingUnits(onlyActive bool) bool {
+    if stack.kept != nil {
+        return stack.kept.hasSailing[traitIndex(onlyActive)]
+    }
     use := stack.units
     if onlyActive {
         use = stack.ActiveUnits()
@@ -231,10 +277,16 @@ func (stack *UnitStack) AllLandWalkers() bool {
 }
 
 func (stack *UnitStack) AnyLandWalkers() bool {
+    if stack.kept != nil {
+        return stack.kept.anyLandWalkers
+    }
     return slices.ContainsFunc(stack.ActiveUnits(), units.StackUnit.IsLandWalker)
 }
 
 func (stack *UnitStack) AllFlyers() bool {
+    if stack.kept != nil {
+        return stack.kept.allFlyers
+    }
     // wind walking gives every unit in the stack the ability to fly
     if stack.ActiveUnitsHasAbility(data.AbilityWindWalking) {
         return true
