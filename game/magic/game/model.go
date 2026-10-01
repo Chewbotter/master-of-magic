@@ -2112,7 +2112,8 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
                 player.Fame = max(0, player.Fame + city.FameForCaptureOrRaze(!raze))
                 enemy.Fame = max(0, enemy.Fame + city.FameForCaptureOrRaze(false))
                 player.Gold += gold
-                enemy.Gold -= gold
+                // never below 0: the loot of a neutral town or of a razing is not the loser's gold
+                enemy.Gold = max(0, enemy.Gold - gold)
 
                 // FIXME: if the wizard is neutral and decides to raze the town, then the town could become
                 // an encounter zone

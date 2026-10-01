@@ -12,6 +12,7 @@ import (
     "strings"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
+    herolib "github.com/kazzmir/master-of-magic/game/magic/hero"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     "github.com/kazzmir/master-of-magic/game/magic/units"
 )
@@ -27,6 +28,11 @@ func classicLameExempt(unit units.StackUnit) bool {
 }
 
 func classicUnitWorth(unit units.StackUnit) int {
+    if hero, ok := unit.(*herolib.Hero); ok {
+        // a hero's worth in the table is near its base fee (100 to 600); the fork keeps no table
+        // cost for heroes (MY CALL)
+        return 100 + hero.HeroType.GetRequiredFame() * 10
+    }
     return unit.GetRawUnit().WorthCost()
 }
 
@@ -55,7 +61,7 @@ func (game *Game) classicKillLameUnits(player *playerlib.Player) {
 
         for _, city := range player.Cities {
             for _, unit := range player.GetUnits(city.X, city.Y, city.Plane) {
-                if classicUnitWorth(unit) * 2 < player.AverageUnitCost {
+                if classicUnitWorth(unit) < player.AverageUnitCost / 2 {
                     dismissUnit(player, unit)
                     break
                 }
@@ -71,7 +77,7 @@ func (game *Game) classicKillLameUnits(player *playerlib.Player) {
         if unit.IsHero() || classicLameExempt(unit) || player.FindCity(unit.GetX(), unit.GetY(), unit.GetPlane()) != nil {
             continue
         }
-        if classicUnitWorth(unit) * 2 < player.AverageUnitCost {
+        if classicUnitWorth(unit) < player.AverageUnitCost / 2 {
             lame = append(lame, unit)
         }
     }
@@ -80,9 +86,10 @@ func (game *Game) classicKillLameUnits(player *playerlib.Player) {
     }
 }
 
-// Retreat_From_Combat, the ocean: with no wind walker left, the seats of the ships that are left
-// carry the riders that can not fly or swim, in their order; heroes take no seat while a ship is
-// left; those beyond the seats drown, with no seats every rider
+// Retreat_From_Combat, the ocean, for the side that lost: with no wind walker left, the seats of
+// the transports that are left (ships, a Floating Island) carry the riders that can not fly or
+// swim, in their order; heroes take no seat while there are seats; those beyond the seats drown,
+// with no seats every rider
 func classicDrowned(stack []units.StackUnit) map[units.StackUnit]bool {
     out := make(map[units.StackUnit]bool)
     seats := 0
@@ -93,15 +100,14 @@ func classicDrowned(stack []units.StackUnit) map[units.StackUnit]bool {
         if unit.HasAbility(data.AbilityWindWalking) {
             return out
         }
-        if unit.IsSailing() {
-            seats += int(unit.GetAbilityValue(data.AbilityTransport))
-        }
+        seats += int(unit.GetAbilityValue(data.AbilityTransport))
     }
+    anySeats := seats > 0
     for _, unit := range stack {
         if unit.GetHealth() <= 0 || !unit.IsLandWalker() {
             continue
         }
-        if seats == 0 {
+        if !anySeats {
             out[unit] = true
             continue
         }
@@ -115,6 +121,16 @@ func classicDrowned(stack []units.StackUnit) map[units.StackUnit]bool {
         }
     }
     return out
+}
+
+// a transport of the stack is left (a ship, or a Floating Island, which does not sail)
+func transportLeft(stack []units.StackUnit) bool {
+    for _, unit := range stack {
+        if unit.GetHealth() > 0 && unit.GetAbilityValue(data.AbilityTransport) > 0 {
+            return true
+        }
+    }
+    return false
 }
 
 // Chancellor_Screen_Scroll_Draw: the running events the chancellor lists first

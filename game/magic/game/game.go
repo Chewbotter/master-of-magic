@@ -4290,6 +4290,9 @@ func (game *Game) doPlayerUpdate(yield coroutine.YieldFunc, player *playerlib.Pl
                                     stack.SetY(newY)
                                 }
                                 game.RefreshUI()
+                            } else if inactiveStack != nil {
+                                // refused: the units that waited join the stack again
+                                player.MergeStacks(stack, inactiveStack)
                             }
                         } else {
                             path, ok := game.Model.FindPath(oldX, oldY, newX, newY, player, stack, player.GetFog(game.Model.Plane))
@@ -5751,10 +5754,15 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
         }
 
         transport := stack.HasSailingUnits(false)
+        if units.ClassicMovement {
+            // a Floating Island carries too
+            transport = transport || transportLeft(stack.Units())
+        }
 
-        // Retreat_From_Combat: the riders beyond the seats of the ships left drown
+        // Retreat_From_Combat: the riders of the side that lost beyond the seats left drown
+        lost := (player == attacker && attackerLost) || (player == defender && defenderLost)
         var drowned map[units.StackUnit]bool
-        if units.ClassicMovement && landscape == combat.CombatLandscapeWater {
+        if units.ClassicMovement && landscape == combat.CombatLandscapeWater && lost {
             drowned = classicDrowned(stack.Units())
         }
 

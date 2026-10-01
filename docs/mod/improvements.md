@@ -289,3 +289,10 @@ quirk constant where there is one: turning it is the change. New calls go here t
   turn here, a city taken by the human from a computer misses a turn of growth here; towers that
   see both planes; the fleeing defender's place (combat); the human's line in UNITS DISBANDED for a
   unit evicted from a full square; the running events not aging while time stands still.
+- FOUND IN THE REVIEW AND FIXED: the computer's walk-in capture took the loot of a neutral town or
+  a razing from the loser's gold with no floor (raiders and defeated wizards with gold below 0);
+  the riders of a Floating Island drowned after every sea battle (it does not sail; upstream's
+  check had the same hole); the seat rule hit the winner too and drowned heroes after the last seat;
+  a refused Earth Gate left the waiting units as a second stack. MY CALL: a hero's worth for the
+  dismissal of weak units is 100 + 10 for every point of fame it asks (the fork has no table cost
+  for heroes).
