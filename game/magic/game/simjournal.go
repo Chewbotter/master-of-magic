@@ -57,6 +57,8 @@ type simBattle struct {
     // ships on land and walkers on water)
     attackNames string
     fought int
+    // fought on a square of water (a sea battle)
+    atSea bool
 }
 
 // the units of a stack by name and count, "2 Swordsmen, Trireme"
@@ -111,6 +113,9 @@ func (battle *simBattle) end(state combat.CombatState) {
     why := fmt.Sprintf("strength %v (%v units) against %v (%v units); units left %v and %v; attackers %v", battle.attackStrength, battle.attackUnits, battle.defendStrength, battle.defendUnits, attackLeft, defendLeft, battle.attackNames)
     if battle.fought >= 0 && battle.fought < battle.attackUnits {
         why += fmt.Sprintf("; only %v of them in the battle", battle.fought)
+    }
+    if battle.atSea {
+        why += "; at sea"
     }
     playerlib.Note(battle.attacker, "battle", what, why)
 }

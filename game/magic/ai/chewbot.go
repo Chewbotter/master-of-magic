@@ -514,9 +514,16 @@ func (ai *ChewbotAI) pickWizard(self *playerlib.Player, services playerlib.AISer
             raw := unit.GetRawUnit()
             land.Settlers = land.Settlers || chewIsBuilder(&raw)
             land.Engineers = land.Engineers || chewIsEngineer(&raw)
-            if chewIsTransport(&raw) {
-                land.Transports += 1
-            }
+        }
+    }
+    // the transports of the wizard anywhere: the computer players' Player_Colony_Autobuild_CP reads
+    // ai_transport_count, which the turn's AI data (AIDUDES.c) counts over all the wizard's units.
+    // Counting the ones on the city's landmass is the Grand Vizier's version (_HP), where ships at
+    // sea never count: cities built Triremes without end (90 to 175 a game in the test runs)
+    for unit := range self.Units() {
+        raw := unit.GetRawUnit()
+        if chewIsTransport(&raw) {
+            land.Transports += 1
         }
     }
     for _, other := range self.CitiesInOrder() {

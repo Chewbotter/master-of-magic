@@ -52,7 +52,10 @@ plus Warlord (Militarist 2, Expansionist 3), Chaos or Nature Mastery (Theurgist 
    - buildings count nothing while the city wants units;
    - settlers (only in a city of 3 or more) and engineers: when wanted, half again before turn 50,
      times (10 + the objective's builder bonus, Expansionist 10) / 10; else nothing;
-   - ships: only when there are fewer than one per 40 turns and 8 at most, times what is missing;
+   - ships: only when the wizard has fewer than one per 40 turns and 8 at most, times what is missing;
+     every transport of the wizard counts, wherever it is (the computer players' version reads the
+     count of all its units; only the Grand Vizier's counts the ones on the city's landmass, which
+     misses every ship at sea);
    - soldiers: only when the city wants units, times (10 + the objective's bonus, Militarist 5,
      Expansionist 3) / 10.
 

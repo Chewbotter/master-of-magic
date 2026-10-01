@@ -134,8 +134,8 @@ def command_run(args):
         sys.exit("no dev.sh found above the script; pass --root")
     out = Path(args.out) / args.name
     out.mkdir(parents=True, exist_ok=True)
-    build = newest_build(root, args.lane)
-    if build is None:
+    build = Path(args.exe) if args.exe else newest_build(root, args.lane)
+    if build is None or not build.exists():
         sys.exit(f"no build of lane {args.lane}: bash build.sh {args.lane}")
     exe = out / "game.exe"
     shutil.copy2(build, exe)
@@ -681,6 +681,7 @@ def main():
     run.add_argument("--timeline", type=int, default=10)
     run.add_argument("--timeout", type=int, default=1800, help="seconds before a run is killed")
     run.add_argument("--seed", type=int, default=1, help="picks the settings and the seed (-sim-seed) of every run")
+    run.add_argument("--exe", default=None, help="this build in place of the newest of the lane (to compare two builds on the same seeds)")
     run.add_argument("--no-trace", dest="trace", action="store_false", help="without -sim-trace and its saves (on by default: it costs well under 1 percent)")
     run.add_argument("--extra", default="", help="more flags for the game")
     run.set_defaults(func=command_run)

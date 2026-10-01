@@ -321,6 +321,15 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
 
 ## Found by many runs (testing.md, 2026-09-30)
 
+- FIXED (2026-10-01, the user: "I don't think water-based combat was common at all"): Triremes were
+  the second build of every computer wizard (90 to 175 a game). Player_Colony_Autobuild_CP (AIBUILD.c)
+  reads ai_transport_count, which the AI's data of the turn (AIDUDES.c) counts over ALL the wizard's
+  units; our port counted the transports on the city's landmass, as the Grand Vizier's version
+  (_HP) does, where a ship at sea never counts. Same seeds before and after: ships built 165 to 25
+  a five-wizard game of 300 turns, 55 to 11 with two wizards; battles at sea 1.9 to 0.2 a game (they
+  were rare before too: the ships were built, not used); founded cities the same, five-wizard
+  armies 14 percent stronger at the end. The battle notes say "at sea" now.
+
 - ROUND 4 (2026-10-01, `_build/a/fuzz8`, the settings of round 3 run for run, 90 runs): broken
   states in 2 runs (18 in round 3), attacks where nothing fought 0 (1,301), most units in a world
   951 (1,407), runs with a treaty 73 (31), no crash or hang. The 2 left are edge cases the original

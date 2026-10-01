@@ -4563,6 +4563,9 @@ func (handlers *GameMoveHandlers) DoEncounter(player *playerlib.Player, stack *p
 
 func (handlers *GameMoveHandlers) DoCombat(player *playerlib.Player, stack *playerlib.UnitStack, enemy *playerlib.Player, enemyStack *playerlib.UnitStack, zone combat.ZoneType) combat.CombatState {
     battle := simBattleStart(player, stack, enemy, enemyStack, handlers.Game.simWhere(enemyStack))
+    if battle != nil {
+        battle.atSea = handlers.Game.GetMap(enemyStack.Plane()).GetTile(enemyStack.X(), enemyStack.Y()).Tile.IsWater()
+    }
     handlers.Game.simFought = -1
     state := handlers.Game.doCombat(handlers.Yield, player, stack, enemy, enemyStack, zone)
     if battle != nil {
