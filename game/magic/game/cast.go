@@ -112,7 +112,10 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
         return
     }
 
-    if spell.IsOfRealm(data.ChaosMagic) || spell.IsOfRealm(data.DeathMagic) {
+    if ClassicMagic {
+        // after the cast, if it went through (natureswrath.go)
+        defer game.noteNaturesWrath(player, spell)()
+    } else if spell.IsOfRealm(data.ChaosMagic) || spell.IsOfRealm(data.DeathMagic) {
         game.maybeDoNaturesWrath(player)
     }
 
@@ -508,6 +511,9 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             }
 
         case "Death Wish":
+            // the units of a city meet its counters (CTY_CounterSpell): Consecration, the ward,
+            // Nightshade; upstream asks the ward only
+            cityCountersOnce := game.citySparesUnits(spell, player)
             after := func() {
                 cityStackInfo := game.Model.ComputeCityStackInfo()
 
@@ -519,7 +525,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     for _, stack := range owner.Stacks {
 
                         city := cityStackInfo.FindCity(stack.X(), stack.Y(), stack.Plane())
-                        if city != nil && !city.CanTarget(spell) {
+                        if city != nil && cityCountersOnce(city) {
                             continue
                         }
 
@@ -620,6 +626,8 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             }
 
         case "Great Unsummoning":
+            // the units of a city meet its counters, as for Death Wish
+            cityCountersOnce := game.citySparesUnits(spell, player)
             after := func(){
                 cityStackInfo := game.Model.ComputeCityStackInfo()
 
@@ -627,7 +635,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     for _, stack := range player.Stacks {
 
                         city := cityStackInfo.FindCity(stack.X(), stack.Y(), stack.Plane())
-                        if city != nil && !city.CanTarget(spell) {
+                        if city != nil && cityCountersOnce(city) {
                             continue
                         }
 
@@ -850,7 +858,8 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             game.Events <- &GameEventSelectLocationForSpell{Spell: spell, Player: player, LocationType: LocationTypeDisenchant, SelectedFunc: selected}
         case "Wall of Stone":
             after := func (city *citylib.City) bool {
-                if city.ProducingBuilding == building.BuildingCityWalls {
+                if !ClassicMagic && city.ProducingBuilding == building.BuildingCityWalls {
+                    // Cast_Wall_Of_Stone only sets the walls: the original leaves the build as it is
                     city.ProducingBuilding = building.BuildingTradeGoods
                 }
                 return true
@@ -2366,7 +2375,12 @@ func (game *Game) doCastNewCityBuilding(spell spellbook.Spell, player *playerlib
             return
         }
 
-        if chosenCity.Buildings.Contains(newBuilding) {
+        // Cast_Wall_Of_Stone: walls sold or destroyed in this turn count as standing
+        has := chosenCity.Buildings.Contains(newBuilding)
+        if ClassicMagic && newBuilding == building.BuildingCityWalls {
+            has = chosenCity.HasOrRemovedThisTurn(newBuilding)
+        }
+        if has {
             game.spellNotice(player, errorMessage)
             game.Events <- &GameEventSelectLocationForSpell{Spell: spell, Player: player, LocationType: locationType, SelectedFunc: selected}
             return
@@ -2548,7 +2562,7 @@ func (game *Game) doCastRaiseVolcano(yield coroutine.YieldFunc, tileX int, tileY
         if city != nil {
             for _, building := range city.Buildings.Values() {
                 if rand.N(100) < 15 {
-                    city.Buildings.Remove(building)
+                    city.RemoveBuilding(building)
                 }
             }
         }

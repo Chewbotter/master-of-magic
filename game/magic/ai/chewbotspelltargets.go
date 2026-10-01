@@ -229,7 +229,8 @@ func (ai *ChewbotAI) spellTarget(self *playerlib.Player, services playerlib.AISe
         // the cities of the wizard
         case "Wall of Stone":
             return chewCityTarget(world.bestOwnCity(func(city *citylib.City) bool {
-                return !city.Buildings.Contains(buildinglib.BuildingCityWalls)
+                // AITP_Wall_Of_Stone: walls that are not built, nor sold or destroyed this turn
+                return !city.HasOrRemovedThisTurn(buildinglib.BuildingCityWalls)
             }))
         case "Move Fortress":
             if fortress == nil {

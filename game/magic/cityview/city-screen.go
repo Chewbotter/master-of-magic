@@ -499,7 +499,7 @@ func (cityScreen *CityScreen) SellBuilding(building buildinglib.Building) {
 
     cityScreen.Player.Gold += sellAmount(cityScreen.City, building)
 
-    cityScreen.City.Buildings.Remove(building)
+    cityScreen.City.RemoveBuilding(building)
 
     for i, _ := range cityScreen.Buildings {
         if cityScreen.Buildings[i].Building == building {

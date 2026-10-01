@@ -1,6 +1,7 @@
 package city
 
 import (
+    "slices"
     _ "log"
     "bytes"
     "fmt"
@@ -133,6 +134,13 @@ type City struct {
 
     // reset every turn, keeps track of whether the player sold a building
     SoldBuilding bool
+    // buildings sold or destroyed in this turn, the original's bs_Removed: they still count for the
+    // Nightshade of the city and keep Wall of Stone off its walls. cleared once a turn (the game's
+    // EndOfTurn)
+    RemovedThisTurn []buildinglib.Building
+    // the original's enchantments[NIGHTSHADE]: the Nightshade the city counted at the start of a
+    // turn, kept until it is counted again (game/magicclassic.go)
+    NightshadeCount int
 
     // how many hammers the city has produced towards the current project
     Production float32
@@ -195,8 +203,17 @@ func (city *City) AddBuilding(building buildinglib.Building){
     city.Buildings.Insert(building)
 }
 
+// a building sold or destroyed. moves of the fortress do not call it
 func (city *City) RemoveBuilding(building buildinglib.Building){
+    if city.Buildings.Contains(building) {
+        city.RemovedThisTurn = append(city.RemovedThisTurn, building)
+    }
     city.Buildings.Remove(building)
+}
+
+// true if the city has the building or had it until it was sold or destroyed in this turn
+func (city *City) HasOrRemovedThisTurn(building buildinglib.Building) bool {
+    return city.Buildings.Contains(building) || slices.Contains(city.RemovedThisTurn, building)
 }
 
 func (city *City) HasSummoningCircle() bool {

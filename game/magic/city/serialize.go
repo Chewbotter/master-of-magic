@@ -21,6 +21,8 @@ type SerializedCity struct {
     Buildings []buildinglib.Building
     Enchantments []Enchantment
     SoldBuilding bool
+    RemovedThisTurn []buildinglib.Building `json:",omitempty"`
+    NightshadeCount int `json:",omitempty"`
     Production float32
     ProducingBuilding buildinglib.Building
     ProducingUnit units.SerializedUnit
@@ -41,6 +43,8 @@ func SerializeCity(city *City) SerializedCity {
         Buildings: append(make([]buildinglib.Building, 0), city.Buildings.Values()...),
         Enchantments: append(make([]Enchantment, 0), city.Enchantments.Values()...),
         SoldBuilding: city.SoldBuilding,
+        RemovedThisTurn: city.RemovedThisTurn,
+        NightshadeCount: city.NightshadeCount,
         Production: city.Production,
         ProducingBuilding: city.ProducingBuilding,
         ProducingUnit: units.SerializeUnit(city.ProducingUnit),
@@ -60,6 +64,8 @@ func ReconstructCity(serialized *SerializedCity, catchmentProvider CatchmentProv
         Y: serialized.Y,
         Outpost: serialized.Outpost,
         SoldBuilding: serialized.SoldBuilding,
+        RemovedThisTurn: serialized.RemovedThisTurn,
+        NightshadeCount: serialized.NightshadeCount,
         Production: serialized.Production,
         ProducingBuilding: serialized.ProducingBuilding,
         ProducingUnit: units.DeserializeUnit(serialized.ProducingUnit),
