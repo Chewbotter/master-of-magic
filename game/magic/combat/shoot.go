@@ -12,8 +12,16 @@ package combat
 //   frame 3, frame 4 the draw, then 5 (and 6) where a swing lands, where the missile is loosed,
 //   a moment on the last of them, and frame 3 again
 // The missile leaves when the figures show the frame a swing lands on. The same with the setting
-// "Single strikes" on or off: a shot is one. A unit with the frames of the game only shoots as it
-// did, without frames.
+// "Single strikes" on or off: a shot is one.
+//
+// EVERY UNIT THAT SHOOTS OR CASTS (user, 2026-09-30: "update spellcasters- example is High Men
+// Priests and Magicians, who should have ranged magic attacks. Currently there is no animation
+// associated with them using the attacks or casting spells. Like bowmen, use all the available
+// frames"): a unit with the frames of the game only shows its strike frame 3 where the missile is
+// loosed, between frames of standing, which is all it has (the first build left such units
+// without frames). A unit that casts a spell (InvokeSpell with a unit) shows the same frames while
+// the spell plays, without waiting for them: CastPending is set by the model, `updateCastFrames`
+// starts them on the clock of the battle and ends them when they are over.
 
 import (
     "github.com/kazzmir/master-of-magic/lib/coroutine"
@@ -34,7 +42,32 @@ func shotSteps(extra []int) []swingStep {
 
 // true if a unit shows frames when it shoots
 func showsShot(unit *ArmyUnit) bool {
-    return ShotFrames && len(extraStrikeFrames(unit)) > 0
+    return ShotFrames
+}
+
+// starts the frames of a cast of the units the model has marked, and ends the ones that are over.
+// once per tick of the battle, in UpdateAnimations
+func (combat *CombatScreen) updateCastFrames() {
+    update := func(army *Army) {
+        if army == nil {
+            return
+        }
+        for _, unit := range army.units {
+            if unit.CastPending {
+                unit.CastPending = false
+                if ShotFrames && !unit.Shooting {
+                    _, lasts := combat.startShot(unit)
+                    unit.CastEnds = combat.Counter + uint64(lasts)
+                }
+            }
+            if unit.CastEnds > 0 && combat.Counter >= unit.CastEnds {
+                unit.CastEnds = 0
+                unit.Shooting = false
+            }
+        }
+    }
+    update(combat.Model.AttackingArmy)
+    update(combat.Model.DefendingArmy)
 }
 
 // the frame a figure of a unit that shoots shows. ticks is the redraws of the original since the

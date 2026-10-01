@@ -195,6 +195,7 @@ func (game *MagicGame) updateFastPlay(menu *mainview.MainScreen) (mainview.MainS
         unitPickerRiverOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "river")
         unitPickerFarmlandOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "farmland")
         unitPickerWeatherOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "weather")
+        unitPickerFirstOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "first")
         unitPickerRoadOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "roads")
         capture.UnitPicker = ""
         if testBattleLast == nil {
@@ -567,6 +568,8 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
         army := testArmyUnits(testBattleLast, armyScale)
         attackingArmy.SpreadOut = isAllOfRace(testBattleLast)
         defendingArmy.SpreadOut = isAllOfRace(testBattleLast)
+        // the player leads the attackers: who moves first, see unitpicker.go
+        attackingArmy.MovesFirst = !testBattleEnemyFirst
         for _, each := range army {
             attackingArmy.AddUnit(units.MakeOverworldUnitFromUnit(each, 1, 1, data.PlaneArcanus, attacker.Wizard.Banner, attacker.MakeExperienceInfo(), attacker.MakeUnitEnchantmentProvider()))
             defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(each, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))

@@ -47,3 +47,27 @@ func TestShotSteps(test *testing.T) {
         }
     }
 }
+
+// a unit with the frames of the game only stands, shows its strike frame where the missile is
+// loosed and stands again: every unit that shoots or casts shows frames
+func TestShotOfGameFrames(test *testing.T) {
+    steps := shotSteps(nil)
+    var seen []int
+    for _, step := range steps {
+        if step.From != 0 || step.To != 0 {
+            test.Fatalf("the figure moves in %+v", step)
+        }
+        if len(seen) == 0 || seen[len(seen) - 1] != step.Frame {
+            seen = append(seen, step.Frame)
+        }
+    }
+    if len(seen) != 3 || seen[0] != figureStandFrame || seen[1] != mod.FrameStrike || seen[2] != figureStandFrame {
+        test.Fatalf("shows %v", seen)
+    }
+    if frame, _ := swingAt(steps, swingLands(steps) + 0.01, 1); frame != mod.FrameStrike {
+        test.Fatalf("looses on frame %v", frame)
+    }
+    if !showsShot(&ArmyUnit{}) {
+        test.Fatalf("a unit without frames of its own shows no shot")
+    }
+}

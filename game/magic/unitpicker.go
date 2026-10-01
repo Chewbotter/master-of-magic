@@ -156,6 +156,21 @@ var testWeatherNames = map[combat.Weather]string{
 var testBattleWeather = combat.WeatherNone
 var unitPickerWeatherOpen bool
 
+// WHO MOVES FIRST in a test battle (user, 2026-09-30: "a toggle under weather for 'First move'. The
+// options are player and enemy, have player selected by default"). The player leads the attackers,
+// who move second in the original; Player gives them the first move (combat.Army.MovesFirst)
+var testFirstMoveNames = []string{"Player", "Enemy"}
+var testBattleEnemyFirst bool
+var unitPickerFirstOpen bool
+
+// the name of who moves first, as the list and debug.json have it
+func testFirstMoveName() string {
+    if testBattleEnemyFirst {
+        return testFirstMoveNames[1]
+    }
+    return testFirstMoveNames[0]
+}
+
 // the race of the town of the fields of a test battle: the one of the unit that fights
 var testBattleFarmland = combat.FarmlandNone
 var unitPickerFarmlandOpen bool
@@ -259,6 +274,10 @@ type unitPickerRow struct {
     WeatherTitle bool
     Weather combat.Weather
     IsWeather bool
+    FirstTitle bool
+    // a row of who moves first: true for the enemy
+    IsFirst bool
+    EnemyFirst bool
     // from 1
     Farmland int
     River combat.RiverCourse
@@ -277,7 +296,7 @@ type unitPickerRow struct {
 
 // a row that stands under the title of its rollout
 func (row unitPickerRow) indented() bool {
-    return row.Unit != nil || row.Ground > 0 || row.IsCoast || row.IsRiver || row.Farmland > 0 || row.IsWeather || row.Road > 0
+    return row.Unit != nil || row.Ground > 0 || row.IsCoast || row.IsRiver || row.Farmland > 0 || row.IsWeather || row.Road > 0 || row.IsFirst
 }
 
 func (row unitPickerRow) contains(x float64, y float64) bool {
@@ -381,6 +400,13 @@ func unitPickerRows() []unitPickerRow {
     if unitPickerWeatherOpen {
         for _, weather := range combat.Weathers {
             rows = append(rows, unitPickerRow{Text: testWeatherNames[weather], IsWeather: true, Weather: weather, Picked: weather == testBattleWeather})
+        }
+    }
+    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v First move: %v", mark(unitPickerFirstOpen), testFirstMoveName()), FirstTitle: true})
+    if unitPickerFirstOpen {
+        for index, name := range testFirstMoveNames {
+            enemy := index == 1
+            rows = append(rows, unitPickerRow{Text: name, IsFirst: true, EnemyFirst: enemy, Picked: enemy == testBattleEnemyFirst})
         }
     }
 
@@ -502,6 +528,12 @@ func updateUnitPicker() bool {
         case row.IsWeather:
             testBattleWeather = row.Weather
             unitPickerWeatherOpen = false
+            saveDebugSaved()
+        case row.FirstTitle:
+            unitPickerFirstOpen = !unitPickerFirstOpen
+        case row.IsFirst:
+            testBattleEnemyFirst = row.EnemyFirst
+            unitPickerFirstOpen = false
             saveDebugSaved()
         case row.FarmlandTitle:
             unitPickerFarmlandOpen = !unitPickerFarmlandOpen

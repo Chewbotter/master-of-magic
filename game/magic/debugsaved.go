@@ -32,6 +32,8 @@ type debugSaved struct {
     TestBattleWeather string `json:"test-battle-weather"`
     // the roads, by their name
     TestBattleRoads string `json:"test-battle-roads"`
+    // who moves first, Player or Enemy
+    TestBattleFirstMove string `json:"test-battle-first-move"`
 }
 
 var debugSavedLoaded bool
@@ -74,6 +76,8 @@ func loadDebugSaved() {
     testBattleRiver = testRiverByName(saved.TestBattleRiver)
     testBattleWeather = combat.WeatherByName(saved.TestBattleWeather)
     testBattleRoad = testRoadByName(saved.TestBattleRoads)
+    // the player unless the enemy was picked
+    testBattleEnemyFirst = saved.TestBattleFirstMove == testFirstMoveNames[1]
     testBattleFarmland = min(max(saved.TestBattleFarmland, combat.FarmlandNone), combat.FarmlandFar)
 
     if saved.TestBattleUnit != "" && testBattleLast == nil {
@@ -95,6 +99,7 @@ func saveDebugSaved() {
     saved.TestBattleFarmland = testBattleFarmland
     saved.TestBattleWeather = testBattleWeather.String()
     saved.TestBattleRoads = testRoads[testBattleRoad].Key
+    saved.TestBattleFirstMove = testFirstMoveName()
     if testBattleLast != nil {
         saved.TestBattleUnit = unitFullName(testBattleLast)
     }

@@ -590,6 +590,9 @@ type ArmyUnit struct {
     Defending bool
     // it shows the frames of a shot, see shoot.go
     Shooting bool
+    // it has cast a spell: its frames of a shot start at the next tick, and end at CastEnds
+    CastPending bool
+    CastEnds uint64
     // its swing: the tick of the battle it started at, and how many redraws of the original
     // later than that it starts, for the unit that is attacked. see strikeswing.go
     SwingStart uint64
@@ -2093,6 +2096,9 @@ type Army struct {
     // its units stand apart, a cell between any two, as on a checkerboard. set by the test
     // battles of all units of a race only, see deploy.go
     SpreadOut bool
+    // its side has the first move of the battle, which is the defender's in the original. set by
+    // the test battles only (user, 2026-09-30: "First move" in the list of the test battle)
+    MovesFirst bool
     Fled bool
     Casted bool
     RecalledUnits []*ArmyUnit
@@ -2451,8 +2457,14 @@ func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingA
     tiles := makeTiles(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone)
     ground.applyTo(tiles)
 
+    // the defender moves first, as in the original, but for an attacker a test battle lets go first
+    first := TeamDefender
+    if attackingArmy.MovesFirst && !defendingArmy.MovesFirst {
+        first = TeamAttacker
+    }
+
     model := &CombatModel{
-        Turn: TeamDefender,
+        Turn: first,
         Plane: plane,
         SelectedUnit: nil,
         Tiles: tiles,
@@ -2474,7 +2486,7 @@ func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingA
     model.Initialize(allSpells, overworldX, overworldY)
 
     model.NextTurn()
-    model.SelectedUnit = model.ChooseNextUnit(TeamDefender)
+    model.SelectedUnit = model.ChooseNextUnit(first)
 
     return model
 }
@@ -4975,6 +4987,10 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
     castedCallback = func(success bool){
         if success {
             spellSystem.CastMessage(castMessageText(army, unitCaster, spell))
+            // the unit that casts shows the frames of a shot, see shoot.go
+            if unitCaster != nil {
+                unitCaster.CastPending = true
+            }
         }
         announce(success)
     }
