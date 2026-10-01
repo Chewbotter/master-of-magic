@@ -152,6 +152,13 @@ func TestAllOfRace(test *testing.T) {
         }
     }
 
+    // only the races of towns
+    for _, race := range []data.Race{data.RaceFantastic, data.RaceHero, data.RaceAll} {
+        if hasAllOfRace(race) || findUnit(unitFullName(allUnitOf(race))) != nil {
+            test.Fatalf("all of %v", race)
+        }
+    }
+
     if one := testArmyUnits(findUnit("High Men Swordsmen"), 1); len(one) != TestBattleUnits {
         test.Fatalf("one kind: %v units", len(one))
     }

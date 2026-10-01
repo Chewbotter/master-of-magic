@@ -109,14 +109,48 @@ func deployOrder(units []*ArmyUnit, frontRow int) []*ArmyUnit {
     return append(melee, ranged...)
 }
 
+// AN ARMY THAT STANDS APART (user, 2026-09-30: "When starting a debug test army with 'all', let's
+// separate each unit by one empty tile, like a checkerboard pattern"): the places are every second
+// cell of rows behind the front row, the middle of the front row first, so no two units stand side
+// by side. Only for armies that ask for it (Army.SpreadOut)
+
+// the columns of the places of an army that stands apart, in the order they are filled
+var spreadColumns = []int{12, 11, 13, 10, 14, 9, 15, 8, 16, 7, 17, 6, 18}
+// how many rows it takes, front row first
+const spreadRows = 6
+
+// the cells of an army that stands apart, in the order they are filled
+func spreadCells(team Team) []image.Point {
+    front, back := deployDefenderRows[0], -1
+    if team == TeamAttacker {
+        front, back = deployAttackerRows[0], 1
+    }
+
+    var out []image.Point
+    for step := range spreadRows {
+        row := front + back * step
+        for _, column := range spreadColumns {
+            // the cells of one color of the checkerboard, the one of the middle of the front row
+            if (row + column) % 2 == (front + spreadColumns[0]) % 2 {
+                out = append(out, image.Pt(row, column))
+            }
+        }
+    }
+    return out
+}
+
 // puts the units on the original's places. returns the units that found no place
-func deployUnits(units []*ArmyUnit, team Team, walled bool, city bool, legalLocation LegalLocation, facing func(*ArmyUnit)) []*ArmyUnit {
+func deployUnits(units []*ArmyUnit, team Team, walled bool, city bool, spread bool, legalLocation LegalLocation, facing func(*ArmyUnit)) []*ArmyUnit {
     var left []*ArmyUnit
 
     cells := deployCells(team, len(units), city)
     frontRow := deployRowWidth
     if len(units) > deployPlaces {
         frontRow = len(deployColumns)
+    }
+    if spread {
+        cells = spreadCells(team)
+        frontRow = (len(spreadColumns) + 1) / 2
     }
 
     place := 0

@@ -106,6 +106,8 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - A chevron marks the unit whose turn it is.
 - Cursors sit on the tile they act on and are drawn on the pixels of the field. After a click that sends a unit to strike or to shoot the cursor fades away until the mouse moves.
 - Figures of a unit move and strike each with timing of their own.
+- In a battle, a right click cancels a spell while its target is being picked, as the Cancel button does (modern controls).
+- Figures are drawn in front of or behind each other by where their feet are, so riders, hounds and figures that walk or strike past each other no longer pop in front of and behind their neighbors.
 - A strike is a swing of steps: back, forward, the blow where the swing lands. Units that fight across a corner close in. With the setting "Single strikes" off, the simpler strike of before.
 - Killed figures are thrown back and fall; corpses stay on the field, gray, and the oldest fade when a tile has more than 4.
 - Figures cast shadows.
@@ -139,7 +141,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - A tool that writes the game's pictures as png files, the surroundings of battles under names that say what each picture is for, and Aseprite files for figures and spells with an export back into the replacement folder.
 
 ## For testing (debug)
-- A Debug list on the start screen: World Map, Random Battle, Random City Battle, Test Battle of a unit picked from a list, or of all units of a race but settlers, (with its biome, coast, river, farmland, roads and weather, or a coast or river by chance; a button starts the last unit again on what is picked), Army Size. Random battles have a landscape, a biome, a coast, farmland and roads or a river by chance.
+- A Debug list on the start screen: World Map, Random Battle, Random City Battle, Test Battle of a unit picked from a list, or of all units of a race but settlers standing a tile apart, (with its biome, coast, river, farmland, roads and weather, or a coast or river by chance; a button starts the last unit again on what is picked), Army Size. Random battles have a landscape, a biome, a coast, farmland and roads or a river by chance.
 - World Map: a quick game with unlimited moves, no greetings of rival wizards, 3 more units around the city, and units that are never disbanded.
 - In debug battles the player knows every spell and does not run out of mana.
 - Escape in anything started from the Debug list goes back to the start screen.

@@ -290,7 +290,7 @@ func (combat *CombatScreen) corpseDrawables(screen *ebiten.Image) []fieldDrawabl
         saturation := 1 - (1 - corpseSaturation) * darkened
 
         out = append(out, fieldDrawable{
-            Order: DrawOrder(int(math.Floor(x)), int(math.Floor(y))),
+            Order: depthOrder(x, y, int(math.Floor(x)), int(math.Floor(y))),
             Layer: layerFigure,
             Render: func() {
                 picture := body.Picture

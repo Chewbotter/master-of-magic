@@ -563,8 +563,10 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
 
         attackingArmy = &combat.Army{Player: attacker}
         defendingArmy = &combat.Army{Player: defender}
-        // one kind of unit, or all of a race, see unitpicker.go
+        // one kind of unit, or all of a race, see unitpicker.go. all of a race stand apart
         army := testArmyUnits(testBattleLast, armyScale)
+        attackingArmy.SpreadOut = isAllOfRace(testBattleLast)
+        defendingArmy.SpreadOut = isAllOfRace(testBattleLast)
         for _, each := range army {
             attackingArmy.AddUnit(units.MakeOverworldUnitFromUnit(each, 1, 1, data.PlaneArcanus, attacker.Wizard.Banner, attacker.MakeExperienceInfo(), attacker.MakeUnitEnchantmentProvider()))
             defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(each, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))

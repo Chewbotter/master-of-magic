@@ -2090,6 +2090,9 @@ type Army struct {
     // while the army is on auto nobody of it casts spells: not its wizard, not its units. false
     // unless somebody sets it, and only the debug battles of the start screen do. see autoCastsSpells
     NoSpellsOnAuto bool
+    // its units stand apart, a cell between any two, as on a checkerboard. set by the test
+    // battles of all units of a race only, see deploy.go
+    SpreadOut bool
     Fled bool
     Casted bool
     RecalledUnits []*ArmyUnit
@@ -2225,7 +2228,7 @@ func (army *Army) LayoutUnits(team Team, legalLocation LegalLocation){
         walled = city && len(model.WallTiles()) > 0
     }
 
-    remaining := deployUnits(army.units, team, walled, city, legalLocation, func(unit *ArmyUnit){
+    remaining := deployUnits(army.units, team, walled, city, army.SpreadOut, legalLocation, func(unit *ArmyUnit){
         unit.Facing = facing
     })
     for _, unit := range army.units {

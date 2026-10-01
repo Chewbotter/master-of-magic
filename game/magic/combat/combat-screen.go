@@ -2195,6 +2195,11 @@ func (combat *CombatScreen) doSelectTile(yield coroutine.YieldFunc, selecter Tea
 
         combat.UI.StandardUpdate()
         combat.ProcessInput()
+        // a right click is the cancel button, see rightcancel.go. the rest of the tick runs and its
+        // yield takes the click, so nothing after the loop sees it
+        if combat.rightClickCancels() {
+            quit = true
+        }
         mouseX, mouseY := inputmanager.MousePosition()
         tileX, tileY := combat.ScreenToTile(float64(mouseX), float64(mouseY))
         combat.MouseTileX = int(math.Round(tileX))
@@ -2294,6 +2299,11 @@ func (combat *CombatScreen) doSelectUnit(yield coroutine.YieldFunc, selecter Tea
 
         combat.UI.StandardUpdate()
         combat.ProcessInput()
+        // a right click is the cancel button, see rightcancel.go. the rest of the tick runs and its
+        // yield takes the click, so nothing after the loop sees it
+        if combat.rightClickCancels() {
+            quit = true
+        }
         mouseX, mouseY := inputmanager.MousePosition()
         tileX, tileY := combat.ScreenToTile(float64(mouseX), float64(mouseY))
         combat.MouseTileX = int(math.Round(tileX))
