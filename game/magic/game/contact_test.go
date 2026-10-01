@@ -103,6 +103,8 @@ func TestDiscoverVisibleWizardsFromEnemySight(test *testing.T) {
 // computer wizards do not meet by sight; with Nature's Awareness a wizard meets every wizard with a
 // unit
 func TestClassicContact(test *testing.T) {
+    defer func(old bool) { ComputersMeetBySight = old }(ComputersMeetBySight)
+    ComputersMeetBySight = false
     human, enemy := makeContactPlayers()
     names := make(map[herolib.HeroType]string)
     other := playerlib.MakePlayer(setup.WizardCustom{Name: "Kali", Banner: data.BannerPurple}, false, 8, 8, names, nil)
@@ -122,5 +124,33 @@ func TestClassicContact(test *testing.T) {
     human.LiftFogSquare(7, 7, 0, data.PlaneArcanus)
     if meetings := model.DiscoverVisibleWizards(); len(meetings) != 1 || meetings[0].Enemy != other {
         test.Errorf("the human meets the wizard whose city it sees")
+    }
+}
+
+// the user's rule (2026-10-01): computer wizards meet each other by sight; a computer wizard that
+// sees the human's city still does not meet the human
+func TestComputersMeetBySight(test *testing.T) {
+    defer func(old bool) { ComputersMeetBySight = old }(ComputersMeetBySight)
+    ComputersMeetBySight = true
+    human, enemy := makeContactPlayers()
+    names := make(map[herolib.HeroType]string)
+    other := playerlib.MakePlayer(setup.WizardCustom{Name: "Kali", Banner: data.BannerPurple}, false, 8, 8, names, nil)
+    human.AddCity(&citylib.City{Name: "Capital", X: 5, Y: 5, Plane: data.PlaneArcanus})
+    other.AddCity(&citylib.City{Name: "Far", X: 7, Y: 7, Plane: data.PlaneArcanus})
+
+    model := &GameModel{
+        Players: []*playerlib.Player{human, enemy, other},
+    }
+
+    enemy.LiftFogSquare(5, 5, 0, data.PlaneArcanus)
+    model.DiscoverVisibleWizards()
+    if enemy.IsAwareOf(human) || human.IsAwareOf(enemy) {
+        test.Errorf("a computer wizard seeing the human's city does not meet the human")
+    }
+
+    enemy.LiftFogSquare(7, 7, 0, data.PlaneArcanus)
+    model.DiscoverVisibleWizards()
+    if !enemy.IsAwareOf(other) {
+        test.Errorf("a computer wizard meets the computer wizard whose city it sees")
     }
 }

@@ -1914,6 +1914,10 @@ func (game *Game) doVault(yield coroutine.YieldFunc, newArtifact *artifact.Artif
 /* random chance to create a hire hero event
  */
 func (game *Game) maybeHireHero(player *playerlib.Player) {
+    // Determine_Offer: no offer when no unit can be made (unitlimit.go)
+    if !game.roomForUnit(player) {
+        return
+    }
     if ClassicHeroes {
         // Determine_Offer: nothing for a banished wizard (heroesclassic.go)
         if !player.Banished {
@@ -2029,6 +2033,10 @@ func (game *Game) doHireHero(yield coroutine.YieldFunc, cost int, hero *herolib.
 /* random chance to create a hire mercenaries event
  */
 func (game *Game) maybeHireMercenaries(player *playerlib.Player) {
+    // Determine_Offer: no offer when no unit can be made (unitlimit.go)
+    if !game.roomForUnit(player) {
+        return
+    }
     if ClassicHeroes {
         if !player.Banished {
             game.classicHireMercenaries(player)
@@ -4695,6 +4703,10 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
                 // mainly for the raider ai
                 case *playerlib.AICreateUnitDecision:
                     create := decision.(*playerlib.AICreateUnitDecision)
+                    if !game.roomForUnit(player) {
+                        game.noRoomForUnit(player, create.Unit.Name)
+                        break
+                    }
                     log.Printf("ai %v creating %+v", player.Wizard.Name, create)
 
                     overworldUnit := units.MakeOverworldUnitFromUnit(create.Unit, create.X, create.Y, create.Plane, player.Wizard.Banner, player.MakeExperienceInfo(), player.MakeUnitEnchantmentProvider())
@@ -8315,6 +8327,19 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
                     }
                 case *citylib.CityEventNewUnit:
                     newUnit := event.(*citylib.CityEventNewUnit)
+                    if !game.roomForUnit(player) {
+                        // City_Apply_Production: the unit is not made; a computer player's city
+                        // picks again (AUTOBUILD), the human's keeps what it builds (unitlimit.go)
+                        game.noRoomForUnit(player, newUnit.Unit.Name + " of " + city.Name)
+                        if !player.IsHuman() {
+                            city.ProducingUnit = units.UnitNone
+                            city.ProducingBuilding = buildinglib.BuildingNone
+                            if player.AIBehavior != nil {
+                                player.AIBehavior.ProducedUnit(city, player)
+                            }
+                        }
+                        continue
+                    }
                     overworldUnit := units.MakeOverworldUnitFromUnit(newUnit.Unit, city.X, city.Y, city.Plane, city.GetBanner(), player.MakeExperienceInfo(), player.MakeUnitEnchantmentProvider())
                     // only normal units get weapon bonuses
                     if overworldUnit.GetRace() != data.RaceFantastic {

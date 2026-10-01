@@ -1661,7 +1661,24 @@ func (mapObject *Map) GetGoldBonus(x int, y int) int {
 // Returns city catchment area (5x5 square minus the corners)
 func (mapObject *Map) GetCatchmentArea(x int, y int) map[image.Point]FullTile {
 
-    area := make(map[image.Point]FullTile)
+    area := make(map[image.Point]FullTile, 21)
+
+    // the other cities that can reach a square of the area: within 4 of the middle, looked up once
+    // (asking for every square of the area for every square around it was a fifth of the time of a
+    // late game)
+    var others []image.Point
+    for dx := -4; dx <= 4; dx++ {
+        for dy := -4; dy <= 4; dy++ {
+            if dx == 0 && dy == 0 {
+                continue
+            }
+            otherX := mapObject.WrapX(x + dx)
+            otherY := y + dy
+            if mapObject.CityProvider.ContainsCity(otherX, otherY, mapObject.Plane) {
+                others = append(others, image.Pt(x + dx, otherY))
+            }
+        }
+    }
 
     for dx := -2; dx <= 2; dx++ {
         for dy := -2; dy <= 2; dy++ {
@@ -1676,28 +1693,18 @@ func (mapObject *Map) GetCatchmentArea(x int, y int) map[image.Point]FullTile {
             tile := mapObject.GetTile(tileX, tileY)
             if tile.Valid() {
                 // if any of the tiles are within another city's catchment area, mark this tile as shared
-
-                shared_loop:
-                for sharedX := -2; sharedX <= 2; sharedX++ {
-                    for sharedY := -2; sharedY <= 2; sharedY++ {
-                        // ignore corners
-                        if int(math.Abs(float64(sharedX)) + math.Abs(float64(sharedY))) == 4 {
-                            continue
-                        }
-
-                        sharedTileX := mapObject.WrapX(tileX + sharedX)
-                        sharedTileY := tileY + sharedY
-
-                        // if the new tile is the same as the original tile, skip
-                        if sharedTileX == x && sharedTileY == y {
-                            continue
-                        }
-
-                        if mapObject.CityProvider.ContainsCity(sharedTileX, sharedTileY, mapObject.Plane) {
-                            tile.IsShared = true
-                            break shared_loop
-                        }
+                for _, other := range others {
+                    sharedX := other.X - (x + dx)
+                    sharedY := other.Y - tileY
+                    if sharedX < -2 || sharedX > 2 || sharedY < -2 || sharedY > 2 {
+                        continue
                     }
+                    // ignore corners
+                    if int(math.Abs(float64(sharedX)) + math.Abs(float64(sharedY))) == 4 {
+                        continue
+                    }
+                    tile.IsShared = true
+                    break
                 }
 
                 area[image.Pt(tileX, tileY)] = tile

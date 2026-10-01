@@ -1,6 +1,7 @@
 package game
 
 import (
+    "sync/atomic"
     "log"
     "image"
 
@@ -34,6 +35,8 @@ type GameModel struct {
     ArcanusMap *maplib.Map
     MyrrorMap *maplib.Map
     Players []*playerlib.Player
+    // the cities of every player by their place (FindCity)
+    cityIndex atomic.Pointer[cityPlaces]
     Plane data.Plane
 
     ArtifactPool *artifact.Catalog
@@ -632,15 +635,48 @@ func (model *GameModel) ComputeCityStackInfo() playerlib.CityStackInfo {
 }
 
 // return the city and its owner
-func (model *GameModel) FindCity(x int, y int, plane data.Plane) (*citylib.City, *playerlib.Player) {
-    for _, player := range model.Players {
-        city := player.FindCity(x, y, plane)
-        if city != nil {
-            return city, player
+// the cities of every player by their place, made again when any player's cities changed: FindCity
+// asked every player in turn, thousands of times in a path search (a tenth of a late game)
+type cityPlaces struct {
+    version uint64
+    players int
+    first *playerlib.Player
+    cities map[data.PlanePoint]cityOwned
+}
+
+type cityOwned struct {
+    city *citylib.City
+    owner *playerlib.Player
+}
+
+func (model *GameModel) citiesByPlace() *cityPlaces {
+    version := playerlib.CitiesVersion()
+    var first *playerlib.Player
+    if len(model.Players) > 0 {
+        first = model.Players[0]
+    }
+    index := model.cityIndex.Load()
+    if index != nil && index.version == version && index.players == len(model.Players) && index.first == first {
+        return index
+    }
+    made := &cityPlaces{version: version, players: len(model.Players), first: first, cities: make(map[data.PlanePoint]cityOwned)}
+    // the first player that has a city at a place, as the search over the players found it
+    for i := len(model.Players) - 1; i >= 0; i-- {
+        player := model.Players[i]
+        for place, city := range player.Cities {
+            made.cities[place] = cityOwned{city: city, owner: player}
         }
     }
+    model.cityIndex.Store(made)
+    return made
+}
 
-    return nil, nil
+func (model *GameModel) FindCity(x int, y int, plane data.Plane) (*citylib.City, *playerlib.Player) {
+    found, ok := model.citiesByPlace().cities[data.PlanePoint{X: x, Y: y, Plane: plane}]
+    if !ok {
+        return nil, nil
+    }
+    return found.city, found.owner
 }
 
 func (model *GameModel) FindSettlableLocations(x int, y int, plane data.Plane, fog data.FogMap) []image.Point {

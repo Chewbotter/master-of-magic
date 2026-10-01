@@ -224,7 +224,12 @@ func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIService
             return false
         }
     }
-    decisions := ai.AIBehavior.Update(self, services)
+    var decisions []playerlib.AIDecision
+    if !(ai.Neutral && chewbotNeutralActive()) {
+        decisions = ai.AIBehavior.Update(self, services)
+    }
+    // (the clone's neutral player is not asked: every decision it makes is dropped below, and its
+    // path searches were a tenth of the time of a late game)
     glue := chewbotGlueActive()
     if glue {
         // every computer player (chewbotglue.go)

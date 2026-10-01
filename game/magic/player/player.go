@@ -1,6 +1,7 @@
 package player
 
 import (
+    "sync/atomic"
     "log"
     "runtime/debug"
     "slices"
@@ -1981,13 +1982,28 @@ func (player *Player) CitiesInOrder() iter.Seq2[data.PlanePoint, *citylib.City] 
     }
 }
 
+// counts every change of any player's cities, so an index of the cities of the game knows when it
+// is out of date (GameModel.FindCity)
+var citiesVersion atomic.Uint64
+
+func CitiesVersion() uint64 {
+    return citiesVersion.Load()
+}
+
+// a player's cities were set as a whole (a new player, a loaded game)
+func CitiesChanged() {
+    citiesVersion.Add(1)
+}
+
 func (player *Player) AddCity(city *citylib.City) *citylib.City {
     player.Cities[city.GetPlanePoint()] = city
+    citiesVersion.Add(1)
     return city
 }
 
 func (player *Player) RemoveCity(city *citylib.City) {
     delete(player.Cities, city.GetPlanePoint())
+    citiesVersion.Add(1)
 }
 
 func (player *Player) AddStack(stack *UnitStack) *UnitStack {

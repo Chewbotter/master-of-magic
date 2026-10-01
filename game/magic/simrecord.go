@@ -49,6 +49,23 @@ var simStopAlone bool
 var simSeed uint64
 // -sim-seed-trace FILE: the line of the game behind every draw of a seeded run
 var simSeedTrace string
+// -sim-save-every N: the game is saved every N turns of a run; the last two saves are kept, and the
+// one before the first trace of each kind of broken state is kept for good (-sim-trace), so the
+// case can be loaded and played again from just before it
+var simSaveEvery int
+
+// the first trace of each kind of broken state of a run, for its record
+type simTraceRecord struct {
+    Kind string
+    Turn uint64
+    Player string
+    Example string
+    Journal []string
+    Save string
+}
+
+var simTraces []simTraceRecord
+
 // -sim-state-log FILE: every city and stack of every player at every turn, one line each, so two
 // runs of one seed show the first thing that differs
 var simStateLog string
@@ -199,6 +216,8 @@ type simRecord struct {
     Players []simRecordPlayer
     Timeline []simTimelinePoint
     Journal map[string]map[string]int
+    Seed uint64
+    Traces []simTraceRecord
 }
 
 type simRecordPlayer struct {
@@ -231,6 +250,8 @@ func simMakeRecord(game *gamelib.Game, run simRun, players []*playerlib.Player, 
         Conquests: slices.Clone(game.Stats.Conquests),
         Violations: game.Stats.ViolationList(),
         Timeline: timeline,
+        Seed: simSeed,
+        Traces: slices.Clone(simTraces),
     }
     for _, contact := range game.Stats.Contacts {
         record.Contacts = append(record.Contacts, fmt.Sprintf("turn %v: %v and %v", contact.Turn, contact.First.Wizard.Name, contact.Second.Wizard.Name))
@@ -374,6 +395,20 @@ func (watchdog *simWatchdog) close() {
 }
 
 // the last lines of the journal, as text
+// the recent lines of the journal, one string each
+func (sink *simJournalSink) recentLines() []string {
+    if sink == nil {
+        return nil
+    }
+    sink.lock.Lock()
+    defer sink.lock.Unlock()
+    var out []string
+    for _, line := range sink.recent {
+        out = append(out, fmt.Sprintf("turn %v %v %v: %v (%v)", line.Turn, line.Player, line.Kind, line.What, line.Why))
+    }
+    return out
+}
+
 func (sink *simJournalSink) recentText() string {
     if sink == nil {
         return ""

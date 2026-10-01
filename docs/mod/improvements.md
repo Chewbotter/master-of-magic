@@ -321,6 +321,26 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
 
 ## Found by many runs (testing.md, 2026-09-30)
 
+- THE USER'S CALL (2026-10-01: "let's ignore the Nature's Awareness rule for AI diplomacy as it seems
+  like strictly a downgrade"): computer wizards meet each other by sight (`ComputersMeetBySight`,
+  contactclassic.go, flag `-computers-meet-by-sight=false` for the original). The original's
+  NPC_To_NPC_Treaty_Negotiations needs contact, and computer wizards met only through Nature's
+  Awareness, so in 59 all-AI test games that did not start at war there was not one treaty or war.
+  The human is still met only by what the human sees.
+- PORTED (2026-10-01): the limit of units (unitlimit.go): 1000 at most, none made for a computer
+  player above 950 or for anyone above 980 (Create_Unit, City_Apply_Production; summons in battle
+  and lair guardians are made anyway); a computer player's city picks again. Test games of five
+  wizards had reached 1,407 units.
+- LOOKED INTO, FAITHFUL (2026-10-01): raiders and monsters attack without hope (0 of 976 won at under
+  half the defender's strength in the final round of 2026-09-30). NPC_Destinations (AIDATA.c) sends
+  every stack of the neutral player to the city of a wizard worth the most to it: 10, less the units
+  in the city, less the distance, 5 more and 5 more for the human's at Hard and Impossible. It never
+  weighs strength, and the battle then gives a computer wizard's defenders half again (Strategic
+  Combat). In 6 games: all their battles were against cities, parties of 1 or 2 units mostly, none
+  won below twice the defender's strength. Options for a change of our own, not made: a stack goes
+  only for a city it could take (by the strength the quick resolution uses), or gathers into larger
+  parties first, or roams near its town when nothing is in reach.
+
 - FIXED (2026-10-01): a unit in battle had the base hit points and the spells of the battle only
   (`ArmyUnit.GetFullHitPoints`), not what it has on the map: its own enchantments (Lionheart +3,
   Black Channels +1), a hero's Constitution (`ClassicAbilities`) and Charm of Life. It fought with

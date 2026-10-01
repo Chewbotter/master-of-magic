@@ -22,6 +22,7 @@ turn; many runs at once go through `util/simbatch/simbatch.py`, which also write
 | `-sim-stop-alone` | end the run when one wizard is left (always with `-sim-all-ai`) |
 | `-sim-seed N` | the seed of all chance (`lib/chance`): a run of one seed plays the same game again, turn by turn, so a problem can be watched as often as needed; `-sim-repeat` adds the index to the seed |
 | `-sim-seed-trace FILE` | with `-sim-seed`: the line of the game behind every draw (and the line that called it), so two runs that should be the same show where they part |
+| `-sim-save-every N` | the game is saved every N turns into a folder beside the record (`run-NNN.saves`); the last two are kept, and the one before the first trace of each kind is kept for good and named in the record, so the case can be loaded (`-sim-load`) and played from just before it |
 | `-sim-state-log FILE` | every city and stack of every player at every turn, one line each, so two runs show the first thing that differs |
 | `-sim-trace` | the checks run after every step of the game's loop, and the first time each kind of broken state is seen the log gets a line `TRACE <kind> first seen` with the example and the 30 lines of the journal before it (slower; how the causes of the broken states were found) |
 
@@ -68,12 +69,27 @@ turns each played the same twice.
         --all-ai --extra=-sim-trace
     grep -h "TRACE" D:/x/fuzz/trace/*.log
 
-`run` picks every run's settings by chance from the lists (the fuzzing), starts the newest build of
-the lane through dev.sh, a few at a time, and keeps for every run its record, journal, summary, log
-and settings (`run-NNN.*`); a run over `--timeout` seconds is killed. `--extra=...` passes flags to every run (the `=` form,
+`run` picks every run's settings by chance from the lists (the fuzzing) and a seed of its own
+(`-sim-seed`), copies the newest build of the lane into the batch's folder (`game.exe`, so building
+while a batch plays changes nothing in it; `batch.json` names the build) and starts that copy as
+dev.sh would, at most 12 at a time (the user's machine runs other work), with `-sim-trace` and a
+save every 10 turns unless `--no-trace` (tracing costs well under one percent). It keeps for every
+run its record, journal, summary, log and settings (`run-NNN.*`); a run over `--timeout` seconds is
+killed.
+
+    python util/simbatch/simbatch.py replay D:/x/fuzz/two/run-003 --extra=-sim-state-log=probe/s.txt
+    python util/simbatch/simbatch.py regress D:/x/fuzz/report/cases.json --out D:/x/fuzz --name regress
+
+`replay` plays one run again with the batch's build and the run's flags and seed: the same game, so
+anything can be added to look at it (`--extra`; `--newest` for the newest build, which plays a
+different game once the code has changed). `report` also writes `cases.json`, the runs where a broken
+state was traced; `regress` plays them again on the newest build, each with its settings and seed,
+and tells which kinds are gone and which are new. `--extra=...` passes flags to every run (the `=` form,
 for flags that start with a dash). `report` writes `report.json`
-and `report.md`: how the runs ended, panics and hangs, the broken states, the computer wizards at the
-end, by personality, battles and lairs by the strength of the sides, diplomacy, the decisions of the
+and `report.md`: how the runs ended, panics and hangs, the broken states and the first trace of each
+(turn, whose turn, the journal before it, the save before it), the computer wizards at the end, by
+personality, the same split by the settings of the runs (war at the start, wizards, difficulty,
+land), battles and lairs by the strength of the sides, diplomacy, the decisions of the
 journal by kind with their commonest reasons, and the growth by turn.
 
 ## The page of a report

@@ -8,7 +8,8 @@ package game
 //     square the human sees now (the original's scouting: what the units and cities of the
 //     current player see, and that is always the human)
 //   a wizard with Nature's Awareness meets every wizard that has a unit that is not invisible
-//   computer wizards never meet each other by sight
+//   computer wizards never meet each other by sight (kept for ComputersMeetBySight false; the user
+//     took it out, see below)
 //
 // The fork's own rule, every wizard meeting every wizard it sees, is kept for ClassicContact false.
 
@@ -19,6 +20,13 @@ import (
 
 // false: every wizard meets every wizard it can see (the fork's rule)
 var ClassicContact = true
+
+// computer wizards meet each other by what they see, as the human meets them; the human is still
+// met only by what the human sees (user 2026-10-01:
+// "let's ignore the Nature's Awareness rule for AI diplomacy as it seems like strictly a
+// downgrade"). The original's computer wizards met only through Nature's Awareness, so they never
+// made treaties or wars among themselves in an all-AI game. False: the original's rule
+var ComputersMeetBySight = true
 
 // a stack with a unit that can be seen
 func stackSeen(stack *playerlib.UnitStack) bool {
@@ -39,7 +47,8 @@ func classicMeets(observer *playerlib.Player, other *playerlib.Player) bool {
             }
         }
     }
-    if !observer.IsHuman() {
+    if !observer.IsHuman() && (!ComputersMeetBySight || other.IsHuman()) {
+        // the human is met by what the human sees, as in the original
         return false
     }
     for _, city := range other.GetCities() {

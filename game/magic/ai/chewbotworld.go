@@ -8,6 +8,7 @@ package ai
 // in words: docs/mod/ai-overland.md.
 
 import (
+    "sync"
     "fmt"
     "cmp"
     "image"
@@ -158,8 +159,55 @@ func makeChewWorld(self *playerlib.Player, services playerlib.AIServices) *chewW
 
 // the landmasses: land squares that touch, the corners too; and their dock squares, the land
 // squares with sea among their 8 neighbors (Build_Dock_Linked_List)
+// the landmasses of a map as found last, kept while its terrain is the same: the flood fill of every
+// computer wizard every turn was a tenth of the time of a late game
+type chewLandmassKept struct {
+    terrain uint64
+    labels []int
+    land [][]image.Point
+    docks [][]image.Point
+}
+
+var chewLandmassLock sync.Mutex
+var chewLandmassCache = make(map[*maplib.Map]chewLandmassKept)
+
+// a fingerprint of the terrain of a map
+func chewTerrainPrint(mapObject *maplib.Map) uint64 {
+    hash := uint64(14695981039346656037)
+    for _, column := range mapObject.Map.Terrain {
+        for _, value := range column {
+            hash ^= uint64(value)
+            hash *= 1099511628211
+        }
+    }
+    return hash
+}
+
+func chewClonePoints(lists [][]image.Point) [][]image.Point {
+    out := make([][]image.Point, len(lists))
+    for index, list := range lists {
+        out[index] = slices.Clone(list)
+    }
+    return out
+}
+
 func (world *chewWorld) findLandmasses(wp int) {
     mapObject := world.Maps[wp]
+    print := chewTerrainPrint(mapObject)
+    chewLandmassLock.Lock()
+    kept, ok := chewLandmassCache[mapObject]
+    chewLandmassLock.Unlock()
+    if ok && kept.terrain == print && len(kept.labels) == world.Width * world.Height {
+        world.Landmass[wp] = slices.Clone(kept.labels)
+        world.LandSquares[wp] = chewClonePoints(kept.land)
+        world.DockSquares[wp] = chewClonePoints(kept.docks)
+        return
+    }
+    defer func() {
+        chewLandmassLock.Lock()
+        chewLandmassCache[mapObject] = chewLandmassKept{terrain: print, labels: slices.Clone(world.Landmass[wp]), land: chewClonePoints(world.LandSquares[wp]), docks: chewClonePoints(world.DockSquares[wp])}
+        chewLandmassLock.Unlock()
+    }()
     labels := make([]int, world.Width * world.Height)
     world.LandSquares[wp] = [][]image.Point{nil}
     world.DockSquares[wp] = [][]image.Point{nil}

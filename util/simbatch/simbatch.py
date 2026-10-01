@@ -4,16 +4,29 @@
     python util/simbatch/simbatch.py run --name two --runs 12 --turns 300 --opponents 1 --all-ai --out D:/x/fuzz
     python util/simbatch/simbatch.py report D:/x/fuzz/two D:/x/fuzz/max --out D:/x/fuzz/report
 
-`run` starts the newest build of a lane (through dev.sh) once per run, a few at a time, with settings
-picked by chance from the lists given (the fuzzing: difficulty, land size, war, the number of
-computer wizards), and keeps for every run its record (-sim-json), its journal of decisions
-(-sim-journal), its summary and its log. A run that does not end in --timeout seconds is killed and
-counted as hung.
+`run` copies the newest build of a lane into the batch's folder (game.exe: a build made while the
+batch plays does not get into it) and starts that copy once per run, at most 12 at a time, with
+settings picked by chance from the lists given (the fuzzing: difficulty, land size, war, the number
+of computer wizards) and a seed of its own (-sim-seed: a run of one seed on one build is the same
+game, so `replay` plays it again exactly). It keeps for every run its record (-sim-json), its
+journal of decisions (-sim-journal), its summary and its log, with -sim-trace and a save
+every 10 turns, the one before each first trace kept (on unless --no-trace; it costs well under 1
+percent of the time). A run that does not end in --timeout seconds
+is killed and counted as hung.
+
+    python util/simbatch/simbatch.py replay D:/x/fuzz/two/run-003 --extra=-sim-state-log=probe/s.txt
+    python util/simbatch/simbatch.py regress D:/x/fuzz/report/cases.json --out D:/x/fuzz --name regress
+
+`replay` plays one run of a batch again, with its build and flags (or the newest build with
+--newest). `regress` plays again, on the newest build, every run of cases.json (which `report`
+writes: the runs where a broken state was traced) and tells which kinds come back.
 
 `report` reads the records and journals of one or more batches and writes report.json (everything
-counted) and report.md (the same in words): how the runs ended, the broken states the checks of
-every turn found, panics and hangs, the wizards at the end, battles by the strength of the sides,
-the decisions of the AI by kind and reason, wars and treaties, events, and the curves of growth.
+counted), report.md (the same in words) and cases.json: how the runs ended, the broken states the
+checks of every turn found and the first trace of each (with the journal before it and the save
+before it), panics and hangs, the wizards at the end, the same split by the settings of the runs,
+battles by the strength of the sides, the decisions of the AI by kind and reason, wars and treaties,
+events, and the curves of growth.
 
 The game's runner and its flags: game/magic/sim.go, game/magic/simrecord.go; docs/mod/testing.md.
 """
@@ -25,6 +38,7 @@ import math
 import os
 import random
 import re
+import shutil
 import statistics
 import subprocess
 import sys
@@ -47,7 +61,43 @@ def parse_list(text, kind=int):
 
 # ---------------------------------------------------------------- run
 
-def one_run(args, root, out, index, seed):
+# the most runs at once (the user's machine runs other work beside these)
+PARALLEL_MOST = 12
+
+
+def mom_data(root):
+    """the original game's data, as _lane.sh has it"""
+    if os.environ.get("MOM_DATA"):
+        return os.environ["MOM_DATA"]
+    text = (root / "_lane.sh").read_text(encoding="utf-8", errors="replace")
+    match = re.search(r'MOM_DATA="\$\{MOM_DATA:-(.*?)\}"', text)
+    return match.group(1) if match else ""
+
+
+def newest_build(root, lane):
+    builds = sorted((root / "_build" / lane).glob("magic-*.exe"), key=lambda path: path.stat().st_mtime)
+    return builds[-1] if builds else None
+
+
+def game_command(root, lane, exe):
+    """the game as dev.sh starts it: in _build/<lane>, in the corner, with the data and the mod folder"""
+    return [str(exe), "-corner", "-data", mom_data(root), "-mod", (root / "mod").as_posix(), "-music=false"], root / "_build" / lane
+
+
+def start_game(root, lane, exe, flags, log_path, timeout):
+    command, folder = game_command(root, lane, exe)
+    started = time.time()
+    with open(log_path, "w", encoding="utf-8", errors="replace") as log:
+        process = subprocess.Popen(command + flags, stdout=log, stderr=subprocess.STDOUT, cwd=str(folder))
+        try:
+            code = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            code = "timeout"
+    return code, round(time.time() - started, 1)
+
+
+def one_run(args, root, out, index, seed, exe):
     rng = random.Random(seed)
     difficulty = rng.choice(parse_list(args.difficulty))
     land = rng.choice(parse_list(args.land))
@@ -58,7 +108,9 @@ def one_run(args, root, out, index, seed):
              for kind, ending in [("json", "json"), ("journal", "jsonl"), ("summary", "txt")]}
     flags = ["-sim", str(args.turns), "-capture-opponents", str(opponents), "-capture-land-size", str(land),
              "-capture-difficulty", str(difficulty), "-sim-json", paths["json"], "-sim-journal", paths["journal"],
-             "-sim-out", paths["summary"], "-sim-timeline", str(args.timeline)]
+             "-sim-out", paths["summary"], "-sim-timeline", str(args.timeline), "-sim-seed", str(seed)]
+    if args.trace:
+        flags += ["-sim-trace", "-sim-save-every", "10"]
     if args.all_ai:
         flags.append("-sim-all-ai")
     else:
@@ -67,16 +119,9 @@ def one_run(args, root, out, index, seed):
         flags.append("-sim-war")
     flags += args.extra.split() if args.extra else []
     config = {"index": index, "difficulty": difficulty, "land": land, "opponents": opponents, "war": war,
-              "allAI": args.all_ai, "turns": args.turns, "flags": flags}
-    started = time.time()
-    with open(out / f"{name}.log", "w", encoding="utf-8", errors="replace") as log:
-        process = subprocess.Popen(["bash", str(root / "dev.sh"), args.lane] + flags, stdout=log, stderr=subprocess.STDOUT, cwd=str(root))
-        try:
-            code = process.wait(timeout=args.timeout)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            code = "timeout"
-    config["seconds"] = round(time.time() - started, 1)
+              "allAI": args.all_ai, "turns": args.turns, "seed": seed, "lane": args.lane, "build": exe.name, "flags": flags}
+    code, seconds = start_game(root, args.lane, exe, flags, out / f"{name}.log", args.timeout)
+    config["seconds"] = seconds
     config["exit"] = code
     with open(out / f"{name}.config.json", "w", encoding="utf-8") as file:
         json.dump(config, file, indent=1)
@@ -89,13 +134,85 @@ def command_run(args):
         sys.exit("no dev.sh found above the script; pass --root")
     out = Path(args.out) / args.name
     out.mkdir(parents=True, exist_ok=True)
+    build = newest_build(root, args.lane)
+    if build is None:
+        sys.exit(f"no build of lane {args.lane}: bash build.sh {args.lane}")
+    exe = out / "game.exe"
+    shutil.copy2(build, exe)
+    (out / "batch.json").write_text(json.dumps({"build": build.name, "lane": args.lane, "args": vars(args)}, indent=1, default=str), encoding="utf-8")
     seeds = random.Random(args.seed).sample(range(1, 10**9), args.runs)
-    print(f"{args.runs} runs of {args.turns} turns into {out}, {args.parallel} at a time", flush=True)
-    with ThreadPoolExecutor(max_workers=args.parallel) as pool:
-        futures = [pool.submit(one_run, args, root, out, index, seed) for index, seed in enumerate(seeds)]
+    parallel = max(1, min(args.parallel, PARALLEL_MOST))
+    print(f"{args.runs} runs of {args.turns} turns into {out}, {parallel} at a time, build {build.name}", flush=True)
+    with ThreadPoolExecutor(max_workers=parallel) as pool:
+        futures = [pool.submit(one_run, args, root, out, index, seed, exe) for index, seed in enumerate(seeds)]
         for future in as_completed(futures):
             name, config = future.result()
             print(f"  {name}: exit {config['exit']} in {config['seconds']}s (difficulty {config['difficulty']}, land {config['land']}, opponents {config['opponents']}, war {config['war']})", flush=True)
+
+
+def rerun_flags(config, out, name, extra):
+    """the flags of a run with its files moved to out/name"""
+    flags = list(config["flags"])
+    endings = {"-sim-json": "json", "-sim-journal": "jsonl", "-sim-out": "txt"}
+    for index, flag in enumerate(flags[:-1]):
+        if flag in endings:
+            flags[index + 1] = (out / f"{name}.{endings[flag]}").resolve().as_posix()
+    return flags + (extra.split() if extra else [])
+
+
+def command_replay(args):
+    root = find_root(args.root or __file__)
+    run_path = Path(args.run)
+    batch = run_path.parent
+    config = json.loads((batch / f"{run_path.name}.config.json").read_text(encoding="utf-8"))
+    lane = config.get("lane", "a")
+    exe = batch / "game.exe"
+    if args.newest or not exe.exists():
+        exe = newest_build(root, lane)
+    out = Path(args.out) if args.out else batch / "replays"
+    out.mkdir(parents=True, exist_ok=True)
+    name = f"{run_path.name}-replay"
+    flags = rerun_flags(config, out, name, args.extra)
+    print(f"replaying {run_path.name} (seed {config.get('seed')}) with {exe.name} into {out}", flush=True)
+    code, seconds = start_game(root, lane, exe, flags, out / f"{name}.log", args.timeout)
+    print(f"exit {code} in {seconds}s", flush=True)
+
+
+def command_regress(args):
+    root = find_root(args.root or __file__)
+    cases = json.loads(Path(args.cases).read_text(encoding="utf-8"))
+    out = Path(args.out) / args.name
+    out.mkdir(parents=True, exist_ok=True)
+    build = newest_build(root, args.lane)
+    exe = out / "game.exe"
+    shutil.copy2(build, exe)
+    print(f"{len(cases)} cases on {build.name} into {out}", flush=True)
+
+    def one_case(index, case):
+        name = f"run-{index:03d}"
+        flags = rerun_flags(case["config"], out, name, "")
+        if "-sim-trace" not in flags:
+            flags += ["-sim-trace"]
+        config = dict(case["config"], flags=flags, build=build.name, case=case["run"], traced=case["kinds"])
+        code, seconds = start_game(root, args.lane, exe, flags, out / f"{name}.log", args.timeout)
+        config["seconds"] = seconds
+        config["exit"] = code
+        (out / f"{name}.config.json").write_text(json.dumps(config, indent=1), encoding="utf-8")
+        record_path = out / f"{name}.json"
+        now = set()
+        if record_path.exists():
+            try:
+                now = {trace["Kind"] for trace in json.loads(record_path.read_text(encoding="utf-8")).get("Traces") or []}
+            except json.JSONDecodeError:
+                pass
+        return case, now
+
+    with ThreadPoolExecutor(max_workers=max(1, min(args.parallel, PARALLEL_MOST))) as pool:
+        futures = [pool.submit(one_case, index, case) for index, case in enumerate(cases)]
+        for future in as_completed(futures):
+            case, now = future.result()
+            before = set(case["kinds"])
+            print(f"  {case['run']}: before {sorted(before)}; now {sorted(now)}; gone {sorted(before - now)}; new {sorted(now - before)}", flush=True)
 
 
 # ---------------------------------------------------------------- report
@@ -234,6 +351,17 @@ def report_batch(name, runs):
                     entry["examples"].append(f"{run['name']} {example}")
     out["violations"] = dict(sorted(violations.items(), key=lambda item: -item[1]["runs"]))
 
+    # the first trace of each kind in every run (-sim-trace): when, whose turn, the journal before it
+    traces = {}
+    for run in records:
+        for trace in run["record"].get("Traces") or []:
+            entry = traces.setdefault(trace["Kind"], {"runs": 0, "cases": []})
+            entry["runs"] += 1
+            if len(entry["cases"]) < 8:
+                entry["cases"].append({"run": run["name"], "seed": run["config"].get("seed"), "turn": trace["Turn"], "player": trace.get("Player", ""),
+                                       "example": trace.get("Example", ""), "journal": (trace.get("Journal") or [])[-8:], "save": trace.get("Save", "")})
+    out["traces"] = dict(sorted(traces.items(), key=lambda item: -item[1]["runs"]))
+
     winners = collections.Counter()
     game_overs = []
     wizards = collections.defaultdict(list)
@@ -371,6 +499,34 @@ def report_batch(name, runs):
     out["firstTreatyTurn"] = stats_of(first_treaty)
     out["runsWithTreaty"] = len(first_treaty)
 
+    # the same split by the settings of the runs: what a setting changes (war at the start makes all
+    # the diplomacy of all-AI runs, for one)
+    def summary_of(group):
+        cities, taken, battles, treaties, wars = [], [], [], [], []
+        for run in group:
+            counts = collections.Counter(line["kind"] for line in run["journal"])
+            treaties.append(counts["treaty"])
+            wars.append(counts["war"])
+            battles.append(counts["battle"])
+            taken.append(counts["take city"])
+            if run["record"]:
+                for player in run["record"]["Players"]:
+                    if not player["Neutral"]:
+                        cities.append(player["End"]["Cities"])
+        return {"runs": len(group), "treatiesPerRun": stats_of(treaties), "warsPerRun": stats_of(wars), "battlesPerRun": stats_of(battles),
+                "citiesTakenPerRun": stats_of(taken), "citiesOfAWizard": stats_of(cities)}
+    splits = {}
+    for title, key in (("war at the start", lambda run: "yes" if run["config"]["war"] else "no"),
+                       ("wizards", lambda run: str(run["config"]["opponents"] + 1)),
+                       ("difficulty", lambda run: str(run["config"]["difficulty"])),
+                       ("land", lambda run: str(run["config"]["land"]))):
+        groups = collections.defaultdict(list)
+        for run in runs:
+            groups[key(run)].append(run)
+        if len(groups) > 1:
+            splits[title] = {value: summary_of(group) for value, group in sorted(groups.items())}
+    out["bySettings"] = splits
+
     # the curves: the mean of the computer wizards at every turn of the timeline
     curves = collections.defaultdict(lambda: collections.defaultdict(list))
     for run in records:
@@ -410,6 +566,20 @@ def markdown(reports):
         else:
             lines.append("- none")
         lines.append("")
+        if report.get("traces"):
+            lines += ["### The first trace of each kind (-sim-trace)", ""]
+            for kind, entry in report["traces"].items():
+                lines.append(f"- **{kind}**: {entry['runs']} runs")
+                for case in entry["cases"][:3]:
+                    lines.append(f"  - {case['run']} (seed {case['seed']}) turn {case['turn']}, the turn of {case['player']}: {case['example']}" + (f"; save {case['save']}" if case["save"] else ""))
+                    for journal_line in case["journal"][-4:]:
+                        lines.append(f"    - {journal_line[:200]}")
+            lines.append("")
+        if report.get("bySettings"):
+            lines += ["### Split by the settings (median a run; cities of a wizard at the end)", ""]
+            for title, groups in report["bySettings"].items():
+                lines.append(f"- {title}: " + "; ".join(f"{value}: {group['runs']} runs, treaties {group['treatiesPerRun']['median'] if group['treatiesPerRun'] else '-'}, wars {group['warsPerRun']['median'] if group['warsPerRun'] else '-'}, battles {group['battlesPerRun']['median'] if group['battlesPerRun'] else '-'}, cities taken {group['citiesTakenPerRun']['median'] if group['citiesTakenPerRun'] else '-'}, cities {group['citiesOfAWizard']['median'] if group['citiesOfAWizard'] else '-'}" for value, group in groups.items()))
+            lines.append("")
         wizards = report["wizards"]
         if wizards:
             lines += ["### The computer wizards at the end (median, min to max)", ""]
@@ -473,16 +643,22 @@ def markdown(reports):
 
 def command_report(args):
     reports = []
+    cases = []
     for folder in args.folders:
         runs = load_batch(folder)
         if not runs:
             print(f"no runs in {folder}")
             continue
         reports.append(report_batch(Path(folder).name, runs))
+        for run in runs:
+            kinds = [trace["Kind"] for trace in ((run["record"] or {}).get("Traces") or [])]
+            if kinds:
+                cases.append({"run": (Path(folder) / run["name"]).as_posix(), "kinds": kinds, "config": run["config"]})
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "report.json").write_text(json.dumps(reports, indent=1, default=lambda value: dict(value) if isinstance(value, collections.Counter) else str(value)), encoding="utf-8")
     (out / "report.md").write_text(markdown(reports), encoding="utf-8")
+    (out / "cases.json").write_text(json.dumps(cases, indent=1), encoding="utf-8")
     print(f"report of {len(reports)} batches written to {out}")
 
 
@@ -494,7 +670,7 @@ def main():
     run.add_argument("--out", required=True)
     run.add_argument("--runs", type=int, default=8)
     run.add_argument("--turns", type=int, default=250)
-    run.add_argument("--parallel", type=int, default=6)
+    run.add_argument("--parallel", type=int, default=PARALLEL_MOST, help=f"runs at once, at most {PARALLEL_MOST}")
     run.add_argument("--lane", default="a")
     run.add_argument("--root", default=None, help="the folder of dev.sh (found above the script)")
     run.add_argument("--opponents", default="1,2,3,4", help="computer wizards, a list picked from by chance")
@@ -504,9 +680,27 @@ def main():
     run.add_argument("--all-ai", action="store_true", help="the human's slot played by Chewbot")
     run.add_argument("--timeline", type=int, default=10)
     run.add_argument("--timeout", type=int, default=1800, help="seconds before a run is killed")
-    run.add_argument("--seed", type=int, default=1, help="picks the settings of the runs (the game's own chance can not be seeded)")
+    run.add_argument("--seed", type=int, default=1, help="picks the settings and the seed (-sim-seed) of every run")
+    run.add_argument("--no-trace", dest="trace", action="store_false", help="without -sim-trace and its saves (on by default: it costs well under 1 percent)")
     run.add_argument("--extra", default="", help="more flags for the game")
     run.set_defaults(func=command_run)
+    replay = commands.add_parser("replay", help="play one run of a batch again")
+    replay.add_argument("run", help="the run, as folder/run-NNN")
+    replay.add_argument("--out", default=None)
+    replay.add_argument("--newest", action="store_true", help="the newest build of the lane, not the batch's")
+    replay.add_argument("--extra", default="", help="more flags, e.g. --extra=-sim-state-log=probe/s.txt")
+    replay.add_argument("--timeout", type=int, default=3000)
+    replay.add_argument("--root", default=None)
+    replay.set_defaults(func=command_replay)
+    regress = commands.add_parser("regress", help="play the traced runs of cases.json again on the newest build")
+    regress.add_argument("cases")
+    regress.add_argument("--out", required=True)
+    regress.add_argument("--name", default="regress")
+    regress.add_argument("--lane", default="a")
+    regress.add_argument("--parallel", type=int, default=PARALLEL_MOST)
+    regress.add_argument("--timeout", type=int, default=3000)
+    regress.add_argument("--root", default=None)
+    regress.set_defaults(func=command_regress)
     report = commands.add_parser("report", help="the report of batches")
     report.add_argument("folders", nargs="+")
     report.add_argument("--out", required=True)

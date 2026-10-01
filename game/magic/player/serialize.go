@@ -460,6 +460,7 @@ func ReconstructPlayer(serialized *SerializedPlayer, globalEnchantmentsProvider 
 
     initializeCities := func(arcanusMap *maplib.Map, myrrorMap *maplib.Map) {
         player.Cities = reconstructCities(serialized.Cities, arcanusMap, myrrorMap, cityServices, player, buildingInfo)
+        CitiesChanged()
     }
 
     initializeRelations := func(allPlayers []*Player) {

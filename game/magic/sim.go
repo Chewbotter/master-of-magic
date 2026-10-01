@@ -501,6 +501,35 @@ func simPlay(game *gamelib.Game, description string, index int, count int) simRu
         }
     }
 
+    // -sim-save-every: the last saves of the run, and the ones kept for a trace (simrecord.go)
+    simTraces = nil
+    var saves []string
+    keptSaves := make(map[string]bool)
+    saveFolder := ""
+    if simSaveEvery > 0 {
+        base := simRunPath(simJSON, index, count)
+        if base == "" {
+            base = "sim"
+        }
+        saveFolder = strings.TrimSuffix(base, filepath.Ext(base)) + ".saves"
+        os.MkdirAll(saveFolder, 0755)
+    }
+    rollingSave := func() {
+        path := filepath.Join(saveFolder, fmt.Sprintf("turn-%03d%v", game.Model.TurnNumber, simSaveEnding))
+        saver := &gamelib.GameSaver{Game: game, FS: system.MakeFS()}
+        if err := saver.SaveToPath(path, fmt.Sprintf("sim turn %v", game.Model.TurnNumber)); err != nil {
+            log.Printf("sim: could not save to %v: %v", path, err)
+            return
+        }
+        saves = append(saves, path)
+        for len(saves) > 2 {
+            if !keptSaves[saves[0]] {
+                os.Remove(saves[0])
+            }
+            saves = saves[1:]
+        }
+    }
+
     duplicateSeen := false
     traced := make(map[string]bool)
     for game.Model.TurnNumber < startTurn + uint64(simTurns) {
@@ -512,6 +541,16 @@ func simPlay(game *gamelib.Game, description string, index int, count int) simRu
                 if !traced[kind] {
                     traced[kind] = true
                     log.Printf("sim: TRACE %v first seen at turn %v, current player %v: %v; the journal before it: | %v", kind, game.Model.TurnNumber, game.Model.CurrentPlayer, example, sink.recentText())
+                    trace := simTraceRecord{Kind: kind, Turn: game.Model.TurnNumber, Example: example, Journal: sink.recentLines()}
+                    if current := game.Model.CurrentPlayer; current >= 0 && current < len(game.Model.Players) {
+                        trace.Player = game.Model.Players[current].Wizard.Name
+                    }
+                    if len(saves) > 0 {
+                        // the save before it is kept: -sim-load it to play the case again
+                        trace.Save = saves[len(saves) - 1]
+                        keptSaves[trace.Save] = true
+                    }
+                    simTraces = append(simTraces, trace)
                 }
             }
         }
@@ -540,6 +579,9 @@ func simPlay(game *gamelib.Game, description string, index int, count int) simRu
             lastProgress = time.Now()
             if stateLog != nil {
                 simWriteState(stateLog, game)
+            }
+            if simSaveEvery > 0 && (lastTurn - startTurn) % uint64(simSaveEvery) == 0 {
+                rollingSave()
             }
             // the checks of every turn (game/simcheck.go)
             game.SimCheck()

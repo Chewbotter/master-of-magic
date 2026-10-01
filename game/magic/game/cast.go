@@ -1851,6 +1851,11 @@ func (game *Game) doSummonUnit(player *playerlib.Player, unit units.Unit) {
     }
 
     summonCity := classicSummonCity(player)
+    if summonCity != nil && !game.roomForUnit(player) {
+        // Create_Unit: the spell is cast and nothing comes (unitlimit.go)
+        game.noRoomForUnit(player, unit.Name)
+        summonCity = nil
+    }
     if summonCity != nil {
         overworldUnit := units.MakeOverworldUnitFromUnit(unit, summonCity.X, summonCity.Y, summonCity.Plane, player.Wizard.Banner, player.MakeExperienceInfo(), player.MakeUnitEnchantmentProvider())
         player.DidSummonUnit(overworldUnit)
@@ -2852,7 +2857,9 @@ func (game *Game) doCastFloatingIsland(yield coroutine.YieldFunc, player *player
         }
     }
     update := func (x int, y int, frame int) {
-        if frame == 5 {
+        if frame == 5 && !game.roomForUnit(player) {
+            game.noRoomForUnit(player, "Floating Island")
+        } else if frame == 5 {
             overworldUnit := units.MakeOverworldUnitFromUnit(units.FloatingIsland, tileX, tileY, game.Model.CurrentMap().Plane, player.Wizard.Banner, player.MakeExperienceInfo(), player.MakeUnitEnchantmentProvider())
             player.AddUnit(overworldUnit)
             player.LiftFog(tileX, tileY, 1, game.Model.Plane)
