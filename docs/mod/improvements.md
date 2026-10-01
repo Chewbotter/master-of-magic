@@ -196,12 +196,21 @@ quirk constant where there is one: turning it is the change. New calls go here t
   Immunity; a dispel of one's own curses that never fails. Suggested: each the way the manual means.
 - MY CALL: every battle unit of a lost side that stayed out dies at the end whatever the reason it
   stayed out (upstream's rules for who stays out).
-- Not ported yet: the cap of 9 units for summons, Raise Dead and Animate Dead (the fork has no place
-  to refuse the spell before its mana is paid); the ranged attack's flat cost of 10 moves;
-  Invulnerability after every defense roll; the items of stoned or disintegrated heroes lost; the
-  rest of the fleeing, experience, fame and regeneration rules; Wall of Stone in a city battle (the
-  original can not cast it in battle); the magic ranged shot of a hasted hero; the LOWs of combat
-  spells (rules-survey.md).
+- Not ported yet: Wall of Stone in a city battle (the original can not cast it in battle).
+- Smaller rules (the LOWs, combat-rules.md "Smaller rules"). Kept, the original's: Wraith Form
+  spares Flame Strike, Holy Word, Death Spell and Call Lightning (`quirkWraithFormSpares`); a
+  countered spell costs only a tenth of the range in mana (`quirkCounteredCheap`); the human pays
+  the full cost of fixed cost spells in battle while the book shows less
+  (`quirkHumanNoCombatDiscount`; the reconstruction calls it faithful, it reads like `>` for `>=`).
+  Suggested: each as meant. MY CALL: a hasted shooter's second magic shot by its own magic (the
+  original tests battle unit number 3); the end of a battle shown on the screen asks the model
+  every frame: it is finished once (FIXED, the fork rolled the fleeing again every frame, so nearly
+  all of them died, and regenerated the winners again).
+  Not ported: a fleeing defender's place by the original's scan and its 9 to a square (the fork's
+  random free square, now with the row above, stays); the touch of an item (Death -3 more,
+  Stoning -1 more); Cracks Call on a square and walls; the target filters of the buffs; Disenchant
+  on a warped node in battle; Call Lightning of nature and at the start of every turn; the thrown
+  strength of Mithril and Adamantium; Slingers as missiles (the fork's data has them as rocks).
 
 ## Heroes, mercenaries, merchants, items (heroes.md)
 

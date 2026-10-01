@@ -1199,6 +1199,11 @@ func (player *Player) ComputeOverworldCastingSkill() int {
     return base + int(heroes) / 2
 }
 
+// the wizard casts the Spell of Return: no skill in battle (combat/model.go Initialize)
+func (player *Player) CastingSpellOfReturn() bool {
+    return player.CastingSpell.Name == "Spell of Return"
+}
+
 // casting skill points won in battle (Life Drain, combat/classicrules.go)
 func (player *Player) AddCastingSkillPower(points int) {
     player.CastingSkillPower += points

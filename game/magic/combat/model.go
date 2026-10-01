@@ -652,6 +652,24 @@ func (unit *ArmyUnit) SetHeight(height int) {
 func (unit *ArmyUnit) RaiseFromDead() {
     // make sure health is 0 first
     unit.Unit.AdjustHealth(-unit.GetMaxHealth())
+    if ClassicRules {
+        // Cast_Raise_Dead: half the figures whole, one figure half its hits; its enchantments of the
+        // world map are gone too
+        count := max(1, unit.Unit.GetCount())
+        perFigure := unit.GetMaxHealth() / count
+        if count > 1 {
+            unit.Heal((count / 2) * perFigure)
+        } else {
+            unit.Heal(perFigure - perFigure / 2)
+        }
+        for _, enchantment := range slices.Clone(unit.Unit.GetEnchantments()) {
+            unit.Unit.RemoveEnchantment(enchantment)
+        }
+        unit.Enchantments = nil
+        unit.Curses = nil
+        unit.WebHealth = 0
+        return
+    }
     // then raise to 1/2
     unit.Heal(unit.GetMaxHealth()/2)
     unit.Enchantments = nil
@@ -1142,7 +1160,8 @@ func GetResistanceFor(unit UnitResistance, magic data.MagicType) int {
         }
     }
 
-    if unit.HasEnchantment(data.UnitEnchantmentResistElements) {
+    if unit.HasEnchantment(data.UnitEnchantmentResistElements) && !(ClassicRules && unit.HasEnchantment(data.UnitEnchantmentElementalArmor)) {
+        // Combat_Effective_Resistance: Elemental Armor in place of Resist Elements
         switch magic {
             case data.NatureMagic, data.ChaosMagic: modifier += 3
         }
@@ -1245,7 +1264,8 @@ func GetDefenseFor(unit UnitDamage, magic data.MagicType) int {
         }
     }
 
-    if unit.HasEnchantment(data.UnitEnchantmentResistElements) {
+    if unit.HasEnchantment(data.UnitEnchantmentResistElements) && !(ClassicRules && unit.HasEnchantment(data.UnitEnchantmentElementalArmor)) {
+        // Combat_Effective_Resistance: Elemental Armor in place of Resist Elements
         switch magic {
             case data.NatureMagic, data.ChaosMagic: modifier += 3
         }
@@ -1300,6 +1320,11 @@ func (unit *ArmyUnit) GetDefense() int {
             case data.LifeMagic: modifier += 1
             case data.DeathMagic: modifier -= 1
         }
+    }
+
+    if ClassicRules && unit.HasEnchantment(data.UnitEnchantmentIronSkin) && unit.HasEnchantment(data.UnitEnchantmentStoneSkin) {
+        // Apply_Enchantment_And_Mutation_Effects: Iron Skin in place of Stone Skin
+        modifier -= 1
     }
 
     final := unit.Unit.GetDefense() + modifier
@@ -1595,6 +1620,10 @@ func (unit *ArmyUnit) GetMovementSpeed() fraction.Fraction {
 
 func (unit *ArmyUnit) ResetTurnData() {
     unit.MovesLeft = unit.GetMovementSpeed()
+    if ClassicRules && unit.Model != nil && unit.Model.IsEnchantmentActive(data.CombatEnchantmentEntangle, oppositeTeam(unit.Team)) {
+        // Begin_Combat_Turn: Entangle takes a move of the turn from everyone
+        unit.MovesLeft = fraction.Zero().Max(unit.MovesLeft.Subtract(fraction.FromInt(1)))
+    }
     unit.Paths = make(map[image.Point]pathfinding.Path)
     unit.Casted = false
     unit.Attacked = 0
@@ -1712,12 +1741,23 @@ func ComputeDefense(unit UnitDamage, damage units.Damage, source DamageSource, m
             if unit.HasAbility(data.AbilityLargeShield) {
                 defenseRolls += 2
             }
+        case units.DamageRangedBoulder:
+            defenseRolls = unit.GetDefense()
+            if ClassicRules && unit.HasAbility(data.AbilityLargeShield) {
+                // Battle_Unit_Defense_Special: the Large Shield against every attack but melee
+                defenseRolls += 2
+            }
         default:
             defenseRolls = unit.GetDefense()
     }
 
     weaponImmune := false
-    switch damage {
+    weaponDamage := damage
+    if ClassicRules && damage == units.DamageRangedBoulder {
+        // rocks meet Weapon Immunity as missiles do
+        weaponDamage = units.DamageRangedPhysical
+    }
+    switch weaponDamage {
         case units.DamageMeleePhysical, units.DamageRangedPhysical, units.DamageThrown:
             if unit.HasAbility(data.AbilityWeaponImmunity) && !modifiers.NegateWeaponImmunity && source == DamageSourceNormal {
                 // Battle_Unit_Attack_Immunities: thrown attacks never meet Weapon Immunity (the original's)
@@ -1738,11 +1778,13 @@ func ComputeDefense(unit UnitDamage, damage units.Damage, source DamageSource, m
     }
 
     // after armor piercing, wall defense is applied
-    switch damage {
-        case units.DamageRangedMagical,
-             units.DamageRangedPhysical,
-             units.DamageMeleePhysical:
-            defenseRolls += modifiers.WallDefense
+    if !ClassicRules {
+        switch damage {
+            case units.DamageRangedMagical,
+                 units.DamageRangedPhysical,
+                 units.DamageMeleePhysical:
+                defenseRolls += modifiers.WallDefense
+        }
     }
 
     if hasImmunity {
@@ -1751,6 +1793,11 @@ func ComputeDefense(unit UnitDamage, damage units.Damage, source DamageSource, m
 
     if modifiers.Illusion && !unit.HasAbility(data.AbilityIllusionsImmunity) {
         defenseRolls = 0
+    }
+
+    if ClassicRules {
+        // Battle_Unit_Process_Attack: the wall's bonus for every kind of attack, an illusion too
+        defenseRolls += modifiers.WallDefense
     }
 
     // log.Info("Unit has %v defense", defenseRolls)
@@ -1762,6 +1809,9 @@ func ComputeDefense(unit UnitDamage, damage units.Damage, source DamageSource, m
 
 // returns the damage reason why this unit died, which is the largest source of damage
 func (unit *ArmyUnit) DeathReason() DamageType {
+    if ClassicRules {
+        return unit.classicDeathReason()
+    }
     if unit.NormalDamage >= unit.IrreversableDamage && unit.NormalDamage >= unit.UndeadDamage {
         return DamageNormal
     }
@@ -1835,6 +1885,10 @@ func ApplyAreaDamage(unit UnitDamage, attackStrength int, damageType units.Damag
 
         // can't do more damage than a single figure has HP
         figureDamage := unit.ReduceInvulnerability(min(damage - defense, health_per_figure))
+        if ClassicRules {
+            // Compute_Battle_Unit_Damage_From_Spell: Invulnerability before the cap of a figure
+            figureDamage = min(unit.ReduceInvulnerability(damage - defense), health_per_figure)
+        }
         if figureDamage > 0 {
             totalDamage += figureDamage
         }
@@ -1850,6 +1904,10 @@ func ApplyAreaDamage(unit UnitDamage, attackStrength int, damageType units.Damag
 // returns damage taken and the number of visible figures lost
 func ApplyDamage(unit UnitDamage, damageRolls []int, damageType units.Damage, source DamageSource, modifiers DamageModifiers) (int, int) {
     isMagic := damageType == units.DamageRangedMagical || damageType == units.DamageFire || damageType == units.DamageCold
+    if ClassicRules && damageType == units.DamageRangedMagical {
+        // Battle_Unit_Attack: a magic shot meets a defense of 50 against Magic Immunity
+        isMagic = false
+    }
     if isMagic && unit.HasAbility(data.AbilityMagicImmunity) {
         return 0, 0
     }
@@ -1857,12 +1915,18 @@ func ApplyDamage(unit UnitDamage, damageRolls []int, damageType units.Damage, so
     taken := 0
     lost := 0
     for _, damage := range damageRolls {
-        damage = unit.ReduceInvulnerability(damage)
+        if !ClassicRules {
+            damage = unit.ReduceInvulnerability(damage)
+        }
 
         for damage > 0 && unit.GetHealth() > 0 {
             // compute defense, apply damage to lead figure. if lead figure dies, apply damage to next figure
             defense := ComputeDefense(unit, damageType, source, modifiers)
             damage -= defense
+            if ClassicRules {
+                // Battle_Unit_Process_Attack: Invulnerability after every defense roll
+                damage = unit.ReduceInvulnerability(damage)
+            }
 
             if damage > 0 {
                 // log.Printf("Applying %v damage to %v. Max health %v, count %v, figures %v", damage, unit, unit.GetMaxHealth(), unit.GetCount(), unit.Figures())
@@ -1980,7 +2044,7 @@ func (unit *ArmyUnit) ComputeRangeDamage(defender *ArmyUnit, tileDistance int) i
     if ClassicRules {
         // Battle_Unit_Process_Attack: -10 for every full 3 squares, Long Range at most -10;
         // magic none; at least 10 percent
-        toHit = unit.GetToHitMelee(defender)
+        toHit = classicRangedToHit(unit, defender)
         if unit.Unit.GetRangedAttackDamageType() != units.DamageRangedMagical {
             penalty := 10 * (tileDistance / 3)
             if unit.HasAbility(data.AbilityLongRange) {
@@ -1989,7 +2053,8 @@ func (unit *ArmyUnit) ComputeRangeDamage(defender *ArmyUnit, tileDistance int) i
             toHit -= penalty
         }
         damage := ComputeRoll(unit.GetRangedAttackPower(), classicToHit(toHit))
-        return defender.ReduceInvulnerability(classicBlur(unit, defender, damage))
+        // Invulnerability comes off after the defense roll (ApplyDamage)
+        return classicBlur(unit, defender, damage)
     }
 
     return defender.ReduceInvulnerability(ComputeRoll(unit.GetRangedAttackPower(), toHit))
@@ -1998,6 +2063,11 @@ func (unit *ArmyUnit) ComputeRangeDamage(defender *ArmyUnit, tileDistance int) i
 func (unit *ArmyUnit) ComputeMeleeDamage(defender *ArmyUnit, fearFigure int, counterAttack bool) ([]int, bool) {
 
     if unit.GetMeleeAttackPower() == 0 {
+        return nil, false
+    }
+
+    if ClassicRules && !counterAttack && defender.IsFlying() && !unit.IsFlying() && !classicHurtsFlier(unit) {
+        // Battle_Unit_Process_Attack: bows, rocks and magic strike a flier for nothing
         return nil, false
     }
 
@@ -2102,6 +2172,8 @@ type Army struct {
     Fled bool
     Casted bool
     RecalledUnits []*ArmyUnit
+    // units that died by irreversible damage: a hero's items are lost (End_Of_Combat)
+    GoneUnits []*ArmyUnit
 
     Enchantments []data.CombatEnchantment
     Cleanups []func()
@@ -2314,6 +2386,8 @@ func (army *Army) KillUnit(kill *ArmyUnit){
     // units that died due to irreversable damage are gone forever
     if kill.DeathReason() != DamageIrreversable {
         army.KilledUnits = append(army.KilledUnits, kill)
+    } else {
+        army.GoneUnits = append(army.GoneUnits, kill)
     }
     army.RemoveUnit(kill)
 }
@@ -2415,11 +2489,18 @@ type CombatModel struct {
     Cleanups []func()
 
     FinishState CombatState
+    // the battle has ended and FinishCombat has run: FinalState gives FinishState from then on
+    finished bool
 
     // track how many units were killed on each side, so experience
     // can be given out after combat ends
     DefeatedDefenders int
     DefeatedAttackers int
+
+    // Retreat_From_Combat: the human loses nobody fleeing at Intro and Easy (set by the game)
+    EasyRetreat bool
+    // the last spell was stopped by Counter Magic or a node (castMana, classiclows.go)
+    LastCountered bool
 
     // track how many units were killed when fleeing, so the number
     // can be reported after combands ends
@@ -2616,6 +2697,14 @@ func (model *CombatModel) Initialize(allSpells spellbook.Spells, overworldX int,
     model.AllSpells = allSpells
     model.AttackingArmy.ManaPool = min(model.AttackingArmy.Player.GetMana(), model.AttackingArmy.Player.ComputeCastingSkill())
     model.DefendingArmy.ManaPool = min(model.DefendingArmy.Player.GetMana(), model.DefendingArmy.Player.ComputeCastingSkill())
+    if ClassicRules {
+        // the battle's set-up: no skill while casting the Spell of Return
+        for _, army := range []*Army{model.AttackingArmy, model.DefendingArmy} {
+            if returning, ok := army.Player.(interface{ CastingSpellOfReturn() bool }); ok && returning.CastingSpellOfReturn() {
+                army.ManaPool = 0
+            }
+        }
+    }
 
     model.DefendingArmy.Range = computeRangeToFortress(model.Plane, overworldX, overworldY, model.DefendingArmy.Player)
     model.AttackingArmy.Range = computeRangeToFortress(model.Plane, overworldX, overworldY, model.AttackingArmy.Player)
@@ -2717,7 +2806,9 @@ func (model *CombatModel) ChooseNextUnit(team Team) *ArmyUnit {
 
                     // spend a turn to remove the web
                     if unit.IsWebbed() {
-                        unit.ProcessWeb()
+                        if !ClassicRules {
+                            unit.ProcessWeb()
+                        }
                         continue
                     }
 
@@ -2737,7 +2828,9 @@ func (model *CombatModel) ChooseNextUnit(team Team) *ArmyUnit {
 
                 if unit.LastTurn < model.CurrentTurn {
                     if unit.IsWebbed() {
-                        unit.ProcessWeb()
+                        if !ClassicRules {
+                            unit.ProcessWeb()
+                        }
                         continue
                     }
 
@@ -2763,8 +2856,18 @@ func (model *CombatModel) NextTurn() {
         vortex.Moved = false
     }
 
+    if ClassicRules {
+        // Begin_Combat_Turn: every web is torn at the start of the turn
+        for _, unit := range append(slices.Clone(model.DefendingArmy.units), model.AttackingArmy.units...) {
+            unit.classicTearWeb()
+        }
+    }
+
     if model.IsEnchantmentActive(data.CombatEnchantmentManaLeak, TeamAttacker) {
-        model.DefendingArmy.ManaPool = max(0, model.DefendingArmy.ManaPool - 5)
+        if !ClassicRules {
+            // Apply_Mana_Leak: the reserve, not the skill
+            model.DefendingArmy.ManaPool = max(0, model.DefendingArmy.ManaPool - 5)
+        }
         model.DefendingArmy.Player.UseMana(5)
         defenderLeakMana = true
     }
@@ -2779,6 +2882,9 @@ func (model *CombatModel) NextTurn() {
         if defenderLeakMana {
             // FIXME: magic ranged attacks should go down by 1 as well
             unit.CastingSkill = max(0, unit.CastingSkill - 5)
+            if ClassicRules && unit.GetRangedAttackDamageType() == units.DamageRangedMagical && unit.RangedAttacks > 0 {
+                unit.RangedAttacks -= 1
+            }
         }
 
         if defenderTerror {
@@ -2811,7 +2917,9 @@ func (model *CombatModel) NextTurn() {
     attackerLeakMana := false
 
     if model.IsEnchantmentActive(data.CombatEnchantmentManaLeak, TeamDefender) {
-        model.AttackingArmy.ManaPool = max(0, model.AttackingArmy.ManaPool - 5)
+        if !ClassicRules {
+            model.AttackingArmy.ManaPool = max(0, model.AttackingArmy.ManaPool - 5)
+        }
         model.AttackingArmy.Player.UseMana(5)
         attackerLeakMana = true
     }
@@ -2830,6 +2938,9 @@ func (model *CombatModel) NextTurn() {
         if attackerLeakMana {
             // FIXME: magic ranged attacks should go down by 1 as well
             unit.CastingSkill = max(0, unit.CastingSkill - 5)
+            if ClassicRules && unit.GetRangedAttackDamageType() == units.DamageRangedMagical && unit.RangedAttacks > 0 {
+                unit.RangedAttacks -= 1
+            }
         }
 
         if attackerTerror {
@@ -2888,6 +2999,17 @@ func (model *CombatModel) doCallLightning(army *Army) {
     */
 
     if len(army.units) == 0 {
+        return
+    }
+
+    if ClassicRules {
+        // Apply_Call_Lightning, see classiclows.go
+        for _, target := range model.classicLightningTargets(army.units) {
+            model.Events <- &CombatEventCreateLightningBolt{
+                Target: target,
+                Strength: 8,
+            }
+        }
         return
     }
 
@@ -3101,6 +3223,15 @@ func (model *CombatModel) DoDisenchantArea(allSpells spellbook.Spells, caster Ar
         if unit.GetHealth() > 0 {
             model.DoDisenchantUnitCurses(allSpells, unit, targetArmy.Player, disenchantStrength)
         }
+    }
+
+    if ClassicRules {
+        // Combat_Cast_Disenchant: vortexes and the walls of the city too
+        model.classicDisenchantMore(caster, disenchantStrength, func(cost int, magic data.MagicType, owner ArmyPlayer) bool {
+            return spellbook.RollDispelChance(spellbook.ComputeDispelChance(disenchantStrength, cost, magic, owner.GetWizard()))
+        }, func(name string) int {
+            return allSpells.FindByName(name).Cost(false)
+        })
     }
 }
 
@@ -3566,7 +3697,7 @@ func (model *CombatModel) doBreathAttack(attacker *ArmyUnit, defender *ArmyUnit)
             lost := 0
             // one breath attack per figure
             for range attacker.Figures() {
-                attackerDamage := ComputeRoll(strength, attacker.GetToHitMelee(defender))
+                attackerDamage := ComputeRoll(strength, breathToHit(attacker, defender))
                 moreDamage, moreLost := ApplyDamage(defender, []int{attackerDamage}, units.DamageFire, attacker.GetDamageSource(), DamageModifiers{Magic: data.ChaosMagic})
                 fireDamage += moreDamage
                 lost += moreLost
@@ -3586,7 +3717,7 @@ func (model *CombatModel) doBreathAttack(attacker *ArmyUnit, defender *ArmyUnit)
             lightningDamage := 0
             lost := 0
             for range attacker.Figures() {
-                attackerDamage := ComputeRoll(strength, attacker.GetToHitMelee(defender))
+                attackerDamage := ComputeRoll(strength, breathToHit(attacker, defender))
                 moreLightningDamage, mostLost := ApplyDamage(defender, []int{attackerDamage}, units.DamageRangedMagical, attacker.GetDamageSource(), DamageModifiers{ArmorPiercing: true, Magic: data.ChaosMagic})
                 lightningDamage += moreLightningDamage
                 lost += mostLost
@@ -3668,7 +3799,7 @@ func (model *CombatModel) doThrowAttack(attacker *ArmyUnit, defender *ArmyUnit) 
         if ClassicRules {
             // Battle_Unit_Process_Attack: every point of every figure rolls to hit
             for range attacker.Figures() {
-                rolls = append(rolls, classicBlur(attacker, defender, ComputeRoll(strength, classicToHit(attacker.GetToHitMelee(defender)))))
+                rolls = append(rolls, classicBlur(attacker, defender, ComputeRoll(strength, classicToHit(classicThrownToHit(attacker, defender)))))
             }
             return rolls, true
         }
@@ -3937,7 +4068,7 @@ func (model *CombatModel) canRangeAttack(attacker *ArmyUnit, defender *ArmyUnit)
     hasRangedAttacks := attacker.RangedAttacks > 0
     hasCastingAttacks := attacker.GetRangedAttackDamageType() == units.DamageRangedMagical && attacker.CastingSkill >= 3
 
-    if attacker.GetRangedAttackDamageType() == units.DamageRangedMagical && defender.HasAbility(data.AbilityMagicImmunity) {
+    if attacker.GetRangedAttackDamageType() == units.DamageRangedMagical && defender.HasAbility(data.AbilityMagicImmunity) && !ClassicRules {
         return false
     }
 
@@ -3963,6 +4094,11 @@ func (model *CombatModel) canRangeAttack(attacker *ArmyUnit, defender *ArmyUnit)
 
     if model.InsideWallOfDarkness(defender.X, defender.Y) && !model.InsideWallOfDarkness(attacker.X, attacker.Y) {
         // attacker can't target a defender inside a wall of darkness, unless the attacker has True Sight or Illusions Immunity
+
+        if ClassicRules {
+            // Check_Attack_Ranged: True Sight only
+            return attacker.HasEnchantment(data.UnitEnchantmentTrueSight)
+        }
 
         if attacker.HasAbility(data.AbilityIllusionsImmunity) {
             return true
@@ -4083,7 +4219,12 @@ func (model *CombatModel) canMeleeAttack(attacker *ArmyUnit, defender *ArmyUnit,
         }
     }
 
-    if defender.IsFlying() && !attacker.IsFlying() {
+    if ClassicRules && defender.IsFlying() && !attacker.IsFlying() {
+        // Check_Attack_Melee: with a ranged attack left, thrown, breath or a gaze
+        if !classicStrikesFlier(attacker) {
+            return false
+        }
+    } else if defender.IsFlying() && !attacker.IsFlying() {
         // a unit with Thrown can attack a flying unit
         if attacker.HasAbility(data.AbilityThrown) ||
            attacker.HasAbility(data.AbilityFireBreath) ||
@@ -4477,6 +4618,14 @@ func (model *CombatModel) RecallUnit(unit *ArmyUnit) {
         model.AttackingArmy.RecalledUnits = append(model.AttackingArmy.RecalledUnits, unit)
     }
     model.RemoveUnit(unit)
+    if ClassicRules {
+        // End_Of_Combat: a recalled unit is no kill
+        if unit.Team == TeamDefender {
+            model.DefeatedDefenders -= 1
+        } else {
+            model.DefeatedAttackers -= 1
+        }
+    }
 }
 
 func (model *CombatModel) IsAIControlled(unit *ArmyUnit) bool {
@@ -4613,6 +4762,17 @@ func (model *CombatModel) flee(army *Army) {
             chance = 100
         }
 
+        if ClassicRules {
+            // Retreat_From_Combat: nobody of the human is lost at Intro and Easy; asleep, confused
+            // and webbed units are lost anyway
+            if model.EasyRetreat && army.Player.IsHuman() {
+                chance = 0
+            }
+            if unit.IsAsleep() || unit.HasCurse(data.UnitCurseConfusion) || unit.IsWebbed() {
+                chance = 100
+            }
+        }
+
         if rand.IntN(100) < chance {
             unit.TakeDamage(unit.GetHealth(), DamageNormal)
             model.RemoveUnit(unit)
@@ -4624,6 +4784,7 @@ func (model *CombatModel) flee(army *Army) {
 // called when the battle ends
 func (model *CombatModel) FinishCombat(state CombatState) {
     model.FinishState = state
+    model.finished = true
     // kill all units that are bound or possessed, or summoned units
     // also regenerate units with the regeneration ability
     killUnits := func(army *Army, team Team) {
@@ -4639,6 +4800,16 @@ func (model *CombatModel) FinishCombat(state CombatState) {
                     unit.TakeDamage(unit.GetHealth(), DamageNormal)
                 }
             }
+
+            if ClassicRules && !wonBattle && unit.GetHealth() > 0 && unit.HasCurse(data.UnitCurseConfusion) {
+                // End_Of_Combat: a confused unit of the loser is lost
+                unit.TakeDamage(unit.GetHealth(), DamageNormal)
+                if team == TeamDefender {
+                    model.DefeatedDefenders += 1
+                } else {
+                    model.DefeatedAttackers += 1
+                }
+            }
         }
 
         var regeneratedUnits []*ArmyUnit
@@ -4648,7 +4819,8 @@ func (model *CombatModel) FinishCombat(state CombatState) {
 
         for _, unit := range army.KilledUnits {
             killed := true
-            if wonBattle && unit.HasAbility(data.AbilityRegeneration) {
+            if wonBattle && unit.HasAbility(data.AbilityRegeneration) && !(ClassicRules && unit.DeathReason() != DamageNormal) {
+                // End_Of_Combat: a drained unit does not regenerate
                 unit.Heal(unit.GetMaxHealth())
                 regeneratedUnits = append(regeneratedUnits, unit)
                 killed = false
@@ -4694,6 +4866,24 @@ func (model *CombatModel) InsideMagicNode() bool {
 
 // returns true if the spell should be dispelled (due to counter magic, magic nodes, etc)
 func (model *CombatModel) CheckDispel(spell spellbook.Spell, caster ArmyPlayer) bool {
+    if ClassicRules {
+        // Combat_Cast_Spell: Counter Magic first, then the node
+        opposite := model.GetOppositeArmyForPlayer(caster)
+        if opposite.CounterMagic > 0 {
+            chance := spellbook.ComputeDispelChance(opposite.CounterMagic, spell.Cost(false), spell.Magic, caster.GetWizard())
+            opposite.CounterMagic = max(0, opposite.CounterMagic - 5)
+            if opposite.CounterMagic == 0 {
+                opposite.RemoveEnchantment(data.CombatEnchantmentCounterMagic)
+            }
+            if spellbook.RollDispelChance(chance) {
+                return true
+            }
+        }
+        if model.InsideMagicNode() && !caster.GetWizard().RetortEnabled(data.RetortNodeMastery) && spell.Magic != model.Zone.GetMagic() {
+            return spellbook.RollDispelChance(spellbook.ComputeDispelChance(50, spell.Cost(false), spell.Magic, caster.GetWizard()))
+        }
+        return false
+    }
     // FIXME: what should come first, counter magic or node dispel?
     if model.InsideMagicNode() && !caster.GetWizard().RetortEnabled(data.RetortNodeMastery) {
         nodeMagic := model.Zone.GetMagic()
@@ -4995,13 +5185,21 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
         announce(success)
     }
 
+    if ClassicRules && (spell.IsSummoning() || spell.Name == "Raise Dead" || spell.Name == "Animate Dead") && model.classicTooManyUnits(army) {
+        // Do_Legal_Spell_Check: refused before anything is paid
+        return
+    }
+
+    model.LastCountered = false
     if model.CheckDispel(spell, army.Player) {
         if !army.IsAI() {
             model.Events <- &CombatEventMessage{
                 Message: fmt.Sprintf("%v fizzled", spell.Name),
             }
         }
+        model.LastCountered = true
         castedCallback(false)
+        model.LastCountered = false
         return
     }
 
@@ -5113,7 +5311,13 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
         case "Flame Strike":
             model.DoAllUnitsSpell(army, spell, TargetEnemy, func(target *ArmyUnit){
                 model.AddProjectile(spellSystem.CreateFlameStrikeProjectile(target))
-            }, targetAny)
+            }, func(target *ArmyUnit) bool {
+                // Apply_Flame_Strike: Wraith Form and Righteousness are spared
+                if ClassicRules && quirkWraithFormSpares && (target.HasEnchantment(data.UnitEnchantmentWraithForm) || target.HasEnchantment(data.UnitEnchantmentRighteousness)) {
+                    return false
+                }
+                return targetAny(target)
+            })
             castedCallback(true)
         case "Life Drain":
             model.DoTargetUnitSpell(army, spell, TargetEnemy, func(target *ArmyUnit){
@@ -5148,7 +5352,16 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
         case "Holy Word":
             model.DoAllUnitsSpell(army, spell, TargetEnemy, func(target *ArmyUnit){
                 model.AddProjectile(spellSystem.CreateHolyWordProjectile(target, getSpellSave(unitCaster)))
-            }, targetFantastic)
+            }, func(target *ArmyUnit) bool {
+                if ClassicRules {
+                    // Apply_Holy_Word: creatures and undead, not Wraith Form
+                    if quirkWraithFormSpares && target.HasEnchantment(data.UnitEnchantmentWraithForm) {
+                        return false
+                    }
+                    return target.GetRace() == data.RaceFantastic || target.Unit.IsUndead()
+                }
+                return targetFantastic(target)
+            })
             castedCallback(true)
         case "Recall Hero":
             // FIXME:  check planar seal and summoning circle?
@@ -5269,7 +5482,13 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
         case "Death Spell":
             model.DoAllUnitsSpell(army, spell, TargetEnemy, func(target *ArmyUnit){
                 model.AddProjectile(spellSystem.CreateDeathSpellProjectile(target, getSpellSave(unitCaster)))
-            }, targetNotImmune)
+            }, func(target *ArmyUnit) bool {
+                if ClassicRules && quirkWraithFormSpares && target.HasEnchantment(data.UnitEnchantmentWraithForm) {
+                    // Apply_Death_Spell
+                    return false
+                }
+                return targetNotImmune(target)
+            })
             castedCallback(true)
         case "Word of Death":
             model.DoTargetUnitSpell(army, spell, TargetEnemy, func(target *ArmyUnit){
@@ -5307,7 +5526,12 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
                 castedCallback(true)
             })
         case "Summon Demon":
-            x, y, err := model.FindEmptyTile(MapSideMiddle)
+            side := MapSideMiddle
+            if ClassicRules {
+                // Summon_Demon: in the middle of the caster's side
+                side = model.GetSideForPlayer(army.Player)
+            }
+            x, y, err := model.FindEmptyTile(side)
             if err == nil {
                 spellSystem.CreateSummoningCircle(x, y)
                 model.summonUnit(army, x, y, units.Demon, units.FacingDown, true)
@@ -5519,6 +5743,10 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
                 model.AddProjectile(spellSystem.CreatePossessionProjectile(target, getSpellSave(unitCaster)))
                 castedCallback(true)
             }, func (target *ArmyUnit) bool {
+                if ClassicRules {
+                    // Combat_Spell_Target_Screen: any unit of a normal race, heroes too, not undead
+                    return target.GetRace() != data.RaceFantastic && !target.Unit.IsUndead()
+                }
                 if target.Unit.IsHero() || target.GetRace() == data.RaceFantastic {
                     return false
                 }
@@ -6277,7 +6505,11 @@ func (model *CombatModel) doAiCast(spellSystem SpellSystem, army *Army) bool {
                 // try to cast this spell
                 model.InvokeSpell(spellSystem, army, nil, spell, func(success bool){
                     army.ManaPool -= spellCost
-                    army.Player.UseMana(spellCost)
+                    if ClassicRules && quirkCounteredCheap && model.LastCountered {
+                        army.Player.UseMana(model.castMana(army, spellCost))
+                    } else {
+                        army.Player.UseMana(spellCost)
+                    }
                     army.Casted = true
 
                     casted = true
@@ -6357,8 +6589,14 @@ func (model *CombatModel) GetLeadershipBonus(unit *ArmyUnit) int {
 }
 
 func (model *CombatModel) FinalState() CombatState {
+    // the screen asks every frame while it shows the end (combatend.go): the fleeing are rolled and
+    // the battle is finished once
+    if model.finished {
+        return model.FinishState
+    }
 
-    if model.CurrentTurn >= MAX_TURNS {
+    // Check_For_Winner: 50 whole turns are played
+    if model.CurrentTurn >= MAX_TURNS && !(ClassicRules && model.CurrentTurn == MAX_TURNS) {
         model.AddLogEvent("Combat exceeded maximum number of turns, defender wins")
         model.FinishCombat(CombatStateDefenderWin)
         return CombatStateDefenderWin
@@ -7026,6 +7264,10 @@ func (model *CombatModel) CreateHolyWordProjectileEffect(damageIndicator AddDama
         }
 
         resistance := GetResistanceFor(unit, data.LifeMagic) - modifier - reduceResistance
+        if ClassicRules {
+            // Apply_Holy_Word: a death roll at -2 always, no spell saving
+            resistance = GetResistanceFor(unit, data.DeathMagic) - 2
+        }
 
         damage := 0
         for range unit.Figures() {
@@ -7052,6 +7294,10 @@ func (model *CombatModel) CreateWebProjectileEffect() func(*ArmyUnit) {
 func (model *CombatModel) CreateDeathSpellProjectileEffect(damageIndicator AddDamageIndicators, reduceResistance int) func(*ArmyUnit) {
     return func(unit *ArmyUnit) {
         resistance := GetResistanceFor(unit, data.DeathMagic) - 2 - reduceResistance
+        if ClassicRules {
+            // Apply_Death_Spell: no spell saving, and normal damage
+            resistance = GetResistanceFor(unit, data.DeathMagic) - 2
+        }
         damage := 0
 
         for range unit.Figures() {
@@ -7061,7 +7307,11 @@ func (model *CombatModel) CreateDeathSpellProjectileEffect(damageIndicator AddDa
         }
 
         damageIndicator.AddDamageIndicator(unit, damage)
-        unit.TakeDamage(damage, DamageIrreversable)
+        if ClassicRules {
+            unit.TakeDamage(damage, DamageNormal)
+        } else {
+            unit.TakeDamage(damage, DamageIrreversable)
+        }
         if unit.GetHealth() <= 0 {
             model.KillUnit(unit)
         }
@@ -7384,6 +7634,10 @@ func (model *CombatModel) rangeAttack(attacker *ArmyUnit, defender RangeTarget, 
     if attacker.HasEnchantment(data.UnitEnchantmentHaste) {
         // caster's don't get to attack twice
         if attacker.GetRangedAttackDamageType() == units.DamageRangedMagical {
+            if ClassicRules && (attacker.CastingSkill > 6 || attacker.RangedAttacks > 1) {
+                // Battle_Unit_Attack_Target: a second magic shot with 6 mana or 2 shots left
+                attacks = 2
+            }
         } else {
             attacks = min(2, attacker.RangedAttacks)
         }
@@ -7393,4 +7647,17 @@ func (model *CombatModel) rangeAttack(attacker *ArmyUnit, defender RangeTarget, 
         attacker.UseRangeAttack()
         actions.CreateRangeAttack(attacker, defender)
     }
+
+    if target, ok := defender.(*ArmyUnit); ok && ClassicRules {
+        // Battle_Unit_Attack: every attack wears the counterattack down
+        target.Attacked += 1
+    }
+}
+
+// the to-hit of a thrown or breath attack: the base alone with the original's rules
+func breathToHit(attacker *ArmyUnit, defender *ArmyUnit) int {
+    if ClassicRules {
+        return classicThrownToHit(attacker, defender)
+    }
+    return attacker.GetToHitMelee(defender)
 }

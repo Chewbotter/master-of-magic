@@ -1701,9 +1701,13 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
                     // player mana and skill should go down accordingly
                     combat.Model.InvokeSpell(combat, combat.Model.GetArmyForPlayer(player), nil, spell, func(success bool){
                         spellCost := player.ComputeEffectiveSpellCost(spell, false)
+                        if ClassicRules && quirkHumanNoCombatDiscount && !spell.IsVariableCost() {
+                            // Combat_Cast_Spell: the human pays the full cost (classiclows.go)
+                            spellCost = spell.Cost(false)
+                        }
                         army.Casted = true
                         army.ManaPool -= spellCost
-                        player.UseMana(int(float64(spellCost) * army.Range.ToFloat()))
+                        player.UseMana(combat.Model.castMana(army, spellCost))
                         if success {
                             combat.Model.AddLogEvent(fmt.Sprintf("%v casts %v", player.GetWizard().Name, spell.Name))
                             combat.PlaySound(spell)

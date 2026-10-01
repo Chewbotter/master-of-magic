@@ -5410,6 +5410,7 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     events := make(chan combat.CombatEvent, 1000)
 
     combatModel := combat.MakeCombatModel(game.AllSpells(), defendingArmy, attackingArmy, landscape, defenderStack.Plane(), zone, game.GetInfluenceMagic(attackerStack.X(), attackerStack.Y(), attackerStack.Plane()), attackerStack.X(), attackerStack.Y(), events)
+    combatModel.EasyRetreat = game.Model.Settings.Difficulty <= data.DifficultyEasy
 
     if zone.City != nil && zone.City.HasEnchantment(data.CityEnchantmentHeavenlyLight) {
         combatModel.AddGlobalEnchantment(data.CombatEnchantmentTrueLight)
@@ -5740,6 +5741,12 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
                     receiver := player
                     if combat.ClassicRules {
                         receiver = itemWinner
+                        if heroGone(combatModel, hero) {
+                            // End_Of_Combat: the items of a hero stoned or destroyed are lost
+                            for i := range hero.Equipment {
+                                hero.Equipment[i] = nil
+                            }
+                        }
                         // at most 18 items go to the winner, the rest are lost
                         for i, item := range hero.Equipment {
                             if item == nil {
@@ -5786,7 +5793,7 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
             if attacker.HasEnchantment(data.EnchantmentZombieMastery) {
                 for _, unit := range append(slices.Clone(defendingArmy.KilledUnits), attackingArmy.KilledUnits...) {
-                    if unit.GetRace() != data.RaceFantastic && unit.GetRace() != data.RaceHero && len(attackerStack.Units()) < data.MaxUnitsInStack {
+                    if unit.GetRace() != data.RaceFantastic && unit.GetRace() != data.RaceHero && len(attackerStack.Units()) < data.MaxUnitsInStack && classicZombie(unit) {
                         attacker.AddUnit(units.MakeOverworldUnitFromUnit(units.Zombie, attackerStack.X(), attackerStack.Y(), attackerStack.Plane(), attacker.GetBanner(), attacker.MakeExperienceInfo(), attacker.MakeUnitEnchantmentProvider()))
                     }
                 }
@@ -5804,7 +5811,7 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
             if defender.HasEnchantment(data.EnchantmentZombieMastery) {
                 for _, unit := range append(slices.Clone(defendingArmy.KilledUnits), attackingArmy.KilledUnits...) {
-                    if unit.GetRace() != data.RaceFantastic && unit.GetRace() != data.RaceHero && len(defenderStack.Units()) < data.MaxUnitsInStack {
+                    if unit.GetRace() != data.RaceFantastic && unit.GetRace() != data.RaceHero && len(defenderStack.Units()) < data.MaxUnitsInStack && classicZombie(unit) {
                         defender.AddUnit(units.MakeOverworldUnitFromUnit(units.Zombie, defenderStack.X(), defenderStack.Y(), defenderStack.Plane(), defender.GetBanner(), defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
                     }
                 }
@@ -5820,13 +5827,13 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     // experience
     if state == combat.CombatStateAttackerWin || state == combat.CombatStateDefenderFlee {
         for _, unit := range attackerStack.Units() {
-            if unit.GetRace() != data.RaceFantastic {
+            if unit.GetRace() != data.RaceFantastic && !(combat.ClassicRules && unit.IsUndead()) {
                 game.AddExperience(attacker, unit, defeatedDefenders * 2)
             }
         }
     } else if state == combat.CombatStateDefenderWin || state == combat.CombatStateAttackerFlee {
         for _, unit := range defenderStack.Units() {
-            if unit.GetRace() != data.RaceFantastic {
+            if unit.GetRace() != data.RaceFantastic && !(combat.ClassicRules && unit.IsUndead()) {
                 game.AddExperience(defender, unit, defeatedAttackers * 2)
             }
         }
@@ -9361,4 +9368,25 @@ func (game *Game) RelocateUnit(player *playerlib.Player, unit units.StackUnit) {
     game.ResolveStackAt(summonCity.X, summonCity.Y, summonCity.Plane)
 
     unit.SetBusy(units.BusyStatusNone)
+}
+
+
+// End_Of_Combat: a hero that died by irreversible damage
+func heroGone(model *combat.CombatModel, hero units.StackUnit) bool {
+    for _, army := range []*combat.Army{model.AttackingArmy, model.DefendingArmy} {
+        for _, gone := range army.GoneUnits {
+            if stackUnit, ok := gone.Unit.(units.StackUnit); ok && stackUnit == hero {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+// End_Of_Combat: Zombie Mastery raises only the dead of normal damage that were not undead
+func classicZombie(unit *combat.ArmyUnit) bool {
+    if !combat.ClassicRules {
+        return true
+    }
+    return unit.DeathReason() == combat.DamageNormal && !unit.Unit.IsUndead()
 }

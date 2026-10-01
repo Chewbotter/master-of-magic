@@ -61,3 +61,49 @@ combat tests. The quick resolution of battles nobody watches is in ai-combat.md.
 - Wrack: a unit with n figures failing takes n times n (`quirkWrackSquared`, the original's);
   immunity to death and Wraith Form spare it.
 - The cost of a spell by the distance to the fortress: the larger of the two distances.
+
+## Smaller rules
+
+Code: `combat/classiclows.go` and hooks in `combat/model.go` (the same switch); tests
+`TestClassicDeathReason`, `TestClassicRaiseDead`, `TestClassicMeleeOnFliers`, `TestClassicEntangle`.
+
+- The end: 50 whole turns are played. Fleeing: at Intro and Easy the human loses nobody; asleep,
+  confused and webbed units are lost anyway. A confused unit of the loser is lost. A unit drained
+  of life does not regenerate. A recalled unit is no kill. The winner's undead get no experience.
+  The items of a hero stoned or destroyed are lost. Zombie Mastery raises only the dead of normal
+  damage that were not undead.
+- A unit that dies of as much irreversible damage as any other is gone for good.
+- A ranged shot has the ranged bonuses only: the items for shooting, and the weapon and Holy Weapon
+  only for arrows and rocks, never for magic. Thrown and breath have neither, nor items.
+- Invulnerability takes 2 after every defense roll, not once before (and ranged no longer twice).
+- A magic shot may aim at a Magic Immune unit and meets a defense of 50.
+- Rocks: the Large Shield and Weapon Immunity count against them.
+- The walls' bonus counts for every kind of attack, an illusion too.
+- Wall of Darkness: only True Sight shoots in.
+- A unit that does not fly strikes a flier only with a ranged attack left, thrown, breath or a gaze;
+  bows, rocks and magic strike it for nothing.
+- A hasted magic shooter shoots twice with mana for it. Every attack, a shot too, wears the target's
+  counterattack down.
+- Holy Word: creatures and undead, a death roll at -2 always. Death Spell: normal damage, so the
+  dead can regenerate or rise. Flame Strike, Holy Word, Death Spell and Call Lightning spare Wraith
+  Form (`quirkWraithFormSpares`, the original's mistake).
+- Call Lightning: 3 to 5 bolts, each try a unit by chance that must be an enemy and win a roll of 1
+  in 2, up to 30 failed tries.
+- Mana Leak: the wizard's reserve, not its skill; a magic shooter loses a shot.
+- Entangle: a move of the turn from every unit, fliers too.
+- A spell stopped by Counter Magic or a node costs the whole skill but only the range's tenth in mana
+  (`quirkCounteredCheap`, the original's). Counter Magic is asked before the node.
+- No skill in battle while casting the Spell of Return.
+- The human pays the full cost of fixed cost spells in battle; the spellbook shows the reduced one
+  (`quirkHumanNoCombatDiscount`, the original's as reconstructed).
+- The human controls at most 9 units when summoning or raising the dead.
+- Possession on any unit of a normal race, heroes too, not undead.
+- Raise Dead: half the figures of a unit of several come back whole, a unit of one with half its
+  hits; its enchantments of the world map are gone too.
+- Elemental Armor in place of Resist Elements; Iron Skin in place of Stone Skin.
+- Webs are torn at the start of every turn (missiles by the larger of melee and ranged, breath and
+  gaze by both, others by melee); a unit that tore free acts that turn.
+- Summon Demon: the demon comes in the middle of the caster's side.
+- Disenchant Area and True also reach the other side's vortexes and the city's walls of fire and
+  darkness (for the battle).
+- The item power Death gives Death Touch.

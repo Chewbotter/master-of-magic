@@ -276,3 +276,4 @@ Death Wish (stubs).
 9. The LOWs by system.
    UNITS DONE 2026-09-30, see units.md (what is left is at the end of improvements.md).
    OVERLAND MAGIC DONE 2026-09-30, see magic.md.
+   COMBAT DONE 2026-09-30, see combat-rules.md "Smaller rules".

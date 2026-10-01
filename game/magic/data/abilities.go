@@ -603,6 +603,8 @@ func (item ItemAbility) AbilityType() AbilityType {
         case ItemAbilityHolyAvenger: return AbilityDispelEvil
         // FIXME: should return AbilityValue(StoningTouch, 1)
         case ItemAbilityStoning: return AbilityStoningTouch
+        // the item power Death gives Death Touch (Item_Powers_To_Attack_Attributes)
+        case ItemAbilityDeath: return AbilityDeathTouch
         case ItemAbilityPhantasmal: return AbilityIllusion
 
     }

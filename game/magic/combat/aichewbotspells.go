@@ -161,7 +161,7 @@ func (model *CombatModel) doAiCastChewbot(spellSystem SpellSystem, army *Army) b
 
     model.chewInvoke(spellSystem, army, nil, spell, target, func(success bool) {
         army.ManaPool -= cost
-        army.Player.UseMana(int(float64(cost) * army.Range.ToFloat()))
+        army.Player.UseMana(model.castMana(army, cost))
         army.Casted = true
         casted = true
         if success {
