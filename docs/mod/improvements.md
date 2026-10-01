@@ -345,8 +345,12 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
   first. The merges within the AI's moves left the stack merged away with its units in the loop of
   moves, which then walked them off (unit away from its stack): the loop skips a stack that is no
   longer the player's; a fleeing defender's emptied stack is removed. All-AI runs go on when the
-  wizard of the human's slot falls (`-sim-all-ai` sets `SimPlayOn`). OPEN: a settler alone on a
-  square of water in 2 of 20 traced runs after these fixes, cause not found.
+  wizard of the human's slot falls (`-sim-all-ai` sets `SimPlayOn`). OPEN after the final round
+  (90 traced runs, 2026-09-30, `_build/a/fuzz3`): a walker on water in 17 runs, most of them a
+  settler alone on a Shore square (cause not found; some were armies under Water Walking, which
+  the check did not know then and now does); a dead unit on the map in 2 of 30 five-wizard runs
+  (one after a lost attack, one with no battle in the journal); more than 9 on a square in 1 of 30
+  two-wizard runs.
 - Seen, the original's rules as ported: allied computer wizards turn an alliance into a pact at the
   next negotiation and back (`relations.quirkAllianceBecomesPact`); two wizards at war can go
   straight to an alliance; computer wizards never meet each other by sight (contact.md), so an

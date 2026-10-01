@@ -179,7 +179,7 @@ func (game *Game) simCheckInto(stats *SimStats) {
             water := mapUse.GetTile(x, y).Tile.IsWater()
             carried := false
             for _, unit := range stackUnits {
-                if unit.GetAbilityValue(data.AbilityTransport) > 0 || unit.HasAbility(data.AbilityWindWalking) {
+                if unit.GetAbilityValue(data.AbilityTransport) > 0 || unit.HasAbility(data.AbilityWindWalking) || unit.HasEnchantment(data.UnitEnchantmentWindWalking) {
                     carried = true
                 }
             }
@@ -194,7 +194,10 @@ func (game *Game) simCheckInto(stats *SimStats) {
                 if unit.GetHealth() <= 0 {
                     note("dead unit on the map", "%v of %v at %v,%v", unit.GetName(), name, x, y)
                 }
-                if water && !carried && unit.IsLandWalker() && !simCityAt(game, x, y, plane) {
+                // a rider by the rules of movement: Water Walking, Wraith Form and the non-corporeal
+                // stand on water (movement.go unitSwims)
+                rider := !unit.IsFlying() && !unitSwims(unit) && !unit.IsSailing()
+                if water && !carried && rider && !simCityAt(game, x, y, plane) {
                     var with []string
                     for _, other := range stackUnits {
                         with = append(with, other.GetName())
