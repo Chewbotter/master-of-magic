@@ -149,6 +149,10 @@ func (game *Game) doCastSpellAI(player *playerlib.Player, spell spellbook.Spell)
 
 // Spell Blast: the target's spell is lost, the caster pays what the target had put into it
 func spellBlastEffect(caster *playerlib.Player, target *playerlib.Player) bool {
+    if ClassicMagic {
+        // Spell Blast, see classicSpellBlast
+        return classicSpellBlast(caster, target)
+    }
     if target.Defeated || target.Banished || !target.CastingSpell.Valid() || target.CastingSpellProgress > caster.Mana {
         return false
     }
@@ -168,6 +172,10 @@ func cruelUnmindingEffect(target *playerlib.Player) (bool, string) {
     // never zero, or rand.N fails
     reductionRandomSpread := max(maxReduction - minReduction, 1)
     reduction := minReduction + rand.N(reductionRandomSpread)
+    if ClassicMagic {
+        // Apply_Cruel_Unminding
+        reduction = classicUnminding(targetSkill)
+    }
     actuallyReduced := target.ReduceCastingSkill(reduction)
     return true, fmt.Sprintf("%s loses %d points of casting ability", target.Wizard.Name, actuallyReduced)
 }
@@ -178,6 +186,12 @@ func drainPowerEffect(target *playerlib.Player) (bool, string) {
         return false, ""
     }
     drainAmount := min(target.Mana, 50 + rand.N(101))
+    if ClassicMagic {
+        // Apply_Drain_Power: the number told is the roll, the reserve goes as far as it has
+        rolled := classicDrainAmount()
+        target.Mana = max(0, target.Mana - rolled)
+        return true, fmt.Sprintf("%s loses %d points of mana", target.Wizard.Name, rolled)
+    }
     target.Mana -= drainAmount
     return true, fmt.Sprintf("%s loses %d points of mana", target.Wizard.Name, drainAmount)
 }
@@ -215,7 +229,13 @@ func (game *Game) spellBindingEffect(caster *playerlib.Player, enchantment data.
     }
     allSpells := game.AllSpells()
     targetSpell := allSpells.FindByName(enchantment.String())
-    if spellbook.RollDispelChance(spellbook.ComputeDispelChance(spellBindingStrength, targetSpell.Cost(true), targetSpell.Magic, &owner.Wizard)) {
+    strength := spellBindingStrength
+    if ClassicMagic && caster.IsAI() {
+        // Cast_Spell_Binding: a computer wizard binds with the spell's table cost
+        binding := game.AllSpells()
+        strength = binding.FindByName("Spell Binding").CastCost
+    }
+    if spellbook.RollDispelChance(spellbook.ComputeDispelChance(strength, targetSpell.Cost(true), targetSpell.Magic, &owner.Wizard)) {
         owner.RemoveEnchantment(enchantment)
         caster.AddEnchantment(enchantment)
         game.ApplyGlobalEnchantment(enchantment, caster)
@@ -226,3 +246,32 @@ func (game *Game) spellBindingEffect(caster *playerlib.Player, enchantment data.
 
 // the dispel strength of Spell Binding as upstream has it
 const spellBindingStrength = 20000
+
+// Spell Blast: a computer caster pays the target spell's table cost less what is left of it when it
+// has more, the human its cost less what is left when it has that much; the Spell of Return is not
+// lost, it starts over (never below 0, MY CALL: the original's price can be below 0)
+func classicSpellBlast(caster *playerlib.Player, target *playerlib.Player) bool {
+    if target.Defeated || !target.CastingSpell.Valid() {
+        return false
+    }
+    remaining := target.ComputeEffectiveSpellCost(target.CastingSpell, true) - target.CastingSpellProgress
+    var price int
+    if caster.IsAI() {
+        price = max(0, target.CastingSpell.CastCost - remaining)
+        if caster.Mana <= price {
+            return false
+        }
+    } else {
+        price = max(0, target.CastingSpell.Cost(true) - remaining)
+        if price > caster.Mana {
+            return false
+        }
+    }
+    caster.Mana -= price
+    if target.CastingSpell.Name == "Spell of Return" {
+        target.CastingSpellProgress = 0
+    } else {
+        target.InterruptCastingSpell()
+    }
+    return true
+}

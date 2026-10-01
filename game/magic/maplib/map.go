@@ -1447,6 +1447,12 @@ func (mapObject *Map) HasVolcano(x int, y int) bool {
     return exists
 }
 
+// Cast_Change_Terrain: a volcano, recorded or made with the map, becomes a mountain, no mineral
+func (mapObject *Map) ClearVolcano(x int, y int) {
+    delete(mapObject.ExtraMap[image.Pt(x, y)], ExtraKindVolcano)
+    mapObject.Map.SetTerrainAt(x, y, terrain.Mountain, mapObject.Data, mapObject.Plane)
+}
+
 func (mapObject *Map) RemoveVolcano(x int, y int) {
     _, exists := mapObject.ExtraMap[image.Pt(x, y)][ExtraKindVolcano]
     if exists {

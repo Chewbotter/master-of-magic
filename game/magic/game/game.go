@@ -4688,6 +4688,14 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
                     cast := decision.(*playerlib.AICastSpellDecision)
 
                     if player.CastingSpell.Invalid() {
+                        if ClassicMagic && cast.Spell.IsVariableCost() {
+                            // Cast_Spell_Overland_Do: a computer wizard's Disenchant and Disjunction at 3 times
+                            cast.Spell.OverrideCost = cast.Spell.BaseCost(true) * 3
+                        }
+                        if ClassicMagic && cast.Spell.IsSpellOfMastery() {
+                            // Cast_Spell_Of_Mastery: every start of it is shown to the human
+                            game.announceMastery(player)
+                        }
                         player.CastingSpell = cast.Spell
                     }
                 case *playerlib.AICastUnitSpellDecision:
@@ -5319,6 +5327,10 @@ func (game *Game) maybeDoNaturesWrath(caster *playerlib.Player) {
             var removeUnits []units.StackUnit
             if stack != nil {
                 for _, unit := range stack.Units() {
+                    if ClassicMagic && (unit.IsFlying() || unit.HasAbility(data.AbilityNonCorporeal)) {
+                        // Call_Forth_The_Force_Of_Nature: fliers and non-corporeal are spared
+                        continue
+                    }
                     if rand.N(100) < 15 {
                         log.Printf("Natures wrath: destroy unit %v", unit.GetName())
                         removeUnits = append(removeUnits, unit)
@@ -6277,6 +6289,25 @@ func (game *Game) ShowSpellBookCastUI(yield coroutine.YieldFunc, player *playerl
             }
         }
     }))
+}
+
+// the screen of a computer wizard starting the Spell of Mastery, for the human
+func (game *Game) announceMastery(player *playerlib.Player) {
+    if game.headless || game.captureSkipping || game.Model.GetHumanPlayer() == nil {
+        return
+    }
+    name := player.Wizard.Name
+    select {
+        case game.Events <- &GameEventInvokeRoutine{Routine: func(yield coroutine.YieldFunc) {
+            game.Music.PushSong(musiclib.SongSpellOfMastery)
+            logic, draw := mastery.ShowSpellOfMasteryScreen(game.Cache, name)
+            game.PushDrawer(draw)
+            logic(yield)
+            game.PopDrawer()
+            game.Music.PopSong()
+        }}:
+        default:
+    }
 }
 
 // called when a player's casting of the Spell of Mastery completes. shows the vortex
@@ -7898,6 +7929,11 @@ func (game *Game) applyChaosChannels(unit *units.OverworldUnit) {
 }
 
 func handleStasis(stack *playerlib.UnitStack) {
+    if ClassicMagic {
+        // Do_All_Units_XP_Check, see magicclassic.go
+        classicStasisTurn(stack)
+        return
+    }
     // this seems like a reasonable place to handle stasis, but it could be moved elsewhere
     for _, unit := range stack.Units() {
         if unit.GetBusy() == units.BusyStatusStasis {
@@ -7940,6 +7976,9 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
         power = 0
     }
 
+    // Next_Turn_Calc: the turn the Time Stop runs out is still stopped
+    stoppedAtStart := ClassicMagic && player.HasEnchantment(data.EnchantmentTimeStop)
+
     if playerlib.ClassicEconomy {
         // the upkeep the human can not pay, the human's research income for the list (economy.go)
         if player.HasEnchantment(data.EnchantmentTimeStop) {
@@ -7959,7 +7998,7 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
     }
 
     // timestop may have dissipated by now
-    timeStop := player.HasEnchantment(data.EnchantmentTimeStop)
+    timeStop := player.HasEnchantment(data.EnchantmentTimeStop) || stoppedAtStart
 
     player.Gold += player.GoldPerTurn()
     if player.Gold < 0 {
@@ -8014,7 +8053,8 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
     }
 
     if player.ResearchingSpell.Valid() {
-        if !timeStop {
+        // Player_Magic_Power_Income_Total: no research while casting the Spell of Return
+        if !timeStop && !(returning && ClassicMagic) {
             // log.Printf("wizard %v power=%v researching=%v progress=%v/%v perturn=%v", player.Wizard.Name, power, player.ResearchingSpell.Name, player.ResearchProgress, player.ResearchingSpell.ResearchCost, player.SpellResearchPerTurn(power))
             player.ResearchProgress += player.ComputeEffectiveResearchPerTurn(player.SpellResearchPerTurn(power), player.ResearchingSpell)
             if player.ResearchProgress >= player.ResearchingSpell.ResearchCost {
@@ -8220,9 +8260,12 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
         player.RemoveCity(city)
     }
 
-    game.maybeHireHero(player)
-    game.maybeHireMercenaries(player)
-    game.maybeBuyFromMerchant(player)
+    if !stoppedAtStart {
+        // Next_Turn_Calc: no offers while time stands still
+        game.maybeHireHero(player)
+        game.maybeHireMercenaries(player)
+        game.maybeBuyFromMerchant(player)
+    }
 
     player.UpdateFogVisibility()
 
@@ -8558,19 +8601,33 @@ func (game *Game) EndOfTurn() {
         }
     }
 
-    game.revertVolcanos()
+    // Next_Turn_Calc: while time stands still nothing of the world moves (magicclassic.go)
+    stopped := ClassicMagic && game.Model.HasEnchantment(data.EnchantmentTimeStop)
+
+    if !stopped {
+        game.revertVolcanos()
+    }
 
     // FIXME: the wiki says armageddon will not do anything while time stop is in effect.
     // figure out what other global spells don't have any effect (great wasting, chaos rift, meteor storm)
-    if !game.Model.HasEnchantment(data.EnchantmentTimeStop) {
-        game.doArmageddon()
+    if ClassicMagic {
+        if !stopped {
+            game.classicArmageddon()
+            game.classicGreatWasting()
+            game.doChaosRift()
+            game.classicMeteorStorm()
+        }
+    } else {
+        if !game.Model.HasEnchantment(data.EnchantmentTimeStop) {
+            game.doArmageddon()
+        }
+
+        game.doGreatWasting()
+
+        game.doChaosRift()
+
+        game.doMeteorStorm()
     }
-
-    game.doGreatWasting()
-
-    game.doChaosRift()
-
-    game.doMeteorStorm()
 
     game.Model.TurnNumber += 1
 
@@ -8578,7 +8635,7 @@ func (game *Game) EndOfTurn() {
 
      // gate random-event rolls behind the user toggle; in-flight events continue
      // their normal decay path inside DoRandomEvents and this just skips new rolls.
-    if game.Settings.RandomEvents {
+    if game.Settings.RandomEvents && !stopped {
         if classicGiftItem == nil {
             classicGiftItem = func() (artifact.Artifact, bool) {
                 return artifact.MakeClassicRandomItem(game.Cache, 2, 0)

@@ -575,6 +575,26 @@ func (city *City) PowerCitizens() int {
 func (city *City) PowerMinerals() int {
     catchment := city.GetCatchmentArea()
 
+    if ClassicCities {
+        // Square_Magic_Power: per square in whole numbers, twice for dwarves, half again with a
+        // Miners' Guild, half on a shared square
+        total := 0
+        for _, tile := range catchment {
+            value := tile.GetBonus().PowerBonus()
+            if city.Race == data.RaceDwarf {
+                value *= 2
+            }
+            if city.Buildings.Contains(buildinglib.BuildingMinersGuild) {
+                value = value * 3 / 2
+            }
+            if tile.IsShared {
+                value /= 2
+            }
+            total += value
+        }
+        return total
+    }
+
     var extra float32 = 0
     for _, tile := range catchment {
         value := float32(tile.GetBonus().PowerBonus())

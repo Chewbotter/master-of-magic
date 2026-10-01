@@ -1169,6 +1169,21 @@ func (player *Player) ComputeOverworldCastingSkill() int {
     base := player.ComputeCastingSkill()
     heroes := float32(0)
 
+    if ClassicEconomy {
+        // Player_Hero_Casting_Skill: half the points of each hero on the fortress's square
+        fortress := player.FindFortressCity()
+        if fortress != nil {
+            if stack := player.FindStack(fortress.X, fortress.Y, fortress.Plane); stack != nil {
+                for _, unit := range stack.Units() {
+                    if unit.IsHero() {
+                        base += int(unit.GetCastingSkill()) / 2
+                    }
+                }
+            }
+        }
+        return base
+    }
+
     // for each hero at the fortress city, add half of their caster ability to the casting skill
     fortressCity := player.FindFortressCity()
     if fortressCity != nil {

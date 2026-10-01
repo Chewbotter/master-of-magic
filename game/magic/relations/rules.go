@@ -513,6 +513,24 @@ func (rules *Rules) breakTreatiesBackwards(breaker *playerlib.Player, victim *pl
 // original lowers it and then overwrites it with the target's own, so only the peace ends; the
 // spell is meant to do both)
 func (rules *Rules) Subversion(caster *playerlib.Player, target *playerlib.Player) {
+    if ClassicSubversion {
+        // Apply_Subversion: every computer wizard but the target (the caster too) that has met it
+        // drops its view of the target 25, then takes the target's view of it; the peace ends
+        for _, other := range rules.wizards() {
+            if other == target || other.IsHuman() {
+                continue
+            }
+            otherView, targetView := view(other, target), view(target, other)
+            if otherView == nil || targetView == nil {
+                continue
+            }
+            otherView.VisibleRelation = max(otherView.VisibleRelation - 25, -100)
+            otherView.VisibleRelation = targetView.VisibleRelation
+            otherView.PeaceCounter = 0
+            targetView.PeaceCounter = 0
+        }
+        return
+    }
     for _, other := range rules.wizards() {
         if other == caster || other == target {
             continue
@@ -591,3 +609,6 @@ func (rules *Rules) computerWizards() []*playerlib.Player {
     }
     return out
 }
+
+// false: upstream's Subversion as this port first had it (the fork's own reading)
+var ClassicSubversion = true

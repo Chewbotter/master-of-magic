@@ -251,6 +251,10 @@ type Wizard interface {
 // false: upstream's costs in floating point
 var ClassicSpellCost = true
 
+// Spellbook_Mana_Adder_Screen: the extra of an overland slider spell is up to 100% of its table cost
+// (false: upstream's 4 times)
+var ClassicOverlandSlider = true
+
 // Casting_Cost and Casting_Cost_Reduction (ReMoM NEXTTURN.c): the table cost, half again for
 // nature and life under Evil Omens, five times overland for a spell of both books, then the
 // reduction in whole percent (books over 7 10 each, the masteries 15, Conjurer 25 on summoning,
@@ -1999,6 +2003,9 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
             var powerGroup *uilib.UIElementGroup
             // on the overland the user might take multiple turns to cast the spell, but the cost can be anything
             extraStrength := spell.Cost(overland) * 4
+            if overland && ClassicOverlandSlider {
+                extraStrength = spell.BaseCost(true)
+            }
             if !overland {
                 // in combat, the cost of the spell cannot exceed the casting skill
                 // maximum additional strength is whatever the casting skill is minus the cost of the spell

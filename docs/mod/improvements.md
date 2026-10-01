@@ -243,3 +243,21 @@ quirk constant where there is one: turning it is the change. New calls go here t
   1 in 66 (the original's, likely a mistake); Torin's table cost of 600 for a rare foe.
 - Fixed, the fork's: the squares around a unit or city skipped the row above and could reach past
   the bottom of the map (`FindEscapePosition`, the city's squares: `dy` tested for `cy`).
+
+## Overland magic (magic.md)
+
+- Kept, the original's: Meteor Storm asks a city's counters as if the human cast it, with no
+  strength, so any Nightshade stops it (`quirkMeteorStormHumanCounter`); Subversion's -25 is
+  overwritten at once by the target's view (`relations.ClassicSubversion`; the fork's own reading
+  is the other way round). Suggested: the caster's counters; the -25 kept.
+- MY CALL: Spell Blast never pays below 0 (the original's price of a computer wizard can be below
+  0 for spells of both books, which would give it mana).
+- MY CALL: Plane Shift still refuses a lair on the other side (a lair holds no units in the
+  original); Disenchant read by its checked combat twin (the overland one as written can not be
+  right).
+- Not ported: Nature's Wrath striking only after a cast that went through (here at the start of
+  every chaos and death cast, as upstream); the Nightshade count of a turn before and never cleared;
+  Wall of Stone refused on walls sold or destroyed this turn (the fork keeps no such state); a
+  computer wizard's Move Fortress moving the HUMAN's fortress (the original's mistake); Death Wish
+  and Great Unsummoning counters (stubs in the reconstruction); the Stasis of the new units is not
+  saved (a load lets them roll at once).

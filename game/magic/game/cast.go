@@ -336,7 +336,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
         */
         case "Chaos Rift":
             before := func (city *citylib.City) bool {
-                if city.CheckDispel(spell) {
+                if game.cityCounters(city, spell, player) {
                     game.ShowFizzleSpell(spell, player)
                     return false
                 }
@@ -346,7 +346,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             game.doCastCityEnchantmentFull(spell, player, LocationTypeEnemyCity, data.CityEnchantmentChaosRift, before, noCityCallback)
         case "Cursed Lands":
             before := func (city *citylib.City) bool {
-                if city.CheckDispel(spell) {
+                if game.cityCounters(city, spell, player) {
                     game.ShowFizzleSpell(spell, player)
                     return false
                 }
@@ -356,7 +356,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             game.doCastCityEnchantmentFull(spell, player, LocationTypeEnemyCity, data.CityEnchantmentCursedLands, before, noCityCallback)
         case "Famine":
             before := func (city *citylib.City) bool {
-                if city.CheckDispel(spell) {
+                if game.cityCounters(city, spell, player) {
                     game.ShowFizzleSpell(spell, player)
                     return false
                 }
@@ -366,7 +366,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             game.doCastCityEnchantmentFull(spell, player, LocationTypeEnemyCity, data.CityEnchantmentFamine, before, noCityCallback)
         case "Pestilence":
             before := func (city *citylib.City) bool {
-                if city.CheckDispel(spell) {
+                if game.cityCounters(city, spell, player) {
                     game.ShowFizzleSpell(spell, player)
                     return false
                 }
@@ -376,7 +376,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             game.doCastCityEnchantmentFull(spell, player, LocationTypeEnemyCity, data.CityEnchantmentPestilence, before, noCityCallback)
         case "Evil Presence":
             before := func (city *citylib.City) bool {
-                if city.CheckDispel(spell) {
+                if game.cityCounters(city, spell, player) {
                     game.ShowFizzleSpell(spell, player)
                     return false
                 }
@@ -477,7 +477,14 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                 game.doCastOnMap(yield, tileX, tileY, 3, spell.Sound, func (x int, y int, animationFrame int) {})
 
                 stack := player.FindStack(tileX, tileY, game.Model.Plane)
-                if stack != nil {
+                if stack != nil && ClassicMagic {
+                    // Cast_Plane_Shift, see magicclassic.go
+                    if game.classicPlaneShift(stack, player) {
+                        game.Model.Plane = stack.Plane()
+                    } else {
+                        game.ShowFizzleSpell(spell, player)
+                    }
+                } else if stack != nil {
                     err := game.PlaneShift(stack, player)
                     if err != nil {
                         game.spellNotice(player, fmt.Sprintf("%v", err))
@@ -544,12 +551,15 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
 
                     // FIXME: I think this check isn't needed because the SelectLocationForSpell should prevent selecting a city tile
                     city, _ := game.Model.FindCity(tileX, tileY, game.Model.Plane)
-                    if city != nil && !city.CanTarget(spell) {
+                    if game.cityRefuses(city, spell) {
                         game.ShowFizzleSpell(spell, player)
                         return
                     }
 
-                    // FIXME: dispel chance if tile contains a city
+                    if ClassicMagic && game.cityCounters(city, spell, player) {
+                        game.ShowFizzleSpell(spell, player)
+                        return
+                    }
 
                     game.stackSpellReaction(player, owner)
                     game.doCastOnMap(yield, tileX, tileY, 14, spell.Sound, func (x int, y int, animationFrame int) {})
@@ -573,12 +583,12 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
 
                     // FIXME: I think this check isn't needed because the SelectLocationForSpell should prevent selecting a city tile
                     city, _ := game.Model.FindCity(tileX, tileY, game.Model.Plane)
-                    if city != nil && !city.CanTarget(spell) {
+                    if game.cityRefuses(city, spell) {
                         game.ShowFizzleSpell(spell, player)
                         return
                     }
 
-                    if city != nil && city.CheckDispel(spell) {
+                    if city != nil && game.cityCounters(city, spell, player) {
                         game.ShowFizzleSpell(spell, player)
                         return
                     }
@@ -588,6 +598,10 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                     // FIXME: maybe apply a Stasis unit enchantment so the user can see the unit is under the stasis effect?
                     for _, unit := range stack.Units() {
                         unit.SetBusy(units.BusyStatusStasis)
+                        if ClassicMagic {
+                            // Cast_Stasis: no roll on the next turn
+                            classicStasisNew[unit] = true
+                        }
                     }
 
                 }
@@ -690,7 +704,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             selected := func (yield coroutine.YieldFunc, tileX int, tileY int){
                 city, _ := game.Model.FindCity(tileX, tileY, game.Model.Plane)
                 if city != nil {
-                    if city.CheckDispel(spell) {
+                    if game.cityCounters(city, spell, player) {
                         game.ShowFizzleSpell(spell, player)
                         return
                     }
@@ -715,7 +729,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
         case "Fire Storm":
             selected := func (yield coroutine.YieldFunc, tileX int, tileY int){
                 city, _ := game.Model.FindCity(tileX, tileY, game.Model.Plane)
-                if city != nil && city.CheckDispel(spell) {
+                if city != nil && game.cityCounters(city, spell, player) {
                     game.ShowFizzleSpell(spell, player)
                     return
                 }
@@ -759,7 +773,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             selected := func (yield coroutine.YieldFunc, tileX int, tileY int){
                 chosenCity, owner := game.Model.FindCity(tileX, tileY, game.Model.Plane)
 
-                if chosenCity.CheckDispel(spell) {
+                if game.cityCounters(chosenCity, spell, player) {
                     game.ShowFizzleSpell(spell, player)
                     return
                 }
@@ -784,7 +798,8 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                 chosenCity, _ := game.Model.FindCity(tileX, tileY, game.Model.Plane)
 
                 // unclear if chaos ward makes the spell fizzle or if this tile just can't be selected
-                if chosenCity != nil && chosenCity.CheckDispel(spell) {
+                // (Cast_Raise_Volcano: no counters)
+                if chosenCity != nil && !ClassicMagic && chosenCity.CheckDispel(spell) {
                     game.ShowFizzleSpell(spell, player)
                     return
                 }
@@ -802,7 +817,7 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
                 chosenCity, _ := game.Model.FindCity(tileX, tileY, game.Model.Plane)
 
                 // FIXME: it's not obvious if Chaos Ward prevents Corruption from being cast on city center. Left it here because it sounds logical
-                if chosenCity != nil && chosenCity.CheckDispel(spell) {
+                if chosenCity != nil && game.cityCounters(chosenCity, spell, player) {
                     game.ShowFizzleSpell(spell, player)
                     return
                 }
@@ -872,9 +887,13 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             game.doCastNewCityBuilding(spell, player, LocationTypeFriendlyCity, building.BuildingFortress, "Your fortress is already in this city", after)
         case "Word of Recall":
             before := func (unit units.StackUnit) bool {
-                summonCity := player.FindSummoningCity()
+                summonCity := classicSummonCity(player)
                 if summonCity == nil {
                     return false
+                }
+                if ClassicMagic {
+                    // Cast_Word_Of_Recall: no checks
+                    return true
                 }
 
                 if unit.GetX() == summonCity.X && unit.GetY() == summonCity.Y {
@@ -1027,7 +1046,7 @@ func (game *Game) MakeResurrectionUI(caster *playerlib.Player, heroes []*herolib
                 caster.AddHeroToSummoningCircle(hero)
                 game.ResolveStackAt(hero.GetX(), hero.GetY(), hero.GetPlane())
 
-                summoningCity := caster.FindSummoningCity()
+                summoningCity := classicSummonCity(caster)
                 if summoningCity != nil {
                     game.Model.Plane = summoningCity.Plane
                     game.Events <- &GameEventInvokeRoutine{
@@ -1550,6 +1569,12 @@ func (game *Game) doCastSpellWard(player *playerlib.Player, spell spellbook.Spel
 func (game *Game) doDisenchantArea(yield coroutine.YieldFunc, player *playerlib.Player, spell spellbook.Spell, disenchantTrue bool, tileX int, tileY int) {
     game.doCastOnMap(yield, tileX, tileY, 9, spell.Sound, func (x int, y int, animationFrame int){})
 
+    if ClassicMagic {
+        // Cast_Disenchant, see magicclassic.go
+        game.classicDisenchant(player, spell, disenchantTrue, tileX, tileY)
+        return
+    }
+
     disenchantStrength := spell.Cost(true)
     if disenchantTrue {
         // strength is 3x mana cost
@@ -1740,6 +1765,24 @@ func (game *Game) doSelectUnit(yield coroutine.YieldFunc, player *playerlib.Play
 }
 
 func (game *Game) doSummonHero(player *playerlib.Player, champion bool) {
+    if ClassicMagic {
+        // Cast_Summon_Hero, see magicclassic.go
+        hero := classicSummonPick(player, champion)
+        if hero == nil {
+            return
+        }
+        select {
+            case game.Events <- &GameEventSummonHero{Player: player, Champion: champion, Female: hero.IsFemale()}:
+            default:
+        }
+        select {
+            case game.Events <- &GameEventHireHero{Hero: hero, Player: player, Cost: 0}:
+            default:
+        }
+        game.RefreshUI()
+        return
+    }
+
     var choices []*herolib.Hero
     for _, hero := range player.HeroPool {
         // torin is not summonable through this method
@@ -1800,7 +1843,7 @@ func (game *Game) doSummonUnit(player *playerlib.Player, unit units.Unit) {
         default:
     }
 
-    summonCity := player.FindSummoningCity()
+    summonCity := classicSummonCity(player)
     if summonCity != nil {
         overworldUnit := units.MakeOverworldUnitFromUnit(unit, summonCity.X, summonCity.Y, summonCity.Plane, player.Wizard.Banner, player.MakeExperienceInfo(), player.MakeUnitEnchantmentProvider())
         player.DidSummonUnit(overworldUnit)
@@ -2106,6 +2149,10 @@ func (game *Game) selectLocationForSpell(yield coroutine.YieldFunc, spell spellb
                             tileX = overworld.Map.WrapX(tileX)
                             if player.IsTileExplored(tileX, tileY, game.Model.Plane) {
                                 if overworld.Map.GetTile(tileX, tileY).Tile.IsLand() {
+                                    if ClassicMagic && spell.Name == "Corruption" && (overworld.Map.GetMagicNode(tileX, tileY) != nil || game.Model.CurrentMap().HasCorruption(tileX, tileY)) {
+                                        // Cast_Corruption: not a node, not corrupted land
+                                        break
+                                    }
                                     return tileX, tileY, false
                                 }
                             }
@@ -2123,6 +2170,10 @@ func (game *Game) selectLocationForSpell(yield coroutine.YieldFunc, spell spellb
                                         }
                                     }
 
+                                    if own := player.FindStack(tileX, tileY, game.Model.Plane); ClassicMagic && own != nil && len(own.Units()) >= data.MaxUnitsInStack {
+                                        // Cast_Floating_Island: not onto a full stack
+                                        empty = false
+                                    }
                                     if empty {
                                         return tileX, tileY, false
                                     }
@@ -2179,7 +2230,12 @@ func (game *Game) selectLocationForSpell(yield coroutine.YieldFunc, spell spellb
 
                             if player.IsTileExplored(tileX, tileY, game.Model.Plane) {
                                 node := overworld.Map.GetMagicNode(tileX, tileY)
-                                if node != nil && node.MeldingWizard != player {
+                                if ClassicMagic {
+                                    // Cast_Warp_Node: another wizard's node that is not warped
+                                    if node != nil && node.MeldingWizard != nil && node.MeldingWizard != player && !node.Warped {
+                                        return tileX, tileY, false
+                                    }
+                                } else if node != nil && node.MeldingWizard != player {
                                     return tileX, tileY, false
                                 }
                             }
@@ -2199,7 +2255,7 @@ func (game *Game) selectLocationForSpell(yield coroutine.YieldFunc, spell spellb
                         for _, enemy := range game.Model.GetEnemies(player) {
                             city := enemy.FindCity(tileX, tileY, game.Model.Plane)
                             if city != nil {
-                                if !city.CanTarget(spell) {
+                                if !ClassicMagic && !city.CanTarget(spell) {
                                     game.doNotice(yield, ui, fmt.Sprintf("You cannot cast %v on this city", spell.Name))
                                     break
                                 } else {
@@ -2220,7 +2276,7 @@ func (game *Game) selectLocationForSpell(yield coroutine.YieldFunc, spell spellb
                             if stack != nil && entityInfo.ContainsEnemy(tileX, tileY, game.Model.Plane, player) {
                                 city := entityInfo.FindCity(tileX, tileY, game.Model.Plane)
 
-                                if city != nil && !city.CanTarget(spell) {
+                                if city != nil && !ClassicMagic && !city.CanTarget(spell) {
                                     game.doNotice(yield, ui, fmt.Sprintf("You cannot cast %v on this unit", spell.Name))
                                     break
                                 } else {
@@ -2420,7 +2476,12 @@ func (game *Game) doCastChangeTerrain(yield coroutine.YieldFunc, tileX int, tile
                 case terrain.Grass:
                     mapObject.Map.SetTerrainAt(x, y, terrain.Forest, mapObject.Data, mapObject.Plane)
                 case terrain.Volcano:
-                    mapObject.RemoveVolcano(x, y)
+                    if ClassicMagic {
+                        // Cast_Change_Terrain: any volcano becomes a mountain, no mineral
+                        mapObject.ClearVolcano(x, y)
+                    } else {
+                        mapObject.RemoveVolcano(x, y)
+                    }
                 case terrain.Mountain:
                     mapObject.Map.SetTerrainAt(x, y, terrain.Hill, mapObject.Data, mapObject.Plane)
             }
@@ -2465,8 +2526,13 @@ func (game *Game) doCastRaiseVolcano(yield coroutine.YieldFunc, tileX int, tileY
     mapObject.SetVolcano(tileX, tileY, player)
 
     // volcanoes may destroy buildings if cast in a city
+    caster := player
     for _, player := range game.Model.Players {
         city := player.FindCity(tileX, tileY, mapObject.Plane)
+        if city != nil && ClassicMagic && !caster.IsHuman() && !player.IsHuman() {
+            // Cast_Raise_Volcano: the buildings only when the human takes part
+            continue
+        }
         if city != nil {
             for _, building := range city.Buildings.Values() {
                 if rand.N(100) < 15 {

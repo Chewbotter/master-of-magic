@@ -1828,6 +1828,20 @@ func (model *GameModel) doCallTheVoid(city *citylib.City, player *playerlib.Play
     killedUnits := 0
     if stack != nil {
         for _, unit := range stack.Units() {
+            if ClassicMagic {
+                // Apply_Call_The_Void: every unit 10, but Magic Immunity, Righteousness and the
+                // enchantment of Regeneration
+                if unit.HasAbility(data.AbilityMagicImmunity) || unit.HasEnchantment(data.UnitEnchantmentRighteousness) || unit.HasEnchantment(data.UnitEnchantmentRegeneration) {
+                    continue
+                }
+                unit.AdjustHealth(-10)
+                if unit.GetHealth() <= 0 {
+                    player.RemoveUnit(unit)
+                    killedUnits += 1
+                }
+                continue
+            }
+
             // some units are immune
             if unit.HasAbility(data.AbilityMagicImmunity) || unit.HasAbility(data.AbilityRegeneration) || unit.HasEnchantment(data.UnitEnchantmentRighteousness) {
                 continue

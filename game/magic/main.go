@@ -41,6 +41,7 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
+    "github.com/kazzmir/master-of-magic/game/magic/relations"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/game/magic/mouse"
     "github.com/kazzmir/master-of-magic/game/magic/util"
@@ -1076,6 +1077,9 @@ var classicHeroes = true
 // -classic-units
 var classicUnits = true
 
+// -classic-magic
+var classicMagic = true
+
 var captureOpponents int
 // development: the land size of a quick start, below 0 by chance
 var captureLandSize int
@@ -1489,6 +1493,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&ai.ChewbotNeutralLog, "capture-neutral-log", false, "development: log what Chewbot's neutral player does")
     flag.BoolVar(&citylib.ClassicDifficulty, "classic-difficulty", true, "development: false for no bonuses of computer wizards by difficulty (the original's difficulty table)")
     flag.BoolVar(&gamelib.ClassicEvents, "classic-events", true, "development: false for upstream's random events and conquest details (loot, outposts taken, production of a city taken)")
+    flag.BoolVar(&classicMagic, "classic-magic", true, "development: false for upstream's overland magic (counters, Disenchant, Stasis, Time Stop, world spells)")
     flag.BoolVar(&classicUnits, "classic-units", true, "development: false for upstream's unit data and unit rules (healing, eviction, purifying, melding, settling)")
     flag.BoolVar(&classicHeroes, "classic-heroes", true, "development: false for upstream's heroes, mercenaries, merchants, items and fame of battles")
     flag.BoolVar(&combat.ClassicRules, "classic-combat", true, "development: false for upstream's rules of tactical combat and combat spells")
@@ -1606,6 +1611,11 @@ func main() {
             log.Println(http.ListenAndServe("localhost:8000", nil))
         }()
     }
+
+    // overland magic, see docs/mod/magic.md
+    gamelib.ClassicMagic = classicMagic
+    spellbook.ClassicOverlandSlider = classicMagic
+    relations.ClassicSubversion = classicMagic
 
     // units, see docs/mod/units.md
     units.ClassicUnits = classicUnits
