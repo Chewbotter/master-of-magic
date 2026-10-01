@@ -352,10 +352,21 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
   to 3,901; cities at the end 8.6 to 7.9 and units 83 to 72 a wizard (games part at once, so 12 are
   few for this). Options for a change of our own, not made: kept paths that do not fill (most of
   the back and forth goes), or a kept path dropped when an enemy stands on it.
-- SEEN, NOT CHANGED (2026-10-01): a computer wizard that can not pay a creature's upkeep summons one
-  and disbands it the same turn, again and again (Tauron, every turn for 20 turns: Hell Hounds,
-  Magic Spirit). The spell choice (AI_Select_Spell_Group) does not ask the upkeep, and
-  AI_Disband_To_Balance_Budget then removes it. Not yet checked against the original.
+- LOOKED INTO, FAITHFUL (2026-10-01, the user: "Look into the summon and disband loop"): a computer
+  wizard whose mana income is about 0 summons a creature, its upkeep takes the income below 0, and
+  the weakest summoned creature is disbanded the same turn (often the new one), again and again
+  (Tauron every second turn for 20 turns). All three steps are the original's, in its order
+  (AI_Next_Turn: Cast_Spell_Overland, AI_Spell_Select, AI_Update_Magic_Power, then in
+  AI_Set_Unit_Orders AI_Disband_To_Balance_Budget): AI_Spell_Select only asks that the casting cost
+  over 50 is no more than a tenth of the reserve plus the income, never the upkeep;
+  AI_Update_Magic_Power picks the split of power by chance every 15 to 25 turns, not by upkeep;
+  AI_Disband_To_Balance_Budget removes the weakest creatures (by type strength) while the mana
+  income is below 0. MEASURED (round 6, 30 games): 1,470 creatures disbanded for mana, 328 of them
+  summoned that turn, by 56 of 105 wizards; that wastes 2.2 percent of the mana the computer
+  wizards cast with, but 13 to 24 percent for the worst five (a median of 52 mana a wizard, the
+  most 1,980). Options for a change of our own, not made: summon only while the income after the
+  creature's upkeep stays at 0 or more; or keep a creature summoned this turn out of the disband
+  (the next weakest goes, which may leave the deficit standing).
 
 - FIXED (2026-10-01, item 2 of the user's list, battles to the turn limit): most of the 121 battles
   that went to the turn limit in fought-out runs were one stack attacking again and again (item 1
