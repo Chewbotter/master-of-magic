@@ -49,31 +49,22 @@ func (combat *CombatScreen) drawOnFieldDimmed(screen *ebiten.Image, picture *ebi
 func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawable {
     var out []fieldDrawable
 
-    // props move with the ground
-    animationIndex := combat.Counter / 8
-
     for index := range combat.Model.Scenery {
         piece := &combat.Model.Scenery[index]
-
-        // props on the ground are drawn with it, see props.go
-        if piece.Kind == SceneryFlat {
-            continue
-        }
 
         layer := layerStructure
         switch piece.Kind {
             case SceneryTree: layer = layerTree
-            case SceneryRock, SceneryProp, SceneryFence: layer = layerRock
+            case SceneryRock: layer = layerRock
         }
 
-        // darker on the border, and under a cloud (weather.go)
-        brightness := fieldBrightness(piece.ScreenX, piece.ScreenY) * combat.cloudShade(piece.ScreenX, piece.ScreenY)
+        // darker on the border
+        brightness := fieldBrightness(piece.ScreenX, piece.ScreenY)
         if brightness <= 0 {
             continue
         }
 
-        // by depth, see depthsort.go: a house and the structure stand in their cell as a whole, a
-        // fence on the edge of its cell goes before the figures of that cell
+        // by depth, see depthsort.go: a house and the structure stand in their cell as a whole
         order := pointOrder(piece.ScreenX, piece.ScreenY)
         switch piece.Kind {
             case SceneryHouse:
@@ -81,8 +72,6 @@ func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawab
                 order = cellOrder(cellX, cellY, depthFarEdge, piece.ScreenX, piece.ScreenY)
             case SceneryStructure:
                 order = cellOrder(lairCellX, lairCellY, depthFarEdge, piece.ScreenX, piece.ScreenY)
-            case SceneryFence:
-                order = depthOrder(float64(piece.ScreenX), float64(piece.ScreenY) - 0.5, piece.ScreenX, piece.ScreenY)
         }
 
         out = append(out, fieldDrawable{
@@ -94,9 +83,6 @@ func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawab
                     return
                 }
                 picture := pictures[0]
-                if piece.Kind == SceneryProp {
-                    picture = pictures[animationIndex % uint64(len(pictures))]
-                }
                 anchorX, anchorY := piece.anchor(picture.Bounds().Dx(), picture.Bounds().Dy())
                 combat.drawOnFieldDimmed(screen, picture, piece.ScreenX - anchorX, piece.ScreenY - anchorY, brightness)
             },
@@ -296,23 +282,16 @@ func (combat *CombatScreen) unitDrawables(unit *ArmyUnit, render func(unit *Army
     middleX, middleY := sortCellMiddle(x, y, unit.Facing)
 
     field := MakeBattlefieldMatrix()
-    count := len(points)
 
     last := 0
     for index, point := range points {
         tieX, tieY := int(math.Floor(middleX)) + point.X, int(math.Floor(middleY)) + point.Y
 
-        // where its feet are drawn, as renderUnit puts it: its trail behind the unit
-        // (figurevariety.go), its place in the cell, its lunge and its regrouping (figureslide.go)
-        feetX, feetY := field.Apply(combat.figurePosition(unit, index, count, x, y))
+        // where its feet are drawn, as renderUnit puts it: the unit's place and the figure's place
+        // in the cell
+        feetX, feetY := field.Apply(x, y)
         feetX += float64(point.X)
         feetY += float64(point.Y)
-        if index < unit.VisibleFigures() {
-            lungeX, lungeY := combat.strikeSlide(unit, combat.figurePhase(unit, index, count))
-            regroupX, regroupY := combat.regroupSlide(unit, index, count)
-            feetX += lungeX + regroupX
-            feetY += lungeY + regroupY
-        }
 
         order := depthOrder(feetX, feetY, tieX, tieY)
         out = append(out, fieldDrawable{Order: order, Layer: layerFigure})

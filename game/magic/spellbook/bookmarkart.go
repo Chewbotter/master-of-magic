@@ -1,16 +1,13 @@
-package mod
+package spellbook
 
 // The bookmarks of the spellbook for casting: ribbons that hang out of the pages at the right
 // edge of the book, one for every kind of spell, with a symbol of the kind. Not in the original
-// (user, 2026-09-29). See game/magic/spellbook/bookmark.go.
+// (user, 2026-09-29). See bookmark.go.
 //
-// The pictures are made here, a first pass the user repaints. They are made as the ribbon with
-// the X under the book is painted (spells.lbx 0): its three reds, the darker ones where the
-// cloth comes out of the book and before its forked end, with a column of both colors in turn
-// (dither) between two reds, and the symbol in the gold of the X with its orange on the edges
-// that look up and left. A picture `markers/bookmark <kind>.png` in the replacement folder takes
-// the place of one, as it is, in any size: its left edge is where the ribbon comes out of the
-// pages.
+// The pictures are made here, as the ribbon with the X under the book is painted (spells.lbx 0):
+// its three reds, the darker ones where the cloth comes out of the book and before its forked end,
+// with a column of both colors in turn (dither) between two reds, and the symbol in the gold of
+// the X with its orange on the edges that look up and left.
 
 import (
     "image"
@@ -31,10 +28,6 @@ const (
 )
 
 var BookmarkKinds = []string{BookmarkSummoning, BookmarkSpecial, BookmarkCity, BookmarkEnchantment, BookmarkUnit, BookmarkCombat}
-
-func BookmarkName(kind string) string {
-    return "bookmark " + kind
-}
 
 // how deep the fork of the end of a ribbon is cut, in its middle row
 const bookmarkFork = 3
@@ -195,12 +188,7 @@ func DefaultBookmark(kind string) *image.NRGBA {
     return out
 }
 
-// the bookmark of a kind, the one of the replacement folder if there is one
+// the bookmark of a kind
 func Bookmark(kind string) image.Image {
-    replacement := ReadMarker(BookmarkName(kind))
-    if replacement != nil {
-        return replacement
-    }
-
     return DefaultBookmark(kind)
 }

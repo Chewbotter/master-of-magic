@@ -22,7 +22,6 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/setup"
     // playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     citylib "github.com/kazzmir/master-of-magic/game/magic/city"
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
 
     "github.com/hajimehoshi/ebiten/v2"
 )
@@ -588,20 +587,6 @@ type ArmyUnit struct {
 
     Attacking bool
     Defending bool
-    // it shows the frames of a shot, see shoot.go
-    Shooting bool
-    // it has cast a spell: its frames of a shot start at the next tick, and end at CastEnds
-    CastPending bool
-    CastEnds uint64
-    // its swing: the tick of the battle it started at, and how many redraws of the original
-    // later than that it starts, for the unit that is attacked. see strikeswing.go
-    SwingStart uint64
-    SwingDelay float64
-    // the ticks of the battle the attack lasts, and how far the unit goes toward the one it
-    // fights for that time, across and down in art pixels. see strikeapproach.go
-    SwingLasts int
-    ApproachX float64
-    ApproachY float64
 
     MoveX float64
     MoveY float64
@@ -2566,11 +2551,7 @@ type CombatModel struct {
 }
 
 func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingArmy *Army, landscape CombatLandscape, plane data.Plane, zone ZoneType, influence data.MagicType, overworldX int, overworldY int, events chan CombatEvent) *CombatModel {
-    // what has no farmland, see farmland.go
-    zone.Ground = farmGround(landscape, zone)
-    // the pictures of the battle are the ones of its biome, see biomes.go
-    mod.SetBiome(zone.Ground.Biome)
-    // the coast keeps behind the places of the armies, see coast.go
+    // armies of more than the original's places take more of the field, see deploy.go
     zone.Ground.LargeArmy = len(defendingArmy.units) > deployPlaces || len(attackingArmy.units) > deployPlaces
 
     ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, landscape, plane, zone)
@@ -3081,12 +3062,12 @@ func (model *CombatModel) doCallLightning(army *Army) {
     }
 }
 
-func (model *CombatModel) computePath(x1 int, y1 int, x2 int, y2 int, canTraverseWall bool, isFlying bool, canEnterWater bool) (pathfinding.Path, bool) {
-    return model.computePathAvoiding(x1, y1, x2, y2, canTraverseWall, isFlying, canEnterWater, nil)
+func (model *CombatModel) computePath(x1 int, y1 int, x2 int, y2 int, canTraverseWall bool, isFlying bool) (pathfinding.Path, bool) {
+    return model.computePathAvoiding(x1, y1, x2, y2, canTraverseWall, isFlying, nil)
 }
 
 // the same, and the tiles avoid says true for are not entered. avoid may be nil
-func (model *CombatModel) computePathAvoiding(x1 int, y1 int, x2 int, y2 int, canTraverseWall bool, isFlying bool, canEnterWater bool, avoid func(int, int) bool) (pathfinding.Path, bool) {
+func (model *CombatModel) computePathAvoiding(x1 int, y1 int, x2 int, y2 int, canTraverseWall bool, isFlying bool, avoid func(int, int) bool) (pathfinding.Path, bool) {
 
     vortexTiles := make(map[image.Point]bool)
     for _, vortex := range model.MagicVortexes {
@@ -3142,11 +3123,6 @@ func (model *CombatModel) computePathAvoiding(x1 int, y1 int, x2 int, y2 int, ca
                         canMove = false
                     }
 
-                    // the water of a coast is for what flies, swims or sails, see coast.go
-                    if canMove && !canEnterWater && model.IsWaterTile(x, y) {
-                        canMove = false
-                    }
-
                     // can't move through a city wall
                     if canMove && !canTraverseWall && model.InsideCityWall(cx, cy) != model.InsideCityWall(x, y) && (model.ContainsWall(x, y) || model.ContainsWall(cx, cy)) {
                         // FIXME: handle destroyed walls here
@@ -3183,7 +3159,7 @@ func (model *CombatModel) FindPath(unit *ArmyUnit, x int, y int, infiniteMovemen
         return path, len(path) > 0
     }
 
-    path, ok = model.computePath(unit.X, unit.Y, x, y, unit.CanTraverseWall(), unit.IsFlying(), unit.CanEnterWater())
+    path, ok = model.computePath(unit.X, unit.Y, x, y, unit.CanTraverseWall(), unit.IsFlying())
     if !ok {
         unit.Paths[end] = nil
         // log.Printf("No such path from %v,%v -> %v,%v", unit.X, unit.Y, x, y)
@@ -3228,11 +3204,6 @@ func (model *CombatModel) ContainsMagicVortex(x int, y int) bool {
 }
 
 func (model *CombatModel) CanMoveTo(unit *ArmyUnit, x int, y int, infiniteMovement bool) bool {
-
-    // the water of a coast, see coast.go
-    if model.IsWaterTile(x, y) && !unit.CanEnterWater() {
-        return false
-    }
 
     if unit.CanTeleport() {
         return distance(float64(unit.X), float64(unit.Y), float64(x), float64(y)) <= 10
@@ -5254,10 +5225,6 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
     castedCallback = func(success bool){
         if success {
             spellSystem.CastMessage(castMessageText(army, unitCaster, spell))
-            // the unit that casts shows the frames of a shot, see shoot.go
-            if unitCaster != nil {
-                unitCaster.CastPending = true
-            }
         }
         announce(success)
     }

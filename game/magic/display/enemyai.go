@@ -2,13 +2,12 @@ package display
 
 // The setting "Enemy AI": which AI plays the computer players (user, 2026-09-29).
 //   Clone original  the AI the clone came with (upstream's, which its author made up)
-//   Chewbot         the user's: first as close to the original game's AI as it can be ported from
-//                   the ReMoM reconstruction, then changed from there
-// Only the combat AI of Chewbot is built so far (game/magic/combat/aichewbot.go); everything
-// else of Chewbot is still the clone's.
+//   Classic         the original game's AI, ported from the ReMoM reconstruction. In the code it is
+//                   called Chewbot (game/magic/ai/chewbot*.go, combat/aichewbot*.go); the user named
+//                   it Classic for the screen (2026-10-01)
 //
-// Chewbot unless another is saved: the file of settings keeps "enemy-ai", and a file that says
-// nothing of it means Chewbot.
+// Classic unless another is saved: the file of settings keeps "enemy-ai" ("chewbot" for Classic),
+// and a file that says nothing of it means Classic.
 
 type EnemyAI string
 
@@ -40,7 +39,7 @@ func (settings *Settings) SetEnemyAI(ai EnemyAI) {
 func (ai EnemyAI) Name() string {
     switch ai {
         case EnemyAIClone: return "Clone original"
-        case EnemyAIChewbot: return "Chewbot"
+        case EnemyAIChewbot: return "Classic"
     }
-    return "Chewbot"
+    return "Classic"
 }

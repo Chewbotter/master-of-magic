@@ -19,7 +19,6 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
 
     globalMouse "github.com/kazzmir/master-of-magic/game/magic/mouse"
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
 
     "github.com/hajimehoshi/ebiten/v2"
@@ -141,8 +140,7 @@ func (combat *CombatScreen) shortCross() *ebiten.Image {
         return nil
     }
 
-    if !CrossShortened || mod.HasCursor(mod.CursorCross) {
-        // drawn by the user: as it is
+    if !CrossShortened {
         combat.shortCrossPicture = source
         return source
     }

@@ -5499,8 +5499,6 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     landscape := game.GetCombatLandscape(defenderStack.X(), defenderStack.Y(), defenderStack.Plane())
     // forest, hills and roads for the ground of the battlefield, see battleground.go
     zone.Ground = game.combatGround(defenderStack.X(), defenderStack.Y(), defenderStack.Plane())
-    // a biome is a kind of one landscape, see combat/biomes.go
-    landscape = combat.BiomeLandscape(zone.Ground.Biome, landscape)
 
     // do graphic combat only if a human is involved
     useHuman := attacker.IsHuman() || defender.IsHuman()
@@ -9175,8 +9173,6 @@ type Overworld struct {
     FogBlack *ebiten.Image
     // the path of a move of the selected stack that is not confirmed yet
     PlannedPath worldPath
-    // the number of points of the path that is shown the stack reaches in this turn
-    PathReach int
 }
 
 func (overworld *Overworld) ToCameraCoordinates(x int, y int) (int, int) {
@@ -9372,26 +9368,9 @@ func (overworld *Overworld) DrawOverworld(screen *ebiten.Image, geom ebiten.GeoM
         bootGeom.Translate(float64(boot.Bounds().Dx()) / -2, float64(boot.Bounds().Dy()) / -2)
         bootGeom.Concat(geom)
 
-        // a flag on the tiles the stack only reaches in a later turn, see worldmarker.go
-        var flag *ebiten.Image
-        var flagGeom ebiten.GeoM
-        if overworld.PathReach < len(shownPath) && overworld.SelectedStack.Leader() != nil {
-            flag = flagPicture(overworld.ImageCache, overworld.SelectedStack.Leader().GetBanner())
-            if flag != nil {
-                flagGeom.Translate(float64(tileWidth) / 2, float64(tileHeight) / 2)
-                // exactly as the boot is placed, so a flag of the size of the boot lies where a boot would
-                flagGeom.Translate(float64(flag.Bounds().Dx()) / -2, float64(flag.Bounds().Dy()) / -2)
-                flagGeom.Concat(geom)
-            }
-        }
-
         for pointI, point := range shownPath {
             marker := boot
             markerGeom := bootGeom
-            if flag != nil && pointI >= overworld.PathReach {
-                marker = flag
-                markerGeom = flagGeom
-            }
 
             for _, offset := range mapXOffsets {
                 cx, cy := overworld.ToCameraCoordinates(point.X, point.Y)
@@ -9526,14 +9505,6 @@ func (game *Game) DrawGame(screen *ebiten.Image){
         ShowAnimation: game.State == GameStateUnitMoving,
         FogBlack: game.GetFogImage(),
         PlannedPath: game.plannedPath(selectedStack),
-    }
-
-    if selectedStack != nil {
-        shown := worldPath(selectedStack.CurrentPath)
-        if len(overworld.PlannedPath) > 0 {
-            shown = overworld.PlannedPath
-        }
-        overworld.PathReach = game.pathReach(game.Model.GetHumanPlayer(), selectedStack, shown)
     }
 
     if game.WatchMode {

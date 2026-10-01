@@ -70,7 +70,7 @@ func (game *Game) CapturePlan(deltaX int, deltaY int) string {
     targetY := stack.Y() + deltaY
     walks := game.clickMoves(player, stack, targetX, targetY)
     path := game.plannedPath(stack)
-    return fmt.Sprintf("walks at once %v, points of the path %v, reached in this turn %v", walks, len(path), game.pathReach(player, stack, path))
+    return fmt.Sprintf("walks at once %v, points of the path %v", walks, len(path))
 }
 
 // development: the tile the surveyor looks at in a capture, nil to follow the mouse

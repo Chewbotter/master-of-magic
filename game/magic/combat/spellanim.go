@@ -37,7 +37,6 @@ import (
     rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "github.com/kazzmir/master-of-magic/lib/font"
@@ -55,15 +54,7 @@ type ProjectileStep struct {
     Frame int
     // redraws of the original the step shows
     Ticks int
-    // how far the picture goes while the step shows, for a bolt in flight. see SmoothBolts
-    GlideX int
-    GlideY int
 }
-
-// a bolt in flight goes on with every tick of the game, by whole art pixels, in place of 10 pixels
-// with every redraw of the original. its way, its time and its frames are the same. not in the
-// original (user, 2026-09-27)
-const SmoothBolts = true
 
 const spellFrameNone = -1
 
@@ -190,14 +181,14 @@ func effectSteps(pictures []*ebiten.Image, x int, y int, wait int, all bool) []P
 func (combat *CombatScreen) createEffect(target *ArmyUnit, pictures []*ebiten.Image, effect ProjectileEffect) *Projectile {
     steps := effectSteps(pictures, target.X, target.Y, 0, false)
     // it hits when it starts to show, see spelleffects.go
-    return combat.dress(newSpellProjectile(target, pictures, steps, effect), firstShownStep(steps))
+    return newSpellProjectile(target, pictures, steps, effect)
 }
 
 // the effect of a spell that hits all units of a side, on one of them
 func (combat *CombatScreen) createEffectOfAll(target *ArmyUnit, pictures []*ebiten.Image, effect ProjectileEffect) *Projectile {
     wait := rand.N(spellAllDelayMax + 1)
     steps := effectSteps(pictures, target.X, target.Y, wait, true)
-    return combat.dress(newSpellProjectile(target, pictures, steps, effect), firstShownStep(steps))
+    return newSpellProjectile(target, pictures, steps, effect)
 }
 
 // an effect that lies on the ground of a tile, under the units
@@ -212,7 +203,7 @@ func (combat *CombatScreen) createGroundEffect(target *ArmyUnit, pictures []*ebi
 
     projectile := newSpellProjectile(target, pictures, steps, effect)
     projectile.Ground = true
-    return combat.dress(projectile, firstShownStep(steps))
+    return projectile
 }
 
 func (combat *CombatScreen) createBolt(kind BoltKind, target *ArmyUnit, pictures []*ebiten.Image, effect ProjectileEffect) *Projectile {
@@ -250,76 +241,28 @@ func (combat *CombatScreen) createBolt(kind BoltKind, target *ArmyUnit, pictures
         }
     }
 
-    // in flight a step ends where the next starts, the last one as far on as the ones before it
-    for index := range steps {
-        if index >= boltFlightSteps {
-            break
-        }
-        steps[index].GlideX = path.StepX
-        steps[index].GlideY = path.StepY
-        if index + 1 < len(steps) {
-            steps[index].GlideX = steps[index + 1].X - steps[index].X
-            steps[index].GlideY = steps[index + 1].Y - steps[index].Y
-        }
-    }
-
     if len(pictures) == 0 {
         steps = nil
     }
 
-    // it hits with its last step of flight, or when it shows at its target. see spelleffects.go
-    impactStep := min(boltFlightSteps, len(steps))
-    if kind == BoltFire || kind == BoltIce {
-        impactStep = max(0, len(steps) - 1)
-    }
-
-    return combat.dress(newSpellProjectile(target, pictures, steps, effect), impactStep)
+    return newSpellProjectile(target, pictures, steps, effect)
 }
 
 func (combat *CombatScreen) createLightning(target *ArmyUnit, pictures []*ebiten.Image, effect ProjectileEffect) *Projectile {
     placeX, placeY := spellPlace(target.X, target.Y)
 
     steps := []ProjectileStep{{Frame: spellFrameNone, Ticks: lightningWaitTicks}}
-    // it hits with its first flash
-    impact := 1
-    if mod.FrameCountChanged(lightningLbx, lightningEntry) {
-        // the replacement folder has a series of its own: all of it, in its order, a flash each.
-        // it hits when the bolt has come down to the ground (user, 2026-09-30: "the flash on
-        // ground shouldn't happen until the frames are already in motion")
-        for frame := range pictures {
-            steps = append(steps, ProjectileStep{X: placeX, Y: placeY - lightningAbove, Frame: frame, Ticks: lightningSeriesTicks})
-        }
-        impact = 1 + lightningGroundFrame(mod.LowestRows(lightningLbx, lightningEntry), len(pictures))
-    } else {
-        for range lightningFlashes {
-            frame := rand.N(lightningFrames)
-            steps = append(steps, ProjectileStep{X: placeX, Y: placeY - lightningAbove, Frame: min(frame, len(pictures) - 1), Ticks: 1})
-        }
+    for range lightningFlashes {
+        frame := rand.N(lightningFrames)
+        steps = append(steps, ProjectileStep{X: placeX, Y: placeY - lightningAbove, Frame: min(frame, len(pictures) - 1), Ticks: 1})
     }
     steps = append(steps, ProjectileStep{Frame: spellFrameNone, Ticks: lightningWaitTicks})
 
     if len(pictures) == 0 {
         steps = nil
-        impact = 0
     }
 
-    return combat.dress(newSpellProjectile(target, pictures, steps, effect), impact)
-}
-
-// the first frame of a series of Lightning Bolt whose bolt comes down to the place of the unit:
-// its lowest pixel no more than lightningGroundSlack above the bottom of the picture. the last
-// frame if none does, or if the rows are not known
-func lightningGroundFrame(rows []int, frames int) int {
-    last := max(0, frames - 1)
-    if len(rows) != frames {
-        return last
-    }
-    for frame, row := range rows {
-        if row >= lightningAbove - lightningGroundSlack {
-            return frame
-        }
-    }
-    return last
+    return newSpellProjectile(target, pictures, steps, effect)
 }
 
 // the step a spell is at, or the number of its steps when it is over
@@ -348,7 +291,6 @@ func (projectile *Projectile) placeAt(counter uint64) (int, int, int, bool) {
     ticks := float64(counter - projectile.Start) * OriginalTicksPerSecond / float64(max(1, ebiten.TPS()))
     // the step is the one of whole redraws, as stepAt has it
     whole := math.Floor(ticks)
-    part := ticks - whole
 
     for _, step := range projectile.Steps {
         if whole >= float64(step.Ticks) {
@@ -360,15 +302,7 @@ func (projectile *Projectile) placeAt(counter uint64) (int, int, int, bool) {
             return 0, 0, 0, false
         }
 
-        x := float64(step.X)
-        y := float64(step.Y)
-        if SmoothBolts && step.Ticks > 0 {
-            gone := (whole + part) / float64(step.Ticks)
-            x += float64(step.GlideX) * gone
-            y += float64(step.GlideY) * gone
-        }
-
-        return int(math.Round(x)), int(math.Round(y)), step.Frame, true
+        return step.X, step.Y, step.Frame, true
     }
 
     return 0, 0, 0, false
@@ -402,8 +336,7 @@ func (combat *CombatScreen) drawSpell(screen *ebiten.Image, projectile *Projecti
         return
     }
 
-    // with its light, see spelleffects.go
-    combat.drawSpellPicture(screen, projectile.Name, projectile.Pictures[frame], x, y)
+    combat.drawOnField(screen, projectile.Pictures[frame], x, y)
 }
 
 // the spells that lie on the ground. drawn after the ground and before anything that stands on it

@@ -14,7 +14,6 @@ package spellbook
 import (
     "image"
 
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
 
     "github.com/hajimehoshi/ebiten/v2"
@@ -29,12 +28,12 @@ var bookmarkSections = []struct{
     Section Section
     Kind string
 }{
-    {SectionSummoning, mod.BookmarkSummoning},
-    {SectionSpecial, mod.BookmarkSpecial},
-    {SectionCitySpell, mod.BookmarkCity},
-    {SectionEnchantment, mod.BookmarkEnchantment},
-    {SectionUnitSpell, mod.BookmarkUnit},
-    {SectionCombatSpell, mod.BookmarkCombat},
+    {SectionSummoning, BookmarkSummoning},
+    {SectionSpecial, BookmarkSpecial},
+    {SectionCitySpell, BookmarkCity},
+    {SectionEnchantment, BookmarkEnchantment},
+    {SectionUnitSpell, BookmarkUnit},
+    {SectionCombatSpell, BookmarkCombat},
 }
 
 // places in the picture of the book, in art pixels
@@ -67,7 +66,7 @@ func forgetBookmarks() {
 func bookmarkPicture(kind string) *ebiten.Image {
     picture, ok := bookmarkPictures[kind]
     if !ok {
-        picture = ebiten.NewImageFromImage(mod.Bookmark(kind))
+        picture = ebiten.NewImageFromImage(Bookmark(kind))
         bookmarkPictures[kind] = picture
     }
     return picture

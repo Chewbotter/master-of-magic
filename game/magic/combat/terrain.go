@@ -16,10 +16,6 @@ package combat
 // across the edge of the field. The original's grid gets the original's number of patches, the rest
 // as many for its size.
 //
-// The replacement folder can add pictures to every use of the ground (mod/environment.go, user
-// 2026-09-28): the battle then picks among the game's and the added ones. An added picture has a
-// number from groundExtraFirst on in place of the number of a picture of the archive.
-//
 // Not made, as in the original: rivers. The original has the code for them, but never gives it a
 // river to follow.
 
@@ -27,7 +23,6 @@ import (
     rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
 )
 
 type TerrainGroup int
@@ -36,11 +31,6 @@ const (
     TerrainGrass TerrainGroup = iota
     TerrainRough
     TerrainDirt
-    // the beach and the water of a coast, see coast.go
-    TerrainSand
-    TerrainWater
-    // a plot of crops of farmland, see farmland.go
-    TerrainCrop
 )
 
 // what the world map around a battle tells the ground of the battle. the zero value is open grass
@@ -54,19 +44,6 @@ type ZoneGround struct {
     // the battle itself: without a road there, the battlefield has none
     Roads [9]bool
     EnchantedRoads bool
-    // the kind of the landscape with pictures of its own, one of mod.Biomes. nothing for the plain
-    // landscape. see biomes.go
-    Biome string
-    // the side of the field the sea lies on, see coast.go
-    Coast CoastSide
-    // the river of the battle, see river.go
-    River RiverCourse
-    // the fields of a town: how many tiles of the world map the town is away, 1 or 2, 0 for none,
-    // and the race of the town, for its houses. see farmland.go
-    Farmland int
-    FarmRace data.Race
-    // rain, snow or the shadows of clouds, see weather.go
-    Weather Weather
     // an army of the battle has more units than the original's 12 places: the armies take more of
     // the field. set when the battle is made
     LargeArmy bool
@@ -95,31 +72,6 @@ const groundRoughFirst = 32
 const groundGrassCount = 4
 const groundDirtCount = 4
 const groundEdgeCount = 2
-
-// added pictures: groundExtraFirst, then 100 numbers for every use by its first picture
-const groundExtraFirst = 1000
-const groundExtraStep = 100
-
-// ADDED GROUND IS SPRINKLED IN (user, 2026-09-28). The tiles of the game are plain, they make up
-// most of the ground and repeat as they like, picked by chance as the original picks them. The
-// added ones have features of their own and are sprinkled in among them: AddedGroundShare of the
-// tiles of a use show an added picture, whichever tiles chance picks, so they lie in loose groups
-// here and far apart there. How many added pictures there are does not change how many tiles show
-// one, only how many different ones are seen.
-//
-// One rule besides chance: the same added picture does not show twice within addedRepeatReach
-// cells, so a picture with a stick in it is not seen six times in a row. Different added pictures
-// can lie side by side. A tile that finds all added pictures that near shows one of the game.
-//
-// Tried before and taken back: every tile picking among all pictures with the least used nearby
-// first, which set the added ones out evenly over the field and looked uniform.
-var AddedGroundShare = 0.075
-const addedRepeatReach = 2
-
-// trees, rocks, houses, props and large pieces show every picture once before any comes again
-// (pictureBag in scenery.go). false picks them by chance alone, and takes the rule of
-// addedRepeatReach from the ground
-var SpreadPictures = true
 
 // the pieces of road, cmbtcity 69 on: 6 directions in two sets of 7, and the same for enchanted roads
 const roadLbx = "cmbtcity.lbx"
@@ -152,49 +104,6 @@ type BattleGround struct {
     Roads []int
     // the trees that stand in every cell, see movecost.go
     Trees []int
-    // the height of every cell, 0 or 1, nil without plateaus. see plateau.go
-    Heights []int
-    // the folder of the pictures of the landscape in the replacement folder, and how many pictures
-    // it adds to a use, by the first picture of the use
-    Set string
-    Extras map[int]int
-    // the folder of the landscape itself. the same as Set without a biome
-    BaseSet string
-    // the coast: its side, the folder of its pictures, and the archives and first pictures of the
-    // sand and the water of the game. see coast.go
-    Coast CoastSide
-    Lines *coastLines
-    // what every cell is of the coast, nil without one
-    Shore []coastPart
-    // the folders of the sand and of the water, of the landscape or of all landscapes
-    SandSet string
-    WaterSet string
-    // the water is ice: tundra. see mod/shore.go
-    Frozen bool
-    SandLbx string
-    SandFirst int
-    WaterLbx string
-    WaterFirst int
-    // the river: its course, its banks along it, and what every cell is of it, nil without one.
-    // see river.go
-    River RiverCourse
-    Stream *coastLines
-    Banks []riverPart
-    // farmland: how far the town is, the picture of the crops of every cell of a plot, the cells
-    // a house stands in, and the folder of its pictures. see farmland.go
-    Farmland int
-    Crops []int
-    Built []bool
-    // its plots of crops, for the fences around them. see fences.go
-    Plots []farmPlot
-    FarmSet string
-    // the pools of a swamp, nil without them. see swamp.go
-    Pools *swampPools
-    // the large pieces, and the cells that lie under one. see large.go
-    Large []LargePiece
-    Covered []bool
-    // the cells that have their picture, while the pictures are chosen
-    chosen []bool
     EnchantedRoads bool
 }
 
@@ -254,8 +163,7 @@ func (ground *BattleGround) TreesAt(cgx int, cgy int) int {
     return ground.Trees[ground.index(cgx, cgy)]
 }
 
-// trees and rocks stand on grass without a road only, not on a large piece, not where the beach
-// starts, not in a river or on its banks and not where a house of the farmland stands
+// trees and rocks stand on grass without a road only
 func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if ground == nil {
         return true
@@ -263,7 +171,7 @@ func (ground *BattleGround) sceneryAllowed(cgx int, cgy int) bool {
     if !ground.contains(cgx, cgy) {
         return false
     }
-    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0 && !ground.coveredAt(cgx, cgy) && !ground.shoreAt(cgx, cgy) && ground.riverAt(cgx, cgy) == riverLand && !ground.builtAt(cgx, cgy) && ground.poolAt(cgx, cgy) != poolWater && (ground.poolAt(cgx, cgy) == poolNone || ground.Pools.Flooded)
+    return ground.GroupAt(cgx, cgy) == TerrainGrass && ground.RoadAt(cgx, cgy) == 0
 }
 
 func insideOriginalGrid(cgx int, cgy int) bool {
@@ -272,10 +180,6 @@ func insideOriginalGrid(cgx int, cgy int) bool {
 
 // how many patches of rough ground the original makes on its grid
 func roughPatches(landscape CombatLandscape, ground ZoneGround) int {
-    // a flooded swamp is islands in the water, see swamp.go
-    if SwampPools && SwampFlooded && ground.Biome == mod.BiomeSwamp {
-        return swampPatches
-    }
     switch {
         case ground.Forest: return 5
         case ground.Hills: return 20
@@ -302,25 +206,11 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
         Width: height + BattlefieldBorder * 2,
         Height: width + BattlefieldBorder * 2,
         EnchantedRoads: zone.Ground.EnchantedRoads,
-        River: riverCourse(zone),
-        Coast: coastSideOf(zone),
-        Frozen: landscape == CombatLandscapeTundra,
     }
     cells := ground.Width * ground.Height
     ground.Group = make([]TerrainGroup, cells)
     ground.Picture = make([]int, cells)
     ground.Roads = make([]int, cells)
-
-    // what the replacement folder adds to the pictures of the ground, in the folder of the biome
-    ground.BaseSet = mod.EnvironmentSet(terrainSetLbx(landscape, plane))
-    ground.Set = mod.BiomeFolder(zone.Ground.Biome, ground.BaseSet)
-    ground.Extras = make(map[int]int)
-    for _, role := range mod.GroundRoles {
-        extras := mod.CountExtras(ground.Set, role.Name, role.Count)
-        if extras > 0 {
-            ground.Extras[role.First] = min(extras, groundExtraStep)
-        }
-    }
     ground.Trees = make([]int, cells)
 
     // the original's grid gets its number of patches, the rest of the ground as many for its size
@@ -328,44 +218,14 @@ func makeBattleGround(width int, height int, landscape CombatLandscape, plane da
     rough := roughPatches(landscape, zone.Ground)
     ground.scatterPatches(TerrainRough, rough, roughSpan, roughBase, true)
     ground.scatterPatches(TerrainRough, rough * beyond, roughSpan, roughBase, false)
-    if PlateauGround {
-        // the rough ground becomes plateaus and small hills, see plateau.go
-        ground.makePlateaus(zone, rough * (beyond + 1))
-        // the original's rough pictures as short mounds, see plateau.go
-        ground.makeMounds(rough * (beyond + 1))
-    }
     ground.scatterPatches(TerrainDirt, dirtPatches, dirtSpan, dirtBase, true)
     ground.scatterPatches(TerrainDirt, dirtPatches * beyond, dirtSpan, dirtBase, false)
 
-    // a battlefield with a river has no roads, see river.go
-    if ground.River == RiverNone {
-        ground.buildRoads(zone)
-    }
+    ground.buildRoads(zone)
     ground.removeRough(zone)
     ground.mergeDirt()
 
-    // the sea beside the battle, see coast.go
-    ground.SandSet = shoreSet(ground.BaseSet, coastSandName, false)
-    ground.WaterSet = shoreSet(ground.BaseSet, coastWaterName, ground.Frozen)
-    ground.SandLbx, ground.SandFirst = sandPictures(plane)
-    ground.WaterLbx, ground.WaterFirst = waterPictures(plane)
-    ground.Extras[groundSandFirst] = min(mod.CountExtras(ground.SandSet, coastSandName, groundSandCount), groundExtraStep)
-    ground.Extras[groundWaterFirst] = min(mod.CountExtras(ground.WaterSet, coastWaterName, groundWaterCount), groundExtraStep)
-    // the river is planned before the coast, which comes in to meet it, and laid after it
-    ground.planRiver(zone)
-    ground.makeCoast(zone)
-    ground.makeRiver(zone)
-    // the fields of a town, see farmland.go
-    ground.FarmSet = mod.BiomeFolder(farmSet, ground.BaseSet)
-    ground.Extras[groundCropFirst] = min(mod.CountExtras(ground.FarmSet, farmCropName, groundCropCount), groundExtraStep)
-    ground.makeFarmland(landscape, zone)
-    // the pools of a swamp, see swamp.go
-    ground.makePools(zone)
-
     ground.choosePictures()
-    // pieces of 2 by 2 tiles, see large.go
-    ground.placeLarge(width, height, zone, largeGameCount + mod.CountExtras(ground.Set, largeName, largeGameCount))
-
     return ground
 }
 
@@ -590,79 +450,16 @@ var roughPictures = [16]int{15, 6, 0, 9, 2, 3, 7, 8, 5, 14, 1, 11, 12, 13, 10, 4
 
 // Set_Terrain_Tile_Types
 func (ground *BattleGround) choosePictures() {
-    ground.chosen = make([]bool, ground.Width * ground.Height)
     for cgy := ground.MinY; cgy < ground.MinY + ground.Height; cgy++ {
         for cgx := ground.MinX; cgx < ground.MinX + ground.Width; cgx++ {
             ground.Picture[ground.index(cgx, cgy)] = ground.pictureOf(cgx, cgy)
-            ground.chosen[ground.index(cgx, cgy)] = true
         }
     }
-    ground.chosen = nil
 }
 
-// which of the pictures of a use a picture is, from 0, the game's first. -1 if it is none of them
-func groundVariant(picture int, first int, count int) int {
-    if picture >= first && picture < first + count {
-        return picture - first
-    }
-    if picture >= groundExtraFirst && (picture - groundExtraFirst) / groundExtraStep == first {
-        return count + (picture - groundExtraFirst) % groundExtraStep
-    }
-    return -1
-}
-
-// the added pictures of a use that no cell within addedRepeatReach of a cell shows, as numbers
-// from 0 among the added ones
-func (ground *BattleGround) addedFree(cgx int, cgy int, first int, count int, extras int) []int {
-    near := make([]bool, extras)
-    if SpreadPictures && ground.chosen != nil {
-        for dy := -addedRepeatReach; dy <= addedRepeatReach; dy++ {
-            for dx := -addedRepeatReach; dx <= addedRepeatReach; dx++ {
-                if !ground.contains(cgx + dx, cgy + dy) || !ground.chosen[ground.index(cgx + dx, cgy + dy)] {
-                    continue
-                }
-                used := groundVariant(ground.Picture[ground.index(cgx + dx, cgy + dy)], first, count)
-                if used >= count && used < count + extras {
-                    near[used - count] = true
-                }
-            }
-        }
-    }
-
-    var free []int
-    for number, taken := range near {
-        if !taken {
-            free = append(free, number)
-        }
-    }
-    return free
-}
-
-// one of the pictures of a use for a cell: mostly the game's, from first on, by chance. now and
-// then an added one
+// one of the pictures of a use for a cell, by chance
 func (ground *BattleGround) variant(cgx int, cgy int, first int, count int) int {
-    extras := ground.Extras[first]
-    if extras > 0 && rand.Float64() < AddedGroundShare {
-        free := ground.addedFree(cgx, cgy, first, count, extras)
-        if len(free) > 0 {
-            return groundExtraFirst + first * groundExtraStep + free[rand.N(len(free))]
-        }
-    }
     return first + rand.N(count)
-}
-
-// the use and the number from 1 of an added picture
-func groundExtra(picture int) (mod.GroundRole, int, bool) {
-    if picture < groundExtraFirst {
-        return mod.GroundRole{}, 0, false
-    }
-    first := (picture - groundExtraFirst) / groundExtraStep
-    for _, role := range mod.GroundRoles {
-        if role.First == first {
-            return role, role.Count + (picture - groundExtraFirst) % groundExtraStep + 1, true
-        }
-    }
-    return mod.GroundRole{}, 0, false
 }
 
 func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
@@ -671,15 +468,6 @@ func (ground *BattleGround) pictureOf(cgx int, cgy int) int {
     }
 
     switch ground.GroupAt(cgx, cgy) {
-        case TerrainCrop:
-            return ground.cropAt(cgx, cgy)
-
-        case TerrainSand:
-            return ground.variant(cgx, cgy, groundSandFirst, groundSandCount)
-
-        case TerrainWater:
-            return ground.variant(cgx, cgy, groundWaterFirst, groundWaterCount)
-
         case TerrainDirt:
             return ground.variant(cgx, cgy, groundDirtFirst, groundDirtCount)
 

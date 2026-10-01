@@ -37,8 +37,6 @@ type Settings struct {
     ScaleIsDrawScale bool `json:"scale-is-draw-scale"`
     // classic or modern, see controls.go
     ControlType ControlType `json:"control-type"`
-    // the setting "Single strikes", see strikes.go
-    SingleStrikesOn bool `json:"single-strikes"`
     // the opposite of the setting "Hide cursor on attack", see cursorhide.go
     CursorStaysOnAttack bool `json:"cursor-stays-on-attack"`
     // the opposite of the setting "Pulsing spellbook text", see bookpulse.go

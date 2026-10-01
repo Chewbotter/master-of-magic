@@ -78,10 +78,6 @@ func MakeMouseData(cache *lbx.LbxCache, scaler Scaler) (*MouseData, error) {
 // the entry of fonts.lbx the game takes its cursors from
 const CursorEntry = 2
 
-// when set, gives the picture that takes the place of a cursor of CursorEntry, or the picture it
-// was given. the replacement folder sets it, see game/magic/mod
-var ReplaceCursor func(index int, picture *image.Paletted) *image.Paletted
-
 // pass in an entry from fonts.lbx within range 2-8
 func readMousePics(data []byte, scaler Scaler, entry int) ([]*ebiten.Image, error) {
     if len(data) < 5376 {
@@ -134,10 +130,6 @@ func readMousePics(data []byte, scaler Scaler, entry int) ([]*ebiten.Image, erro
                 // color := usePalette[colorIndex]
                 rawPic.SetColorIndex(x, y, colorIndex)
             }
-        }
-
-        if entry == CursorEntry && ReplaceCursor != nil {
-            rawPic = ReplaceCursor(i, rawPic)
         }
 
         pic := ebiten.NewImageFromImage(scaler.ApplyScale(rawPic))

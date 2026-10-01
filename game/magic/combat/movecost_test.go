@@ -7,11 +7,8 @@ import (
     "github.com/kazzmir/master-of-magic/lib/fraction"
 )
 
-// the original's costs of the ground, in moves. with plateaus rough is only for the look
+// the original's costs of the ground, in moves
 func TestStepCostsOfTheGround(test *testing.T) {
-    PlateauGround = false
-    defer func() { PlateauGround = true }()
-
     ground := makeBattleGround(BattlefieldWidth, BattlefieldHeight, CombatLandscapeGrass, 0, ZoneType{})
     for index := range ground.Trees {
         ground.Trees[index] = 0

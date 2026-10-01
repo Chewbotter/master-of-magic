@@ -229,53 +229,11 @@ type CombatScreen struct {
     Landscape CombatLandscape
     // picks the pictures of the ground around the field, see fieldedge.go
     borderSeed uint32
-    // the sand over the transitions of a coast and where it lies on the original's screen, see shore.go
-    shoreSand *ebiten.Image
-    shoreMade bool
-    shoreX int
-    shoreY int
-    // the water of a river, the same. see river.go
-    riverWater *ebiten.Image
-    riverMade bool
-    riverX int
-    riverY int
-    // the water of the pools of a swamp, the same. see swamp.go
-    poolWater *ebiten.Image
-    poolsMade bool
-    poolX int
-    poolY int
-    // rain, snow and the shadows of clouds, see weather.go
-    weather weatherState
-    // the pictures of crops the game makes, by their number. see farmland.go
-    cropsMade map[int][]*ebiten.Image
-    // the pictures of ice the game makes, by their number. see terraindraw.go
-    iceMade map[int][]*ebiten.Image
-    // the large pieces the game makes, see large.go
-    largeMade [][]*ebiten.Image
-    // the pictures the replacement folder adds to the ground, trees, rocks and houses, see terraindraw.go
-    addedCache map[string][]*ebiten.Image
-    // the shading of the plateaus and where it lies on the original's screen, see slopes.go
-    slopeShading *ebiten.Image
-    slopesMade bool
-    slopeX int
-    slopeY int
     // the field fills the width of the window, see widefield.go
     wideField bool
     pass drawPass
     // how far right the field is drawn, in art pixels
     fieldShift float64
-    // figures that were killed, see figurefall.go
-    corpses []corpse
-    // the tick of the battle the corpses were last looked at, see corpsefade.go
-    corpseFadeTick uint64
-    // see shadows.go
-    shadowLayer *ebiten.Image
-    // screen pixels per pixel of the shadow picture, and where its first pixel is on the screen
-    shadowPixel float64
-    shadowStartX float64
-    shadowStartY float64
-    // where the figures of each unit are and how far out of step, see figurevariety.go
-    figureStates map[*ArmyUnit]*unitFigures
     // who has cast what, see spellanim.go
     castMessage string
     castMessageUntil uint64
@@ -295,8 +253,6 @@ type CombatScreen struct {
     moveArea *moveAreaTiles
     moveShapes *moveAreaShapes
     moveLayer *ebiten.Image
-    // what is marked on the ground, for the corpses. see groundmarks.go
-    marks groundMarks
     // the cursor is gone after a click that starts a strike, see cursorhide.go
     cursorHidden cursorHide
     // buttons of the combat bar with words of their own, see hudbuttons.go
@@ -314,8 +270,6 @@ type CombatScreen struct {
     movingVortex *MagicVortex
     // the mark over the unit whose turn it is, see unitmarker.go
     chevron *ebiten.Image
-    // what goes with the pictures of spells, see spelleffects.go
-    effects spellEffects
     // the cursor is over a cell the unit of the player can not go to or attack
     outOfReach bool
     claimedTiles map[image.Point]*ArmyUnit
@@ -532,8 +486,6 @@ func (combat *CombatScreen) syncCamera() {
     combat.Camera.clampLevel()
     combat.Coordinates = combat.Camera.Matrix()
     combat.Coordinates.Translate(combat.fieldShift, 0)
-    // the view shakes when a spell has hit, see spelleffects.go
-    combat.Coordinates.Translate(combat.shakeShift())
     combat.CameraScale = combat.Camera.Scale()
 }
 
@@ -2010,8 +1962,6 @@ func (combat *CombatScreen) doProjectiles(yield coroutine.YieldFunc) {
 
     for {
         more := combat.Model.UpdateProjectiles(combat.Counter)
-        // the battle stands still for a moment when a spell has hit, see spelleffects.go
-        combat.holdHit(yield)
         if !more {
             break
         }
@@ -2506,13 +2456,6 @@ func (combat *CombatScreen) updateHighlightedUnit() {
 
 func (combat *CombatScreen) UpdateAnimations(){
     combat.updateHighlightedUnit()
-    // corpses are gone while Tab is held, see groundmarks.go
-    combat.updateCorpseHide()
-
-    // particles and what else goes with spells, see spelleffects.go
-    combat.updateSpellEffects()
-    // units that cast show the frames of a shot, see shoot.go
-    combat.updateCastFrames()
 
     for _, unit := range combat.Model.MagicVortexes {
         if combat.Counter % 6 == 0 {
@@ -2795,20 +2738,6 @@ func (combat *CombatScreen) doMoveUnit(yield coroutine.YieldFunc, mover *ArmyUni
 func (combat *CombatScreen) doRangeAttack(yield coroutine.YieldFunc, attacker *ArmyUnit, defender RangeTarget){
     attacker.Facing = faceTowards(attacker.X, attacker.Y, defender.GetX(), defender.GetY())
 
-    // figures with frames of a strike of their own draw and loose, see shoot.go
-    rest := 0
-    if showsShot(attacker) {
-        looses, lasts := combat.startShot(attacker)
-        defer func(){
-            attacker.Shooting = false
-        }()
-        if !combat.waitTicks(yield, looses) {
-            return
-        }
-        rest = lasts - looses
-    }
-    started := combat.Counter
-
     combat.Model.rangeAttack(attacker, defender, combat)
 
     sound, err := combat.AudioCache.GetSound(attacker.Unit.GetRangeAttackSound().LbxIndex())
@@ -2817,11 +2746,6 @@ func (combat *CombatScreen) doRangeAttack(yield coroutine.YieldFunc, attacker *A
     }
 
     combat.doProjectiles(yield)
-
-    // the rest of the shot, if the missile was faster
-    if gone := int(combat.Counter - started); gone < rest {
-        combat.waitTicks(yield, rest - gone)
-    }
 }
 
 func (combat *CombatScreen) doMeleeWall(yield coroutine.YieldFunc, attacker *ArmyUnit, x int, y int){
@@ -2838,8 +2762,8 @@ func (combat *CombatScreen) doMeleeWall(yield coroutine.YieldFunc, attacker *Arm
         sound.Play()
     }
 
-    // an attack is one swing, and the blow is struck where the swing lands. see strikeswing.go
-    lasts, lands := combat.startSwing(attacker, nil)
+    // the blow first, then the strike shows, as the original's Melee_Animation
+    lasts, lands := meleeTicks(), 0
 
     for i := range lasts {
         // the clock of the battle, see together.go
@@ -2878,8 +2802,8 @@ func (combat *CombatScreen) doMelee(yield coroutine.YieldFunc, attacker *ArmyUni
 
     combat.Model.AddLogEvent(fmt.Sprintf("%v attacks %v", attacker.Unit.GetName(), defender.Unit.GetName()))
 
-    // an attack is one swing, and the blow is struck where the swing lands. see strikeswing.go
-    lasts, lands := combat.startSwing(attacker, defender)
+    // the blow first, then the strike shows, as the original's Melee_Animation
+    lasts, lands := meleeTicks(), 0
 
     for i := range lasts {
         // the clock of the battle, see together.go
@@ -2929,9 +2853,6 @@ func (combat *CombatScreen) AddDamageIndicator(unit *ArmyUnit, damage int) {
     placeDamageNumber(&indicator, combat.DamageIndicators, func(count int) int { return rand.N(count) })
 
     combat.DamageIndicators = append(combat.DamageIndicators, indicator)
-
-    // a unit that is hurt in a fight or by a missile bleeds, see blood.go
-    combat.bleed(unit, damage)
 }
 
 func (combat *CombatScreen) UpdateMouseState() {
@@ -3170,7 +3091,6 @@ func (combat *CombatScreen) Update(yield coroutine.YieldFunc) CombatState {
     // set again below, see movearea.go
     combat.outOfReach = false
     combat.updateMoveAreaKey()
-    combat.updateSpellEffectsKey()
 
     mouseX, mouseY := inputmanager.MousePosition()
     hudImage, _ := combat.ImageCache.GetImage("cmbtfx.lbx", 28, 0)
@@ -4049,17 +3969,6 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         // vector.DrawFilledCircle(screen, float32(tx), float32(ty), 2, color.RGBA{R: 0xff, G: 0, B: 0, A: 0xff}, false)
     }
 
-    // the sand where a coast starts and ends, see shore.go
-    combat.drawShore(screen)
-    // the water of a river, see river.go
-    combat.drawRiver(screen)
-    // and of the pools of a swamp, see swamp.go
-    combat.drawPools(screen)
-    // pieces of 2 by 2 tiles over the ground, see large.go
-    combat.drawLargePieces(screen, animationIndex)
-    // props that lie on the ground, see props.go
-    combat.drawFlatProps(screen, animationIndex)
-
     // mud lies over all of the ground
     for _, point := range combat.TopDownOrder {
         if !combat.Model.Tiles[point.Y][point.X].Mud {
@@ -4077,25 +3986,10 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         scale.DrawScaled(screen, mudTiles[animationIndex % uint64(len(mudTiles))], &options)
     }
 
-    // the slopes of plateaus over all of the ground, see slopes.go
-    combat.drawSlopes(screen)
     // the roads of a town, or the clouds a flying fortress stands on. see scenerydraw.go
     combat.drawTownGround(screen)
-    // the stains of blood, see blood.go
-    combat.drawStains(screen)
-    // the marks spells have left on the ground, see decals.go
-    combat.drawDecals(screen)
-    // the shadows of clouds, and the rain and snow that have landed: on the ground, under what
-    // stands on it. see weather.go
-    combat.weatherAdvance()
-    combat.drawCloudGround(screen)
-    combat.drawWeatherGround(screen)
     // spells that lie on the ground, see spellanim.go
     combat.drawGroundSpells(screen)
-    // the light that runs over the ground where a spell has hit, see spelleffects.go
-    combat.drawGroundPulses(screen)
-    // the light of spells, added to the ground. see groundlight.go
-    combat.drawGroundLight(screen)
 
     drawExtraObject := func(x int, y int, extra TileTop) {
         if extra.Drawer != nil {
@@ -4162,16 +4056,6 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
     // reach, see movearea.go
     combat.drawCursorOutline(screen)
 
-    // what is marked on the ground once more on a picture of its own, for the corpses that lie
-    // on it. see groundmarks.go
-    marksLayer := combat.startGroundMarks(screen)
-    if marksLayer != nil {
-        combat.drawMoveArea(marksLayer)
-        combat.drawCursorOutline(marksLayer)
-        if combat.Model.SelectedUnit != nil && isVisible(combat.Model.SelectedUnit) && !combat.Model.SelectedUnit.Moving {
-            combat.drawCellOutline(marksLayer, combat.Model.SelectedUnit.X, combat.Model.SelectedUnit.Y, true)
-        }
-    }
 
     if combat.Model.SelectedUnit != nil && isVisible(combat.Model.SelectedUnit) {
         // if the unit is currently selecting a spell, then don't draw the movement path
@@ -4237,11 +4121,6 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         }
     }
 
-    // while set, figures draw their shadows on this picture and nothing else, see shadows.go
-    var shadowTarget *ebiten.Image
-    // the shadows that are drawn are the ones a spell casts, see spelllight.go
-    spellShadows := false
-
     // draws one figure of a unit, and what is shown over the whole unit if overlays is set
     renderUnit := func(unit *ArmyUnit, figure int, overlays bool) {
         var unitOptions ebiten.DrawImageOptions
@@ -4277,12 +4156,10 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             var tx float64
             var ty float64
 
-            // each figure trails its unit a little, see figurevariety.go
-            figureCount := unit.VisibleFigures() + unit.LostUnits
             if unit.Moving {
-                tx, ty = tilePosition(combat.figurePosition(unit, figure, figureCount, unit.MoveX, unit.MoveY))
+                tx, ty = tilePosition(unit.MoveX, unit.MoveY)
             } else {
-                tx, ty = tilePosition(combat.figurePosition(unit, figure, figureCount, float64(unit.X), float64(unit.Y)))
+                tx, ty = tilePosition(float64(unit.X), float64(unit.Y))
             }
 
             /*
@@ -4290,17 +4167,6 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             options.GeoM.Scale(combat.CameraScale, combat.CameraScale)
             options.GeoM.Translate(tx, ty)
             */
-
-            // the lunge of a strike, and figures that close ranks. see figureslide.go
-            if figure >= 0 && figure < unit.VisibleFigures() {
-                lungeX, lungeY := combat.strikeSlide(unit, combat.figurePhase(unit, figure, figureCount))
-                regroupX, regroupY := combat.regroupSlide(unit, figure, figureCount)
-                tx += (lungeX + regroupX) * combat.CameraScale
-                ty += (lungeY + regroupY) * combat.CameraScale
-            }
-
-            // on the art pixels of the field, see fieldpixel.go
-            tx, ty = combat.onFieldPixel(tx, ty)
 
             unitOptions.GeoM.Scale(combat.CameraScale, combat.CameraScale)
             unitOptions.GeoM.Translate(tx, ty)
@@ -4311,7 +4177,7 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             // unitOptions.GeoM.Translate(0, float64(-unit.Height))
 
             // the original's frames and timing, see animation.go
-            index := combat.figureFrame(unit, len(combatImages), combat.figurePhase(unit, figure, figureCount))
+            index := combat.figureFrame(unit, len(combatImages), 0)
 
             // for summoning units out of the ground, or the merging ability
             unitImage := combatImages[index]
@@ -4323,10 +4189,6 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
 
             // for units that teleport
             unitOptions.ColorScale.ScaleAlpha(1 - unit.Fade)
-            // darker under a cloud, see weather.go
-            if shade := combat.cloudShadeOfUnit(unit); shade < 1 {
-                unitOptions.ColorScale.Scale(shade, shade, shade, 1)
-            }
 
             /*
             x, y := unitOptions.GeoM.Apply(0, 0)
@@ -4351,50 +4213,7 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                 use = data.UnitEnchantmentNone
             }
 
-            figureLost := figure >= unit.VisibleFigures()
-            fallen := FigureFall && figure >= 0 && figure < figureCount
-
-            if shadowTarget != nil {
-                // the pass that draws the shadows of the figures that stand, see shadows.go
-                if !figureLost && (!unit.IsInvisible() || isVisible(unit)) {
-                    offsetX, offsetY := 0.0, 0.0
-                    if unit.IsFlying() {
-                        offsetX, offsetY = shadowFlyingX, shadowFlyingY
-                    }
-                    lean, length := shadowLean, shadowLength
-                    has := true
-                    if spellShadows {
-                        // away from a spell that gives light, see spelllight.go
-                        lean, length, has = combat.spellShadowShape(unit)
-                    }
-                    if has {
-                        unitview.RenderCombatFigureShadow(shadowTarget, unitImage, unitOptions, figureCount, figure, lean, length, offsetX, offsetY, combat.shadowMatrix())
-                    }
-                }
-                return
-            }
-
-            // a figure that was killed falls over and stays as a corpse, see figurefall.go
-            if fallen && combat.figureJustLost(unit, figure, figureCount, figureLost) {
-                if !unit.IsInvisible() || isVisible(unit) {
-                    // as the picture it has now, in the colors of its banner. a spell can turn it
-                    // another way, see figurefall.go
-                    load := func(facing units.Facing) []*ebiten.Image {
-                        plain, _ := combat.ImageCache.GetImagesTransform(unit.Unit.GetCombatLbxFile(), unit.Unit.GetCombatIndex(facing), banner.String(), units.MakeUpdateUnitColorsFunc(banner))
-                        return plain
-                    }
-                    x, y := float64(unit.X), float64(unit.Y)
-                    if unit.Moving {
-                        x, y = unit.MoveX, unit.MoveY
-                    }
-                    x, y = combat.figurePosition(unit, figure, figureCount, x, y)
-                    combat.addCorpse(unit, load, index, figure, figureCount, x, y)
-                }
-            }
-
-            if fallen && figureLost {
-                // drawn as a corpse
-            } else if unit.IsInvisible() {
+            if unit.IsInvisible() {
                 // might not be visible at all, or is semi-visible if next to an enemy unit or if the enemy team has
                 // any units with illusions immunity
                 canBeSeen := isVisible(unit)
@@ -4426,10 +4245,6 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
                 }
 
                 unitview.RenderCombatFigure(screen, unitImage, unitOptions, unit.VisibleFigures(), unit.LostUnits, &dying, use, combat.Counter, &combat.ImageCache, figure)
-                // a unit a spell has hit shows in one color for a moment, see spelleffects.go
-                combat.drawFigureFlash(screen, unit, unitImage, unitOptions, figure)
-                // the rim that faces a spell is lit, see rimlight.go
-                combat.drawFigureRim(screen, unit, unitImage, unitOptions, figure, figureCount)
 
                 if warpCreature {
                     unitOptions.ColorScale = savedColor
@@ -4513,32 +4328,6 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         }
     }
 
-    unitDrawablesFrom := len(allDrawables)
-    allDrawables = append(allDrawables, combat.corpseDrawables(screen)...)
-
-    if FigureShadows {
-        // the shadows of all figures go on the ground before anything that stands on it
-        // while a spell gives light the shadows of the day are out and the ones the spell casts
-        // are there, see spelllight.go
-        dayStrength, spellStrength := combat.shadowStrengths()
-        for _, pass := range []struct{Spell bool; Strength float32}{{false, dayStrength}, {true, spellStrength}} {
-            if pass.Strength <= 0 {
-                continue
-            }
-
-            spellShadows = pass.Spell
-            shadowTarget = combat.shadowPicture(screen)
-            for _, drawable := range allDrawables[:unitDrawablesFrom] {
-                if drawable.Layer == layerFigure {
-                    drawable.Render()
-                }
-            }
-            shadowTarget = nil
-            combat.drawShadowPicture(screen, pass.Strength)
-        }
-        spellShadows = false
-    }
-
     sortFieldDrawables(allDrawables)
 
     for _, drawable := range allDrawables {
@@ -4607,10 +4396,6 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
         }
     }
 
-    // the field is dark while a spell plays. the spell itself, its particles and the numbers are
-    // drawn over the dark. see spelllight.go
-    combat.drawSpellDark(screen)
-
     projectileOnScreen := originalScreenMatrix(combat.GetCameraMatrix())
     for _, projectile := range combat.Model.Projectiles {
         if projectile.Scripted {
@@ -4636,11 +4421,6 @@ func (combat *CombatScreen) NormalDraw(screen *ebiten.Image) {
             scale.DrawScaled(screen, frame, &options)
         }
     }
-
-    // what flies off spells, see particles.go
-    combat.drawParticles(screen)
-    // rain and snow, see weather.go
-    combat.drawWeather(screen)
 
     // the numbers that rise from a unit that is hurt, see damagenumbers.go
     combat.drawDamageNumbers(screen)

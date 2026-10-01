@@ -6,10 +6,9 @@ package main
 // The list has a row per race that opens and closes (a rollout), with the units of the race under
 // it. It is drawn in the small text size over the whole window, in as many columns as it needs.
 //
-// Above the races are the ground of the battle and its coast (user, 2026-09-29), rollouts as the
-// races are: a landscape or one of its biomes (combat/biomes.go), and the side the sea lies on
-// (combat/coast.go), its river (combat/river.go) and the fields of a town (combat/farmland.go). A click on one of them picks it, the battle
-// starts with the click on a unit.
+// Above the races are the ground of the battle, its roads and who moves first, rollouts as the races
+// are: a landscape, or grass land with the original's forest or hills. A click on one of them picks
+// it, the battle starts with the click on a unit.
 // They are kept for the next battle and the next run of the game, see debugsaved.go.
 
 import (
@@ -23,7 +22,6 @@ import (
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/units"
     "github.com/kazzmir/master-of-magic/lib/font"
@@ -69,47 +67,23 @@ var unitPickerRaces = []data.Race{
     data.RaceFantastic, data.RaceHero, data.RaceAll,
 }
 
-// a ground a test battle can be fought on: a landscape, or a biome of one
+// a ground a test battle can be fought on: a landscape, with the original's forest (a forest or a
+// node of nature on the world map) or hills
 type testGround struct {
     Name string
     Landscape combat.CombatLandscape
-    Biome string
+    Forest bool
+    Hills bool
 }
 
 var testGrounds = []testGround{
     {Name: "Grass", Landscape: combat.CombatLandscapeGrass},
-    {Name: mod.BiomeForest, Landscape: combat.CombatLandscapeGrass, Biome: mod.BiomeForest},
-    {Name: mod.BiomeSwamp, Landscape: combat.CombatLandscapeGrass, Biome: mod.BiomeSwamp},
-    {Name: mod.BiomeHills, Landscape: combat.CombatLandscapeGrass, Biome: mod.BiomeHills},
+    {Name: "Forest", Landscape: combat.CombatLandscapeGrass, Forest: true},
+    {Name: "Hills", Landscape: combat.CombatLandscapeGrass, Hills: true},
     {Name: "Desert", Landscape: combat.CombatLandscapeDesert},
     {Name: "Mountain", Landscape: combat.CombatLandscapeMountain},
-    {Name: mod.BiomeVolcano, Landscape: combat.CombatLandscapeMountain, Biome: mod.BiomeVolcano},
-    {Name: mod.BiomeSnowyMountain, Landscape: combat.CombatLandscapeMountain, Biome: mod.BiomeSnowyMountain},
     {Name: "Tundra", Landscape: combat.CombatLandscapeTundra},
 }
-
-// the sides of a coast with their names in the list, in the order of the list
-var testCoasts = []combat.CoastSide{combat.CoastNone, combat.CoastAny, combat.CoastNorth, combat.CoastEast, combat.CoastSouth, combat.CoastWest}
-var testCoastNames = map[combat.CoastSide]string{
-    combat.CoastNone: "None",
-    combat.CoastAny: "Any, a side by chance",
-    combat.CoastNorth: "North, upper right",
-    combat.CoastEast: "East, lower right",
-    combat.CoastSouth: "South, lower left",
-    combat.CoastWest: "West, upper left",
-}
-
-// the courses of a river with their names in the list, in the order of the list
-var testRivers = []combat.RiverCourse{combat.RiverNone, combat.RiverAny, combat.RiverAcross, combat.RiverBeside}
-var testRiverNames = map[combat.RiverCourse]string{
-    combat.RiverNone: "None",
-    combat.RiverAny: "Any, a course by chance",
-    combat.RiverAcross: "Between the armies",
-    combat.RiverBeside: "Beside the armies",
-}
-
-// the fields of a town with their names in the list, by how far the town is
-var testFarmlandNames = []string{"None", "Next to a town, more houses", "Two tiles from a town"}
 
 // the roads of a test battle (user, 2026-09-29): the sides of the tile of the battle a road runs
 // to, as the world map has them, in rows of 3 from the north west
@@ -144,18 +118,6 @@ func testRoadByName(name string) int {
     return 0
 }
 
-// the weather of a test battle with its names in the list (combat/weather.go)
-var testWeatherNames = map[combat.Weather]string{
-    combat.WeatherNone: "None",
-    combat.WeatherLightRain: "Light rain",
-    combat.WeatherHeavyRain: "Heavy rain",
-    combat.WeatherLightSnow: "Light snow",
-    combat.WeatherHeavySnow: "Heavy snow",
-    combat.WeatherClouds: "Cloud shadows",
-}
-var testBattleWeather = combat.WeatherNone
-var unitPickerWeatherOpen bool
-
 // WHO MOVES FIRST in a test battle (user, 2026-09-30: "a toggle under weather for 'First move'. The
 // options are player and enemy, have player selected by default"). The player leads the attackers,
 // who move second in the original; Player gives them the first move (combat.Army.MovesFirst)
@@ -171,20 +133,11 @@ func testFirstMoveName() string {
     return testFirstMoveNames[0]
 }
 
-// the race of the town of the fields of a test battle: the one of the unit that fights
-var testBattleFarmland = combat.FarmlandNone
-var unitPickerFarmlandOpen bool
-
-// the ground, the coast and the river of the test battles: which of testGrounds, the side, the
-// course
+// the ground of the test battles: which of testGrounds
 var testBattleGround = 0
-var testBattleCoast = combat.CoastNone
-var testBattleRiver = combat.RiverNone
 
-// the rollouts of the ground, of the coast and of the river
+// the rollout of the ground
 var unitPickerGroundOpen bool
-var unitPickerCoastOpen bool
-var unitPickerRiverOpen bool
 
 func testGroundByName(name string) int {
     for index, ground := range testGrounds {
@@ -195,33 +148,12 @@ func testGroundByName(name string) int {
     return 0
 }
 
-func testCoastByName(name string) combat.CoastSide {
-    for _, side := range testCoasts {
-        if strings.EqualFold(side.String(), name) {
-            return side
-        }
-    }
-    return combat.CoastNone
-}
-
-func testRiverByName(name string) combat.RiverCourse {
-    for _, course := range testRivers {
-        if strings.EqualFold(course.String(), name) {
-            return course
-        }
-    }
-    return combat.RiverNone
-}
-
 // the ground of a test battle as it was picked
 func testBattleZone() (combat.CombatLandscape, combat.ZoneType) {
     ground := testGrounds[testBattleGround]
     var zone combat.ZoneType
-    zone.Ground.SetBiome(ground.Biome)
-    zone.Ground.Coast = testBattleCoast
-    zone.Ground.River = testBattleRiver
-    zone.Ground.Farmland = testBattleFarmland
-    zone.Ground.Weather = testBattleWeather
+    zone.Ground.Forest = ground.Forest
+    zone.Ground.Hills = ground.Hills
 
     road := testRoads[testBattleRoad]
     if road.Any {
@@ -235,9 +167,6 @@ func testBattleZone() (combat.CombatLandscape, combat.ZoneType) {
             zone.Ground.Roads[side] = true
         }
         zone.Ground.EnchantedRoads = road.Enchanted
-    }
-    if testBattleUnit != nil {
-        zone.Ground.FarmRace = testBattleUnit.Race
     }
     return ground.Landscape, zone
 }
@@ -259,29 +188,16 @@ type unitPickerRow struct {
     Test bool
     Race data.Race
     Unit *units.Unit
-    // the rollouts of the ground and of the coast, and what is in them: a ground by its number
-    // from 1, a coast by its side
+    // the rollouts of the ground, the roads and who moves first, and what is in them: a ground and
+    // a road by its number from 1
     GroundTitle bool
-    CoastTitle bool
     Ground int
-    Coast combat.CoastSide
-    IsCoast bool
-    RiverTitle bool
-    FarmlandTitle bool
     RoadTitle bool
-    // from 1
     Road int
-    WeatherTitle bool
-    Weather combat.Weather
-    IsWeather bool
     FirstTitle bool
     // a row of who moves first: true for the enemy
     IsFirst bool
     EnemyFirst bool
-    // from 1
-    Farmland int
-    River combat.RiverCourse
-    IsRiver bool
     // the one that is picked
     Picked bool
     // an empty row lies above it
@@ -296,7 +212,7 @@ type unitPickerRow struct {
 
 // a row that stands under the title of its rollout
 func (row unitPickerRow) indented() bool {
-    return row.Unit != nil || row.Ground > 0 || row.IsCoast || row.IsRiver || row.Farmland > 0 || row.IsWeather || row.Road > 0 || row.IsFirst
+    return row.Unit != nil || row.Ground > 0 || row.Road > 0 || row.IsFirst
 }
 
 func (row unitPickerRow) contains(x float64, y float64) bool {
@@ -359,47 +275,23 @@ func unitPickerRows() []unitPickerRow {
         rows = append(rows, unitPickerRow{Text: fmt.Sprintf("Test: %v", testBattleLast.Name), Test: true, Apart: true})
     }
 
-    // the ground and the coast of the battle
+    // the ground of the battle
     mark := func(open bool) string {
         if open {
             return "-"
         }
         return "+"
     }
-    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Biome: %v", mark(unitPickerGroundOpen), testGrounds[testBattleGround].Name), GroundTitle: true, Apart: true})
+    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Ground: %v", mark(unitPickerGroundOpen), testGrounds[testBattleGround].Name), GroundTitle: true, Apart: true})
     if unitPickerGroundOpen {
         for index, ground := range testGrounds {
             rows = append(rows, unitPickerRow{Text: ground.Name, Ground: index + 1, Picked: index == testBattleGround})
-        }
-    }
-    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Coast: %v", mark(unitPickerCoastOpen), testCoastNames[testBattleCoast]), CoastTitle: true})
-    if unitPickerCoastOpen {
-        for _, side := range testCoasts {
-            rows = append(rows, unitPickerRow{Text: testCoastNames[side], IsCoast: true, Coast: side, Picked: side == testBattleCoast})
-        }
-    }
-    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v River: %v", mark(unitPickerRiverOpen), testRiverNames[testBattleRiver]), RiverTitle: true})
-    if unitPickerRiverOpen {
-        for _, course := range testRivers {
-            rows = append(rows, unitPickerRow{Text: testRiverNames[course], IsRiver: true, River: course, Picked: course == testBattleRiver})
-        }
-    }
-    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Farmland: %v", mark(unitPickerFarmlandOpen), testFarmlandNames[testBattleFarmland]), FarmlandTitle: true})
-    if unitPickerFarmlandOpen {
-        for index, name := range testFarmlandNames {
-            rows = append(rows, unitPickerRow{Text: name, Farmland: index + 1, Picked: index == testBattleFarmland})
         }
     }
     rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Roads: %v", mark(unitPickerRoadOpen), testRoads[testBattleRoad].Name), RoadTitle: true})
     if unitPickerRoadOpen {
         for index, road := range testRoads {
             rows = append(rows, unitPickerRow{Text: road.Name, Road: index + 1, Picked: index == testBattleRoad})
-        }
-    }
-    rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v Weather: %v", mark(unitPickerWeatherOpen), testWeatherNames[testBattleWeather]), WeatherTitle: true})
-    if unitPickerWeatherOpen {
-        for _, weather := range combat.Weathers {
-            rows = append(rows, unitPickerRow{Text: testWeatherNames[weather], IsWeather: true, Weather: weather, Picked: weather == testBattleWeather})
         }
     }
     rows = append(rows, unitPickerRow{Text: fmt.Sprintf("%v First move: %v", mark(unitPickerFirstOpen), testFirstMoveName()), FirstTitle: true})
@@ -515,19 +407,11 @@ func updateUnitPicker() bool {
             unitPickerOpen = false
         case row.GroundTitle:
             unitPickerGroundOpen = !unitPickerGroundOpen
-        case row.CoastTitle:
-            unitPickerCoastOpen = !unitPickerCoastOpen
         case row.RoadTitle:
             unitPickerRoadOpen = !unitPickerRoadOpen
         case row.Road > 0:
             testBattleRoad = row.Road - 1
             unitPickerRoadOpen = false
-            saveDebugSaved()
-        case row.WeatherTitle:
-            unitPickerWeatherOpen = !unitPickerWeatherOpen
-        case row.IsWeather:
-            testBattleWeather = row.Weather
-            unitPickerWeatherOpen = false
             saveDebugSaved()
         case row.FirstTitle:
             unitPickerFirstOpen = !unitPickerFirstOpen
@@ -535,25 +419,9 @@ func updateUnitPicker() bool {
             testBattleEnemyFirst = row.EnemyFirst
             unitPickerFirstOpen = false
             saveDebugSaved()
-        case row.FarmlandTitle:
-            unitPickerFarmlandOpen = !unitPickerFarmlandOpen
-        case row.Farmland > 0:
-            testBattleFarmland = row.Farmland - 1
-            unitPickerFarmlandOpen = false
-            saveDebugSaved()
-        case row.RiverTitle:
-            unitPickerRiverOpen = !unitPickerRiverOpen
-        case row.IsRiver:
-            testBattleRiver = row.River
-            unitPickerRiverOpen = false
-            saveDebugSaved()
         case row.Ground > 0:
             testBattleGround = row.Ground - 1
             unitPickerGroundOpen = false
-            saveDebugSaved()
-        case row.IsCoast:
-            testBattleCoast = row.Coast
-            unitPickerCoastOpen = false
             saveDebugSaved()
         case row.Unit != nil:
             testBattleUnit = row.Unit

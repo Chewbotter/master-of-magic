@@ -4,49 +4,24 @@ import (
     "testing"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
-
-    "github.com/kazzmir/master-of-magic/game/magic/combat"
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
 )
 
-// the ground and the coast that are picked in the list of the test battle are the ones of its
-// battle, and are found again by the names they are kept under
+// the ground that is picked in the list of the test battle is the one of its battle, and is found
+// again by the name it is kept under; and so are the roads
 func TestTestBattleGround(test *testing.T) {
-    ground, coast := testBattleGround, testBattleCoast
+    ground := testBattleGround
     defer func() {
-        testBattleGround, testBattleCoast = ground, coast
+        testBattleGround = ground
     }()
 
     for index, picked := range testGrounds {
-        for _, side := range testCoasts {
-            testBattleGround = index
-            testBattleCoast = side
-
-            landscape, zone := testBattleZone()
-            if landscape != picked.Landscape || zone.Ground.Biome != picked.Biome || zone.Ground.Coast != side {
-                test.Fatalf("%v with coast %v: landscape %v, ground %+v", picked.Name, side, landscape, zone.Ground)
-            }
-            // a biome is a kind of the landscape it is listed with
-            if combat.BiomeLandscape(picked.Biome, picked.Landscape) != picked.Landscape {
-                test.Fatalf("%v is no kind of landscape %v", picked.Name, picked.Landscape)
-            }
-            if zone.Ground.Forest != (picked.Biome == mod.BiomeForest) || zone.Ground.Hills != (picked.Biome == mod.BiomeHills) {
-                test.Fatalf("%v: %+v", picked.Name, zone.Ground)
-            }
-
-            if testGroundByName(picked.Name) != index || testCoastByName(side.String()) != side {
-                test.Fatalf("%v, %v are not found by their names", picked.Name, side)
-            }
-            if testCoastNames[side] == "" {
-                test.Fatalf("coast %v has no name in the list", side)
-            }
+        testBattleGround = index
+        landscape, zone := testBattleZone()
+        if landscape != picked.Landscape || zone.Ground.Forest != picked.Forest || zone.Ground.Hills != picked.Hills {
+            test.Fatalf("%v: landscape %v, ground %+v", picked.Name, landscape, zone.Ground)
         }
-    }
-
-    // every biome the game shows can be picked
-    for _, biome := range mod.Biomes {
-        if !biome.Planned && testGrounds[testGroundByName(biome.Name)].Biome != biome.Name {
-            test.Fatalf("biome %v is not in the list", biome.Name)
+        if testGroundByName(picked.Name) != index {
+            test.Fatalf("%v is not found by its name", picked.Name)
         }
     }
 
@@ -77,56 +52,8 @@ func TestTestBattleGround(test *testing.T) {
             test.Fatalf("the roads %v: enchanted %v", picked.Key, zone.Ground.EnchantedRoads)
         }
     }
-    testBattleRoad = road
-
-    // the weather
-    weather := testBattleWeather
-    defer func() {
-        testBattleWeather = weather
-    }()
-    for _, picked := range combat.Weathers {
-        testBattleWeather = picked
-        _, zone := testBattleZone()
-        if zone.Ground.Weather != picked || testWeatherNames[picked] == "" {
-            test.Fatalf("weather %v: %+v", picked, zone.Ground)
-        }
-    }
-    testBattleWeather = weather
-
-    // the fields of a town
-    farmland := testBattleFarmland
-    defer func() {
-        testBattleFarmland = farmland
-    }()
-    for away := range testFarmlandNames {
-        testBattleFarmland = away
-        _, zone := testBattleZone()
-        if zone.Ground.Farmland != away || away > combat.FarmlandFar {
-            test.Fatalf("farmland %v: %+v", away, zone.Ground)
-        }
-    }
-    testBattleFarmland = farmland
-
-    // and the river
-    river := testBattleRiver
-    defer func() {
-        testBattleRiver = river
-    }()
-    for _, course := range testRivers {
-        testBattleRiver = course
-        _, zone := testBattleZone()
-        if zone.Ground.River != course || testRiverByName(course.String()) != course || testRiverNames[course] == "" {
-            test.Fatalf("river %v: %+v", course, zone.Ground)
-        }
-    }
-
-    if testGroundByName("what is not there") != 0 || testCoastByName("nowhere") != combat.CoastNone {
-        test.Fatalf("names that are not there")
-    }
 }
 
-// all of a race: one of each of its units but settlers, as often as the army size says, and it is
-// found again by its name
 func TestAllOfRace(test *testing.T) {
     all := allUnitOf(data.RaceHighMen)
     if !isAllOfRace(all) || all.Name != "All High Men" || findUnit(unitFullName(all)) != all {

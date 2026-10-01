@@ -32,10 +32,9 @@ const ResolutionBoxWidth = 84
 const ResolutionBoxHeight = 13
 // the rows of the settings, see textsize.go. left column: upstream's four checkboxes on the rows
 // 0 to 3, then these
-const SingleStrikesRow = 4
-const HideCursorRow = 5
-const SpellbookPulseRow = 6
-const DamageNumbersRow = 7
+const HideCursorRow = 4
+const SpellbookPulseRow = 5
+const DamageNumbersRow = 6
 // right column
 const FullscreenRow = 0
 const WidescreenRow = 1
@@ -285,14 +284,6 @@ func MakeOptionsUI(yield coroutine.YieldFunc, parentUI *uilib.UI, cache *lbx.Lbx
             printInBox(screen, enemyAIRect.Min.X + 5, enemyAIRect, getAlpha(), displaySettings.EnemyAI().Name())
         },
     })
-
-    // how units strike in a battle, see display/strikes.go
-    addCheckbox(group, fonts, &getAlpha, SettingsLeftColumnX, SettingsRowY(SingleStrikesRow), "Single strikes",
-        func() bool { return displaySettings.SingleStrikes() },
-        func(value bool) {
-            displaySettings.SetSingleStrikes(value)
-        },
-    )
 
     // the cursor of a battle after a click that starts an attack, see display/cursorhide.go
     addCheckbox(group, fonts, &getAlpha, SettingsLeftColumnX, SettingsRowY(HideCursorRow), "Hide cursor on attack",

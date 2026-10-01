@@ -15,7 +15,6 @@ import (
     rand "github.com/kazzmir/master-of-magic/lib/chance"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
 
     "github.com/hajimehoshi/ebiten/v2"
 )
@@ -27,11 +26,6 @@ const (
     SceneryHouse
     // the fortress of a city, or an outpost
     SceneryStructure
-    // props that stand and props that lie on the ground, see props.go
-    SceneryProp
-    SceneryFlat
-    // a fence of farmland, see fences.go
-    SceneryFence
 )
 
 type SceneryPiece struct {
@@ -41,65 +35,22 @@ type SceneryPiece struct {
     ScreenY int
     Lbx string
     Index int
-    // a picture the replacement folder adds: its folder, its name and its number from 1. 0 for a
-    // picture of the game
-    Set string
-    Name string
-    Number int
 }
 
-// the pictures of a use, the game's and the ones the replacement folder adds (mod/environment.go)
+// the pictures of a use
 type sceneryPool struct {
-    Set string
-    Name string
     Lbx string
     First int
     Count int
-    Extras int
-    // the pictures that are left before all have been used, see pictureBag. nil picks by chance
-    // alone
-    bag *pictureBag
 }
 
-// Pictures in an order by chance, every one once before any comes again (SpreadPictures in
-// terrain.go): what is placed one after the other, as the trees of a patch, shows different
-// pictures as long as there are any
-type pictureBag struct {
-    left []int
+func makeSceneryPool(lbx string, first int, count int) sceneryPool {
+    return sceneryPool{Lbx: lbx, First: first, Count: count}
 }
 
-func (bag *pictureBag) next(total int) int {
-    if len(bag.left) == 0 {
-        bag.left = rand.Perm(total)
-    }
-    pick := bag.left[len(bag.left) - 1]
-    bag.left = bag.left[:len(bag.left) - 1]
-    return pick
-}
-
-func makeSceneryPool(set string, name string, lbx string, first int, count int) sceneryPool {
-    pool := sceneryPool{Set: set, Name: name, Lbx: lbx, First: first, Count: count, Extras: mod.CountExtras(set, name, count)}
-    if SpreadPictures {
-        pool.bag = &pictureBag{}
-    }
-    return pool
-}
-
-// a piece with one of the pictures, each as often as the others
+// a piece with one of the pictures, by chance
 func (pool sceneryPool) piece(kind SceneryKind, screenX int, screenY int) SceneryPiece {
-    piece := SceneryPiece{Kind: kind, ScreenX: screenX, ScreenY: screenY, Lbx: pool.Lbx, Index: pool.First}
-    pick := rand.N(pool.Count + pool.Extras)
-    if pool.bag != nil {
-        pick = pool.bag.next(pool.Count + pool.Extras)
-    }
-    if pick < pool.Count {
-        piece.Index = pool.First + pick
-    } else {
-        piece.Set = pool.Set
-        piece.Name = pool.Name
-        piece.Number = pick + 1
-    }
-    return piece
+    return SceneryPiece{Kind: kind, ScreenX: screenX, ScreenY: screenY, Lbx: pool.Lbx, Index: pool.First + rand.N(pool.Count)}
 }
 
 // the original's view of the battlefield: scenery only stands where its screen shows the field
@@ -113,7 +64,7 @@ const sceneryPictures = 5
 
 // the point of the picture that is put on the position: the middle of its width, this far above
 // its bottom edge. for the pictures of the game that is 8, 13 of a tree and 6, 12 of a rock, as the
-// original has them; added pictures can have any size
+// original has them
 const treeAnchorBelow = 5
 const rockAnchorBelow = 1
 // houses: the middle of the picture, this far above its bottom
@@ -224,10 +175,6 @@ func treeCount(landscape CombatLandscape, ground ZoneGround) int {
     if ground.Forest {
         return 30 + roll(30)
     }
-    // twice the trees of grass land, which stand on the islands (user, 2026-09-29)
-    if ground.Biome == mod.BiomeSwamp {
-        return roll(20) * swampTrees
-    }
     switch landscape {
         case CombatLandscapeDesert: return roll(10)
         case CombatLandscapeMountain: return roll(40)
@@ -236,22 +183,14 @@ func treeCount(landscape CombatLandscape, ground ZoneGround) int {
     return roll(20)
 }
 
-// on the original's screen. mountains and hills have more than the original, which has 1 to 12
-// on a mountain and hills as grass land (user, 2026-09-29: "Mountain and hills should have a
-// higher density of rocks")
-// the trees of a swamp are this many times the ones of grass land
-const swampTrees = 2
-
+// on the original's screen
 func rockCount(landscape CombatLandscape, ground ZoneGround) int {
     if ground.Forest {
         return roll(8)
     }
-    if ground.Hills {
-        return 8 + roll(8)
-    }
     switch landscape {
         case CombatLandscapeDesert: return roll(8) - 1
-        case CombatLandscapeMountain: return 12 + roll(12)
+        case CombatLandscapeMountain: return roll(12)
         case CombatLandscapeTundra: return roll(12) + 4
     }
     return roll(5) - 1
@@ -397,10 +336,6 @@ func scatterRocks(count int, pool sceneryPool, zone ZoneType, area sceneryArea, 
     return out
 }
 
-// the folder and the names of the houses in the replacement folder, by style
-const houseSet = "Town"
-var houseNames = []string{"house", "hut", "tree house"}
-
 // the pictures of houses come in three styles of five
 func houseStyle(race data.Race) int {
     switch race.HouseType() {
@@ -427,7 +362,7 @@ func makeHouses(zone ZoneType) []SceneryPiece {
     fortress := city.HasFortress()
     walled := city.HasWall()
     style := houseStyle(city.Race)
-    housePool := makeSceneryPool(houseSet, houseNames[style], houseLbx, houseIndex + style * housePictures, housePictures)
+    housePool := makeSceneryPool(houseLbx, houseIndex + style * housePictures, housePictures)
 
     if fortress {
         out = append(out, SceneryPiece{Kind: SceneryStructure, ScreenX: lairX, ScreenY: lairY, Lbx: houseLbx, Index: fortressIndex})
@@ -496,35 +431,16 @@ func makeScenery(width int, height int, landscape CombatLandscape, plane data.Pl
     }
 
     lbx := terrainSetLbx(landscape, plane)
+    treePool := makeSceneryPool(lbx, sceneryTreeIndex, sceneryPictures)
+    rockPool := makeSceneryPool(lbx, sceneryRockIndex, sceneryPictures)
 
-    // the houses of the fields of a town, see farmland.go
-    out = append(out, makeFarmHouses(width, height, zone, ground)...)
-    // its fences and its props, see fences.go and farmland.go
-    out = append(out, makeFences(zone, ground)...)
-    out = append(out, makeFarmProps(width, height, zone, ground)...)
-
-    // the pictures that are added are the ones of the biome, see mod/biomes.go
-    set := mod.BiomeFolder(zone.Ground.Biome, mod.EnvironmentSet(lbx))
-    treePool := makeSceneryPool(set, "tree", lbx, sceneryTreeIndex, sceneryPictures)
-    rockPool := makeSceneryPool(set, "rock", lbx, sceneryRockIndex, sceneryPictures)
-
-    if ForestWoods && zone.Ground.Forest && ground != nil {
-        // woods and clearings, see forest.go
-        out = append(out, makeWoods(treePool, zone, ground)...)
-    } else {
-        trees := treeCount(landscape, zone.Ground)
-        out = append(out, scatterTrees(trees, treePool, zone, originalArea(), ground)...)
-        out = append(out, scatterTrees(trees * sceneryBeyondScreen(width, height), treePool, zone, beyondArea(width, height), ground)...)
-    }
+    trees := treeCount(landscape, zone.Ground)
+    out = append(out, scatterTrees(trees, treePool, zone, originalArea(), ground)...)
+    out = append(out, scatterTrees(trees * sceneryBeyondScreen(width, height), treePool, zone, beyondArea(width, height), ground)...)
 
     rocks := rockCount(landscape, zone.Ground)
     out = append(out, scatterRocks(rocks, rockPool, zone, originalArea(), ground)...)
     out = append(out, scatterRocks(rocks * sceneryBeyondScreen(width, height), rockPool, zone, beyondArea(width, height), ground)...)
-
-    // what the replacement folder has of props, see props.go
-    out = append(out, makeProps(width, height, set, zone, ground)...)
-    // and of glints on the water of a river, see river.go
-    out = append(out, makeGlints(ground)...)
 
     return out
 }
@@ -536,9 +452,6 @@ func (piece *SceneryPiece) anchor(width int, height int) (int, int) {
         case SceneryRock: return width / 2, height - rockAnchorBelow
         case SceneryHouse: return width / 2, height - houseAnchorBelow
         case SceneryStructure: return structureAnchorX, height - structureAnchorBelow
-        case SceneryProp: return width / 2, height - propAnchorBelow
-        case SceneryFlat: return width / 2, height / 2
-        case SceneryFence: return width / 2, height - fenceAnchorBelow
     }
     return 0, 0
 }

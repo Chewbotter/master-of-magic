@@ -14,7 +14,6 @@ import (
     "github.com/kazzmir/master-of-magic/lib/coroutine"
     "github.com/kazzmir/master-of-magic/lib/set"
     "github.com/kazzmir/master-of-magic/game/magic/data"
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     "github.com/kazzmir/master-of-magic/game/magic/util"
     uilib "github.com/kazzmir/master-of-magic/game/magic/ui"
@@ -785,9 +784,9 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
         face := makeLeafFace(book, region, func(face *ebiten.Image, options ebiten.DrawImageOptions) {
             // the tab in its corner is a part of the page and turns with it, see pagetab.go
             if right && hasNextPage(halfPage) {
-                drawTabOnFace(face, &imageCache, mod.TabResearchRight, researchTabRight, region)
+                drawTabOnFace(face, &imageCache, TabResearchRight, researchTabRight, region)
             } else if !right && hasPreviousPage(halfPage) {
-                drawTabOnFace(face, &imageCache, mod.TabResearchLeft, researchTabLeft, region)
+                drawTabOnFace(face, &imageCache, TabResearchLeft, researchTabLeft, region)
             }
 
             if halfPage >= 0 && halfPage < len(halfPages) {
@@ -995,10 +994,10 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
 
                 // the tabs of the pages under the leaf, which comes down over them
                 if hasPreviousPage(showLeftPage) {
-                    drawPageTab(screen, &imageCache, mod.TabResearchLeft, researchTabLeft, getAlpha(), false)
+                    drawPageTab(screen, &imageCache, TabResearchLeft, researchTabLeft, getAlpha(), false)
                 }
                 if hasNextPage(showRightPage) {
-                    drawPageTab(screen, &imageCache, mod.TabResearchRight, researchTabRight, getAlpha(), false)
+                    drawPageTab(screen, &imageCache, TabResearchRight, researchTabRight, getAlpha(), false)
                 }
 
                 drawLeaf(screen, researchLeaf(), getResearchLeafFace(flipLeftSide, true), getResearchLeafFace(flipRightSide, false), turned, bookFlipReverse, getAlpha(), researchPixel)
@@ -1083,7 +1082,6 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
     // the mouse is over a tab, see pagetab.go
     leftTurnOver := false
     rightTurnOver := false
-    forgetHoverTabs()
 
     // left page turn
     leftTurn, _ := imageCache.GetImage("scroll.lbx", 7, 0)
@@ -1102,7 +1100,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             // while a leaf turns the tabs are drawn under it, with the book
             if hasPreviousPage(showLeftPage) && !(flipping && ProceduralPageTurn) {
-                drawPageTab(screen, &imageCache, mod.TabResearchLeft, leftRect.Min, getAlpha(), leftTurnOver)
+                drawPageTab(screen, &imageCache, TabResearchLeft, leftRect.Min, getAlpha(), leftTurnOver)
             }
         },
     })
@@ -1123,7 +1121,7 @@ func ShowSpellBook(yield coroutine.YieldFunc, cache *lbx.LbxCache, allSpells Spe
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             if hasNextPage(showRightPage) && !(flipping && ProceduralPageTurn) {
-                drawPageTab(screen, &imageCache, mod.TabResearchRight, rightRect.Min, getAlpha(), rightTurnOver)
+                drawPageTab(screen, &imageCache, TabResearchRight, rightRect.Min, getAlpha(), rightTurnOver)
             }
         },
     })
@@ -1782,9 +1780,9 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         face := makeLeafFace(book, region, func(face *ebiten.Image, options ebiten.DrawImageOptions) {
             // the tab in its corner is a part of the page and turns with it, see pagetab.go
             if right && castPageHasNext(page, len(spellPages)) {
-                drawTabOnFace(face, &imageCache, mod.TabCastRight, castTabRight.Sub(image.Pt(castBookX, castBookY)), region)
+                drawTabOnFace(face, &imageCache, TabCastRight, castTabRight.Sub(image.Pt(castBookX, castBookY)), region)
             } else if !right && castPageHasPrevious(page) {
-                drawTabOnFace(face, &imageCache, mod.TabCastLeft, castTabLeft.Sub(image.Pt(castBookX, castBookY)), region)
+                drawTabOnFace(face, &imageCache, TabCastLeft, castTabLeft.Sub(image.Pt(castBookX, castBookY)), region)
             }
 
             if page >= 0 && page < len(spellPages) {
@@ -2117,10 +2115,10 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
 
                 // the tabs of the pages under the leaf, which comes down over them
                 if castPageHasPrevious(showPageLeft) {
-                    drawPageTab(screen, &imageCache, mod.TabCastLeft, castTabLeft, getAlpha(), false)
+                    drawPageTab(screen, &imageCache, TabCastLeft, castTabLeft, getAlpha(), false)
                 }
                 if castPageHasNext(showPageRight, len(spellPages)) {
-                    drawPageTab(screen, &imageCache, mod.TabCastRight, castTabRight, getAlpha(), false)
+                    drawPageTab(screen, &imageCache, TabCastRight, castTabRight, getAlpha(), false)
                 }
 
                 // the leaf shows pageSideLeft while it is on the right and pageSideRight on the
@@ -2298,7 +2296,6 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
     // a click while a leaf turns puts that leaf down and turns the next
     var castTurns runningTurn
     // the pictures of the replacement folder are read when the book opens
-    forgetHoverTabs()
 
     pageTurnRight, _ := imageCache.GetImage("spells.lbx", 2, 0)
     pageTurnRightRect := image.Rect(0, 0, pageTurnRight.Bounds().Dx(), pageTurnRight.Bounds().Dy()).Add(castTabRight)
@@ -2334,7 +2331,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             // while a leaf turns the tabs are drawn under it, with the book
             if *currentPage + 2 < len(spellPages) && !(flipping && ProceduralPageTurn) {
-                drawPageTab(screen, &imageCache, mod.TabCastRight, pageTurnRightRect.Min, getAlpha(), pageTurnRightOver)
+                drawPageTab(screen, &imageCache, TabCastRight, pageTurnRightRect.Min, getAlpha(), pageTurnRightOver)
             }
         },
     })
@@ -2377,7 +2374,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
 
     for slot, entry := range bookmarkSections {
         // as wide as the ribbon is when it is pulled out
-        area := bookmarkShown(slot, true, mod.BookmarkWidth, mod.BookmarkHeight)
+        area := bookmarkShown(slot, true, BookmarkWidth, BookmarkHeight)
         has := func() int {
             if !bookmarksShown(spellPages) {
                 return -1
@@ -2440,7 +2437,7 @@ func MakeSpellBookCastUI(ui *uilib.UI, cache *lbx.LbxCache, spells Spells, charg
         },
         Draw: func(element *uilib.UIElement, screen *ebiten.Image){
             if *currentPage > 0 && !(flipping && ProceduralPageTurn) {
-                drawPageTab(screen, &imageCache, mod.TabCastLeft, pageTurnLeftRect.Min, getAlpha(), pageTurnLeftOver)
+                drawPageTab(screen, &imageCache, TabCastLeft, pageTurnLeftRect.Min, getAlpha(), pageTurnLeftOver)
             }
 
         },

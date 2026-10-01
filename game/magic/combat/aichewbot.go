@@ -1258,7 +1258,7 @@ func (model *CombatModel) chewPath(unit *ArmyUnit, to image.Point, target *ArmyU
         }
     }
 
-    path, ok := model.computePathAvoiding(unit.X, unit.Y, to.X, to.Y, unit.CanTraverseWall(), unit.IsFlying(), unit.CanEnterWater(), avoid)
+    path, ok := model.computePathAvoiding(unit.X, unit.Y, to.X, to.Y, unit.CanTraverseWall(), unit.IsFlying(), avoid)
 
     if tile != nil {
         tile.Unit = old

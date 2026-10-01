@@ -14,7 +14,6 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Hall of Fame: the ten best scores, as in the original, kept between games.
 - One settings screen for the whole game, with small text and room for many settings, and tips for them.
 - Controls setting: Modern (default) or Classic. Classic is the controls of the original; everything listed under "modern controls" below is off there.
-- Setting "Single strikes": the look of strikes in battle, see Battles.
 - Setting "Hide cursor on attack", on at first: see the cursors of Battles.
 - Setting "Pulsing spellbook text", on at first: off, nothing in the spellbooks pulses, as in the original.
 - Setting "Damage numbers", on at first: off, no numbers rise from units that are hit, as in the original.
@@ -24,8 +23,6 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - The menus of choices (Info, Game) and the advisors of Info have the original's text: its letters, colors, edges and places.
 - Messages and popups have the original's text: the box of a message, what a stack has found (lair, node, tower), the help scroll, the box of a finished building and of an event, the windows of a hero or mercenaries for hire and of the merchant, the box a name is typed in, what was found in a lair, a hero that has made a level, the window of an outpost, the pictures of a summoning and of a spell for the whole world, the words over a banished wizard, the window of a city of another wizard, the screen of the items.
 - The picture of a summoning has the original's colors of the realm: the ring on the floor and the edges of the table are in the color of the spell too, not only the flames.
-- A Lightning Bolt with frames of your own (more or fewer than the game's five) plays all of them in their order, one flash after the other, in place of the game's two flashes of frames by chance. It strikes when the bolt in your frames reaches the ground. Bright blue sparks come off a Lightning Bolt while it shows; where it strikes, blue sparks fly and dark dirt is thrown straight up.
-- Units that shoot use the frames of a strike you give them too (4, 5, 6): they draw and loose with them, standing where they are, and the missile leaves on the frame the strike lands on.
 - The events of a turn are on one scroll, under their headings, as in the original; a text that is too long for it can be moved with the wheel, the arrow keys or the arrows on the scroll.
 - With the Enemy AI Chewbot, the cities of computer wizards build and buy as in the original: by the wizard's personality (Militarist, Theurgist, Perfectionist, Expansionist), one settler at a time, army buildings first away from you, often Trade Goods; neutral cities build Barracks first.
 - With the Enemy AI Chewbot, computer wizards move on the world map as in the original: settlers look for the best site near home, garrisons grow with their cities, units beyond what their cities need gather into expeditions sized by the empire (a small empire sends small ones) that march on neutral cities, lairs, nodes and the wizards they are hostile to, engineers link cities with roads, and armies that run out of targets wait at the coast for ships. Before turn 100 they leave other wizards alone unless attacked.
@@ -79,7 +76,6 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Newly revealed land fades in, one art pixel at a time, and starts to when a unit sets out for the next tile, not when it has arrived.
 - A left click on one of your stacks selects it (modern controls). Shift and a left click sends the selected stack there.
 - A move of more than one tile takes two clicks (modern controls): the first shows the path, the second on the same tile sends the stack. A tile next to the stack takes one click.
-- The path of a stack shows boots as far as it gets in this turn, and flags in the color of your wizard on the tiles it will walk in later turns.
 - A stack that goes on along its path when a turn starts is shown for a moment before it walks.
 - Space ends the turn (modern controls), as N does. Home puts the camera on the selected stack.
 - Over the map the cursor is as large as the map is drawn, at every zoom level (modern controls).
@@ -113,26 +109,13 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Zoom in whole steps and smooth panning. The field reaches across a wide window, with darkening ground around it.
 - Ground made as the original makes it: grass and dirt in patches, the roads of the world map crossing the field (enchanted roads in gold), a forest with many more trees.
 - Movement costs of the original: trees and mud slow a unit down, a road is faster than grass.
-- Raised ground forms plateaus and small hills with shaded slopes and rounded outlines, most of them in hills and mountains. Only going up or down a slope costs more, the top is ground as any other. The original's raised ground is left as short mounds, for the look only.
-- Biomes: a battle in a forest, in a swamp, in hills, on a volcano or on a mountain beside tundra can have pictures of its own. The game has none yet, so until an artist adds some they look as their landscape does. A volcano is fought on the ground of the mountains.
-- A coast on the side of the field where the sea or a lake lies on the world map: a wide beach that is narrow in places, then water, with ragged edges where grass runs into sand and sand into water. The armies stand on land. The beach is rough ground and costs twice as much to cross; only units that fly, swim or sail can go into the water. A tile on an edge counts as what lies under the sand: ground or water. On tundra the sea is frozen.
-- Farmland: a battle one or two tiles from a town has houses of the race of the town here and there, more of them right beside the town. On plain grass land it is fought on the fields of the town: plots of many sizes, square and oblong, that take about half of the ground, each of one kind of crop, with a row of dirt or grass between them. Fences stand along sides of the plots and beside the roads, and small things of a farm lie about. Other landscapes and biomes keep their ground. Roads are there where the world map has them. Crops cost what grass costs.
-- Forests are woods and clearings: many more trees, which stand close together in woods with open ground between them, and a clearing in the middle of the field where the armies start. Trees slow units down as before, so the woods are slow ground.
-- Mountains and hills have more rocks.
-- Swamps are islands in brackish green water: about half of the ground is raised, all that is low is under water. Roads run through the water as fords. Splashes in it are green. A swamp has twice the trees of grass land, on its islands. Units can wade through; a tile of a pool is rough ground and costs twice as much to cross.
-- Weather, in test battles for now: light rain, heavy rain, light snow, heavy snow, and the shadows of clouds that drift over the ground and darken the units and the land under them. Rain and snow come down in gusts, as single pixels. Weather changes no rule.
-- Rivers, in debug battles for now: shallow water 2 to 3 tiles wide that winds between the armies or beside them, over the ground of whatever the landscape is. Every unit can wade through; a tile of the river is rough ground and costs twice as much to cross, its banks cost what the ground costs. A battlefield with a river has no roads, a town has no river. A river that runs toward a coast runs into the sea, which comes in to meet it in a small bay. On tundra the river is frozen. Units that walk into the water throw up a small splash, a few drops for a single figure, a group not much more.
-- Large pieces of ground over 2 by 2 tiles, such as a cluster of rocks or a patch of dirt, each once per battle at most. For the look only.
 - Units the computer controls act at the same time, and decide as they would in turn.
 - Space toggles auto combat; the AUTO button is lit while it is on.
 - With the modern controls the buttons of a battle are AUTO, STAY and END in the place of WAIT, AUTO and DONE: STAY ends the turn of the selected unit, END the turn of all your units that still have theirs.
-- What is marked on the ground (where a unit can go, the outlines of cells) shows over corpses. While Tab is held the corpses fade away.
 - The area the selected unit can move to is shown. A click on a unit picks it; WAIT goes through the units by where they stand.
 - A chevron marks the unit whose turn it is.
 - Cursors sit on the tile they act on and are drawn on the pixels of the field. After a click that sends a unit to strike or to shoot the cursor fades away until the mouse moves.
-- Figures of a unit move and strike each with timing of their own.
 - In a battle, a right click cancels a spell while its target is being picked, as the Cancel button does (modern controls).
-- Units that shoot, throw magic or cast a spell show their attack frames while they do, all the frames their art has; before, only units with added frames did, and casters stood still.
 - Spells cast on a unit in battle take the original's targets: buffs on any unit that lacks them, whatever its realm; Heroism and the weapon spells on normal units, heroes too; curses refused only for the matching immunity.
 - Metal Fires no longer lowers the to-hit of magic and thrown attacks, and works on Chaos Channels units but not on undead or Black Channels units; Holy Weapon cast in battle gives its to-hit.
 - Raise Dead brings a unit back by its hits without its enchantments, as the original does.
@@ -140,13 +123,9 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Call Lightning strikes at the start of every round with nature bolts, which Righteousness and Bless do not stop.
 - Disenchant in battle also ends a town's Heavenly Light and Cloud of Shadow and can lift a warp from your own node.
 - Figures are drawn in front of or behind each other by where their feet are, so riders, hounds and figures that walk or strike past each other no longer pop in front of and behind their neighbors.
-- A strike is a swing of steps: back, forward, the blow where the swing lands. Units that fight across a corner close in. With the setting "Single strikes" off, the simpler strike of before.
-- Killed figures are thrown back and fall; corpses stay on the field, gray, and the oldest fade when a tile has more than 4.
-- Figures cast shadows.
 - The color of a wizard on figures and units keeps the shading of the art for every color; before, red, blue and yellow were nearly flat.
-- Blood made of particles, dust for the undead and mist for spirits; it stains the ground and the corpses it lands on. Sparks for a blow that does no damage.
 - Damage numbers in the original's style, as large as the field is drawn. Many at once spread out and keep apart while they rise. Bright red over the enemy's units, darker over yours.
-- Spells play as in the original, and add to it: particles where they hit, marks on the ground, light that darkens the field around it and brightens the ground near it in its color, a lit rim on the figures that face it, corpses in the color of what killed them.
+- Spells play as in the original: their pictures, steps and timing.
 - A battle that is won or lost is shown for a moment before it ends.
 - With the Enemy AI Chewbot, computer armies (and yours on auto) fight as in the original: they gather at a line and advance together, shooters stay back and shoot, heroes avoid fights they would lose, defenders keep to their walls and guard the gate, attackers go for the gate, and a hopeless army flees to save its heroes. Wizards and units cast as in the original too: the spell that suits how the battle stands, at the target the original would pick.
 - Tactical combat follows the original's rules: a melee attack costs half the unit's full moves (a unit of 1 move strikes twice; before, the cost was paid twice); an archer next to an enemy shoots only when its ranged attack is more than half its melee; First Strike with Haste strikes once; only the attacker's Cause Fear works; Wall of Fire burns only an attacker striking into it; Lucky and Prayer count twice against melee as in the original; Blur takes damage points instead of to-hit; range lowers to-hit by 10% every 3 squares; thrown attacks and poison roll for every figure; every attack hits at least 10%.
@@ -172,17 +151,8 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Computer wizards never move their fortress.
 - Death Wish and Great Unsummoning are stopped by a city's Consecration, ward or Nightshade for the units in it.
 
-## For artists
-- A replacement folder (`mod/`): a picture in it takes the place of the game's own. Figures, cursors, spells, the surroundings of battles, and any picture of the game's archives.
-- The folder can ADD pictures: more ground tiles, trees, rocks, houses, large pieces, and props that lie or stand. Added ground tiles are sprinkled in among the game's own, which stay the most, and the same one does not show twice close together; of the others every picture is used once before any comes again.
-- Biomes, the coast, the river and the farmland have folders of their own in the replacement folder. The beach and the water of a coast can be different for grass land, desert, mountains and tundra. The river takes glints: small animated pictures that are scattered over its water. A biome only needs the pictures that differ from its landscape.
-- Figures can have more frames: a longer strike, dying and lying.
-- The flag of the paths on the world map, the tabs of the spellbooks under the mouse and the bookmarks of the spellbook can be repainted.
-- Values of spell effects and blood in a text file that is read again while the game runs.
-- A tool that writes the game's pictures as png files, the surroundings of battles under names that say what each picture is for, and Aseprite files for figures and spells with an export back into the replacement folder.
-
 ## For testing (debug)
-- A Debug list on the start screen: World Map, Random Battle, Random City Battle, Test Battle of a unit picked from a list, or of all units of a race but settlers standing a tile apart, (with its biome, coast, river, farmland, roads and weather, or a coast or river by chance; a button starts the last unit again on what is picked), Army Size. Random battles have a landscape, a biome, a coast, farmland and roads or a river by chance.
+- A Debug list on the start screen: World Map, Random Battle, Random City Battle, Test Battle of a unit picked from a list, or of all units of a race but settlers standing a tile apart, (with its ground, roads and who moves first; a button starts the last unit again on what is picked), Army Size. Random battles have a landscape, sometimes forest or hills, and roads by chance.
 - World Map: a quick game with unlimited moves, no greetings of rival wizards, 3 more units around the city, and units that are never disbanded.
 - In debug battles the player knows every spell and does not run out of mana.
 - Escape in anything started from the Debug list goes back to the start screen.

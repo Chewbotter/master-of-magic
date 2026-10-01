@@ -5,6 +5,11 @@ reconstruction (see CLAUDE.md, Reference workflow): we read facts from it and wr
 
 Work goes in batches. After each batch the user compares the result with the original.
 
+Since 2026-10-01 this repository is the classic faithful version: what was added to the battlefield
+beyond the original (biomes, coast, rivers, farmland, weather, plateaus, added pictures, spell
+effects, blood, corpses, shadows, the swing of strikes) is in the private MasterMagic2 only. The
+parts of this page about those are its history.
+
 ## How our battlefield maps to the original's
 
 The original's grid is 21 by 22 cells, (cgx, cgy). Ours is 30 by 30 tiles, (x, y), and already lays

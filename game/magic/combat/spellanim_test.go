@@ -3,7 +3,7 @@ package combat
 import (
     "testing"
 
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
+
 
     "github.com/hajimehoshi/ebiten/v2"
 )
@@ -46,49 +46,6 @@ func TestFireBoltPath(test *testing.T) {
     last := bolt.Steps[10]
     if last.X != hitX + 110 - 100 || last.Y != hitY - 66 + 60 || last.Frame != 3 {
         test.Errorf("last step %v", describeStep(last))
-    }
-}
-
-// a bolt goes on between the redraws of the original, by whole pixels, and is where the original
-// has it at every redraw
-func TestBoltGlides(test *testing.T) {
-    combat := &CombatScreen{}
-    x, y := CellToTile(10, 12)
-    target := &ArmyUnit{X: x, Y: y}
-
-    bolt := combat.createBolt(BoltFire, target, testPictures(4, 28, 30), nil)
-    bolt.Started = true
-    bolt.Start = 100
-
-    tps := uint64(ebiten.TPS())
-    places := make(map[int]bool)
-    lastX := 0
-    for tick := uint64(0); tick * 182 < tps * 110; tick++ {
-        placeX, placeY, _, ok := bolt.placeAt(bolt.Start + tick)
-        if !ok {
-            test.Fatalf("nothing to show at tick %v", tick)
-        }
-        if tick > 0 && (placeX > lastX || lastX - placeX > 5) {
-            test.Errorf("tick %v: from %v to %v", tick, lastX, placeX)
-        }
-        lastX = placeX
-        places[placeX] = true
-
-        // 10 across for 6 down all the way
-        fromStartX := bolt.Steps[0].X - placeX
-        fromStartY := placeY - bolt.Steps[0].Y
-        if fromStartX * 6 - fromStartY * 10 > 10 || fromStartY * 10 - fromStartX * 6 > 10 {
-            test.Errorf("tick %v: %v across and %v down is off the way", tick, fromStartX, fromStartY)
-        }
-    }
-
-    if len(places) < 30 {
-        test.Errorf("the bolt was at %v places only", len(places))
-    }
-
-    hitX := 126 - 16
-    if lastX < hitX || lastX > hitX + 4 {
-        test.Errorf("the bolt ends at %v, it hits at %v", lastX, hitX)
     }
 }
 
@@ -176,45 +133,3 @@ func TestSpellSteps(test *testing.T) {
     }
 }
 
-// a lightning bolt with a series of frames of the replacement folder plays all of them in order
-func TestLightningSeries(test *testing.T) {
-    combat := &CombatScreen{}
-    target := &ArmyUnit{X: 5, Y: 5}
-    pictures := testPictures(6, 184, 200)
-
-    // the game's frames: two flashes by chance between the waits
-    projectile := combat.createLightning(target, pictures, nil)
-    if len(projectile.Steps) != lightningFlashes + 2 {
-        test.Fatalf("%v steps with the game's frames", len(projectile.Steps))
-    }
-
-    // a series: every frame once, in its order
-    // the bolt comes down over the first two frames and is on the ground from the third
-    mod.MarkFrameCountChangedForTest(lightningLbx, lightningEntry, 5, []int{94, 157, 196, 199, 199, 199})
-    defer mod.MarkFrameCountChangedForTest(lightningLbx, lightningEntry, 0, nil)
-    projectile = combat.createLightning(target, pictures, nil)
-    if projectile.ImpactStep != 1 + 2 {
-        test.Fatalf("it hits at step %v, the bolt is on the ground at step %v", projectile.ImpactStep, 1 + 2)
-    }
-    if len(projectile.Steps) != len(pictures) + 2 {
-        test.Fatalf("%v steps with a series of %v", len(projectile.Steps), len(pictures))
-    }
-    for index, step := range projectile.Steps[1:len(projectile.Steps) - 1] {
-        if step.Frame != index || step.Ticks != lightningSeriesTicks {
-            test.Fatalf("step %v: %v", index, describeStep(step))
-        }
-    }
-}
-
-// the frame of a series that reaches the ground, or the last one
-func TestLightningGroundFrame(test *testing.T) {
-    if frame := lightningGroundFrame([]int{94, 157, 196, 199}, 4); frame != 2 {
-        test.Fatalf("the ground at frame %v", frame)
-    }
-    if frame := lightningGroundFrame([]int{50, 60, -1}, 3); frame != 2 {
-        test.Fatalf("none reaches the ground: frame %v", frame)
-    }
-    if frame := lightningGroundFrame(nil, 6); frame != 5 {
-        test.Fatalf("rows not known: frame %v", frame)
-    }
-}

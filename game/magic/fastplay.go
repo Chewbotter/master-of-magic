@@ -23,7 +23,6 @@ import (
     fontslib "github.com/kazzmir/master-of-magic/game/magic/fonts"
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
     "github.com/kazzmir/master-of-magic/game/magic/mainview"
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
     musiclib "github.com/kazzmir/master-of-magic/game/magic/music"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
@@ -189,12 +188,8 @@ func (game *MagicGame) updateFastPlay(menu *mainview.MainScreen) (mainview.MainS
                 unitPickerExpanded[race] = true
             }
         }
-        // and the rollouts of the ground and of the coast
-        unitPickerGroundOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "biome")
-        unitPickerCoastOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "coast")
-        unitPickerRiverOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "river")
-        unitPickerFarmlandOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "farmland")
-        unitPickerWeatherOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "weather")
+        // and the rollouts of the ground, the roads and who moves first
+        unitPickerGroundOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "ground")
         unitPickerFirstOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "first")
         unitPickerRoadOpen = strings.Contains(strings.ToLower(capture.UnitPicker), "roads")
         capture.UnitPicker = ""
@@ -303,10 +298,8 @@ type randomCity struct {
 
 // the ground of a random battle as the world map could give it: on grass land sometimes forest or
 // hills, and roads, always in a town. one in this many
-const RandomBattleBiomeChance = 2
-const RandomBattleCoastChance = 3
-const RandomBattleRiverChance = 3
-const RandomBattleFarmlandChance = 4
+const RandomBattleForestChance = 3
+const RandomBattleHillsChance = 3
 const RandomBattleRoadChance = 2
 const RandomBattleRoadSideChance = 3
 const RandomBattleEnchantedRoadChance = 4
@@ -314,29 +307,12 @@ const RandomBattleEnchantedRoadChance = 4
 func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.CombatLandscape, combat.ZoneGround) {
     var ground combat.ZoneGround
 
-    // one battle in RandomBattleBiomeChance is of a biome of its landscape
-    if rand.N(RandomBattleBiomeChance) == 0 {
-        switch landscape {
-            case combat.CombatLandscapeGrass: ground.SetBiome(randomChoose(mod.BiomeForest, mod.BiomeHills, mod.BiomeSwamp))
-            case combat.CombatLandscapeMountain: ground.SetBiome(randomChoose(mod.BiomeVolcano, mod.BiomeSnowyMountain))
+    if landscape == combat.CombatLandscapeGrass {
+        if rand.N(RandomBattleForestChance) == 0 {
+            ground.Forest = true
+        } else if rand.N(RandomBattleHillsChance) == 0 {
+            ground.Hills = true
         }
-    }
-
-    // the sea beside the battle, on a side by chance
-    if rand.N(RandomBattleCoastChance) == 0 {
-        ground.Coast = combat.CoastAny
-    }
-
-    // a river, which takes the place of the roads. not in a town, see combat/river.go
-    if rand.N(RandomBattleRiverChance) == 0 {
-        ground.River = combat.RiverAny
-    }
-
-    // the fields of a town, beside it or two tiles away. crops are on plain grass land, a town
-    // and a lair have none of it, see combat/farmland.go
-    if rand.N(RandomBattleFarmlandChance) == 0 {
-        ground.Farmland = randomChoose(combat.FarmlandNear, combat.FarmlandFar)
-        ground.FarmRace = randomChoose(randomBattleRaces...)
     }
 
     if town || rand.N(RandomBattleRoadChance) == 0 {
@@ -358,27 +334,13 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
                 case word == "desert": landscape = combat.CombatLandscapeDesert
                 case word == "mountain": landscape = combat.CombatLandscapeMountain
                 case word == "tundra": landscape = combat.CombatLandscapeTundra
-                case word == "forest": ground.SetBiome(mod.BiomeForest)
-                case word == "hills": ground.SetBiome(mod.BiomeHills)
-                case word == "swamp": ground.SetBiome(mod.BiomeSwamp)
-                case word == "volcano": ground.SetBiome(mod.BiomeVolcano)
-                case word == "snowy": ground.SetBiome(mod.BiomeSnowyMountain)
+                case word == "forest": ground.Forest = true
+                case word == "hills": ground.Hills = true
                 case word == "roads":
                     for side := range ground.Roads {
                         ground.Roads[side] = true
                     }
                 case word == "enchanted": ground.EnchantedRoads = true
-                case word == "coast=east": ground.Coast = combat.CoastEast
-                case word == "coast=north": ground.Coast = combat.CoastNorth
-                case word == "coast=west": ground.Coast = combat.CoastWest
-                case word == "coast=south": ground.Coast = combat.CoastSouth
-                case word == "coast=any": ground.Coast = combat.CoastAny
-                case strings.HasPrefix(word, "weather="): ground.Weather = combat.WeatherByName(strings.TrimPrefix(word, "weather="))
-                case word == "farmland=1": ground.Farmland = combat.FarmlandNear
-                case word == "farmland=2": ground.Farmland = combat.FarmlandFar
-                case word == "river=across": ground.River = combat.RiverAcross
-                case word == "river=beside": ground.River = combat.RiverBeside
-                case word == "river=any": ground.River = combat.RiverAny
                 case strings.HasPrefix(word, "road="):
                     side, err := strconv.Atoi(strings.TrimPrefix(word, "road="))
                     if err == nil && side >= 0 && side < len(ground.Roads) {
@@ -389,7 +351,7 @@ func randomBattleGround(landscape combat.CombatLandscape, town bool) (combat.Com
         }
     }
 
-    return combat.BiomeLandscape(ground.Biome, landscape), ground
+    return landscape, ground
 }
 
 func makeRandomCity() randomCity {

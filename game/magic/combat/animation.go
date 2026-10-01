@@ -78,31 +78,24 @@ func (combat *CombatScreen) originalTickAhead(phase float64) uint64 {
     return uint64(float64(combat.Counter) * OriginalTicksPerSecond / tps + phase)
 }
 
-// the clock of a swing: the redraws of the original since the swing of the unit started, with the
-// part of one that has gone by, for a figure that is behind its unit by a phase. the frame and
-// the place of a figure are taken from the same clock, so they go together
-func (combat *CombatScreen) swingTicks(unit *ArmyUnit, phase float64) float64 {
-    tps := float64(max(1, ebiten.TPS()))
-    since := 0.0
-    if combat.Counter > unit.SwingStart {
-        since = float64(combat.Counter - unit.SwingStart)
-    }
-    return since * OriginalTicksPerSecond / tps - phase
-}
-
 // the original's redraw counter, from our ticks
 func (combat *CombatScreen) originalTick() uint64 {
     tps := float64(max(1, ebiten.TPS()))
     return uint64(float64(combat.Counter) * OriginalTicksPerSecond / tps)
 }
 
+// the original's Melee_Animation shows a strike for 5 redraws of 2 of its ticks each
+const meleeAnimationTicks = 10
+
+// our ticks a melee attack shows
+func meleeTicks() int {
+    return int(math.Round(meleeAnimationTicks * float64(max(1, ebiten.TPS())) / OriginalTicksPerSecond))
+}
+
 // our ticks a step from one cell to the next takes
 func moveTicksPerCell() float64 {
     return MoveTicksPerCell * float64(max(1, ebiten.TPS())) / OriginalTicksPerSecond
 }
-
-// the wind up of the swing is drawn on frame 4 (user, 2026-09-27)
-const strikeWindUpFrame = 4
 
 // the frame of its picture a unit shows
 func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase float64) int {
@@ -122,15 +115,12 @@ func (combat *CombatScreen) figureFrame(unit *ArmyUnit, frameCount int, phase fl
         }
     }
 
-    if unit.Shooting {
-        // the frames of a shot, see shoot.go
-        frame = unitShot(unit, combat.swingTicks(unit, phase))
-    } else if (unit.Attacking || unit.Defending) && singleStrikes() {
-        // the steps of its swing, see strikeswing.go
-        frame, _ = unitSwing(unit, combat.swingTicks(unit, phase))
-    } else if unit.Attacking || unit.Defending {
-        // again and again, see strikeclassic.go
-        frame = classicStrikeFrame(unit, tick)
+    // a strike: the original's two frames, in turn (Combat.c _combat_unit_attack_anim_frame)
+    step := tick / attackTicksPerFrame
+    if unit.Attacking {
+        frame = figureAttackFrames[step % uint64(len(figureAttackFrames))]
+    } else if unit.Defending {
+        frame = figureDefendFrames[step % uint64(len(figureDefendFrames))]
     }
 
     if frameCount <= 0 {

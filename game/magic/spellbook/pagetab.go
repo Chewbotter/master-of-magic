@@ -14,7 +14,6 @@ import (
     "image"
     "math"
 
-    "github.com/kazzmir/master-of-magic/game/magic/mod"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
     uilib "github.com/kazzmir/master-of-magic/game/magic/ui"
     "github.com/kazzmir/master-of-magic/game/magic/util"
@@ -28,38 +27,15 @@ var castTabRight = image.Pt(268, 14)
 var researchTabLeft = image.Pt(15, 9)
 var researchTabRight = image.Pt(289, 9)
 
-// with the mouse over it the FACE of a tab, the light paper inside of its dark folds (mod.TabFace),
+// with the mouse over it the FACE of a tab, the light paper inside of its dark folds (TabFace),
 // is this much lighter, 0 for not at all. it does not move and has no
 // shadow: a tab lifted over a shadow of itself looked like a sticker on the page, not like a fold of
 // it (user, 2026-09-29: "brighten"). there is no look for a tab that is pressed.
-// KEEP IN STEP with mod.TabHoverLight, which the export makes the pictures with
-const pageTabLight = mod.TabHoverLight
-
-// the pictures of the tabs of the game, and the ones under the mouse of the replacement folder, by name
-var hoverTabs = make(map[string]*ebiten.Image)
-
-// the pictures are read again when they are asked for next
-func forgetHoverTabs() {
-    clear(hoverTabs)
-}
-
-func hoverTab(name string) *ebiten.Image {
-    picture, ok := hoverTabs[name]
-    if ok {
-        return picture
-    }
-
-    read := mod.ReadMarker(mod.TabHoverName(name))
-    if read != nil {
-        picture = ebiten.NewImageFromImage(read)
-    }
-    hoverTabs[name] = picture
-    return picture
-}
+const pageTabLight = TabHoverLight
 
 // the picture of a tab of the game
 func tabPicture(imageCache *util.ImageCache, name string) *ebiten.Image {
-    for _, tab := range mod.TabPictures {
+    for _, tab := range TabPictures {
         if tab.Name == name {
             picture, err := imageCache.GetImage(tab.Archive, tab.Entry, 0)
             if err != nil {
@@ -82,7 +58,7 @@ func castPageHasNext(page int, pages int) bool {
     return page >= 0 && page + 1 < pages
 }
 
-// draws a tab that turns the pages at a place in art pixels. name is the one of mod.Tab...
+// draws a tab that turns the pages at a place in art pixels. name is the one of Tab...
 func drawPageTab(screen *ebiten.Image, imageCache *util.ImageCache, name string, place image.Point, alpha float32, over bool) {
     tab := tabPicture(imageCache, name)
     if tab == nil {
@@ -94,15 +70,6 @@ func drawPageTab(screen *ebiten.Image, imageCache *util.ImageCache, name string,
     options.GeoM.Translate(float64(place.X), float64(place.Y))
 
     if over {
-        painted := hoverTab(name)
-        if painted != nil {
-            // its lower left corner on the lower left corner of the tab, so a picture that is
-            // higher reaches up
-            options.GeoM.Translate(0, float64(tab.Bounds().Dy() - painted.Bounds().Dy()))
-            scale.DrawScaled(screen, painted, &options)
-            return
-        }
-
         // the face of the tab is lighter, its folds are not (user, 2026-09-29, from a paintover)
         made := madeHoverTab(imageCache, name)
         if made != nil {
@@ -115,10 +82,10 @@ func drawPageTab(screen *ebiten.Image, imageCache *util.ImageCache, name string,
 
 // the look of a tab under the mouse as the game makes it, from the picture of the tab
 func madeHoverTab(imageCache *util.ImageCache, name string) *ebiten.Image {
-    for _, tab := range mod.TabPictures {
+    for _, tab := range TabPictures {
         if tab.Name == name {
             picture, err := imageCache.GetImageTransform(tab.Archive, tab.Entry, 0, "tab-hover", func (plain *image.Paletted) image.Image {
-                return mod.MakeTabHover(plain)
+                return MakeTabHover(plain)
             })
             if err != nil {
                 return nil

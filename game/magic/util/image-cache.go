@@ -21,10 +21,6 @@ type Scaler interface {
     ApplyScale(image.Image) image.Image
 }
 
-// set when there is a replacement folder. gets the pictures of an entry of an archive and gives
-// the ones to use
-var ReplacePictures func(lbxPath string, index int, pictures []*image.Paletted) []*image.Paletted
-
 type ImageCache struct {
     LbxCache *lbx.LbxCache
     // FIXME: have some limit on the number of entries, and remove old ones LRU-style
@@ -188,11 +184,6 @@ func (cache *ImageCache) GetImagesTransform(lbxPath string, index int, extra str
     sprites, err := lbxFile.ReadImagesWithPalette(index, palette, palette != nil)
     if err != nil {
         return nil, err
-    }
-
-    // pictures of the replacement folder take the place of the game's, see game/magic/mod
-    if ReplacePictures != nil {
-        sprites = ReplacePictures(lbxPath, index, sprites)
     }
 
     var out []*ebiten.Image

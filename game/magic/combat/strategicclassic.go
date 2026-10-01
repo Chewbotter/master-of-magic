@@ -151,7 +151,7 @@ type strategicSums struct {
 
 // a unit that can not fight on the sea (the original's Undeployable_Battle_Units_On_Water)
 func strategicOffWater(unit *ArmyUnit) bool {
-    return !unit.CanEnterWater()
+    return !(unit.IsFlying() || unit.IsSwimmer() || unit.Unit.IsSailing())
 }
 
 func strategicSum(army *Army, defender bool, structure int) strategicSums {

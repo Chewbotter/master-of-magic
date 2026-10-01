@@ -53,13 +53,12 @@ var settingTips = map[string]string{
     "Hide cursor on attack": "In a battle the cursor fades away when you click to attack or shoot, and is back when you move the mouse. With the modern controls.",
     "Pulsing spellbook text": "In the spellbooks the spell under the mouse pulses to the color of its realm. Off: nothing pulses, as in the original.",
     "Damage numbers": "In a battle a number rises from a unit that is hit: bright red over the enemy's units, darker over yours.",
-    "Single strikes": "How units attack in a battle. On: one heavy swing per attack. Off: fast strikes again and again.",
     "Resolution": "The size of the window. Not used in fullscreen.",
     "Fullscreen": "Fills the desktop, without a window border.",
     "Widescreen": "The picture is as wide as the window. Off: the shape of the original, with bars at the sides.",
     "Controls": "Modern: drag with the middle mouse button to move the map. Classic: the controls of the original.",
     "Keys": "Shows and changes the keys.",
-    "Enemy AI": "Chewbot: the original game's AI, ported, then changed (battles so far). Clone original: the AI this remake came with.",
+    "Enemy AI": "Classic: the original game's AI, ported from it. Clone original: the AI this remake came with.",
     "Aggressive AI": "Computer wizards settle earlier and attack towns more readily. For this session only.",
 }
 
