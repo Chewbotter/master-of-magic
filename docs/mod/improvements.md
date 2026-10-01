@@ -325,6 +325,21 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
 
 ## Found by many runs (testing.md, 2026-09-30)
 
+- THE STAND-IN (2026-10-01, the user: "Go ahead with 1, then 2, then 3"; 1 was: the rules that
+  single out the human never ran in all-AI runs). `-sim-stand-in` (game/standin.go): the human's
+  seat played by Chewbot, still the human for the rules. `Player.StandIn`, `IsAI()` true for it
+  (an AI makes its choices; Spell Binding and Drain Power read `!IsHuman()` for the computer
+  wizards' prices). FOUND AND FIXED by its first batches: casting a unit spell opened the window
+  to pick a unit for the human (11 hangs in 36 runs); Great Unsummoning walked the stacks while
+  removing units and crashed when a stack emptied (a bug for the real human too); battles of the
+  human run on the battlefield without a screen need the army on auto (`combat.Run` waited for
+  input forever; it now also ends a battle where no turn passes in 200000 updates, BATTLE STALLED in
+  the log). The AI's stacks are all active before it plans (a path is searched for the active
+  units). SEEN (36 games, 300 turns, the stand-in without bonuses and without diplomacy): its seat
+  out of the game in 19, cities founded 2.5 (median); a settler sent behind a lair finds no path
+  every turn (Chewbot's sites, item 3). OPEN: an empty stack once (seed 973199096, turn 184, Lo Pan,
+  after orders only).
+
 - FIXED (2026-10-01, round 5): a wind walker (the hero Aquilon) carried a stack of settlers and
   pikemen at sea; the orders sent it on alone and left the stack on the water. A stack that leaves
   the water with a ship or a wind walker takes the riders of its square along (`stackCarries`).

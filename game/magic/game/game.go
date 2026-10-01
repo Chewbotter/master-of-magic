@@ -381,6 +381,8 @@ type Game struct {
     Stats *SimStats
     // development: how many attackers went into the last battle, for its note (simjournal.go)
     simFought int
+    // development: the human's seat is played by Chewbot in a run without a window (standin.go)
+    StandInHuman bool
     // a computer wizard's cast the human does not see: no camera move, animation or window (aicast.go)
     quietCast bool
     // how often a computer wizard's spell asked for a square (aicast.go)
@@ -2750,6 +2752,11 @@ func (game *Game) ProcessEvents(yield coroutine.YieldFunc) {
     for {
         select {
             case event := <-game.Events:
+                if game.StandInHuman && game.standInEvent(yield, event) {
+                    // the human's seat is played by Chewbot: no window, the AI's choice (standin.go)
+                    lastEvent = event
+                    continue
+                }
                 switch event.(type) {
                     case *GameEventMagicView:
                         game.doMagicView(yield)
@@ -3858,7 +3865,7 @@ func (game *Game) defeatCity(yield coroutine.YieldFunc, attacker *playerlib.Play
     if ClassicEvents && city.Outpost {
         // an outpost taken is always destroyed, nobody is asked
         raze = true
-    } else if attacker.IsHuman() {
+    } else if game.atScreen(attacker) {
         raze = game.confirmRazeTown(yield, city)
     } else {
         raze = attacker.AIBehavior.ConfirmRazeTown(city)
@@ -4525,7 +4532,7 @@ func (game *Game) Update(yield coroutine.YieldFunc) GameState {
             if len(game.Model.Players) > 0 && game.Model.CurrentPlayer >= 0 {
                 player := game.Model.Players[game.Model.CurrentPlayer]
 
-                if player.IsHuman() {
+                if player.IsHuman() && !game.StandInHuman {
                     if game.HudUI.GetHighestLayerValue() == 0 {
                         game.doPlayerUpdate(yield, player)
 
@@ -4617,6 +4624,14 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
     // log.Printf("AI %v year %v: make decisions", player.Wizard.Name, game.Model.TurnNumber)
 
     if player.AIBehavior != nil {
+        // every unit of a stack led by the AI is active: the AI moves stacks whole, and a path is
+        // searched for the active units (a human's units built in a city were not, and the
+        // stand-in's settler found no path anywhere, standin.go)
+        for _, stack := range player.Stacks {
+            for _, unit := range stack.Units() {
+                stack.SetActive(unit, true)
+            }
+        }
         decisionResult := make(chan []playerlib.AIDecision)
         thinkStart := time.Now()
         thinkYear := game.Model.TurnNumber
@@ -5344,7 +5359,7 @@ func (game *Game) ApplyTreasure(yield coroutine.YieldFunc, player *playerlib.Pla
         switch item.(type) {
             case *TreasureMagicalItem:
                 magicalItem := item.(*TreasureMagicalItem)
-                if player.IsHuman() {
+                if game.atScreen(player) {
                     game.doVault(yield, magicalItem.Artifact)
                 } else {
                     if player.AIBehavior != nil {
@@ -5357,7 +5372,7 @@ func (game *Game) ApplyTreasure(yield coroutine.YieldFunc, player *playerlib.Pla
                 game.Model.ArtifactPool.Award(magicalItem.Artifact)
             case *TreasurePrisonerHero:
                 hero := item.(*TreasurePrisonerHero)
-                if player.IsHuman() {
+                if game.atScreen(player) {
                     game.doHireHero(yield, 0, hero.Hero, player, false, treasure.Point)
                 } else {
                     if player.AIBehavior != nil {
@@ -5371,7 +5386,7 @@ func (game *Game) ApplyTreasure(yield coroutine.YieldFunc, player *playerlib.Pla
                 spell := item.(*TreasureSpell)
                 // add the spell to the research pool in case so it shows up in the spell book
                 player.ResearchPoolSpells.AddSpell(spell.Spell)
-                if player.IsHuman() {
+                if game.atScreen(player) {
                     game.doLearnSpell(yield, player, spell.Spell)
                 }
                 player.LearnSpell(spell.Spell)
@@ -5482,6 +5497,11 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
     // do graphic combat only if a human is involved
     useHuman := attacker.IsHuman() || defender.IsHuman()
+    // development: the stand-in's battles are fought out by Chewbot on both sides (standin.go)
+    standInBattle := game.StandInHuman && useHuman && StandInTactical
+    if game.StandInHuman {
+        useHuman = false
+    }
 
     // the human player's preference lives on Settings (togglable live in the settings
     // screen); non-human sides use their own StrategicCombat field, which is always true
@@ -5527,6 +5547,11 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
     defendingArmy := createArmy(defender, defenderStack)
     // the journal of a run without a window notes how many of the attackers fought (simjournal.go)
     game.simFought = len(attackingArmy.GetUnits())
+    if standInBattle {
+        // the stand-in leads its army as the human on auto (standin.go)
+        attackingArmy.Auto = attacker.IsHuman()
+        defendingArmy.Auto = defender.IsHuman()
+    }
 
     var state combat.CombatState
     var defeatedDefenders int
@@ -5565,7 +5590,7 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
     // the original resolves every battle without the human, and the human's own with Strategic
     // Combat Only, by its quick resolution (combat/strategicclassic.go)
-    classicQuick := combat.ClassicAutoResolve && (useStrategicCombat || !(useHuman || game.WatchMode))
+    classicQuick := combat.ClassicAutoResolve && (useStrategicCombat || !(useHuman || game.WatchMode || standInBattle))
     if classicQuick {
         // the original's quick resolution reads the node of the last battle that was fought on a
         // screen, which it never sets itself: no node helps its creatures here (MY CALL for that

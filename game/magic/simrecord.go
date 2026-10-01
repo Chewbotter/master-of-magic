@@ -179,6 +179,23 @@ func (sink *simJournalSink) countsCopy() map[string]map[string]int {
     return out
 }
 
+// -sim-stand-in: the human's seat played by Chewbot, the player still the human for every rule
+// (game/standin.go); its battles fought out on the battlefield unless -sim-stand-in-quick
+var simStandIn bool
+
+func simMakeStandIn(game *gamelib.Game) {
+    human := game.Model.GetHumanPlayer()
+    if human == nil || !human.IsHuman() {
+        return
+    }
+    human.AIBehavior = ai.MakeChewbotAI(ai.MakeEnemy2AI(), false)
+    human.Personality, human.Objective = relations.PickPersonality(human.Wizard)
+    human.StandIn = true
+    game.StandInHuman = true
+    // the human's fall does not end the run (the other wizards play on)
+    gamelib.SimPlayOn = true
+}
+
 // the human's slot is a computer wizard played by Chewbot
 func simMakeAllAI(game *gamelib.Game) {
     human := game.Model.GetHumanPlayer()
@@ -300,6 +317,8 @@ func simSettings(game *gamelib.Game) map[string]any {
         "landSize": game.Model.Settings.LandSize,
         "magic": int(game.Model.Settings.Magic),
         "allAI": simAllAI,
+        "standIn": simStandIn,
+        "standInTactical": simStandIn && gamelib.StandInTactical,
         "war": simWar,
         "playOn": gamelib.SimPlayOn,
         "turns": simTurns,

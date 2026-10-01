@@ -447,6 +447,8 @@ type Player struct {
 
     Stacks []*UnitStack
     Cities map[data.PlanePoint]*citylib.City
+    // development: the human's seat played by Chewbot (game/standin.go); still the human for the rules
+    StandIn bool
 
     SelectedStack *UnitStack
     MovedStacksThisTurn int
@@ -678,8 +680,10 @@ func (player *Player) DidLoseCity(city *citylib.City) {
     }
 }
 
+// an AI makes this player's choices: a computer player, or the human's seat played by the stand-in
+// of a run without a window (game/standin.go)
 func (player *Player) IsAI() bool {
-    return !player.Human
+    return !player.Human || player.StandIn
 }
 
 func (player *Player) IsHuman() bool {
