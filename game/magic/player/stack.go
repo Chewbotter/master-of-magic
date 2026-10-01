@@ -398,9 +398,14 @@ func (stack *UnitStack) RemoveUnits(units []units.StackUnit){
 }
 
 func (stack *UnitStack) RemoveUnit(unit units.StackUnit){
-    stack.units = slices.DeleteFunc(stack.units, func(u units.StackUnit) bool {
-        return u == unit
-    })
+    // a new list, so a loop over the units at that moment keeps the ones it had (see withoutStack)
+    kept := make([]units.StackUnit, 0, len(stack.units))
+    for _, check := range stack.units {
+        if check != unit {
+            kept = append(kept, check)
+        }
+    }
+    stack.units = kept
 
     delete(stack.active, unit)
 }

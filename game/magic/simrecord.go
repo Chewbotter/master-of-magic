@@ -318,6 +318,7 @@ func simSettings(game *gamelib.Game) map[string]any {
         "magic": int(game.Model.Settings.Magic),
         "allAI": simAllAI,
         "standIn": simStandIn,
+        "tactical": gamelib.SimTactical,
         "standInTactical": simStandIn && gamelib.StandInTactical,
         "war": simWar,
         "playOn": gamelib.SimPlayOn,

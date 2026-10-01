@@ -59,6 +59,9 @@ type simBattle struct {
     fought int
     // fought on a square of water (a sea battle)
     atSea bool
+    // fought out on the battlefield in a run without a window: how, and what the quick resolution
+    // would have said (simtactical.go)
+    tactical string
 }
 
 // the units of a stack by name and count, "2 Swordsmen, Trireme"
@@ -116,6 +119,9 @@ func (battle *simBattle) end(state combat.CombatState) {
     }
     if battle.atSea {
         why += "; at sea"
+    }
+    if battle.tactical != "" {
+        why += "; " + battle.tactical
     }
     playerlib.Note(battle.attacker, "battle", what, why)
 }
