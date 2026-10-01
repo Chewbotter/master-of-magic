@@ -331,6 +331,16 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
   player above 950 or for anyone above 980 (Create_Unit, City_Apply_Production; summons in battle
   and lair guardians are made anyway); a computer player's city picks again. Test games of five
   wizards had reached 1,407 units.
+- FIXED (2026-10-01, found by replaying a traced run): a ship that left a square of water took
+  along only the riders that were active; a settler left by the split of the orders was not, and
+  stayed on the water (doAiMoveUnit looks at every unit now).
+- LOOKED INTO, FAITHFUL (2026-10-01): a computer wizard can cast Lycanthropy on a swimming unit
+  (Lizardmen) in a stack at sea; the Werewolves can not swim and stay on the water. The original's
+  Select_Unit_For_Enchantment never looks at the ground either. Rare (1 of 24 runs).
+- MEASURED (2026-10-01): the dismissals of AI_Kill_Lame_Units (about 200 units a game of five
+  wizards) are the original's rule, not the user's changes: with drafting beyond need and
+  expeditions by empire switched off, the same 12 seeds dismissed 207 a game against 193 with them.
+  More than half are the garrison's weakest unit, one a city every 25 turns from turn 100.
 - LOOKED INTO, FAITHFUL (2026-10-01): raiders and monsters attack without hope (0 of 976 won at under
   half the defender's strength in the final round of 2026-09-30). NPC_Destinations (AIDATA.c) sends
   every stack of the neutral player to the city of a wizard worth the most to it: 10, less the units

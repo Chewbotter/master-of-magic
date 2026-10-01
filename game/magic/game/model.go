@@ -2069,7 +2069,9 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
         // riders different ways, and the split left a settler alone on the water when the ship
         // sailed (found by -sim-trace)
         for _, other := range player.FindAllStacks(stack.X(), stack.Y(), stack.Plane()) {
-            if other != stack && other.AnyLandWalkers() && !other.HasSailingUnits(true) {
+            // every unit of it, active or not: a settler left by the split of the orders is not
+            // active, and the ship sailed without it (found by replaying a traced run)
+            if other != stack && slices.ContainsFunc(other.Units(), units.StackUnit.IsLandWalker) && !other.HasSailingUnits(false) {
                 stack = player.MergeStacks(stack, other)
             }
         }

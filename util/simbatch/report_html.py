@@ -169,6 +169,24 @@ code { font-family: var(--mono); font-size: 0.92em; }
       <text x="${L}" y="${H - 6}">turn ${x0}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">${x1}</text></svg></div>`;
   }
 
+  // the first trace of each kind: when, whose turn, the journal before it, and what to replay
+  function traceCard(b) {
+    const traces = Object.entries(b.traces || {});
+    if (!traces.length) return "";
+    return `<div class="card"><h3>Where each broken state began</h3><div class="sub">The first step of the game that broke it, with the journal before it. A run of one seed is the same game: <span class="mono">simbatch.py replay batch/run-NNN</span> plays it again.</div>
+      ${traces.map(([kind, entry]) => `<details><summary>${esc(kind)} <span class="sub">(${entry.runs} runs)</span></summary><ul class="findings open">${entry.cases.slice(0, 4).map(c => `<li><b>${esc(c.run)}</b> <span class="sub">seed ${esc(c.seed)}, turn ${esc(c.turn)}, the turn of ${esc(c.player)}</span><div class="mono" style="font-size:12px">${esc(c.example)}</div>${(c.journal || []).slice(-4).map(line => `<div class="sub" style="font-size:12px">${esc(line)}</div>`).join("")}</li>`).join("")}</ul></details>`).join("")}</div>`;
+  }
+
+  // the same counted by the settings of the runs
+  function splitCard(b) {
+    const splits = Object.entries(b.bySettings || {});
+    if (!splits.length) return "";
+    const med = v => v ? fmt(v.median) : "–";
+    return `<div class="card"><h3>By the settings of the runs</h3><div class="sub">Median a run; cities of a wizard at the end.</div><div class="scroll"><table><thead><tr><th>Setting</th><th>Value</th><th class="num">Runs</th><th class="num">Treaties</th><th class="num">Wars</th><th class="num">Battles</th><th class="num">Cities taken</th><th class="num">Cities</th></tr></thead><tbody>
+      ${splits.map(([title, groups]) => Object.entries(groups).map(([value, g], index) => `<tr><td>${index === 0 ? esc(title) : ""}</td><td>${esc(value)}</td><td class="num">${g.runs}</td><td class="num">${med(g.treatiesPerRun)}</td><td class="num">${med(g.warsPerRun)}</td><td class="num">${med(g.battlesPerRun)}</td><td class="num">${med(g.citiesTakenPerRun)}</td><td class="num">${med(g.citiesOfAWizard)}</td></tr>`).join("")).join("")}
+    </tbody></table></div></div>`;
+  }
+
   function show(i) {
     [...tabs.children].forEach((b, j) => b.setAttribute("aria-selected", String(i === j)));
     const {round, b} = all[i];
@@ -188,6 +206,8 @@ code { font-family: var(--mono); font-size: 0.92em; }
         <div class="card"><h3>Settings drawn</h3><div class="sub mono">wizards ${esc(JSON.stringify(Object.fromEntries(Object.entries(s.opponents || {}).map(([k, v]) => [+k + 1, v]))))}<br>difficulty ${esc(JSON.stringify(s.difficulty))}<br>land ${esc(JSON.stringify(s.land))}<br>war at start ${esc(JSON.stringify(s.war))}</div></div>
       </div>
       ${probs.length ? `<div class="card"><h3>Panics, hangs, debug lines</h3><ul class="findings open">${probs.slice(0, 12).map(p => `<li><b>${esc(p.run)} ${esc(p.kind)}</b> <span class="mono">${esc((p.text || "").split("\n")[0].slice(0, 260))}</span></li>`).join("")}</ul></div>` : ""}
+      ${traceCard(b)}
+      ${splitCard(b)}
       <div class="card"><h3>Broken states</h3>${viol.length ? `<div class="scroll"><table><thead><tr><th>Kind</th><th class="num">Runs</th><th class="num">Times</th><th>Examples</th></tr></thead><tbody>${viol.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${v.runs}</td><td class="num">${fmt(v.count)}</td><td class="mono" style="font-size:12px">${v.examples.slice(0, 3).map(esc).join("<br>")}</td></tr>`).join("")}</tbody></table></div>` : `<span class="pill good">none</span>`}</div>
       <div class="grid2">
         <div class="card"><h3>The computer wizards at the end</h3><div class="scroll"><table><tbody>

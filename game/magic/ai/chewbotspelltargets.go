@@ -51,7 +51,13 @@ func (ai *ChewbotAI) ChooseSpellTarget(self *playerlib.Player, spell spellbook.S
     }
     world := ai.spellWorld(self, ai.services)
     target, ok := ai.spellTarget(self, ai.services, world, spell)
-    chewSpellLog(self, "target of %v: %+v %v", spell.Name, target, ok)
+    if ChewbotSpellLog {
+        unitName := ""
+        if target.Unit != nil {
+            unitName = target.Unit.GetName()
+        }
+        chewSpellLog(self, "target of %v: %v,%v %v unit %v, %v", spell.Name, target.X, target.Y, target.Plane, unitName, ok)
+    }
     return target, ok
 }
 
