@@ -624,3 +624,13 @@ func (city *City) ProductionNeeds(building buildinglib.Building) string {
     }
     return ""
 }
+
+// the index of a race in the original's order, -1 when none (events)
+func ClassicRaceIndexOf(race data.Race) int {
+    return classicRaceIndex(race)
+}
+
+// the unrest of a city's race under the capital's race, in tens of percent (TBL_Unrest)
+func ClassicRaceUnrest(capital int, own int) int {
+    return classicRaceUnrest[capital][own]
+}

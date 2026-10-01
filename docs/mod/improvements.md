@@ -217,3 +217,16 @@ quirk constant where there is one: turning it is the change. New calls go here t
 - Not ported yet: the heroes' starting picks and their mistakes (Lucky falling into Agility and the
   others), Sage's research, the order of the hero chance's cap (the fork's already matches), the
   first turn of mercenaries' uninitialized cost test.
+
+## Random events and conquest details (events.md)
+
+- MY CALL: the city of an event (Pick_Random_City) is one whose race is content under the race of
+  the capital, by the meaning; the reconstruction's code of it was not clear.
+- MY CALL: Depletion and New Minerals keep upstream's effects (both are stubs in the
+  reconstruction).
+- MY CALL: Piracy keeps upstream's 30% to 50%, rounded down to tens as the original; the
+  reconstruction's own formula is doubtful.
+- Kept, the original's: the Gift goes to the human only (a computer wizard's draw is lost).
+  Suggested: a gift for computer wizards too.
+- Kept, the original's: the first 5 turns of every session have no event (the delay is not saved).
+- Not ported yet: the order of the steps of a turn; RANDOM EVENTS in the chancellor's scroll.

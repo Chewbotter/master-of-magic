@@ -3785,11 +3785,28 @@ func (game *Game) ResolveStackAt(x int, y int, plane data.Plane) {
 func (game *Game) defeatCity(yield coroutine.YieldFunc, attacker *playerlib.Player, attackerStack *playerlib.UnitStack, defender *playerlib.Player, city *citylib.City) (bool, int) {
     raze := false
     gold := defender.ComputePlunderedGold(city)
+    if ClassicEvents && defender.IsNeutral() {
+        // City_Gold: a neutral town gives 1 to 10 for every person
+        gold = 0
+        for range city.Citizens() {
+            gold += rand.N(10) + 1
+        }
+    }
 
-    if attacker.IsHuman() {
+    if ClassicEvents && city.Outpost {
+        // an outpost taken is always destroyed, nobody is asked
+        raze = true
+    } else if attacker.IsHuman() {
         raze = game.confirmRazeTown(yield, city)
     } else {
         raze = attacker.AIBehavior.ConfirmRazeTown(city)
+    }
+
+    if ClassicEvents && raze {
+        // razing pays a tenth of what the standing buildings cost
+        for _, building := range city.Buildings.Values() {
+            gold += game.Model.BuildingInfo.ProductionCost(building) / 10
+        }
     }
 
     containedFortress := city.Buildings.Contains(buildinglib.BuildingFortress)
@@ -3799,6 +3816,12 @@ func (game *Game) defeatCity(yield coroutine.YieldFunc, attacker *playerlib.Play
         defender.RemoveCity(city)
     } else {
         ChangeCityOwner(city, defender, attacker, ChangeCityRemoveOwnerEnchantments)
+        if ClassicEvents {
+            // Change_City_Ownership: a city taken builds Trade Goods (a computer player picks anew)
+            city.ProducingBuilding = buildinglib.BuildingTradeGoods
+            city.ProducingUnit = units.UnitNone
+            city.Production = 0
+        }
     }
 
     attacker.DidConquerCity(city, raze)
@@ -4038,7 +4061,7 @@ func (game *Game) doMoveSelectedUnit(yield coroutine.YieldFunc, player *playerli
                     player.Fame = max(0, player.Fame + otherCity.FameForCaptureOrRaze(!raze))
                     defenderPlayer.Fame = max(0, defenderPlayer.Fame + otherCity.FameForCaptureOrRaze(false))
                     player.Gold += gold
-                    defenderPlayer.Gold -= gold
+                    defenderPlayer.Gold = max(0, defenderPlayer.Gold - gold)
 
                     stack.ExhaustMoves()
                     game.RefreshUI()
@@ -5498,7 +5521,7 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
             defenderFame += zone.City.FameForCaptureOrRaze(false)
 
             attacker.Gold += gold
-            defender.Gold -= gold
+            defender.Gold = max(0, defender.Gold - gold)
         }
 
         winner, loser := distributeFame(attacker, defender, defenderStack, defeatedDefenders)
@@ -8523,6 +8546,11 @@ func (game *Game) EndOfTurn() {
      // gate random-event rolls behind the user toggle; in-flight events continue
      // their normal decay path inside DoRandomEvents and this just skips new rolls.
     if game.Settings.RandomEvents {
+        if classicGiftItem == nil {
+            classicGiftItem = func() (artifact.Artifact, bool) {
+                return artifact.MakeClassicRandomItem(game.Cache, 2, 0)
+            }
+        }
         game.Model.DoRandomEvents()
     }
 

@@ -1,6 +1,7 @@
 package game
 
 import (
+    "log"
     "image"
 
     "github.com/kazzmir/master-of-magic/game/magic/relations"
@@ -68,6 +69,10 @@ type GameModel struct {
     // https://masterofmagic.fandom.com/wiki/Event
     RandomEvents []*RandomEvent
     LastEventTurn uint64
+    // turns of this session since the last event, at most 5 (Determine_Event's delay), not saved
+    eventDelay int
+    // the event Determine_Event picked, while it is made (eventsclassic.go)
+    classicPick *classicEventPick
 
     // what computer wizards say to the human at the end of this turn (relations.Message)
     DiplomacyMessages []relations.Message
@@ -1015,7 +1020,13 @@ func (model *GameModel) DoRandomEvents() {
         eventProbability = fraction.Zero()
     }
 
-    if rand.N(512) < int(eventProbability.ToFloat()) {
+    fires := rand.N(512) < int(eventProbability.ToFloat())
+    if ClassicEvents {
+        // Determine_Event, see eventsclassic.go
+        fires = model.classicEventFires()
+    }
+
+    if fires {
         choices := set.NewSet[RandomEventType](
             RandomEventBadMoon,
             RandomEventConjunctionChaos,
@@ -1055,6 +1066,17 @@ func (model *GameModel) DoRandomEvents() {
         if model.TurnNumber < 150 {
             choices.Remove(RandomEventDiplomaticMarriage)
             choices.Remove(RandomEventGreatMeteor)
+        }
+
+        model.classicPick = nil
+        if ClassicEvents {
+            pick, ok := model.classicPickEvent()
+            if ok {
+                model.classicPick = &pick
+                choices = set.NewSet[RandomEventType](pick.Kind)
+            } else {
+                choices = set.NewSet[RandomEventType]()
+            }
         }
 
         if choices.Size() > 0 {
@@ -1100,6 +1122,9 @@ func (model *GameModel) DoRandomEvents() {
                     case RandomEventDonation:
                         // FIXME: what are the bounds here?
                         gold := rand.N(2000) + 100
+                        if model.classicPick != nil {
+                            gold = classicDonation()
+                        }
                         target.Gold += gold
 
                         return MakeDonationEvent(model.TurnNumber, gold, target), nil
@@ -1110,10 +1135,25 @@ func (model *GameModel) DoRandomEvents() {
 
                         // between 30-50%, compute random number between 0-20%, add 30%
                         gold := rand.N(target.Gold / 5) + target.Gold * 3 / 10
+                        if model.classicPick != nil {
+                            // Determine_Event: rounded down to tens
+                            gold -= gold % 10
+                        }
                         target.Gold = max(0, target.Gold - gold)
 
                         return MakePiracyEvent(model.TurnNumber, gold, target), nil
                     case RandomEventGift:
+                        if model.classicPick != nil {
+                            // Event_Twiddle: only the human gets the item, a new random one
+                            if !target.IsHuman() || classicGiftItem == nil {
+                                return nil, nil
+                            }
+                            made, ok := classicGiftItem()
+                            if !ok {
+                                return nil, nil
+                            }
+                            return MakeGiftEvent(model.TurnNumber, made.Name, target), &GameEventVault{CreatedArtifact: &made, Player: target}
+                        }
                         var out []*artifact.Artifact
                         for _, candidate := range model.ArtifactPool.AvailableArtifacts() {
                             if canUseArtifact(candidate, target.Wizard) {
@@ -1161,6 +1201,18 @@ func (model *GameModel) DoRandomEvents() {
 
                     case RandomEventDiplomaticMarriage:
                         neutral := model.GetNeutralPlayer()
+                        if neutral != nil && model.classicPick != nil && model.classicPick.NeutralCity != nil {
+                            // Event_Twiddle: the town, its garrison with it, builds Trade Goods
+                            city := model.classicPick.NeutralCity
+                            for _, unit := range neutral.GetUnits(city.X, city.Y, city.Plane) {
+                                neutral.RemoveUnit(unit)
+                                target.AddUnit(target.UpdateUnit(unit))
+                            }
+                            ChangeCityOwner(city, neutral, target, ChangeCityRemoveAllEnchantments)
+                            city.ProducingBuilding = buildinglib.BuildingTradeGoods
+                            city.ProducingUnit = units.UnitNone
+                            return MakeDiplomaticMarriageEvent(model.TurnNumber, city), nil
+                        }
                         if neutral != nil {
                             if len(neutral.Cities) > 0 {
                                 cities := neutral.GetCities()
@@ -1188,6 +1240,10 @@ func (model *GameModel) DoRandomEvents() {
                         }
 
                         city := choices[rand.N(len(choices))]
+                        if model.classicPick != nil {
+                            // a city of the victim
+                            city = model.classicPick.City
+                        }
 
                         people, units, buildings := model.DoEarthquake(city, target)
 
@@ -1200,6 +1256,10 @@ func (model *GameModel) DoRandomEvents() {
                         }
 
                         city := choices[rand.N(len(choices))]
+                        if model.classicPick != nil {
+                            // a city of the victim
+                            city = model.classicPick.City
+                        }
 
                         people, units, buildings := model.doCallTheVoid(city, target)
 
@@ -1231,6 +1291,9 @@ func (model *GameModel) DoRandomEvents() {
                         }
 
                     case RandomEventPlague:
+                        if model.classicPick != nil {
+                            return MakePlagueEvent(model.TurnNumber, model.classicPick.City), nil
+                        }
                         cities := target.GetCities()
                         for _, cityIndex := range rand.Perm(len(cities)) {
                             city := cities[cityIndex]
@@ -1242,6 +1305,9 @@ func (model *GameModel) DoRandomEvents() {
                         return nil, nil
 
                     case RandomEventPopulationBoom:
+                        if model.classicPick != nil {
+                            return MakePopulationBoomEvent(model.TurnNumber, model.classicPick.City), nil
+                        }
                         cities := target.GetCities()
                         for _, cityIndex := range rand.Perm(len(cities)) {
                             city := cities[cityIndex]
@@ -1281,6 +1347,11 @@ func (model *GameModel) DoRandomEvents() {
                                 choices = append(choices, city)
                             }
 
+                            if model.classicPick != nil {
+                                // the city Determine_Event picked
+                                choices = []*citylib.City{model.classicPick.City}
+                            }
+
                             if len(choices) > 0 {
                                 city := choices[rand.N(len(choices))]
 
@@ -1316,9 +1387,14 @@ func (model *GameModel) DoRandomEvents() {
 
             if len(validTargets) > 0 {
                 targetWizard := validTargets[rand.N(len(validTargets))]
+                if model.classicPick != nil {
+                    targetWizard = model.classicPick.Victim
+                }
                 newEvent, extraEvent := makeEvent(choice, targetWizard)
                 if newEvent != nil {
                     model.LastEventTurn = model.TurnNumber
+                    model.eventDelay = 0
+                    log.Printf("Random event at turn %v: %v for %v", model.TurnNumber, choice, targetWizard.Wizard.Name)
 
                     // log.Printf("Random event occurred: %+v", newEvent)
 
@@ -1362,6 +1438,16 @@ func (model *GameModel) DoRandomEvents() {
         // once citizens has reached 2, plague will dissipate automatically
         if event.Type == RandomEventPlague && event.TargetCity.Citizens() <= 2 {
             model.Events <- &GameEventShowRandomEvent{Event: event, Starting: false}
+            continue
+        }
+
+        if ClassicEvents && classicMoonOrConjunction(event.Type) {
+            // Event_Twiddle, see eventsclassic.go
+            if classicMoonEnds(model.TurnNumber - event.BirthYear) {
+                model.Events <- &GameEventShowRandomEvent{Event: event, Starting: false}
+            } else {
+                keep = append(keep, event)
+            }
             continue
         }
 

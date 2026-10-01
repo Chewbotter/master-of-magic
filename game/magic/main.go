@@ -1481,6 +1481,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&gamelib.BattleLog, "capture-battle-log", false, "development: log every battle no screen shows: sides, power, Chewbot's strength, result, turns")
     flag.BoolVar(&ai.ChewbotNeutralLog, "capture-neutral-log", false, "development: log what Chewbot's neutral player does")
     flag.BoolVar(&citylib.ClassicDifficulty, "classic-difficulty", true, "development: false for no bonuses of computer wizards by difficulty (the original's difficulty table)")
+    flag.BoolVar(&gamelib.ClassicEvents, "classic-events", true, "development: false for upstream's random events and conquest details (loot, outposts taken, production of a city taken)")
     flag.BoolVar(&classicHeroes, "classic-heroes", true, "development: false for upstream's heroes, mercenaries, merchants, items and fame of battles")
     flag.BoolVar(&combat.ClassicRules, "classic-combat", true, "development: false for upstream's rules of tactical combat and combat spells")
     flag.BoolVar(&units.ClassicMovement, "classic-movement", true, "development: false for upstream's movement on the world map (terrain costs, stack limit, ship seats, go-to, exploring)")
