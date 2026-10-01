@@ -60,3 +60,24 @@ and settings (`run-NNN.*`); a run over `--timeout` seconds is killed. `report` w
 and `report.md`: how the runs ended, panics and hangs, the broken states, the computer wizards at the
 end, by personality, battles and lairs by the strength of the sides, diplomacy, the decisions of the
 journal by kind with their commonest reasons, and the growth by turn.
+
+## The page of a report
+
+    python util/simbatch/report_html.py --round "Round 1=D:/x/fuzz/report/report.json"         --round "Round 2=D:/x/fuzz2/report/report.json" --notes notes.json --out report.html
+
+One page with the findings of `notes.json` first (title, subtitle, summary, and lists fixed, open,
+behavior, tools), the rounds compared by broken state, then a tab for every batch: how the runs
+ended, the broken states with examples, the wizards at the end, battles and lairs by the strength of
+the sides, the growth curves, the journal by kind with reasons, milestones (the first turn a wizard
+founded a city, fought a lair, took a city, went to war...), diplomacy, every run and the slowest
+turns of the AI.
+
+## Speed
+
+A profile of a late game: `-sim-load NAME -sim 15 -sim-profile FILE`, then `go tool pprof -top -cum
+<exe> FILE`. Found that way (2026-09-30): the clone AI that Chewbot wraps worked out all its goals and
+their path searches, whose decisions Chewbot drops; `Enemy2AI.SkipGoal`, set by `ChewbotAI.Update`,
+leaves them out (`ai/chewbot.go`). The modes of a stack are worked out once a path search
+(`keepStackModes`, `game/movement.go`). A late game of five wizards went from 7.5 to 1.3 seconds a
+turn. Next in the profile: the gold of a city asks whether it is connected to the capital by road,
+a path search of its own, every time.

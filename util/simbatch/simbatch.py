@@ -152,12 +152,18 @@ def load_batch(folder):
                     except json.JSONDecodeError:
                         pass
         log_tail = ""
+        duplicates = 0
+        debug_lines = []
         log_path = Path(folder) / f"{name}.log"
         if log_path.exists():
             text = log_path.read_text(encoding="utf-8", errors="replace")
             panic = text.find("panic:")
             log_tail = text[panic:panic + 3000] if panic >= 0 else ""
-        runs.append({"name": name, "config": config, "record": record, "journal": journal, "logPanic": log_tail})
+            duplicates = text.count("DUPLICATE first seen")
+            for line in text.splitlines():
+                if "DUPLICATE first seen" in line or " DEBUG " in line:
+                    debug_lines.append(line[line.find("sim.go") if "sim.go" in line else 0:][:400])
+        runs.append({"name": name, "config": config, "record": record, "journal": journal, "logPanic": log_tail, "duplicates": duplicates, "debug": debug_lines[:5]})
     return runs
 
 
@@ -211,6 +217,9 @@ def report_batch(name, runs):
             problems.append({"run": run["name"], "kind": "hang", "text": stalled[:600]})
         if run["config"].get("exit") == "timeout":
             problems.append({"run": run["name"], "kind": "timeout", "text": "killed after the timeout"})
+    for run in runs:
+        for line in run.get("debug", []):
+            problems.append({"run": run["name"], "kind": "debug", "text": line})
     out["problems"] = problems
 
     violations = {}
@@ -271,6 +280,7 @@ def report_batch(name, runs):
     whats = collections.defaultdict(collections.Counter)
     battles = collections.defaultdict(lambda: {"fought": 0, "won": 0})
     lairs = collections.defaultdict(lambda: {"fought": 0, "won": 0})
+    raids = collections.defaultdict(lambda: {"fought": 0, "won": 0})
     first_war = []
     first_treaty = []
     for run in runs:
@@ -298,16 +308,37 @@ def report_batch(name, runs):
                 if match:
                     attack, defend = int(match.group(1)), int(match.group(3))
                     won = what.endswith("attacker won") or what.endswith("defender fled")
-                    table = lairs if " at a " in what and "guardians" in what else battles
-                    bucket = table[ratio_bucket(attack, defend)]
-                    bucket["fought"] += 1
-                    bucket["won"] += 1 if won else 0
+                    is_lair = " at a " in what and "guardians" in what
+                    if is_lair and int(match.group(4)) == 0:
+                        pass  # an empty lair: treasure, no fight
+                    else:
+                        table = lairs if is_lair else (raids if line.get("banner") == "brown" else battles)
+                        bucket = table[ratio_bucket(attack, defend)]
+                        bucket["fought"] += 1
+                        bucket["won"] += 1 if won else 0
             if kind == "war" and not war_seen:
                 war_seen = True
                 first_war.append(line["turn"])
             if kind == "treaty" and not treaty_seen:
                 treaty_seen = True
                 first_treaty.append(line["turn"])
+    # milestones: the first turn of each key decision or happening, for every wizard of every run
+    milestone_kinds = ["found city", "target", "battle", "take city", "hire hero", "hire mercenaries", "spell start", "research", "treaty", "war", "dismiss", "disband"]
+    firsts = collections.defaultdict(list)
+    for run in runs:
+        seen = {}
+        for line in run["journal"]:
+            if line.get("banner") in (None, "brown") or line["player"] == "the game":
+                continue
+            key = (line["player"], line["kind"])
+            if line["kind"] == "battle" and "guardians" in (line.get("what") or ""):
+                key = (line["player"], "lair fight")
+            if key not in seen:
+                seen[key] = line["turn"]
+        for (player, kind), turn in seen.items():
+            firsts[kind].append(turn)
+    out["milestones"] = {kind: stats_of(firsts[kind]) for kind in milestone_kinds + ["lair fight"] if firsts.get(kind)}
+
     order = ["under 0.5", "0.5 to 0.75", "0.75 to 1", "1 to 1.5", "1.5 to 2", "2 to 3", "3 and more", "no defense"]
     out["journalKinds"] = dict(kinds.most_common())
     out["journalPerRun"] = {kind: round(count / max(1, len(runs)), 1) for kind, count in kinds.most_common()}
@@ -315,6 +346,26 @@ def report_batch(name, runs):
     out["whats"] = {kind: counter.most_common(12) for kind, counter in whats.items()}
     out["battlesByRatio"] = {bucket: battles[bucket] for bucket in order if bucket in battles}
     out["lairsByRatio"] = {bucket: lairs[bucket] for bucket in order if bucket in lairs}
+    out["raidsByRatio"] = {bucket: raids[bucket] for bucket in order if bucket in raids}
+
+    # one line a run, and the slowest turns of the AI
+    lines = []
+    slow = []
+    for run in runs:
+        record = run["record"] or {}
+        config = run["config"]
+        violations = sorted((record.get("Violations") or []), key=lambda value: -value["Count"])
+        wizards = [player for player in record.get("Players", []) if not player["Neutral"]]
+        lines.append({"run": run["name"], "difficulty": config["difficulty"], "land": config["land"], "opponents": config["opponents"], "war": config["war"],
+                      "ending": ending_of(run), "turns": (record.get("EndTurn", 0) - record.get("StartTurn", 0)) if record else None,
+                      "winner": record.get("Winner", ""), "seconds": config.get("seconds"),
+                      "cities": [player["End"]["Cities"] for player in wizards], "out": sum(1 for player in wizards if player["End"]["Out"]),
+                      "violations": [f"{value['Kind']} {value['Count']}" for value in violations[:3]], "duplicates": run.get("duplicates", 0)})
+        for player in record.get("Players", []):
+            slow.append((player["Stats"]["ThinkMost"] / 1e6, run["name"], player["Name"], round(player["Stats"]["Think"] / 1e9, 1)))
+    out["runLines"] = lines
+    out["slowest"] = [{"ms": round(ms), "run": name_, "player": player, "totalSeconds": total} for ms, name_, player, total in sorted(slow, reverse=True)[:8]]
+    out["duplicateRuns"] = sum(1 for run in runs if run.get("duplicates"))
     out["firstWarTurn"] = stats_of(first_war)
     out["runsWithWar"] = len(first_war)
     out["firstTreatyTurn"] = stats_of(first_treaty)
@@ -374,10 +425,15 @@ def markdown(reports):
                 lines.append(f"- {kind}: {value['wizards']} wizards, cities {value['cities']['median'] if value['cities'] else '-'}, strength {value['strength']['median'] if value['strength'] else '-'}, out {value['out']}")
             lines.append("")
         lines += ["### Battles by the strength of the attacker against the defender (won of fought)", ""]
-        for title, table in (("Wizards and raiders", report["battlesByRatio"]), ("Lairs, nodes, towers", report["lairsByRatio"])):
+        for title, table in (("Wizards attacking", report["battlesByRatio"]), ("Raiders and monsters attacking", report["raidsByRatio"]), ("Lairs, nodes, towers (not the empty ones)", report["lairsByRatio"])):
             if table:
                 lines.append(f"- {title}: " + "; ".join(f"{bucket} {value['won']}/{value['fought']}" for bucket, value in table.items()))
         lines.append("")
+        if report.get("milestones"):
+            lines += ["### Milestones: the first turn a wizard did it (median, min to max, wizards that did)", ""]
+            for kind, value in report["milestones"].items():
+                lines.append(f"- {kind}: {value['median']} ({value['min']} to {value['max']}), {value['n']} wizards")
+            lines.append("")
         lines += ["### Diplomacy", "",
                   f"- runs with a war: {report['runsWithWar']} of {report['runs']}, first war turn {report['firstWarTurn']}",
                   f"- runs with a treaty: {report['runsWithTreaty']} of {report['runs']}, first treaty turn {report['firstTreatyTurn']}",
@@ -392,6 +448,13 @@ def markdown(reports):
                     lines.append("  - what: " + "; ".join(f"{name} {count}" for name, count in report["whats"][kind][:10]))
                 if kind in report["reasons"]:
                     lines.append("  - why: " + "; ".join(f"{name} ({count})" for name, count in report["reasons"][kind][:5]))
+        lines.append("")
+        lines += ["### The slowest turns of the AI", ""]
+        for entry in report["slowest"]:
+            lines.append(f"- {entry['ms']} ms: {entry['run']} {entry['player']} (all its turns {entry['totalSeconds']} s)")
+        lines += ["", "### Every run", "", "| run | difficulty | land | wizards | war | ending | turns | winner | cities at the end | broken states |", "|---|---|---|---|---|---|---|---|---|---|"]
+        for line in report["runLines"]:
+            lines.append(f"| {line['run']} | {line['difficulty']} | {line['land']} | {line['opponents'] + 1} | {line['war']} | {line['ending']} | {line['turns']} | {line['winner']} | {line['cities']} | {'; '.join(line['violations'])} |")
         lines.append("")
         curves = report["curves"]
         if curves:

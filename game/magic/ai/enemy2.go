@@ -41,6 +41,10 @@ import (
 type Enemy2AI struct {
     playerlib.DefaultAIEvents
 
+    // goals whose decisions the wrapper drops (Chewbot plays those parts): not worked out at all,
+    // which spares their path searches (nil: every goal)
+    SkipGoal func(GoalType) bool
+
     // units that are currently moving towards an enemy
     Attacking map[*playerlib.UnitStack]bool
 
@@ -1658,6 +1662,10 @@ func (ai *Enemy2AI) GoalDecisions(self *playerlib.Player, aiServices playerlib.A
 
     // decisions produced by this goal's own logic (excluding subgoals) start here
     ownStart := len(decisions)
+
+    if ai.SkipGoal != nil && ai.SkipGoal(goal.Goal) {
+        return decisions, info
+    }
 
     switch goal.Goal {
         case GoalDefeatEnemies:

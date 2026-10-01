@@ -253,6 +253,10 @@ func (model *GameModel) GetMap(plane data.Plane) *maplib.Map {
 }
 
 func (model *GameModel) FindPath(oldX int, oldY int, newX int, newY int, player *playerlib.Player, stack playerlib.PathStack, fog data.FogMap) (pathfinding.Path, bool) {
+    if unitStack, ok := stack.(*playerlib.UnitStack); ok && units.ClassicMovement {
+        // the stack's modes once for the whole search (movement.go)
+        defer keepStackModes(unitStack)()
+    }
 
     useMap := model.GetMap(stack.Plane())
 

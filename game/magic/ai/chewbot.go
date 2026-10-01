@@ -202,12 +202,29 @@ func (ai *ChewbotAI) ProducedUnit(city *citylib.City, player *playerlib.Player) 
 func (ai *ChewbotAI) Update(self *playerlib.Player, services playerlib.AIServices) []playerlib.AIDecision {
     ai.services = services
     ai.self = self
-    decisions := ai.AIBehavior.Update(self, services)
     cities := chewbotCitiesActive()
     // the neutral player's stacks move as the clone moves them
     moves := !ai.Neutral && chewbotMovesActive()
     // the neutral player casts nothing
     spells := !ai.Neutral && chewbotSpellsActive()
+    if clone, ok := ai.AIBehavior.(*Enemy2AI); ok {
+        // the clone's goals whose every decision is dropped below are not worked out (their path
+        // searches were most of a computer wizard's thinking in late games)
+        clone.SkipGoal = func(goal GoalType) bool {
+            switch goal {
+                case GoalDefeatEnemies, GoalExploreTerritory, GoalMeldNodes, GoalPlanarTravel:
+                    return moves
+                case GoalDefendCities, GoalBuildCities, GoalConnectCities:
+                    return moves && cities
+                case GoalBuildArmy, GoalIncreasePower:
+                    return cities
+                case GoalEnchantUnits, GoalResearchMagic:
+                    return spells
+            }
+            return false
+        }
+    }
+    decisions := ai.AIBehavior.Update(self, services)
     glue := chewbotGlueActive()
     if glue {
         // every computer player (chewbotglue.go)

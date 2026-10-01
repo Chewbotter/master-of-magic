@@ -9,6 +9,7 @@ package game
 // dumped in its doc/___LBX). The code is ours.
 
 import (
+    "sync"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/maplib"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
@@ -57,7 +58,27 @@ func unitSwims(unit units.StackUnit) bool {
     return unit.IsSwimmer() || unit.HasAbility(data.AbilityNonCorporeal) || unit.HasEnchantment(data.UnitEnchantmentWaterWalking) || unit.HasEnchantment(data.UnitEnchantmentWraithForm)
 }
 
+// the modes of the stacks a path search is running for: worked out once a search, not once a
+// step (the searches of late games spent most of their time here); a search that overlaps another
+// of the same stack only works them out again
+var searchModes sync.Map
+
 func stackModes(stack *playerlib.UnitStack) moveModes {
+    if found, ok := searchModes.Load(stack); ok {
+        return found.(moveModes)
+    }
+    return computeStackModes(stack)
+}
+
+// the modes of a path search's stack, kept until the returned function is called
+func keepStackModes(stack *playerlib.UnitStack) func() {
+    searchModes.Store(stack, computeStackModes(stack))
+    return func() {
+        searchModes.Delete(stack)
+    }
+}
+
+func computeStackModes(stack *playerlib.UnitStack) moveModes {
     var modes moveModes
     active := stack.ActiveUnits()
     fliers, swimmers, nonCorporeal := 0, 0, 0
