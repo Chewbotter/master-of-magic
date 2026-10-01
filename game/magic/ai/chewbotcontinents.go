@@ -59,6 +59,8 @@ type chewOverland struct {
     Orders map[chewUnitKey]*chewOrder
     // the move of a unit failed in the last turn: it wants a path to a new target
     MoveFailed map[chewUnitKey]bool
+    // the paths kept from turn to turn (chewbotpathcache.go)
+    Paths chewPathStore
 }
 
 func makeChewOverland() *chewOverland {

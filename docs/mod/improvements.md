@@ -336,6 +336,27 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
 
 ## Found by many runs (testing.md, 2026-09-30)
 
+- PORTED (2026-10-01, item 3 of the user's list, armies walking back and forth): the original keeps
+  the rest of a computer player's path after every move (Cache_AI_Move_Path, a table of 140 for all
+  computer players) and takes it as it is for the next search from that square to that destination
+  (Make_Move_Path), so an army keeps to the way it chose; ours searched anew every turn, and a way
+  that units of others blocked on one turn and not on the next sent armies back and forth (two
+  Swordsmen of Ariel lost 20 turns going between 11,17 and 11,21). `ai/chewbotpathcache.go`,
+  `ChewbotPathStore`, flag `-chewbot-path-store=false`. ReMoM's rebuild jumps over the lookup ("HACK");
+  its notes have it. The table fills (a slot is freed only when a move along its path fails, and
+  every finished journey leaves one), so in a long game it works mostly early on
+  (`quirkPathStoreFills`). MEASURED, 12 games of 3 to 5 wizards, 300 turns, same seeds
+  (`_build/a/fuzz19`): turns in which a march's path got longer 829 to 680, by 3 squares or more
+  279 to 233; battles in the field 309 to 365 (a kept path leads into an enemy stack that stands on
+  it, and the original's Eval_Move_Path attacks any enemy army on the way); "no path" orders 3,772
+  to 3,901; cities at the end 8.6 to 7.9 and units 83 to 72 a wizard (games part at once, so 12 are
+  few for this). Options for a change of our own, not made: kept paths that do not fill (most of
+  the back and forth goes), or a kept path dropped when an enemy stands on it.
+- SEEN, NOT CHANGED (2026-10-01): a computer wizard that can not pay a creature's upkeep summons one
+  and disbands it the same turn, again and again (Tauron, every turn for 20 turns: Hell Hounds,
+  Magic Spirit). The spell choice (AI_Select_Spell_Group) does not ask the upkeep, and
+  AI_Disband_To_Balance_Budget then removes it. Not yet checked against the original.
+
 - FIXED (2026-10-01, item 2 of the user's list, battles to the turn limit): most of the 121 battles
   that went to the turn limit in fought-out runs were one stack attacking again and again (item 1
   ended them: 52 to 2 in 24 paired games). The rest were neutral attackers that could reach nothing

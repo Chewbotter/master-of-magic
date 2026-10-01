@@ -90,6 +90,11 @@ again only when the old one holds none of those cities any more, or the army wai
     the defender's strength had fewer units than were sent (4 fewer, median). CHEWBOT'S OWN, ON (user 2026-10-01): switch
     `ChewbotStageSparesOrdered` leaves a unit that got an order in the turn to that order; false
     gives the original.
+12b. **Kept paths** (Make_Move_Path, Cache_AI_Move_Path): after a move the rest of the path is
+    kept under the square the stack stopped on and its destination, in one table of 140 for all
+    computer wizards; a search from that square to that destination takes it as it is, a move along
+    a kept path writes the rest back into its slot, a move that does not get off its square drops
+    it, and nothing is added while the table is full.
 13. **Garrisons**: the fortress wants 9, a city 2 and a unit for 3 citizens (for 4 where the wizard
     feels safe or the race is dwarf, troll or draconian), a free node 8. Unknown stacks and
     roamers away from the stage point send units to the site with the smallest distance less what

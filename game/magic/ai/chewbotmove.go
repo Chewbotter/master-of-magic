@@ -145,6 +145,8 @@ type chewTurn struct {
     ExpeditionSize int
     // the step of the original that gives orders now, for the log
     Why string
+    // the kept path the last search took, -1 when it searched (chewbotpathcache.go)
+    lastKept int
 }
 
 // AI_Stacks_Order_Attack_Target_Or_Goto_Destination: attack when an enemy stack off a site stands
@@ -202,6 +204,15 @@ func (turn *chewTurn) busy(unit units.StackUnit) bool {
 
 // a path for a group of units
 func (turn *chewTurn) path(x int, y int, toX int, toY int, plane data.Plane, group []units.StackUnit) (pathfinding.Path, bool) {
+    // a path kept from a move before (Make_Move_Path, chewbotpathcache.go)
+    turn.lastKept = -1
+    if ChewbotPathStore && turn.Overland.Paths.table != nil {
+        store := &turn.Overland.Paths
+        if index := store.find(image.Pt(turn.World.WrapX(x), y), image.Pt(turn.World.WrapX(toX), toY), plane); index >= 0 {
+            turn.lastKept = index
+            return append(pathfinding.Path(nil), store.table.Kept[index].Path...), true
+        }
+    }
     self := turn.World.Self
     stack := playerlib.MakeUnitStackFromUnits(group)
     return turn.World.Services.FindPath(x, y, toX, toY, self, stack, self.GetFog(plane))
@@ -247,6 +258,9 @@ func (ai *ChewbotAI) moveDecisions(self *playerlib.Player, services playerlib.AI
     overland.fit(world)
     overland.Self = self
     overland.pruneOrders(self)
+    // the paths of the last turn's moves are kept (Cache_AI_Move_Path)
+    overland.Paths.table = chewPathTableOf(services)
+    overland.Paths.keepMoved()
     if ChewbotMoveLog && world.Turn % 20 == 0 {
         for _, other := range world.Players {
             if other != self {
@@ -449,8 +463,16 @@ func (turn *chewTurn) decisions() []playerlib.AIDecision {
                 chewCountOrder(name, "no path", len(group))
                 continue
             }
+            if turn.lastKept >= 0 {
+                keys := make([]chewUnitKey, 0, len(group))
+                for _, unit := range group {
+                    keys = append(keys, chewKey(unit))
+                }
+                overland.Paths.noteUsed(keys, image.Pt(stack.X(), stack.Y()), stack.Plane(), turn.lastKept)
+            }
             why := overland.Orders[chewKey(group[0])].Why
-            chewMoveLog("%v: %v units from %v,%v to %v (%v steps, %v)", self.Wizard.Name, len(group), stack.X(), stack.Y(), point, len(path), why)
+            // the first unit by name and identity, to follow a group from turn to turn in the log
+            chewMoveLog("%v: %v units from %v,%v to %v (%v steps, %v) [%v %p]", self.Wizard.Name, len(group), stack.X(), stack.Y(), point, len(path), why, group[0].GetName(), group[0])
             decisions = append(decisions, &playerlib.AIMoveStackDecision{Stack: stack, Path: path, Units: group})
         }
 
@@ -520,6 +542,9 @@ func (ai *ChewbotAI) MovedStack(stack *playerlib.UnitStack, path pathfinding.Pat
     if ai.Neutral || !chewbotMovesActive() {
         return ai.AIBehavior.MovedStack(stack, path)
     }
+    if ChewbotPathStore && ai.overland != nil {
+        ai.overland.Paths.noteMoved(stack, path)
+    }
     return path
 }
 
@@ -531,6 +556,9 @@ func (ai *ChewbotAI) InvalidMove(stack *playerlib.UnitStack) {
     }
     for _, unit := range stack.Units() {
         ai.overland.MoveFailed[chewKey(unit)] = true
+    }
+    if ChewbotPathStore {
+        ai.overland.Paths.moveFailed(stack)
     }
 }
 
