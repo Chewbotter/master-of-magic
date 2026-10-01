@@ -36,7 +36,7 @@ maps a tile to the middle of its diamond. `game/magic/combat/battlefield.go` hol
 | 5 | Trees and rocks: the original's counts per landscape, trees in patches, its five tree and five rock pictures, its anchors | `combat/scenery.go` |
 | 5 | City: one house per citizen up to a full town, house style by race, fortress and outpost on cell (6, 11) | `combat/scenery.go` |
 | 5 | Walls of stone, fire and darkness: the original's 12 and 14 pieces with their cells, shifts and anchors. Myrror has its own stone | `combat/scenery.go`, `combat/scenerydraw.go` |
-| 5 | Draw order: figures one by one, trees, rocks, houses, walls and the structure all in the original's order | `combat/scenerydraw.go`, `unitview/figure.go` |
+| 5 | Draw order: figures one by one, trees, rocks, houses, walls and the structure all in the original's order (since 2026-09-30 by depth, `depthsort.go`, the original's order among things of one depth) | `combat/scenerydraw.go`, `unitview/figure.go` |
 | 5 | The fortress takes its cell. A city without one has no blocked cell | `combat/model.go` |
 | 6 | The roads of a town, the clouds of a flying fortress and the ground under an outpost on the original's place. They now scale with the zoom | `combat/scenerydraw.go` |
 | 6 | Cursor pictures are drawn with their middle or tip on the mouse position, which is the point that picks the tile | `combat/cursor.go` |

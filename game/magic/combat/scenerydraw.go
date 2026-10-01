@@ -72,8 +72,21 @@ func (combat *CombatScreen) sceneryDrawables(screen *ebiten.Image) []fieldDrawab
             continue
         }
 
+        // by depth, see depthsort.go: a house and the structure stand in their cell as a whole, a
+        // fence on the edge of its cell goes before the figures of that cell
+        order := pointOrder(piece.ScreenX, piece.ScreenY)
+        switch piece.Kind {
+            case SceneryHouse:
+                cellX, cellY := screenCell(piece.ScreenX, piece.ScreenY)
+                order = cellOrder(cellX, cellY, depthFarEdge, piece.ScreenX, piece.ScreenY)
+            case SceneryStructure:
+                order = cellOrder(lairCellX, lairCellY, depthFarEdge, piece.ScreenX, piece.ScreenY)
+            case SceneryFence:
+                order = depthOrder(float64(piece.ScreenX), float64(piece.ScreenY) - 0.5, piece.ScreenX, piece.ScreenY)
+        }
+
         out = append(out, fieldDrawable{
-            Order: DrawOrder(piece.ScreenX, piece.ScreenY),
+            Order: order,
             Layer: layer,
             Render: func() {
                 pictures := combat.sceneryPictures(piece)
@@ -143,7 +156,12 @@ func (combat *CombatScreen) wallDrawables(screen *ebiten.Image) []fieldDrawable 
         x, y := cellScreen(piece.CellX, piece.CellY, 0, 0)
         x += piece.ShiftX
         y += piece.ShiftY
-        order := DrawOrder(x, y)
+        // a piece of wall stands at an edge of its cell, see depthsort.go
+        part := depthFarEdge
+        if piece.Near {
+            part = depthNearEdge
+        }
+        order := cellOrder(piece.CellX, piece.CellY, part, x, y)
 
         if tile.Wall != nil && !tile.Wall.IsEmpty() && !piece.MagicOnly {
             layer := layerWallFarStone
@@ -211,7 +229,7 @@ func (combat *CombatScreen) structureDrawables(render func(x int, y int, extra T
     screenX, screenY := cellScreen(lairCellX, lairCellY, 0, 0)
 
     return append(out, fieldDrawable{
-        Order: DrawOrder(screenX, screenY),
+        Order: cellOrder(lairCellX, lairCellY, depthFarEdge, screenX, screenY),
         Layer: layerStructure,
         Render: func() {
             render(x, y, tile.ExtraObject)
@@ -229,6 +247,8 @@ func (combat *CombatScreen) structureDrawables(render func(x int, y int, extra T
 // again during a step. Now all figures of a unit are sorted by one cell, as a unit that stands is,
 // with their places in it: while it walks, the one of the cells it is between that is drawn last,
 // so it goes over what it passes in front of. The order changes once a step, not every pixel.
+// STILL POPPED (user, same day), so the field is sorted by depth now (depthsort.go): this cell
+// only decides among things of the same depth, and the whole order when DepthSort is off.
 
 // the middle on the original's screen of the cell a unit at a place is sorted by. facing is the way
 // it walks
@@ -271,12 +291,30 @@ func (combat *CombatScreen) unitDrawables(unit *ArmyUnit, render func(unit *Army
         x, y = unit.MoveX, unit.MoveY
     }
 
-    // the middle of the cell the unit is sorted by on the original's screen
+    // the middle of the cell the unit is sorted by on the original's screen: the order of the
+    // original, which decides among figures of the same depth
     middleX, middleY := sortCellMiddle(x, y, unit.Facing)
+
+    field := MakeBattlefieldMatrix()
+    count := len(points)
 
     last := 0
     for index, point := range points {
-        order := DrawOrder(int(math.Floor(middleX)) + point.X, int(math.Floor(middleY)) + point.Y)
+        tieX, tieY := int(math.Floor(middleX)) + point.X, int(math.Floor(middleY)) + point.Y
+
+        // where its feet are drawn, as renderUnit puts it: its trail behind the unit
+        // (figurevariety.go), its place in the cell, its lunge and its regrouping (figureslide.go)
+        feetX, feetY := field.Apply(combat.figurePosition(unit, index, count, x, y))
+        feetX += float64(point.X)
+        feetY += float64(point.Y)
+        if index < unit.VisibleFigures() {
+            lungeX, lungeY := combat.strikeSlide(unit, combat.figurePhase(unit, index, count))
+            regroupX, regroupY := combat.regroupSlide(unit, index, count)
+            feetX += lungeX + regroupX
+            feetY += lungeY + regroupY
+        }
+
+        order := depthOrder(feetX, feetY, tieX, tieY)
         out = append(out, fieldDrawable{Order: order, Layer: layerFigure})
         if order >= out[last].Order {
             last = index
