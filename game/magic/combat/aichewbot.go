@@ -163,9 +163,11 @@ type chewbotState struct {
     // every unit keeps its target from turn to turn, target_battle_unit_idx
     Targets map[*ArmyUnit]*ArmyUnit
     Plans map[Team]*chewbotPlan
-    // the last turn a unit of a computer player found a way to move, for _ai_immobile_counter
-    LastMoveTurn int
-    MovedTurn int
+    // the last turn a unit of a computer player found a way to move, attacked or cast, for
+    // _ai_immobile_counter: by side, as the original's counter only ever counts the side that is
+    // not the human (the battlefield is the human's battles); with computers on both sides (test
+    // runs) a defender's moves kept neutral attackers that were stuck from being removed
+    LastMoveTurn [2]int
     // what the spell being cast is cast at, see aichewbotspells.go
     pending *chewPending
 }
@@ -548,12 +550,12 @@ func (model *CombatModel) chewbotPlanFor(army *Army) *chewbotPlan {
     other := model.GetOppositeArmyForTeam(team)
 
     // neutral attackers that have found no way to move for some turns are gone
-    if model.chewNeutral(army) && team == TeamAttacker && model.chewImmobileTurns() > chewImmobileTurns {
+    if model.chewNeutral(army) && team == TeamAttacker && model.chewImmobileTurns(team) > chewImmobileTurns {
         for _, unit := range slices.Clone(army.units) {
             unit.TakeDamage(unit.GetHealth(), DamageNormal)
             model.RemoveUnit(unit)
         }
-        chewLog("neutral attackers could not move for %v turns and are gone", model.chewImmobileTurns())
+        chewLog("neutral attackers could not move for %v turns and are gone", model.chewImmobileTurns(team))
         return plan
     }
 
@@ -628,13 +630,22 @@ func (model *CombatModel) chewbotPlanFor(army *Army) *chewbotPlan {
     return plan
 }
 
+// a unit of a computer player acted: it attacked (Battle_Unit_Attack, melee, missile or a wall) or
+// cast a spell (Combat_Cast_Spell), which resets _ai_immobile_counter as a move does
+func (model *CombatModel) chewActed(unit *ArmyUnit) {
+    if unit == nil || model.GetArmy(unit) == nil || model.GetArmy(unit).Player.IsHuman() {
+        return
+    }
+    model.chewbotState().LastMoveTurn[unit.Team] = model.CurrentTurn
+}
+
 // turns in which no unit of a computer player found a way to move: _ai_immobile_counter
-func (model *CombatModel) chewImmobileTurns() int {
+func (model *CombatModel) chewImmobileTurns(team Team) int {
     chew := model.chewbotState()
-    if chew.MovedTurn == model.CurrentTurn {
+    if chew.LastMoveTurn[team] == model.CurrentTurn {
         return -1
     }
-    return model.CurrentTurn - chew.LastMoveTurn - 1
+    return model.CurrentTurn - chew.LastMoveTurn[team] - 1
 }
 
 // AI_Retreat_Check, as Check_For_Winner asks it
@@ -809,7 +820,7 @@ func doAIChewbot(model *CombatModel, spellSystem SpellSystem, aiActions AIUnitAc
 
     // heroes keep away from targets that would hurt them, but for their second turn when no unit
     // of a computer player has moved in this turn
-    safetyOff := secondPass && model.chewImmobileTurns() != -1
+    safetyOff := secondPass && model.chewImmobileTurns(aiUnit.Team) != -1
 
     model.chewSetUnitActionMode(aiUnit, plan, safetyOff, false)
 
@@ -1325,21 +1336,20 @@ func (box chewBox) contains(tile image.Point) bool {
 // Auto_Move_Unit: the unit walks along its path as far as its moves and the box let it, and
 // attacks its target when it gets to it
 func (model *CombatModel) chewAutoMove(actions AIUnitActionsInterface, unit *ArmyUnit, destination image.Point, target *ArmyUnit, rally image.Point, hasRally bool, plan *chewbotPlan) {
-    chew := model.chewbotState()
-
     if target != nil {
         destination = chewPoint(target)
     }
 
     path := model.chewPath(unit, destination, target, plan)
-    if len(path) == 0 {
+    // a path of the unit's own cell alone is no move: Combat_Move_Path_Find counts the steps, and a
+    // unit that stays (a defender on the gate it guards) must not reset _ai_immobile_counter, or
+    // neutral attackers that can not reach anything are never removed (50 turns of nothing in
+    // test runs, 2026-10-01)
+    if len(path) <= 1 {
         return
     }
 
-    if !model.GetArmy(unit).Player.IsHuman() {
-        chew.MovedTurn = model.CurrentTurn
-        chew.LastMoveTurn = model.CurrentTurn
-    }
+    model.chewActed(unit)
 
     box := makeChewBox(chewPoint(unit), destination, rally, hasRally)
 

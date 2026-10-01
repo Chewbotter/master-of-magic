@@ -152,6 +152,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Combat spells as in the original: Ice Bolt and Psionic Blast of the original's strength (Psionic Blast ignores armor, not magic immunity), Dispel Evil and Warp Creature on any enemy, spells at full strength on sleeping units, Prayer +1 resistance, Dispel Magic always clears your own units' curses and never takes Invulnerability, Life Drain feeds a wizard's casting skill, Wrack as hard as the original's, the cost by distance to the fortress along the longer axis.
 - Fixed: in battle a unit had only its base hit points, without its own enchantments (Lionheart, Black Channels), a hero's Constitution or Charm of Life; it now has all of them, as in the original, and a unit killed in battle no longer lives on with the difference.
 - Fixed: a battle on a coast or lake square is fought on water, as in the original; before it was fought on grass, ships were left out and units stranded at sea fought instead.
+- Raiders and monsters that attack your city and can reach nothing leave the battle after 3 turns in which none of them could move, attack or cast, as in the original (before, one of them standing on the spot it guarded kept them there to the turn limit); raiders that keep shooting stay.
 
 ## Spellbook
 - Descriptions and the info window of a spell in smaller, sharp text.

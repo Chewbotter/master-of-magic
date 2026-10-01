@@ -336,6 +336,16 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
 
 ## Found by many runs (testing.md, 2026-09-30)
 
+- FIXED (2026-10-01, item 2 of the user's list, battles to the turn limit): most of the 121 battles
+  that went to the turn limit in fought-out runs were one stack attacking again and again (item 1
+  ended them: 52 to 2 in 24 paired games). The rest were neutral attackers that could reach nothing
+  and were never removed: the port of _ai_immobile_counter counted a path of the unit's own cell
+  as a move (a defender guarding the gate it stands on "moved" every turn), and did not count
+  attacks and casts of units, which the original does (Battle_Unit_Attack, Combat_Cast_Spell). In
+  a battle of computers on both sides (test runs only) the counter is kept by side. Same 24 games:
+  1 battle to the turn limit of 1,842 (2 Gargoyles of a wizard that find no path into a walled
+  city; the original does nothing then either).
+
 - PORTED (2026-10-01, the user's list "1, then 2, then 3", item 1): a computer stack that lost a
   battle on the battlefield and lived (it fled, or held out to the turn limit) kept its order and
   attacked again every turn. Prepare_All_Battle_Units (Combat.c) takes the order of every unit of a

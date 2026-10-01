@@ -18,7 +18,10 @@ inside the routine is left out.
 
 When a side's turn starts (Auto_Do_Combat_Turn):
 
-1. Neutral attackers (raiders, monsters) that found no way to move in more than 3 turns die.
+1. Neutral attackers (raiders, monsters) that found no way to move in more than 3 turns die
+   (_ai_immobile_counter: a turn counts when no unit of the computer side moved a step, attacked
+   or cast; a unit that stays on its own cell, as a defender on the gate it guards, is no move).
+   Counted by side: the original only ever counts the side that is not the human.
 2. A wizard's army may flee (AI_Retreat_Check, asked by Check_For_Winner): not in the first turn,
    not when a wizard's city is under siege, only when the enemy is more than 4 times as strong
    (player mode 0), and then only if it has a hero to save or only builders (settlers,

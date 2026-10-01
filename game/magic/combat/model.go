@@ -4304,6 +4304,7 @@ func (model *CombatModel) canMeleeAttack(attacker *ArmyUnit, defender *ArmyUnit,
 }
 
 func (model *CombatModel) meleeAttackWall(attacker *ArmyUnit, x int, y int) {
+    model.chewActed(attacker)
     pointsUsed := attacker.GetMovementSpeed().Divide(fraction.FromInt(2))
     if ClassicRules {
         pointsUsed = classicMeleeCost(attacker)
@@ -4333,6 +4334,7 @@ func (model *CombatModel) crushWall(attacker *ArmyUnit, x int, y int) {
  * returns total damage done by attacker and total damage done by defender
  */
 func (model *CombatModel) meleeAttack(attacker *ArmyUnit, defender *ArmyUnit) (int, int){
+    model.chewActed(attacker)
     // attacking takes 50% of movement points
     // FIXME: in some cases an extra 0.5 movements points is lost, possibly due to counter attacks?
     pointsUsed := attacker.GetMovementSpeed().Divide(fraction.FromInt(2))
@@ -5244,6 +5246,8 @@ func getSpellSave(caster *ArmyUnit) int {
 
 // playerCasted is true if the player cast the spell, or false if a unit cast the spell
 func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitCaster *ArmyUnit, spell spellbook.Spell, castedCallback func(bool)){
+    // a unit that casts acted (Combat_Cast_Spell resets _ai_immobile_counter for it, not for a wizard)
+    model.chewActed(unitCaster)
 
     // a spell that is cast is announced, see spellanim.go
     announce := castedCallback
@@ -7739,6 +7743,7 @@ type RangeTarget interface {
 }
 
 func (model *CombatModel) rangeAttack(attacker *ArmyUnit, defender RangeTarget, actions RangeAttackActions) {
+    model.chewActed(attacker)
     attacker.MovesLeft = attacker.MovesLeft.Subtract(fraction.FromInt(10))
     if attacker.MovesLeft.LessThan(fraction.FromInt(0)) {
         attacker.MovesLeft = fraction.FromInt(0)
