@@ -2050,6 +2050,10 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
         // stack = player.SplitStack(stack, stack.ActiveUnits())
         for _, unit := range stack.Units() {
             unit.SetBusy(units.BusyStatusNone)
+            // every unit of the stack moves (stack.Move), so every unit counts for where it may go:
+            // the modes of a stack are worked out from its active units, and one active water
+            // walker took a stack of settlers and pikemen onto the sea (found by a test run)
+            stack.SetActive(unit, true)
         }
     }
 
@@ -2064,14 +2068,14 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
     to := path[0]
     path = path[1:]
 
-    if units.ClassicMovement && stack.HasSailingUnits(false) && !model.GetMap(stack.Plane()).GetTile(stack.X(), stack.Y()).Tile.IsLand() {
-        // a ship carries the riders of its square: the orders of a turn can give the ship and its
+    if units.ClassicMovement && stackCarries(stack) && !model.GetMap(stack.Plane()).GetTile(stack.X(), stack.Y()).Tile.IsLand() {
+        // a ship (or a wind walker, which carries a stack over the sea) carries the riders of its square: the orders of a turn can give the ship and its
         // riders different ways, and the split left a settler alone on the water when the ship
         // sailed (found by -sim-trace)
         for _, other := range player.FindAllStacks(stack.X(), stack.Y(), stack.Plane()) {
             // every unit of it, active or not: a settler left by the split of the orders is not
             // active, and the ship sailed without it (found by replaying a traced run)
-            if other != stack && slices.ContainsFunc(other.Units(), units.StackUnit.IsLandWalker) && !other.HasSailingUnits(false) {
+            if other != stack && slices.ContainsFunc(other.Units(), units.StackUnit.IsLandWalker) && !stackCarries(other) {
                 stack = player.MergeStacks(stack, other)
             }
         }
@@ -2223,6 +2227,17 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
     }
 
     return path
+}
+
+// a stack with a ship or a wind walker: it carries the riders on its square of water (a wind walker
+// left the stack it carried at sea when the orders sent it alone, found by a test run)
+func stackCarries(stack *playerlib.UnitStack) bool {
+    for _, unit := range stack.Units() {
+        if unit.GetRawUnit().Sailing || unit.HasAbility(data.AbilityWindWalking) || unit.HasEnchantment(data.UnitEnchantmentWindWalking) {
+            return true
+        }
+    }
+    return false
 }
 
 // try to relocate a fleeing stack, kills units that are unable

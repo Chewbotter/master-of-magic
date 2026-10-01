@@ -321,6 +321,11 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
 
 ## Found by many runs (testing.md, 2026-09-30)
 
+- FIXED (2026-10-01, round 5): a wind walker (the hero Aquilon) carried a stack of settlers and
+  pikemen at sea; the orders sent it on alone and left the stack on the water. A stack that leaves
+  the water with a ship or a wind walker takes the riders of its square along (`stackCarries`).
+  And a computer player's stack moves with all its units active: the modes of a stack are worked
+  out from its active units, while all its units move.
 - FIXED (2026-10-01, the user: "I don't think water-based combat was common at all"): Triremes were
   the second build of every computer wizard (90 to 175 a game). Player_Colony_Autobuild_CP (AIBUILD.c)
   reads ai_transport_count, which the AI's data of the turn (AIDUDES.c) counts over ALL the wizard's
