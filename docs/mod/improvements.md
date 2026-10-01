@@ -321,6 +321,15 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
 
 ## Found by many runs (testing.md, 2026-09-30)
 
+- ROUND 4 (2026-10-01, `_build/a/fuzz8`, the settings of round 3 run for run, 90 runs): broken
+  states in 2 runs (18 in round 3), attacks where nothing fought 0 (1,301), most units in a world
+  951 (1,407), runs with a treaty 73 (31), no crash or hang. The 2 left are edge cases the original
+  has too: (1) seed 833914234 (two wizards, 400 turns): Disjunction ended Crusade, a wounded unit's
+  most hits fell below its damage and it stays on the map with 0 hits (Heal_Unit does not heal it,
+  nothing kills it); (2) seed 83429930 (five wizards): Meteor Storm killed a ship of 3 hits and left
+  its rider on the water (Kill_Unit drowns nobody). Open questions for the user: raiders (above),
+  Triremes the second build (90 to 175 a game), 536 attacks at under half strength still (20 won).
+
 - THE USER'S CALL (2026-10-01: "let's ignore the Nature's Awareness rule for AI diplomacy as it seems
   like strictly a downgrade"): computer wizards meet each other by sight (`ComputersMeetBySight`,
   contactclassic.go, flag `-computers-meet-by-sight=false` for the original). The original's
