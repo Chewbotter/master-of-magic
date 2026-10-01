@@ -9,6 +9,7 @@ package game
 // block; REPORT.c: Chancellor_Screen_Scroll_Draw__WIP). The code is ours.
 
 import (
+    "fmt"
     "strings"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -62,6 +63,7 @@ func (game *Game) classicKillLameUnits(player *playerlib.Player) {
         for _, city := range player.Cities {
             for _, unit := range player.GetUnits(city.X, city.Y, city.Plane) {
                 if classicUnitWorth(unit) < player.AverageUnitCost / 2 {
+                    playerlib.Note(player, "dismiss", unit.GetName() + " in " + city.Name, fmt.Sprintf("worth %v, under half the average %v (AI_Kill_Lame_Units)", classicUnitWorth(unit), player.AverageUnitCost))
                     dismissUnit(player, unit)
                     break
                 }
@@ -82,6 +84,7 @@ func (game *Game) classicKillLameUnits(player *playerlib.Player) {
         }
     }
     for _, unit := range lame {
+        playerlib.Note(player, "dismiss", unit.GetName(), fmt.Sprintf("worth %v, under half the average %v, outside its cities (AI_Kill_Lame_Units)", classicUnitWorth(unit), player.AverageUnitCost))
         dismissUnit(player, unit)
     }
 }

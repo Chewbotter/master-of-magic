@@ -3261,6 +3261,7 @@ func (ai *Enemy2AI) HandleHireHero(self *playerlib.Player, hero *herolib.Hero, c
 
         if added {
             log.Printf("AI %v hired hero %v for %v gold", self.Wizard.Name, hero.Name, cost)
+            playerlib.Note(self, "hire hero", hero.Name, fmt.Sprintf("fee %v, gold %v", cost, self.Gold))
             self.Gold -= cost
             hero.SetStatus(herolib.StatusEmployed)
 
@@ -3282,6 +3283,7 @@ func (ai *Enemy2AI) HandleHireMercenaries(self *playerlib.Player, mercenaries []
 
     if self.Gold >= cost && self.GoldPerTurn() > neededGoldPerTurn && self.FoodPerTurn() > 0 {
         log.Printf("AI %v hired %v mercenaries for %v gold", self.Wizard.Name, len(mercenaries), cost)
+        playerlib.Note(self, "hire mercenaries", fmt.Sprintf("%v %v", len(mercenaries), mercenaries[0].GetName()), fmt.Sprintf("cost %v, gold %v, gold a turn %v", cost, self.Gold, self.GoldPerTurn()))
         for _, unit := range mercenaries {
             self.AddUnit(unit)
             // FIXME: consider invoking this method

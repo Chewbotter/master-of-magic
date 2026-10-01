@@ -10,6 +10,7 @@ package relations
 // _players[a].Dipl.X[b]). The visible relation is kept the same both ways.
 
 import (
+    "fmt"
     "math/rand/v2"
 
     "github.com/kazzmir/master-of-magic/game/magic/data"
@@ -111,6 +112,8 @@ func FixedRolls(value int) func() {
 
 // the world the rules act in. The game fills it in (game/relations.go)
 type Rules struct {
+    // why the next treaty, peace or war comes, for the journal of -sim (player/journal.go)
+    why string
     // every player in the game's order, the human first; the rules skip the neutral player
     Players []*playerlib.Player
     Turn int
@@ -342,10 +345,40 @@ func (rules *Rules) StartTreaty(a *playerlib.Player, b *playerlib.Player, kind d
     if aView == nil || bView == nil {
         return
     }
+    if kind != data.TreatyNone && aView.Treaty != kind {
+        rules.note(a, "treaty", fmt.Sprintf("%v with %v", treatyName(kind), b.Wizard.Name), aView)
+    }
     aView.Treaty = kind
     bView.Treaty = kind
     aView.Hostility = 0
     bView.Hostility = 0
+    rules.why = ""
+}
+
+// notes a decision of diplomacy with its reason and the relation of the moment
+func (rules *Rules) note(player *playerlib.Player, kind string, what string, relation *playerlib.Relationship) {
+    if !playerlib.Noting() {
+        rules.why = ""
+        return
+    }
+    why := rules.why
+    if why == "" {
+        why = "rules"
+    }
+    if relation != nil {
+        why = fmt.Sprintf("%v; relation %v, hidden %v, treaty interest %v, peace interest %v", why, relation.VisibleRelation, relation.HiddenRelation, relation.TreatyInterest, relation.PeaceInterest)
+    }
+    playerlib.Note(player, kind, what, why)
+    rules.why = ""
+}
+
+func treatyName(kind data.TreatyType) string {
+    switch kind {
+        case data.TreatyPact: return "a wizard pact"
+        case data.TreatyAlliance: return "an alliance"
+        case data.TreatyWar: return "war"
+    }
+    return "peace"
 }
 
 // Declare_Peace: the war ends; the human keeps the peace for 8 to 13 turns (the original counts it
@@ -355,6 +388,7 @@ func (rules *Rules) DeclarePeace(a *playerlib.Player, b *playerlib.Player) {
     if aView == nil || bView == nil {
         return
     }
+    rules.note(a, "peace", fmt.Sprintf("peace with %v", b.Wizard.Name), aView)
     rules.StartTreaty(a, b, data.TreatyNone)
     if !quirkPeaceNoGain {
         aView.VisibleRelation = min(aView.VisibleRelation + 80, 100)
@@ -387,9 +421,11 @@ func (rules *Rules) DeclareWar(attacker *playerlib.Player, defender *playerlib.P
         defenderView.ContactStage = 1
     }
     if attackerView.Treaty >= data.TreatyWar {
+        rules.why = ""
         return
     }
 
+    rules.note(attacker, "war", fmt.Sprintf("war on %v", defender.Wizard.Name), attackerView)
     rules.BreakTreaties(attacker, defender)
     attackerView.StartingRelation -= 5
     defenderView.StartingRelation -= 5
@@ -425,6 +461,7 @@ func (rules *Rules) BreakTreaties(breaker *playerlib.Player, victim *playerlib.P
     }
 
     penalty := 0
+    rules.note(breaker, "break treaty", fmt.Sprintf("%v with %v", treatyName(breakerView.Treaty), victim.Wizard.Name), breakerView)
     switch breakerView.Treaty {
         case data.TreatyPact: penalty = -10
         case data.TreatyAlliance: penalty = -20
@@ -592,7 +629,9 @@ func (rules *Rules) pickSides() {
         for j := i + 1; j < len(wizards); j++ {
             for k := i + 1; k < len(wizards); k++ {
                 if treaty(wizards[j], wizards[k]) == data.TreatyWar && treaty(wizards[i], wizards[j]) == data.TreatyAlliance && treaty(wizards[i], wizards[k]) == data.TreatyAlliance {
+                    rules.why = "allied with two at war (pick sides)"
                     rules.BreakTreaties(wizards[i], wizards[j])
+                    rules.why = "allied with two at war (pick sides)"
                     rules.BreakTreaties(wizards[i], wizards[k])
                 }
             }

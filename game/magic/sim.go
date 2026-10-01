@@ -30,6 +30,7 @@ import (
     "math/rand/v2"
     "os"
     "path/filepath"
+    "runtime/debug"
     "runtime/pprof"
     "slices"
     "strings"
@@ -364,7 +365,7 @@ func runSimulation(config GameConfig) error {
             description += ", every wizard at war"
         }
 
-        run := simPlay(game, description)
+        run := simPlay(game, description, index, repeat)
         if index == repeat - 1 && simSave != "" {
             path := simSavePath(simSave)
             saver := &gamelib.GameSaver{Game: game, FS: system.MakeFS()}
@@ -400,11 +401,23 @@ func runSimulation(config GameConfig) error {
 }
 
 // plays the turns of one game
-func simPlay(game *gamelib.Game, description string) simRun {
+func simPlay(game *gamelib.Game, description string, index int, count int) simRun {
     game.Model.CurrentPlayer = 0
     game.RefreshUI()
     game.Stats = gamelib.MakeSimStats()
     ai.ChewbotOrderCounts = make(map[string]map[string]int)
+
+    if simAllAI {
+        // every wizard a computer one (simrecord.go)
+        simMakeAllAI(game)
+        description += ", the human's slot played by Chewbot"
+    }
+    var sink *simJournalSink
+    if simJournal != "" || simJSON != "" {
+        sink = simOpenJournal(game, simRunPath(simJournal, index, count))
+        defer sink.close()
+    }
+    stopAlone := simStopAlone || simAllAI
 
     players := slices.Clone(game.Model.Players)
     before := make(map[*playerlib.Player]simSnapshot)
@@ -413,6 +426,10 @@ func simPlay(game *gamelib.Game, description string) simRun {
     }
 
     game.SimSkipHuman()
+    if simAllAI {
+        // the human's slot plays its turns
+        game.Model.GetHumanPlayer().Skip = false
+    }
     select {
         case game.Events <- &gamelib.GameEventNextTurn{}:
         default:
@@ -427,16 +444,70 @@ func simPlay(game *gamelib.Game, description string) simRun {
     lastTurn := startTurn
     lastProgress := time.Now()
     stalled := ""
+
+    // a line of every player every simTimeline turns (simrecord.go)
+    var timeline []simTimelinePoint
+    takeTimeline := func() {
+        point := simTimelinePoint{Turn: game.Model.TurnNumber, Players: make(map[string]simSnapshot)}
+        for _, player := range players {
+            point.Players[player.Wizard.Name] = simTake(player)
+        }
+        timeline = append(timeline, point)
+    }
+    takeTimeline()
+
+    jsonPath := simRunPath(simJSON, index, count)
+    watchdog := simStartWatchdog(func(stacks string) {
+        run := simRun{Description: description, StartTurn: startTurn, EndTurn: game.Model.TurnNumber, Elapsed: time.Since(start),
+            Stalled: fmt.Sprintf("HANG at turn %v: the game's loop did not come back for %v", game.Model.TurnNumber, simHangTime)}
+        simWriteRecord(jsonPath, simMakeRecord(game, run, players, before, timeline, sink))
+        if sink != nil {
+            sink.close()
+        }
+    })
+    defer watchdog.close()
+
+    // one update of the game; a panic is recorded and ends the run
+    update := func() (state gamelib.GameState, panicked bool) {
+        defer func() {
+            if recovered := recover(); recovered != nil {
+                game.Stats.NotePanic(fmt.Sprintf("turn %v, the game's loop: %v; %v", game.Model.TurnNumber, recovered, string(debug.Stack())))
+                panicked = true
+            }
+        }()
+        return game.Update(yield), false
+    }
+
     for game.Model.TurnNumber < startTurn + uint64(simTurns) {
-        if game.Update(yield) == gamelib.GameStateQuit {
+        state, panicked := update()
+        watchdog.alive()
+        if panicked {
+            stalled = "a panic"
+            break
+        }
+        if state == gamelib.GameStateQuit {
             stalled = "the game ended"
+            break
+        }
+        if text := game.Stats.PanicText(); text != "" {
+            stalled = "a panic of the AI"
+            log.Printf("sim: PANIC %v", text)
             break
         }
         if game.Model.TurnNumber != lastTurn {
             lastTurn = game.Model.TurnNumber
             lastProgress = time.Now()
+            // the checks of every turn (game/simcheck.go)
+            game.SimCheck()
+            if simTimeline > 0 && (lastTurn - startTurn) % uint64(simTimeline) == 0 {
+                takeTimeline()
+            }
             if (lastTurn - startTurn) % 25 == 0 {
                 log.Printf("sim: turn %v after %v", lastTurn, time.Since(start).Round(time.Millisecond))
+            }
+            if stopAlone && simWizardsLeft(players) <= 1 {
+                stalled = "one wizard left"
+                break
             }
         }
         if time.Since(lastProgress) > simStallTime {
@@ -444,6 +515,7 @@ func simPlay(game *gamelib.Game, description string) simRun {
             break
         }
     }
+    takeTimeline()
 
     run := simRun{
         Description: fmt.Sprintf("%v, Enemy AI %v", description, display.Current.EnemyAI().Name()),
@@ -461,6 +533,21 @@ func simPlay(game *gamelib.Game, description string) simRun {
             Stats: *game.Stats.Of(player),
             Orders: ai.ChewbotOrderCounts[player.Wizard.Name],
         })
+    }
+    if jsonPath != "" {
+        simWriteRecord(jsonPath, simMakeRecord(game, run, players, before, timeline, sink))
+    }
+    if violations := game.Stats.ViolationList(); len(violations) > 0 {
+        run.Diplomacy += "\nBroken states found by the checks of every turn\n"
+        for _, violation := range violations {
+            run.Diplomacy += fmt.Sprintf("  %v: %v times, turns %v to %v; %v\n", violation.Kind, violation.Count, violation.FirstTurn, violation.LastTurn, strings.Join(violation.Examples, " | "))
+        }
+    }
+    if text := game.Stats.PanicText(); text != "" {
+        run.Diplomacy += "\nPANIC: " + text + "\n"
+    }
+    if winner := simWinner(players); winner != "" {
+        run.Diplomacy += "\nOne wizard left: " + winner + "\n"
     }
     return run
 }

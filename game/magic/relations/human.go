@@ -91,6 +91,7 @@ func (rules *Rules) ProposeTreaty(human *playerlib.Player, other *playerlib.Play
             }
             answer = judge(75)
             if answer == AnswerAccepted {
+                rules.why = "the human's proposal accepted"
                 rules.StartTreaty(human, other, data.TreatyPact)
             }
         case data.TreatyAlliance:
@@ -99,6 +100,7 @@ func (rules *Rules) ProposeTreaty(human *playerlib.Player, other *playerlib.Play
             }
             answer = judge(125)
             if answer == AnswerAccepted {
+                rules.why = "the human's proposal accepted"
                 rules.StartTreaty(human, other, data.TreatyAlliance)
             }
         case data.TreatyNone:
@@ -108,6 +110,7 @@ func (rules *Rules) ProposeTreaty(human *playerlib.Player, other *playerlib.Play
             }
             answer = judge(60)
             if answer == AnswerAccepted {
+                rules.why = "the human's proposal accepted"
                 rules.DeclarePeace(human, other)
             }
             adjustModifiers(relation, 2)

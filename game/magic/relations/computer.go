@@ -8,6 +8,7 @@ package relations
 // is ours.
 
 import (
+    "fmt"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
@@ -75,9 +76,11 @@ func (rules *Rules) computerToComputer() {
             }
 
             if total + relation.TreatyInterest > 150 && relation.Treaty != data.TreatyAlliance {
+                rules.why = fmt.Sprintf("negotiation: total %v + treaty interest over 150", total)
                 rules.StartTreaty(first, second, data.TreatyAlliance)
             } else if total + relation.TreatyInterest > 150 && relation.Treaty != data.TreatyPact {
                 if quirkAllianceBecomesPact || relation.Treaty != data.TreatyAlliance {
+                    rules.why = fmt.Sprintf("negotiation: total %v + treaty interest over 150", total)
                     rules.StartTreaty(first, second, data.TreatyPact)
                 }
             } else if relation.TradeInterest + 80 < total {
@@ -95,6 +98,7 @@ func (rules *Rules) computerToComputer() {
             }
             // the original adds a number of its message text here, small: the will for peace decides
             if relation.Treaty == data.TreatyWar && relation.PeaceInterest > 100 {
+                rules.why = "peace interest over 100"
                 rules.DeclarePeace(first, second)
             }
             adjustModifiers(relation, 3)
@@ -116,6 +120,7 @@ func (rules *Rules) computerToComputer() {
                     continue
                 }
                 if treaty(third, first) == data.TreatyWar && treaty(third, second) != data.TreatyWar {
+                    rules.why = fmt.Sprintf("its ally %v is at war with %v", first.Wizard.Name, third.Wizard.Name)
                     rules.DeclareWar(second, third)
                 }
             }
@@ -173,6 +178,7 @@ func (rules *Rules) needForWar(victim *playerlib.Player, aggressor *playerlib.Pl
     if aggressor.Personality == playerlib.PersonalityChaotic && roll(300) <= rules.Difficulty && peaceAllows(victim, aggressor) {
         victimView.Action = ActionChaoticWar
         victimView.ActionStrength = 2000
+        rules.why = "chaotic personality"
         rules.DeclareWar(aggressor, victim)
     } else {
         for try := 0; try < 2; try++ {
@@ -192,6 +198,7 @@ func (rules *Rules) needForWar(victim *playerlib.Player, aggressor *playerlib.Pl
             // aggressor that is safe at home is the likelier
             score := victimView.VisibleRelation + rules.superiority(victim, aggressor) + treatyBonus(aggressor) + victimView.HiddenRelation
             if score <= -150 {
+                rules.why = fmt.Sprintf("need for war: score %v (relation, superiority %v, treaty) at most -150", score, rules.superiority(victim, aggressor))
                 rules.superiorityWar(aggressor, victim)
             }
         }
@@ -201,6 +208,7 @@ func (rules *Rules) needForWar(victim *playerlib.Player, aggressor *playerlib.Pl
         for _, other := range rules.computerWizards() {
             if treaty(human, other) == data.TreatyWar && treaty(aggressor, other) == data.TreatyAlliance {
                 if peaceAllows(victim, aggressor) && roll(10) == 1 && treaty(aggressor, victim) != data.TreatyAlliance {
+                    rules.why = "the human is at war with its ally"
                     rules.superiorityWar(aggressor, victim)
                 }
             }
@@ -215,6 +223,7 @@ func (rules *Rules) needForWar(victim *playerlib.Player, aggressor *playerlib.Pl
             }
             if wars < rules.Difficulty && victimView.VisibleRelation < -30 && peaceAllows(victim, aggressor) {
                 if roll(15) <= -victimView.VisibleRelation / 10 {
+                    rules.why = fmt.Sprintf("fewer wars than the difficulty, relation %v", victimView.VisibleRelation)
                     rules.superiorityWar(aggressor, victim)
                 }
             }
@@ -226,6 +235,8 @@ func (rules *Rules) needForWar(victim *playerlib.Player, aggressor *playerlib.Pl
 // alliance one in 4), sooner with an expansionist victim, and likes it at most 30; without a
 // treaty it declares war. The human is told
 func (rules *Rules) superiorityWar(aggressor *playerlib.Player, victim *playerlib.Player) {
+    // the reason set by the caller is used once
+    defer func() { rules.why = "" }()
     aggressorView, victimView := view(aggressor, victim), view(victim, aggressor)
     if aggressorView == nil || victimView == nil {
         return
@@ -251,6 +262,9 @@ func (rules *Rules) superiorityWar(aggressor *playerlib.Player, victim *playerli
             }
             if breaks {
                 tell(ActionSuperiorityBreak)
+                if rules.why == "" {
+                    rules.why = "superiority"
+                }
                 rules.BreakTreaties(aggressor, victim)
                 aggressorView.VisibleRelation = min(aggressorView.VisibleRelation, 30)
                 victimView.VisibleRelation = aggressorView.VisibleRelation
@@ -261,6 +275,9 @@ func (rules *Rules) superiorityWar(aggressor *playerlib.Player, victim *playerli
                     tell(ActionWarDeclared)
                 } else {
                     tell(ActionSuperiorityWar)
+                }
+                if rules.why == "" {
+                    rules.why = "superiority"
                 }
                 rules.DeclareWar(aggressor, victim)
             }
@@ -290,7 +307,9 @@ func (rules *Rules) unitsNearCities(cityOwner *playerlib.Player, unitOwner *play
             default:
                 unitView.WarningCounter = 0
                 rules.ChangeRelations(-5, unitOwner, cityOwner, ActionTreatyBroken, city, "")
+                rules.why = "units near " + city + " after two warnings"
                 rules.BreakTreaties(cityOwner, unitOwner)
+                rules.why = "units near " + city + " after two warnings"
                 rules.BreakTreaties(unitOwner, cityOwner)
         }
         return
@@ -414,6 +433,7 @@ func (rules *Rules) humanWarOrPeace(other *playerlib.Player) {
 
     if relation.Treaty < data.TreatyWar {
         if relation.VisibleRelation <= -75 {
+            rules.why = "relation to the human at most -75"
             rules.DeclareWar(other, human)
             relation.Action = ActionWarDeclared
             return
@@ -433,11 +453,13 @@ func (rules *Rules) humanWarOrPeace(other *playerlib.Player) {
         if relation.ThreatCounter > 2 || relation.Treaty == data.TreatyNone {
             limit := -(relation.ActionStrength + treatyBonus(other) / 2)
             if roll(100) < limit {
+                rules.why = fmt.Sprintf("threats to the human, roll under %v", limit)
                 rules.DeclareWar(other, human)
                 relation.Action = ActionWarDeclared
                 relation.ThreatCounter = 1
             }
         } else {
+            rules.why = "threats to the human"
             rules.BreakTreaties(other, human)
             relation.Action = brokenRecord(relation.Action)
         }

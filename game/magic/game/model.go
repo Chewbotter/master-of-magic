@@ -1422,6 +1422,16 @@ func (model *GameModel) DoRandomEvents() {
                     }
                     model.eventDelay = 0
                     log.Printf("Random event at turn %v: %v for %v", model.TurnNumber, choice, targetWizard.Wizard.Name)
+                    if playerlib.Noting() {
+                        why := "upstream's roll"
+                        if model.classicPick != nil {
+                            why = "Determine_Event's victim by the astrologer's numbers"
+                            if model.classicPick.City != nil {
+                                why += ", the city " + model.classicPick.City.Name
+                            }
+                        }
+                        playerlib.Note(targetWizard, "event", randomEventName(choice), why)
+                    }
 
                     // log.Printf("Random event occurred: %+v", newEvent)
 

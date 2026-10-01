@@ -6,6 +6,7 @@ package ai
 // AI_Update_Magic_Power; MoM/src/AIDATA.c: AI_Evaluate_Magic_Power_Strategy). The code is ours.
 
 import (
+    "fmt"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
@@ -114,6 +115,7 @@ func (ai *ChewbotAI) pickResearch(self *playerlib.Player, services playerlib.AIS
     }
     choice := chewWeightedChoiceLong(weights)
     chewSpellLog(self, "researches %v", candidates[choice].Name)
+    playerlib.Note(self, "research", candidates[choice].Name, fmt.Sprintf("weight %v of %v candidates, research %v a turn", weights[choice], len(candidates), research))
     return candidates[choice], true
 }
 

@@ -13,6 +13,7 @@ package ai
 // The rules in words: docs/mod/ai-overland.md.
 
 import (
+    "fmt"
     "image"
     "slices"
     "sync"
@@ -1167,6 +1168,11 @@ func (pass *chewPass) assignTarget(stack *chewAIStack) (int, int, bool) {
     }
     if chosen < 0 {
         return 0, 0, false
+    }
+    if playerlib.Noting() {
+        target := pass.Targets[chosen]
+        playerlib.Note(pass.World.Self, "target", fmt.Sprintf("%v units at %v,%v go for %v at %v,%v", len(group), stack.X, stack.Y, pass.World.describe(target.X, target.Y, pass.WP), target.X, target.Y),
+            fmt.Sprintf("strength %v against %v (more than three quarters needed), value %v, distance %v, %v targets on the landmass", strength, target.Strength, target.Value, max(1, pass.World.Distance(target.X, target.Y, stack.X, stack.Y)), len(pass.Targets)))
     }
     pass.Targets[chosen].Value = 0
     return pass.Targets[chosen].X, pass.Targets[chosen].Y, true

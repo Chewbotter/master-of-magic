@@ -12,6 +12,7 @@ package ai
 // and cross to the other plane. The clone's orders to move are dropped.
 
 import (
+    "fmt"
     "image"
     "log"
     "sync"
@@ -432,6 +433,13 @@ func (turn *chewTurn) decisions() []playerlib.AIDecision {
             if settles[key] && !settled {
                 settled = true
                 chewMoveLog("%v: settles at %v,%v", self.Wizard.Name, stack.X(), stack.Y())
+                if playerlib.Noting() {
+                    why := "the settler is at its site"
+                    if order, has := overland.Orders[key]; has && order != nil && order.Why != "" {
+                        why = order.Why
+                    }
+                    playerlib.Note(self, "settle", fmt.Sprintf("a city at %v,%v", stack.X(), stack.Y()), why)
+                }
                 decisions = append(decisions, &playerlib.AIBuildOutpostDecision{Stack: stack})
                 chewCountOrder(name, "found a city", 1)
             }

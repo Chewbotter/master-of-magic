@@ -15,6 +15,8 @@ package ai
 // combat/aichewbot.go.
 
 import (
+    "strings"
+    "fmt"
     "image"
     "log"
     "slices"
@@ -314,6 +316,8 @@ func chewWeightedChoice(weights []int) int {
 type chewProduct struct {
     Building buildinglib.Building
     Unit units.Unit
+    // why it was picked, for the journal of -sim (player/journal.go)
+    Why string
 }
 
 func (product chewProduct) isUnit() bool {
@@ -380,6 +384,9 @@ func (ai *ChewbotAI) cityDecisions(self *playerlib.Player, services playerlib.AI
             decisions = append(decisions, &playerlib.AIProduceDecision{City: city, Building: product.Building, Unit: product.Unit})
             ai.lastBuilding[city] = product.Building
             chewCityLog("%v in %v builds %v%v", self.Wizard.Name, city.Name, services.GetBuildingInfos().Name(product.Building), product.Unit.Name)
+            if playerlib.Noting() && !ai.Neutral {
+                playerlib.Note(self, "build", fmt.Sprintf("%v: %v%v", city.Name, services.GetBuildingInfos().Name(product.Building), product.Unit.Name), product.Why)
+            }
             continue
         }
 
@@ -389,6 +396,10 @@ func (ai *ChewbotAI) cityDecisions(self *playerlib.Player, services playerlib.AI
         if !ai.Neutral && !onFiller && ai.wantsToBuy(self, city) {
             decisions = append(decisions, &playerlib.AIBuyProductionDecision{City: city})
             chewCityLog("%v buys the production of %v", self.Wizard.Name, city.Name)
+            if playerlib.Noting() {
+                price, _ := city.BuyCost()
+                playerlib.Note(self, "buy", city.Name, fmt.Sprintf("price %v, gold %v", price, self.Gold))
+            }
         }
     }
 
@@ -511,13 +522,13 @@ func (ai *ChewbotAI) pickWizard(self *playerlib.Player, services playerlib.AISer
         // away from the human, the buildings of an army come first, one for every defender
         for index, building := range []buildinglib.Building{buildinglib.BuildingBarracks, buildinglib.BuildingBuildersHall, buildinglib.BuildingShrine, buildinglib.BuildingSmithy, buildinglib.BuildingGranary} {
             if defenders > index && !city.Buildings.Contains(building) && city.ComputePossibleBuildings(true).Contains(building) {
-                return chewProduct{Building: building, Unit: units.UnitNone}
+                return chewProduct{Building: building, Unit: units.UnitNone, Why: fmt.Sprintf("army building first, %v defenders", defenders)}
             }
         }
     }
 
     if 1 + chewRoll(100) <= tradeGoodsChance {
-        return chewProduct{Building: buildinglib.BuildingTradeGoods, Unit: units.UnitNone}
+        return chewProduct{Building: buildinglib.BuildingTradeGoods, Unit: units.UnitNone, Why: fmt.Sprintf("trade goods roll, chance %v%%", tradeGoodsChance)}
     }
 
     products := chewProducts(city)
@@ -590,9 +601,31 @@ func (ai *ChewbotAI) pickWizard(self *playerlib.Player, services playerlib.AISer
     }
 
     if len(products) == 0 {
-        return chewProduct{Building: buildinglib.BuildingTradeGoods, Unit: units.UnitNone}
+        return chewProduct{Building: buildinglib.BuildingTradeGoods, Unit: units.UnitNone, Why: "nothing to build"}
     }
-    return products[chewWeightedChoice(weights)]
+    choice := chewWeightedChoice(weights)
+    picked := products[choice]
+    if playerlib.Noting() {
+        total := 0
+        for _, weight := range weights {
+            total += weight
+        }
+        needs := []string{}
+        if needUnits {
+            needs = append(needs, "defenders")
+        }
+        if needSettlers {
+            needs = append(needs, "settlers")
+        }
+        if needEngineers {
+            needs = append(needs, "engineers")
+        }
+        if onHumanLand {
+            needs = append(needs, "on the human's land")
+        }
+        picked.Why = fmt.Sprintf("weighted %v of %v, objective %v, %v defenders, needs %v", weights[choice], total, objective, defenders, strings.Join(needs, " "))
+    }
+    return picked
 }
 
 // Player_Colony_Autobuild_NP: a neutral city builds Barracks first, then garrison or buildings

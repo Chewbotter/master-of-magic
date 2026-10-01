@@ -95,6 +95,9 @@ type FizzleReason struct {
 }
 
 func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
+    if playerlib.Noting() {
+        playerlib.Note(player, "cast", spell.Name, fmt.Sprintf("cost %v, mana left %v", player.ComputeEffectiveSpellCost(spell, true), player.Mana))
+    }
     // FIXME: if the player is AI then invoke some callback that the AI will use to select targets instead of using the GameEventSelectLocationForSpell
 
     fizzled, reason := game.checkInstantFizzleForCastSpell(player, spell)

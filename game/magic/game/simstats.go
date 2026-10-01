@@ -38,9 +38,14 @@ type SimStats struct {
     // banishments and defeats (conquest.go), and how the game ended
     Conquests []string
     GameOver string
+    // broken states found by the checks of every turn (simcheck.go)
+    Violations map[string]*SimViolation
+    // a panic of the AI's goroutine, with its stack: the run stops
+    Panic string
 }
 
 func (stats *SimStats) noteConquest(text string) {
+    playerlib.Note(nil, "conquest", text, "")
     if stats == nil {
         return
     }
@@ -150,4 +155,31 @@ func (game *Game) SimSkipHuman() {
     if human := game.Model.GetHumanPlayer(); human != nil {
         human.Skip = true
     }
+}
+
+// a panic of the AI's goroutine: the first is kept
+func (stats *SimStats) notePanic(text string) {
+    if stats == nil {
+        return
+    }
+    stats.lock.Lock()
+    defer stats.lock.Unlock()
+    if stats.Panic == "" {
+        stats.Panic = text
+    }
+}
+
+// the panic of the run, empty when none
+func (stats *SimStats) PanicText() string {
+    if stats == nil {
+        return ""
+    }
+    stats.lock.Lock()
+    defer stats.lock.Unlock()
+    return stats.Panic
+}
+
+// a panic of the game's own loop, noted by the runner
+func (stats *SimStats) NotePanic(text string) {
+    stats.notePanic(text)
 }

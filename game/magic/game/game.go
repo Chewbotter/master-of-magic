@@ -1,6 +1,7 @@
 package game
 
 import (
+    "runtime/debug"
     "image/color"
     "image"
     "math/rand/v2"
@@ -4518,20 +4519,33 @@ func (handlers *GameMoveHandlers) ShowMovement(x int, y int, stack *playerlib.Un
 }
 
 func (handlers *GameMoveHandlers) DoEncounter(player *playerlib.Player, stack *playerlib.UnitStack, encounter *maplib.ExtraEncounter, map_ *maplib.Map, x int, y int) combat.CombatState {
+    battle := simEncounterStart(player, stack, encounter, map_.Plane)
     state := handlers.Game.doEncounter(handlers.Yield, player, stack, encounter, map_, x, y)
     handlers.Game.Stats.encounter(player, state)
+    battle.end(state)
     return state
 }
 
 func (handlers *GameMoveHandlers) DoCombat(player *playerlib.Player, stack *playerlib.UnitStack, enemy *playerlib.Player, enemyStack *playerlib.UnitStack, zone combat.ZoneType) combat.CombatState {
+    battle := simBattleStart(player, stack, enemy, enemyStack, handlers.Game.simWhere(enemyStack))
     state := handlers.Game.doCombat(handlers.Yield, player, stack, enemy, enemyStack, zone)
     handlers.Game.Stats.combat(player, enemy, state)
+    battle.end(state)
     return state
 }
 
 func (handlers *GameMoveHandlers) DefeatCity(player *playerlib.Player, stack *playerlib.UnitStack, enemy *playerlib.Player, city *citylib.City) (bool, int) {
     handlers.Game.Stats.cityTaken(player, enemy)
-    return handlers.Game.defeatCity(handlers.Yield, player, stack, enemy, city)
+    people := city.Citizens()
+    raze, gold := handlers.Game.defeatCity(handlers.Yield, player, stack, enemy, city)
+    if playerlib.Noting() {
+        kind := "take city"
+        if raze {
+            kind = "raze city"
+        }
+        playerlib.Note(player, kind, fmt.Sprintf("%v (%v people) of %v", city.Name, people, enemy.Wizard.Name), fmt.Sprintf("gold %v", gold))
+    }
+    return raze, gold
 }
 
 func (handlers *GameMoveHandlers) DiscoverWizards() {
@@ -4560,6 +4574,16 @@ func (game *Game) doAiUpdate(yield coroutine.YieldFunc, player *playerlib.Player
         thinkName := player.Wizard.Name
         thinkBanner := player.GetBanner()
         go func() {
+            if game.Stats != nil {
+                // development: a run without a window records a panic of the AI and stops (sim.go)
+                defer func() {
+                    if recovered := recover(); recovered != nil {
+                        game.Stats.notePanic(fmt.Sprintf("turn %v, the AI of %v: %v; %v", thinkYear, thinkName, recovered, string(debug.Stack())))
+                        decisionResult <- nil
+                        close(decisionResult)
+                    }
+                }()
+            }
             // run AI in background so the UI doesn't totally freeze
             out := player.AIBehavior.Update(player, game.Model)
             elapsed := time.Since(thinkStart)
@@ -6443,6 +6467,7 @@ func (game *Game) CreateOutpost(settlers units.StackUnit, player *playerlib.Play
     player.SelectedStack = nil
     game.RefreshUI()
     player.AddCity(newCity)
+    simCityNote(player, "found city", newCity, "settlers")
     if units.ClassicMovement {
         // Outpost.c: a new outpost explores 2 around it
         player.LiftFogSquare(newCity.X, newCity.Y, 2, newCity.Plane)

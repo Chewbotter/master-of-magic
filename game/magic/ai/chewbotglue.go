@@ -9,6 +9,7 @@ package ai
 // The rules in words: docs/mod/ai-turn.md. The code is ours.
 
 import (
+    "fmt"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/units"
@@ -201,6 +202,14 @@ func (ai *ChewbotAI) updateReserves(self *playerlib.Player, services playerlib.A
 func (ai *ChewbotAI) updateIncome(self *playerlib.Player, services playerlib.AIServices) {
     glue := ai.glue
     turn := int(services.GetTurnNumber())
+    // the journal notes the step at the end of the turn's changes, when it moved (the rules raise it
+    // and cap it back in one turn)
+    startIndex := glue.TaxIndex
+    defer func() {
+        if playerlib.Noting() && glue.TaxIndex != startIndex {
+            playerlib.Note(self, "tax", fmt.Sprintf("step %v to %v", startIndex, glue.TaxIndex), fmt.Sprintf("gold %v a turn, turn %v", self.PlanningGoldPerTurn(), turn))
+        }
+    }()
     setTax := func(index int) {
         glue.TaxIndex = index
         self.UpdateTaxRate(chewTaxRate(index))
@@ -421,6 +430,7 @@ func (ai *ChewbotAI) disbandToBudget(self *playerlib.Player, services playerlib.
         goldDeficit -= max(unit.GetUpkeepGold() * maintenance / 100, 1)
         normal = remove(normal, unit)
         chewSpellLog(self, "disbands %v for gold and food", unit.GetName())
+        playerlib.Note(self, "disband", unit.GetName(), fmt.Sprintf("gold and food: gold %v, %v a turn", self.Gold, self.PlanningGoldPerTurn()))
         self.RemoveUnit(unit)
     }
     summoned := ownUnits(true)
@@ -432,6 +442,7 @@ func (ai *ChewbotAI) disbandToBudget(self *playerlib.Player, services playerlib.
         manaDeficit -= max(unit.GetUpkeepMana() * maintenance / 100, 1)
         summoned = remove(summoned, unit)
         chewSpellLog(self, "disbands %v for mana", unit.GetName())
+        playerlib.Note(self, "disband", unit.GetName(), fmt.Sprintf("mana: mana %v", self.Mana))
         self.RemoveUnit(unit)
     }
 }
@@ -466,6 +477,7 @@ func (ai *ChewbotAI) killExcessBuilders(self *playerlib.Player, world *chewWorld
     }
     for _, unit := range gone {
         chewSpellLog(self, "disbands %v, one too many on its landmass", unit.GetName())
+        playerlib.Note(self, "disband", unit.GetName(), "one settler or engineer too many on its landmass")
         self.RemoveUnit(unit)
     }
     return gone

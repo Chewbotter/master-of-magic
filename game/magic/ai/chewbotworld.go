@@ -8,6 +8,7 @@ package ai
 // in words: docs/mod/ai-overland.md.
 
 import (
+    "fmt"
     "cmp"
     "image"
     "log"
@@ -365,4 +366,29 @@ func (world *chewWorld) CityAt(x int, y int, wp int) (chewCity, bool) {
 // the fortress of a player, if it has one
 func chewFortress(player *playerlib.Player) *citylib.City {
     return player.FindFortressCity()
+}
+
+// what stands on a square, for the journal of -sim: a city and its owner, a lair, a node, or the
+// stack of a player
+func (world *chewWorld) describe(x int, y int, wp int) string {
+    plane := chewPlaneOf(wp)
+    for _, player := range world.Players {
+        if city := player.FindCity(x, y, plane); city != nil {
+            return fmt.Sprintf("the city %v of %v", city.Name, player.Wizard.Name)
+        }
+    }
+    if mapObject := world.Maps[wp]; mapObject != nil {
+        if encounter := mapObject.GetEncounter(x, y); encounter != nil {
+            return fmt.Sprintf("a %v", encounter.Type.Name())
+        }
+        if mapObject.GetMagicNode(x, y) != nil {
+            return "a node"
+        }
+    }
+    for _, player := range world.Players {
+        if stack := player.FindStack(x, y, plane); stack != nil {
+            return fmt.Sprintf("a stack of %v units of %v", len(stack.Units()), player.Wizard.Name)
+        }
+    }
+    return "a site"
 }

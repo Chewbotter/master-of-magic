@@ -5,6 +5,7 @@ package ai
 // AI_Select_Spell_Group_* pickers). The rules in words: docs/mod/ai-spells.md. The code is ours.
 
 import (
+    "fmt"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "github.com/kazzmir/master-of-magic/game/magic/units"
@@ -122,9 +123,11 @@ func (ai *ChewbotAI) pickSpell(self *playerlib.Player, services playerlib.AIServ
     perTurn := self.Mana / 10 + self.PlanningManaPerTurn(power, services)
     if spell.CastCost / 50 > perTurn {
         chewSpellLog(self, "kind %v, %v is too costly (%v a turn)", kind, name, perTurn)
+        playerlib.Note(self, "spell skipped", name, fmt.Sprintf("kind %v, costs %v, more than 50 turns of %v a turn", chewSpellKindName(kind), spell.CastCost, perTurn))
         return spellbook.Spell{}, false
     }
     chewSpellLog(self, "kind %v, casts %v", kind, name)
+    playerlib.Note(self, "spell start", name, fmt.Sprintf("kind %v, cost %v, mana %v, %v a turn", chewSpellKindName(kind), spell.CastCost, self.Mana, perTurn))
     return spell, true
 }
 
@@ -857,4 +860,21 @@ func chewSuppressionSpell(self *playerlib.Player, world *chewSpellWorld) string 
         chewBand(weights, 4)
     }
     return chewPickSlot(weights, names)
+}
+
+// the name of a kind of spell AI_Select_Spell_Group picks, for the journal
+func chewSpellKindName(kind int) string {
+    switch kind {
+        case chewSpellSummon: return "summon"
+        case chewSpellUnit: return "unit enchantment"
+        case chewSpellCity: return "city"
+        case chewSpellDisenchant: return "disenchant"
+        case chewSpellDisjunction: return "disjunction"
+        case chewSpellSummoningCircle: return "summoning circle"
+        case chewSpellAttack: return "attack"
+        case chewSpellSuppression: return "suppression"
+        case chewSpellGlobal: return "global"
+        case chewSpellMastery: return "mastery"
+    }
+    return "none"
 }
