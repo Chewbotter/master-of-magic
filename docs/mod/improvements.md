@@ -338,7 +338,7 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
   water: it joins the ship's stack at once, and a ship that leaves a square of water takes the
   riders of its owner there along (the orders of a turn gave ship and riders different ways and
   split them); units that were not in a battle (a ship in a battle on land) stood on the square of
-  the other side: an attacker's go back, a beaten defender's get away as fleeing ones do or are
+  the other side: an attacker's go back (also from a lair or node it lost at), a beaten defender's get away as fleeing ones do or are
   lost; `Player.RemoveUnit` took the unit from the first stack on its square, so a dead unit of a
   second stack stayed on the map: it takes it from its own; `ResolveStackAt` (9 a square after
   hires, units built, summons) looked at one stack: it merges the player's stacks on the square

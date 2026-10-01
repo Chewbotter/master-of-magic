@@ -2113,6 +2113,12 @@ func (model *GameModel) doAiMoveUnit(handlers MovementHandler, player *playerlib
             if state == combat.CombatStateAttackerFlee {
                 stack.SetX(oldX)
                 stack.SetY(oldY)
+            } else if state == combat.CombatStateDefenderWin && !stack.IsEmpty() {
+                // units of a beaten attacker that are left (not in the battle) step back too:
+                // they stood on the guarded square, and a wizard that won it later stood beside
+                // them (two players on one square, found by -sim-trace)
+                stack.SetX(oldX)
+                stack.SetY(oldY)
             }
 
             return nil
