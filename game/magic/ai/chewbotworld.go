@@ -55,6 +55,15 @@ type chewWorld struct {
     Players []*playerlib.Player
     Cities []chewCity
     Turn int
+    // the lairs, nodes and towers of each plane, found once: the world does not change while the
+    // AI thinks, and the lists were asked for again for every stack (see the sites method)
+    sites [2]*chewSites
+}
+
+type chewSites struct {
+    Encounters []image.Point
+    Nodes []image.Point
+    Towers []image.Point
 }
 
 func chewPlaneIndex(plane data.Plane) int {
@@ -307,17 +316,33 @@ func chewGuardianStrength(encounter *maplib.ExtraEncounter) int {
 }
 
 // the encounters of a map in a fixed order
-func chewEncounterPoints(mapObject *maplib.Map) []image.Point {
-    return chewSortPoints(mapObject.GetEncounterLocations())
+// the sites of a plane, shared by every caller of this world: they only read them
+func (world *chewWorld) sitesOf(wp int) *chewSites {
+    if world.sites[wp] == nil {
+        mapObject := world.Maps[wp]
+        world.sites[wp] = &chewSites{
+            Encounters: chewSortPoints(mapObject.GetEncounterLocations()),
+            Nodes: chewSortPoints(mapObject.GetMagicNodeLocations()),
+            Towers: chewFindTowerPoints(mapObject),
+        }
+    }
+    return world.sites[wp]
 }
 
-func chewNodePoints(mapObject *maplib.Map) []image.Point {
-    return chewSortPoints(mapObject.GetMagicNodeLocations())
+func chewEncounterPoints(world *chewWorld, wp int) []image.Point {
+    return world.sitesOf(wp).Encounters
+}
+
+func chewNodePoints(world *chewWorld, wp int) []image.Point {
+    return world.sitesOf(wp).Nodes
 }
 
 func chewTowerPoints(world *chewWorld, wp int) []image.Point {
+    return world.sitesOf(wp).Towers
+}
+
+func chewFindTowerPoints(mapObject *maplib.Map) []image.Point {
     var points []image.Point
-    mapObject := world.Maps[wp]
     points = append(points, mapObject.GetOpenTowerLocations()...)
     for _, point := range mapObject.GetEncounterLocations() {
         if mapObject.GetEncounter(point.X, point.Y).Type == maplib.EncounterTypePlaneTower {
@@ -369,11 +394,11 @@ func (world *chewWorld) makeEvaluationMap(hostility func(*playerlib.Player) int)
 
     for wp := range 2 {
         mapObject := world.Maps[wp]
-        for _, point := range chewEncounterPoints(mapObject) {
+        for _, point := range chewEncounterPoints(world, wp) {
             world.addEval(point.X, point.Y, wp, chewGuardianStrength(mapObject.GetEncounter(point.X, point.Y)))
             world.flagEval(point.X, point.Y, wp, chewEvalSite)
         }
-        for _, point := range chewNodePoints(mapObject) {
+        for _, point := range chewNodePoints(world, wp) {
             world.flagEval(point.X, point.Y, wp, chewEvalSite)
         }
         for _, point := range mapObject.GetOpenTowerLocations() {

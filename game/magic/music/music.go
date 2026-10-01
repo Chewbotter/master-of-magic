@@ -500,6 +500,10 @@ func playMidi(song *smf.SMF, done context.Context, soundFont *meltysynth.SoundFo
         Sequencer: sequencer,
     }
 
+    if audio.Context == nil {
+        return fmt.Errorf("audio has not been initialized")
+    }
+
     player, err := audio.Context.NewPlayerF32(midiPlayer)
     if err != nil {
         return err

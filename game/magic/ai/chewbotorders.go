@@ -478,7 +478,7 @@ func (pass *chewPass) doMeld() {
             }
             best := 1000
             var target image.Point
-            for _, node := range chewNodePoints(world.Maps[pass.WP]) {
+            for _, node := range chewNodePoints(world, pass.WP) {
                 if world.nodeOwner(node.X, node.Y, pass.WP) == self || world.EvalAt(node.X, node.Y, pass.WP) != chewEvalSite {
                     continue
                 }
@@ -1087,8 +1087,7 @@ func (pass *chewPass) buildTargetList() {
     }
 
     // nodes: of a wizard it is hostile to (2 or more), or nobody's with guardians
-    mapObject := world.Maps[pass.WP]
-    for _, node := range chewNodePoints(mapObject) {
+    for _, node := range chewNodePoints(world, pass.WP) {
         owner := world.nodeOwner(node.X, node.Y, pass.WP)
         if owner == self || (owner != nil && overland.hostilityOf(owner) < 2) {
             continue
@@ -1106,7 +1105,7 @@ func (pass *chewPass) buildTargetList() {
     }
 
     // lairs, nodes and towers with guardians
-    for _, lair := range chewEncounterPoints(mapObject) {
+    for _, lair := range chewEncounterPoints(world, pass.WP) {
         if world.LandmassAt(lair.X, lair.Y, pass.WP) != pass.Landmass {
             continue
         }
@@ -1426,7 +1425,7 @@ func (pass *chewPass) garrisonSites() {
     }
 
     var nodes []site
-    for _, node := range chewNodePoints(world.Maps[pass.WP]) {
+    for _, node := range chewNodePoints(world, pass.WP) {
         if world.EvalAt(node.X, node.Y, pass.WP) != chewEvalSite || world.LandmassAt(node.X, node.Y, pass.WP) != pass.Landmass {
             continue
         }

@@ -418,7 +418,7 @@ type chewLair struct {
 func chewLairs(world *chewWorld) []chewLair {
     var out []chewLair
     for wp := range 2 {
-        for _, point := range chewEncounterPoints(world.Maps[wp]) {
+        for _, point := range chewEncounterPoints(world, wp) {
             out = append(out, chewLair{Encounter: world.Maps[wp].GetEncounter(point.X, point.Y), X: point.X, Y: point.Y, Plane: chewPlaneOf(wp)})
         }
     }

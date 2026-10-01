@@ -7,6 +7,7 @@ import (
     "image"
     "image/color"
     "slices"
+    "sync/atomic"
 
     "github.com/kazzmir/master-of-magic/lib/fraction"
     "github.com/kazzmir/master-of-magic/lib/set"
@@ -840,6 +841,9 @@ type Map struct {
 
     TileCache map[int]*ebiten.Image
 
+    // the points of ExtraMap in order, kept while its points stay the same, see ExtraPointsInOrder
+    extraOrder atomic.Pointer[[]image.Point]
+
     miniMapPixels []byte
     // miniMapImage *image.Paletted
 }
@@ -1269,8 +1273,25 @@ func (mapObject *Map) GetRoadNeighbors(x int, y int) map[Direction]bool {
 // the squares that have extras, in one order (rows, then columns): Go ranges over a map in an order
 // of its own chance, and anything that picks from the lists below or draws as it goes must not
 // depend on it (a run of one seed is one game; the cooling of volcanoes went by it)
+// the callers only read the points: the list is shared by all of them until a point is added or
+// taken out. ExtraMap is written in many places, so the list is checked against it on every call
+// (the same number of points, every one of them still there), which costs far less than a sort
 func (mapObject *Map) ExtraPointsInOrder() []image.Point {
-    return PointsInOrder(mapObject.ExtraMap)
+    if cached := mapObject.extraOrder.Load(); cached != nil && len(*cached) == len(mapObject.ExtraMap) {
+        same := true
+        for _, point := range *cached {
+            if _, ok := mapObject.ExtraMap[point]; !ok {
+                same = false
+                break
+            }
+        }
+        if same {
+            return *cached
+        }
+    }
+    points := PointsInOrder(mapObject.ExtraMap)
+    mapObject.extraOrder.Store(&points)
+    return points
 }
 
 // the squares of a map by square in one order, rows then columns (a city's work area, the extras)

@@ -1649,7 +1649,11 @@ func main() {
     ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
     ebiten.SetWindowClosingHandled(true)
 
-    audio.Initialize()
+    // a -sim run plays no sound: without the audio device the sounds are not loaded and resampled
+    // either (audio.LoadSound gives an error, which every caller passes over)
+    if simTurns == 0 {
+        audio.Initialize()
+    }
     mouse.Initialize()
 
     ebiten.SetCursorMode(ebiten.CursorModeHidden)
