@@ -336,6 +336,27 @@ rules of units and magic sit behind other switches than `-classic-units` and `-c
 
 ## Found by many runs (testing.md, 2026-09-30)
 
+- PORTED (2026-10-01, the user's list "1, then 2, then 3", item 1): a computer stack that lost a
+  battle on the battlefield and lived (it fled, or held out to the turn limit) kept its order and
+  attacked again every turn. Prepare_All_Battle_Units (Combat.c) takes the order of every unit of a
+  computer player that goes into a battle on the battlefield ("NO ORDERS"), attackers and defenders,
+  so the survivors plan anew. The battlefield is the human's battles in the original, so in a real
+  game this is the AI stack that loses to you and comes back. `game/battleorders.go`
+  (`BattleEndsOrders`, flag `-battle-ends-orders=false`), `ChewbotAI.EndOrders`. MEASURED, 24 games
+  with every battle fought out, same build and seeds (`_build/a/fuzz18`): attacks again within 3
+  turns after a lost battle the stack lived through 395 to 63 (raiders 237 to 43); lair fights 1,063
+  to 884, won 215 to 227.
+- FIXED (2026-10-01): A RUN OF ONE SEED WAS NOT ALWAYS ONE GAME. Found while measuring the above:
+  replays of one run with every battle fought out parted after 166 turns. (1) The battle spells
+  ported last (combat/classicspells.go) drew from Go's own `math/rand`, which no seed reaches; (2)
+  loops over Go maps whose order decided what a draw hit: the cooling of volcanoes
+  (`revertVolcanos`), the mineral the events Depletion and New Minerals take or put (a city's work
+  area), the square `CityValidArea.FindLocation` draws, the powers of a random item
+  (`MakeRandomArtifact`), the item charge a confused unit casts (the clone's battle AI), and the lists
+  of lairs, nodes and towers of a map that callers pick from (`ExtraPointsInOrder`,
+  `maplib.PointsInOrder`). Twelve replays of three such runs are now the same game, and the seed
+  check of ordinary runs still holds. Found with `util/mapranges`, which lists loops over maps.
+
 - FIXED (2026-10-01, round 6): a unit pushed out of a square of more than 9 (Evict_Unit, here
   `classicEvictPlace`; a mercenary hired at a full fortress) went to a square beside it that had
   room by the first of its owner's stacks there, and a computer wizard's groups stand in several

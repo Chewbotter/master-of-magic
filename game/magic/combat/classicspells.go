@@ -9,9 +9,10 @@ package combat
 // words are in docs/mod/combat-rules.md "The last of the spells".
 
 import (
-    "math/rand/v2"
     "slices"
 
+    // the game's chance, so a run of one seed is one game (lib/chance)
+    rand "github.com/kazzmir/master-of-magic/lib/chance"
     "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "github.com/kazzmir/master-of-magic/game/magic/units"

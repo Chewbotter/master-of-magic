@@ -417,14 +417,19 @@ func MakeRandomArtifact(cache *lbx.LbxCache) Artifact {
         Type: types[rand.N(len(types))],
     }
 
-    _, costs, compatibilities, err := ReadPowers(cache)
+    all, costs, compatibilities, err := ReadPowers(cache)
     if err != nil {
         return Artifact{}
     }
 
     var powers []Power
 
-    for power, types := range compatibilities {
+    // in the order of the data, not of the map (a run of one seed is one game)
+    for _, power := range all {
+        types, ok := compatibilities[power]
+        if !ok {
+            continue
+        }
         // ignore spell charges for now
         if power.Type == PowerTypeSpellCharges {
             continue

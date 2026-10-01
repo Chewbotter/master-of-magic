@@ -175,6 +175,19 @@ func (ai *ChewbotAI) SimOrderOf(unit units.StackUnit) string {
     return fmt.Sprintf("%v, turn %v", order.Why, order.Turn)
 }
 
+// Prepare_All_Battle_Units: the units of a battle on the battlefield lose their orders (the game
+// calls it, game/battleorders.go)
+func (ai *ChewbotAI) EndOrders(list []units.StackUnit) {
+    for _, unit := range list {
+        if ai.overland != nil {
+            delete(ai.overland.Orders, chewKey(unit))
+        }
+        if ai.neutral != nil {
+            delete(ai.neutral.Orders, chewKey(unit))
+        }
+    }
+}
+
 // on its way, building a road or purifying: the original's units that are left out of the plans
 func (turn *chewTurn) busy(unit units.StackUnit) bool {
     if order, has := turn.Overland.Orders[chewKey(unit)]; has && order.Kind == chewOrderGoto {

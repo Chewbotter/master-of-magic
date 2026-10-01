@@ -8,6 +8,7 @@ import (
 
     "github.com/kazzmir/master-of-magic/game/magic/pathfinding"
     "github.com/kazzmir/master-of-magic/game/magic/data"
+    "github.com/kazzmir/master-of-magic/game/magic/spellbook"
     "github.com/kazzmir/master-of-magic/lib/fraction"
     "github.com/kazzmir/master-of-magic/lib/log"
 )
@@ -39,7 +40,13 @@ func (model *CombatModel) doAIUnitCharges(spellSystem SpellSystem, aiActions AIU
         return false
     }
 
-    for spell, charges := range aiUnit.SpellCharges {
+    // the charges in the order of the spells, not of the map (a run of one seed is one game)
+    charged := rand.SortedKeys(aiUnit.SpellCharges)
+    slices.SortStableFunc(charged, func(a spellbook.Spell, b spellbook.Spell) int {
+        return a.Index - b.Index
+    })
+    for _, spell := range charged {
+        charges := aiUnit.SpellCharges[spell]
         if charges > 0 {
             casted := false
             // try to cast this spell

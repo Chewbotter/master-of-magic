@@ -62,7 +62,11 @@ chance, so anything that ranges over a map and decides, or draws, by it, must go
 `Player.CitiesInOrder()`, `RelationsInOrder()`, `HeroesInOrder()`, `GetCities()`, `chance.SortedKeys`
 for a map of weights, and `lib/set` gives its values in the order they were put in. A NEW RANGE OVER
 A MAP THAT DECIDES ANYTHING BREAKS THE SEED: check with two runs of one seed and `-sim-state-log`
-(or `-sim-seed-trace`), as `util/simbatch/seedcheck.sh` does. Checked: three five-wizard games of 300
+(or `-sim-seed-trace`), as `util/simbatch/seedcheck.sh` does. `go run ./util/mapranges game/magic`
+lists every loop over a map by syntax, tagged DRAWS (it draws chance), STOPS (it stops at a match)
+or APPENDS (it builds a list, which may be drawn from later); it found the last ones (2026-10-01).
+Runs with every battle fought out (`-sim-tactical`) are checked by replaying one run a few times and
+comparing the state logs: a seed check of ordinary runs does not reach the battle code. Checked: three five-wizard games of 300
 turns each played the same twice.
 
 ## Many runs and the report

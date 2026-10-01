@@ -1246,7 +1246,9 @@ func (model *GameModel) DoRandomEvents() {
                             mapUse := model.GetMap(city.Plane)
                             catchment := mapUse.GetCatchmentArea(city.X, city.Y)
                             var choices []maplib.FullTile
-                            for _, tile := range catchment {
+                            // the squares in one order, so the same draw takes the same mineral
+                            for _, point := range maplib.PointsInOrder(catchment) {
+                                tile := catchment[point]
                                 switch tile.GetBonus() {
                                     case data.BonusSilverOre, data.BonusGoldOre, data.BonusIronOre, data.BonusCoal,
                                          data.BonusMithrilOre, data.BonusAdamantiumOre, data.BonusGem:
@@ -1336,7 +1338,9 @@ func (model *GameModel) DoRandomEvents() {
                             mapUse := model.GetMap(city.Plane)
                             catchment := mapUse.GetCatchmentArea(city.X, city.Y)
                             var choices []maplib.FullTile
-                            for _, tile := range catchment {
+                            // the squares in one order, so the same draw picks the same square
+                            for _, point := range maplib.PointsInOrder(catchment) {
+                                tile := catchment[point]
                                 terrainType := tile.Tile.TerrainType()
                                 if tile.GetBonus() == data.BonusNone && (terrainType == terrain.Hill || terrainType == terrain.Mountain) {
                                     choices = append(choices, tile)

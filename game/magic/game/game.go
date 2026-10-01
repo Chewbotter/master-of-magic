@@ -715,8 +715,9 @@ type CityValidArea map[image.Point]bool
 
 func (area CityValidArea) FindLocation() (int, int, bool) {
     choices := make([]image.Point, 0, len(area))
-    for point, ok := range area {
-        if ok {
+    // in one order, so the same draw picks the same square (a run of one seed is one game)
+    for _, point := range maplib.PointsInOrder(area) {
+        if area[point] {
             choices = append(choices, point)
         }
     }
@@ -5615,6 +5616,11 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
         attackingArmy.Auto = attackingArmy.Auto || attacker.IsHuman()
         defendingArmy.Auto = defendingArmy.Auto || defender.IsHuman()
     }
+    if !classicQuick && !useStrategicCombat {
+        // a battle on the battlefield: the computer players' units in it lose their orders
+        // (battleorders.go)
+        battleEndsOrders(orderSide{attacker, attackerStack}, orderSide{defender, defenderStack})
+    }
     if classicQuick {
         // the original's quick resolution reads the node of the last battle that was fought on a
         // screen, which it never sets itself: no node helps its creatures here (MY CALL for that
@@ -8521,7 +8527,8 @@ func (game *Game) StartPlayerTurn(player *playerlib.Player) {
 func (game *Game) revertVolcanos() {
     mapObjects := []*maplib.Map{game.Model.ArcanusMap, game.Model.MyrrorMap}
     for _, mapObject := range mapObjects {
-        for location, _ := range mapObject.ExtraMap {
+        // in one order: the same draws on the same volcanoes (ExtraPointsInOrder)
+        for _, location := range mapObject.ExtraPointsInOrder() {
             if mapObject.HasVolcano(location.X, location.Y) {
                 if rand.N(100) < 2 {
                     mapObject.RemoveVolcano(location.X, location.Y)

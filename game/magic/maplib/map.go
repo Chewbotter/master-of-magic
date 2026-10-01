@@ -1266,10 +1266,33 @@ func (mapObject *Map) GetRoadNeighbors(x int, y int) map[Direction]bool {
     return out
 }
 
+// the squares that have extras, in one order (rows, then columns): Go ranges over a map in an order
+// of its own chance, and anything that picks from the lists below or draws as it goes must not
+// depend on it (a run of one seed is one game; the cooling of volcanoes went by it)
+func (mapObject *Map) ExtraPointsInOrder() []image.Point {
+    return PointsInOrder(mapObject.ExtraMap)
+}
+
+// the squares of a map by square in one order, rows then columns (a city's work area, the extras)
+func PointsInOrder[Value any](values map[image.Point]Value) []image.Point {
+    points := make([]image.Point, 0, len(values))
+    for point := range values {
+        points = append(points, point)
+    }
+    slices.SortFunc(points, func(a image.Point, b image.Point) int {
+        if a.Y != b.Y {
+            return a.Y - b.Y
+        }
+        return a.X - b.X
+    })
+    return points
+}
+
 func (mapObject *Map) GetMeldedNodes(melder Wizard) []*ExtraMagicNode {
     var out []*ExtraMagicNode
 
-    for _, extras := range mapObject.ExtraMap {
+    for _, point := range mapObject.ExtraPointsInOrder() {
+        extras := mapObject.ExtraMap[point]
         node, ok := extras[ExtraKindMagicNode]
         if ok {
             magic := node.(*ExtraMagicNode)
@@ -1285,7 +1308,8 @@ func (mapObject *Map) GetMeldedNodes(melder Wizard) []*ExtraMagicNode {
 func (mapObject *Map) GetCastedVolcanoes(caster Wizard) []*ExtraVolcano {
     var out []*ExtraVolcano
 
-    for _, extras := range mapObject.ExtraMap {
+    for _, point := range mapObject.ExtraPointsInOrder() {
+        extras := mapObject.ExtraMap[point]
         extra, ok := extras[ExtraKindVolcano]
         if ok {
             volcano := extra.(*ExtraVolcano)
@@ -1347,7 +1371,8 @@ func (mapObject *Map) GetEncounter(x int, y int) *ExtraEncounter {
 func (mapObject *Map) GetEncounterLocations() []image.Point {
     var out []image.Point
 
-    for point, extras := range mapObject.ExtraMap {
+    for _, point := range mapObject.ExtraPointsInOrder() {
+        extras := mapObject.ExtraMap[point]
         _, exists := extras[ExtraKindEncounter]
         if exists {
             out = append(out, point)
@@ -1360,7 +1385,8 @@ func (mapObject *Map) GetEncounterLocations() []image.Point {
 func (mapObject *Map) GetMagicNodeLocations() []image.Point {
     var out []image.Point
 
-    for point, extras := range mapObject.ExtraMap {
+    for _, point := range mapObject.ExtraPointsInOrder() {
+        extras := mapObject.ExtraMap[point]
         _, exists := extras[ExtraKindMagicNode]
         if exists {
             out = append(out, point)
@@ -1376,7 +1402,8 @@ func (mapObject *Map) GetMagicNodeLocations() []image.Point {
 func (mapObject *Map) GetOpenTowerLocations() []image.Point {
     var out []image.Point
 
-    for point, extras := range mapObject.ExtraMap {
+    for _, point := range mapObject.ExtraPointsInOrder() {
+        extras := mapObject.ExtraMap[point]
         _, exists := extras[ExtraKindOpenTower]
         if exists {
             out = append(out, point)
@@ -1420,7 +1447,8 @@ func (mapObject *Map) GetMagicNode(x int, y int) *ExtraMagicNode {
 func (mapObject *Map) GetAllMagicNodeLocations() []image.Point {
     var points []image.Point
 
-    for point, extras := range mapObject.ExtraMap {
+    for _, point := range mapObject.ExtraPointsInOrder() {
+        extras := mapObject.ExtraMap[point]
         _, exists := extras[ExtraKindMagicNode]
         if exists {
             points = append(points, point)
@@ -1433,7 +1461,8 @@ func (mapObject *Map) GetAllMagicNodeLocations() []image.Point {
 // return the node that contains x/y in its influence zone
 // this is a bit slow in that it checks the entire map
 func (mapObject* Map) GetMagicInfluence(x int, y int) *ExtraMagicNode {
-    for point, extras := range mapObject.ExtraMap {
+    for _, point := range mapObject.ExtraPointsInOrder() {
+        extras := mapObject.ExtraMap[point]
         magicNode := getExtra[*ExtraMagicNode](extras, ExtraKindMagicNode)
         if magicNode != nil && magicNode.ContainsPoint(x - point.X, y - point.Y) {
             return magicNode
