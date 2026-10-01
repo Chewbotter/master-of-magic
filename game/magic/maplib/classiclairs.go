@@ -39,12 +39,21 @@ func classicLevel(difficulty data.DifficultySetting) int {
     return 4
 }
 
+// the worth of a guardian: the table's cost with the original's units (units/classicunits.go), else
+// the casting cost
+func guardianCost(unit *units.Unit) int {
+    if units.ClassicUnits {
+        return unit.WorthCost()
+    }
+    return unit.CastingCost
+}
+
 // the creatures a realm has for guardians, in the game's order: summoned creatures of the realm
 // that are not ships (Floating Island)
 func classicGuardianPool(realm data.MagicType) []units.Unit {
     var out []units.Unit
     for _, unit := range units.AllUnits {
-        if unit.Realm == realm && unit.CastingCost > 0 && !unit.HasAbility(data.AbilityTransport) {
+        if unit.Race == data.RaceFantastic && unit.Realm == realm && guardianCost(&unit) > 0 && !unit.HasAbility(data.AbilityTransport) {
             out = append(out, unit)
         }
     }
@@ -60,7 +69,7 @@ func classicCostliestBelow(pool []units.Unit, share int, not *units.Unit) (units
         if not != nil && unit.Equals(*not) {
             continue
         }
-        if unit.CastingCost < share && (!found || unit.CastingCost > best.CastingCost) {
+        if guardianCost(&unit) < share && (!found || guardianCost(&unit) > guardianCost(&best)) {
             best = unit
             found = true
         }
@@ -119,12 +128,12 @@ func classicCreateLair(kind EncounterType, realm data.MagicType, budget int, dif
     firstCount, secondCount := 0, 0
     var second units.Unit
     if found {
-        firstCount = budget / first.CastingCost
+        firstCount = budget / guardianCost(&first)
         if firstCount > 1 && classicLairRoll(2) == 2 {
             firstCount -= 1
         }
         firstCount = min(firstCount, classicGuardiansMost)
-        budget -= firstCount * first.CastingCost
+        budget -= firstCount * guardianCost(&first)
 
         secondFound := false
         for range classicGuardianTries {
@@ -133,7 +142,7 @@ func classicCreateLair(kind EncounterType, realm data.MagicType, budget int, dif
             }
         }
         if secondFound {
-            secondCount = min(budget / second.CastingCost, classicStackMost - firstCount)
+            secondCount = min(budget / guardianCost(&second), classicStackMost - firstCount)
         }
     }
     for range firstCount {
@@ -148,10 +157,10 @@ func classicCreateLair(kind EncounterType, realm data.MagicType, budget int, dif
     // at least 50
     treasure := 0
     if firstCount > 0 {
-        treasure += first.CastingCost * firstCount
+        treasure += guardianCost(&first) * firstCount
     }
     if secondCount > 0 {
-        treasure += second.CastingCost * secondCount / 2
+        treasure += guardianCost(&second) * secondCount / 2
     }
     if level < 4 {
         treasure = treasure * 4 / (level + 1)

@@ -283,7 +283,12 @@ func classicBattleFame(winner *playerlib.Player, loser *playerlib.Player, loserS
         if unit.GetHealth() > 0 {
             continue
         }
-        if unit.GetRawUnit().CastingCost >= 600 && !rareFoe && !winner.IsNeutral() {
+        worth := unit.GetRawUnit().CastingCost
+        if units.ClassicUnits {
+            // the table's cost (units/classicunits.go)
+            worth = unit.GetRawUnit().WorthCost()
+        }
+        if worth >= 600 && !rareFoe && !winner.IsNeutral() {
             winnerFame += 1
             rareFoe = true
         }

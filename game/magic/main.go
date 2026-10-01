@@ -368,7 +368,11 @@ func initializePlayer(game *gamelib.Game, wizard setup.WizardCustom, isHuman boo
     player.AddCity(introCity)
 
     for _, unit := range startingUnits(player.Wizard.Race) {
-        player.AddUnit(units.MakeOverworldUnitFromUnit(unit, cityX, cityY, startingPlane, wizard.Banner, player.MakeExperienceInfo(), player.MakeUnitEnchantmentProvider()))
+        made := player.AddUnit(units.MakeOverworldUnitFromUnit(unit, cityX, cityY, startingPlane, wizard.Banner, player.MakeExperienceInfo(), player.MakeUnitEnchantmentProvider()))
+        if units.ClassicUnits && player.Wizard.RetortEnabled(data.RetortAlchemy) {
+            // Create_Unit_NewGame: Alchemy gives the starting units magic weapons
+            made.SetWeaponBonus(data.WeaponMagic)
+        }
     }
 
     // for debugging purposes, to start the game super powered
@@ -1069,6 +1073,9 @@ var classicEconomy = true
 // -classic-heroes
 var classicHeroes = true
 
+// -classic-units
+var classicUnits = true
+
 var captureOpponents int
 // development: the land size of a quick start, below 0 by chance
 var captureLandSize int
@@ -1482,6 +1489,7 @@ func loadGameConfig() GameConfig {
     flag.BoolVar(&ai.ChewbotNeutralLog, "capture-neutral-log", false, "development: log what Chewbot's neutral player does")
     flag.BoolVar(&citylib.ClassicDifficulty, "classic-difficulty", true, "development: false for no bonuses of computer wizards by difficulty (the original's difficulty table)")
     flag.BoolVar(&gamelib.ClassicEvents, "classic-events", true, "development: false for upstream's random events and conquest details (loot, outposts taken, production of a city taken)")
+    flag.BoolVar(&classicUnits, "classic-units", true, "development: false for upstream's unit data and unit rules (healing, eviction, purifying, melding, settling)")
     flag.BoolVar(&classicHeroes, "classic-heroes", true, "development: false for upstream's heroes, mercenaries, merchants, items and fame of battles")
     flag.BoolVar(&combat.ClassicRules, "classic-combat", true, "development: false for upstream's rules of tactical combat and combat spells")
     flag.BoolVar(&units.ClassicMovement, "classic-movement", true, "development: false for upstream's movement on the world map (terrain costs, stack limit, ship seats, go-to, exploring)")
@@ -1597,6 +1605,12 @@ func main() {
             log.Printf("Starting pprof server on localhost:8000")
             log.Println(http.ListenAndServe("localhost:8000", nil))
         }()
+    }
+
+    // units, see docs/mod/units.md
+    units.ClassicUnits = classicUnits
+    if classicUnits {
+        units.ApplyClassicUnitData()
     }
 
     // heroes, mercenaries, merchants, items, see docs/mod/heroes.md

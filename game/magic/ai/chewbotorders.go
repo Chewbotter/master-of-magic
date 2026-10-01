@@ -240,6 +240,10 @@ func (pass *chewPass) nearestHostileStack(stack *chewAIStack) (int, int, bool) {
 }
 
 func chewIsSettler(unit units.StackUnit) bool {
+    if units.ClassicUnits && unit.IsUndead() {
+        // Army_Do_Settle: an undead settler can not settle
+        return false
+    }
     return unit.HasAbility(data.AbilityCreateOutpost)
 }
 

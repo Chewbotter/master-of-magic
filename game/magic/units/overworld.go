@@ -113,6 +113,8 @@ type OverworldUnit struct {
     Undead bool
 
     Busy BusyStatus
+    // turns of purifying since the order (Next_Turn_Process_Purify, classic units)
+    PurifyTurns int
 
     // for engineers to follow
     BuildRoadPath pathfinding.Path
@@ -166,6 +168,9 @@ func (unit *OverworldUnit) GetBusy() BusyStatus {
 }
 
 func (unit *OverworldUnit) SetBusy(busy BusyStatus) {
+    if busy != unit.Busy {
+        unit.PurifyTurns = 0
+    }
     unit.Busy = busy
 }
 
@@ -748,7 +753,12 @@ func (unit *OverworldUnit) GetExperienceLevel() NormalExperienceLevel {
     }
 
     if unit.ExperienceInfo != nil {
-        return GetNormalExperienceLevel(experience, unit.ExperienceInfo.HasWarlord(), unit.ExperienceInfo.Crusade())
+        crusade := unit.ExperienceInfo.Crusade()
+        if ClassicUnits {
+            // Calc_Unit_Level: not for undead
+            crusade = unit.classicCrusade()
+        }
+        return GetNormalExperienceLevel(experience, unit.ExperienceInfo.HasWarlord(), crusade)
     }
 
     return ExperienceRecruit
@@ -910,7 +920,11 @@ func (unit *OverworldUnit) GetFullHitPoints() int {
     }
 
     if unit.GlobalEnchantments.HasFriendlyEnchantment(data.EnchantmentCharmOfLife) {
-        base = int(math.Ceil(float64(base) * 1.25))
+        if ClassicUnits {
+            base = classicCharmOfLife(base)
+        } else {
+            base = int(math.Ceil(float64(base) * 1.25))
+        }
     }
 
     return base

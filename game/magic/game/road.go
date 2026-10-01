@@ -63,6 +63,12 @@ func (game *Game) ComputeRoadTime(path []image.Point, stack *playerlib.UnitStack
             continue
         }
 
+        if units.ClassicMovement {
+            // Turns_To_Build_Road, as DoBuildRoads
+            turns += float64(max(1, classicRoadTurns(mapUse.GetTile(point.X, point.Y)) / max(1, engineerCount)))
+            continue
+        }
+
         work := game.Model.ComputeRoadBuildEffort(point.X, point.Y, stack.Plane())
         turns += work.TotalWork / math.Pow(work.WorkPerEngineer, float64(engineerCount))
     }

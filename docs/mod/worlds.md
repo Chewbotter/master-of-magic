@@ -44,7 +44,7 @@ only these grow (`quirkIslandsGrowSouthEast`, kept).
   can end with none (it is then found empty, with its treasure).
 - Treasure budget: the first guardians' cost and half the second's, the difficulty taken back out
   (not at Impossible), times 50 to 124 percent (Myrror 76 to 174), at least 50.
-- Costs are the fork's casting costs of the creatures (Guardian Spirit 80, the original's table 50).
+- Costs are the table's costs of the creatures with the original's units (units.md; Guardian Spirit 50), else the fork's casting costs.
 
 ## Treasure (Create_Lair's hoard, Lair_Generate_Treasure)
 

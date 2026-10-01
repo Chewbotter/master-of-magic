@@ -706,6 +706,13 @@ func (model *GameModel) GetTurnNumber() uint64 {
 func (model *GameModel) IsSettlableLocation(x int, y int, plane data.Plane) bool {
     if !model.NearCity(image.Pt(x, y), 3, plane) {
         mapUse := model.GetMap(plane)
+        if units.ClassicUnits {
+            // Map_Square_Survey: corruption allowed, never a tower
+            if mapUse.GetEncounter(x, y) != nil || mapUse.GetMagicNode(x, y) != nil || mapUse.HasOpenTower(x, y) {
+                return false
+            }
+            return mapUse.GetTile(x, y).Tile.IsLand()
+        }
         if mapUse.HasCorruption(x, y) || mapUse.GetEncounter(x, y) != nil || mapUse.GetMagicNode(x, y) != nil {
             return false
         }
@@ -862,6 +869,12 @@ func (model *GameModel) ComputeRoadBuildEffort(x int, y int, plane data.Plane) R
 }
 
 func (model *GameModel) DoPurify(player *playerlib.Player) {
+    if units.ClassicUnits {
+        // Next_Turn_Process_Purify, see unitsclassic.go
+        model.classicPurify(player)
+        return
+    }
+
     type PurifyWork struct {
         WorkPerUnit float64
         TotalWork float64
@@ -1588,7 +1601,7 @@ func (model *GameModel) FindRoadConnectedCities(city *citylib.City) []*citylib.C
             cx := mapUse.WrapX(city.X + dx)
             cy := city.Y + dy
 
-            if dy < 0 || dy >= mapUse.Height() {
+            if cy < 0 || cy >= mapUse.Height() {
                 continue
             }
 
@@ -2134,7 +2147,7 @@ func (model *GameModel) FindEscapePosition(player *playerlib.Player, unit units.
             cx := mapUse.WrapX(x + dx)
             cy := y + dy
 
-            if dy < 0 || dy >= mapUse.Height() {
+            if cy < 0 || cy >= mapUse.Height() {
                 continue
             }
 
