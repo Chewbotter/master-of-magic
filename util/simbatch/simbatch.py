@@ -80,8 +80,8 @@ def newest_build(root, lane):
 
 
 def game_command(root, lane, exe):
-    """the game as dev.sh starts it: in _build/<lane>, in the corner, with the data and the mod folder"""
-    return [str(exe), "-corner", "-data", mom_data(root), "-mod", (root / "mod").as_posix(), "-music=false"], root / "_build" / lane
+    """the game as dev.sh starts it: in _build/<lane>, in the corner, with the data"""
+    return [str(exe), "-corner", "-data", mom_data(root), "-music=false"], root / "_build" / lane
 
 
 def start_game(root, lane, exe, flags, log_path, timeout):
