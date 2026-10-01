@@ -128,6 +128,12 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - Figures of a unit move and strike each with timing of their own.
 - In a battle, a right click cancels a spell while its target is being picked, as the Cancel button does (modern controls).
 - Units that shoot, throw magic or cast a spell show their attack frames while they do, all the frames their art has; before, only units with added frames did, and casters stood still.
+- Spells cast on a unit in battle take the original's targets: buffs on any unit that lacks them, whatever its realm; Heroism and the weapon spells on normal units, heroes too; curses refused only for the matching immunity.
+- Metal Fires no longer lowers the to-hit of magic and thrown attacks, and works on Chaos Channels units but not on undead or Black Channels units; Holy Weapon cast in battle gives its to-hit.
+- Raise Dead brings a unit back by its hits without its enchantments, as the original does.
+- Cracks Call can be cast on any square: a unit there of either side may be swallowed, and a wall there falls. It is not offered at sea.
+- Call Lightning strikes at the start of every round with nature bolts, which Righteousness and Bless do not stop.
+- Disenchant in battle also ends a town's Heavenly Light and Cloud of Shadow and can lift a warp from your own node.
 - Figures are drawn in front of or behind each other by where their feet are, so riders, hounds and figures that walk or strike past each other no longer pop in front of and behind their neighbors.
 - A strike is a swing of steps: back, forward, the blow where the swing lands. Units that fight across a corner close in. With the setting "Single strikes" off, the simpler strike of before.
 - Killed figures are thrown back and fall; corpses stay on the field, gray, and the oldest fade when a tile has more than 4.

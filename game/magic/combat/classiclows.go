@@ -74,7 +74,8 @@ func classicRangedToHit(unit *ArmyUnit, defender *ArmyUnit) int {
     kind := unit.Unit.GetRangedAttackDamageType()
     toHit -= itemToHitNotFor(unit, kind)
     if kind == units.DamageRangedMagical {
-        if unit.GetWeaponBonus() != data.WeaponNone {
+        // the weapon the unit was built with: Metal Fires gives no to-hit
+        if unit.Unit.GetWeaponBonus() != data.WeaponNone {
             toHit -= 10
         }
         if unit.HasEnchantment(data.UnitEnchantmentHolyWeapon) {
@@ -95,7 +96,7 @@ func classicThrownToHit(unit *ArmyUnit, defender *ArmyUnit) int {
             }
         }
     }
-    if unit.GetWeaponBonus() != data.WeaponNone {
+    if unit.Unit.GetWeaponBonus() != data.WeaponNone {
         toHit -= 10
     }
     if unit.HasEnchantment(data.UnitEnchantmentHolyWeapon) {

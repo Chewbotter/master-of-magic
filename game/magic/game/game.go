@@ -5563,6 +5563,13 @@ func (game *Game) doCombat(yield coroutine.YieldFunc, attacker *playerlib.Player
 
     combatModel := combat.MakeCombatModel(game.AllSpells(), defendingArmy, attackingArmy, landscape, defenderStack.Plane(), zone, game.GetInfluenceMagic(attackerStack.X(), attackerStack.Y(), attackerStack.Plane()), attackerStack.X(), attackerStack.Y(), events)
     combatModel.EasyRetreat = game.Model.Settings.Difficulty <= data.DifficultyEasy
+    // a warped node under the battle: Disenchant of its owner may lift the warp (combat/classicspells.go)
+    if node := game.GetMap(defenderStack.Plane()).GetMagicNode(defenderStack.X(), defenderStack.Y()); node != nil && node.Warped && node.MeldingWizard != nil {
+        combatModel.WarpedNode = &combat.BattleNode{Owner: any(node.MeldingWizard), Unwarp: func() {
+            node.Warped = false
+            node.WarpedOwner = nil
+        }}
+    }
     // Do_Legal_Spell_Check: no recalls for a human casting the Spell of Return
     attackingArmy.Banished = attacker.IsHuman() && classicReturning(attacker)
     defendingArmy.Banished = defender.IsHuman() && classicReturning(defender)

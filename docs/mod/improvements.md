@@ -196,6 +196,15 @@ quirk constant where there is one: turning it is the change. New calls go here t
 - MY CALL: every battle unit of a lost side that stayed out dies at the end whatever the reason it
   stayed out (upstream's rules for who stays out).
 - Not ported yet: Wall of Stone in a city battle (the original can not cast it in battle).
+- The last of the spells (2026-10-01, combat-rules.md). Kept, the original's: Possession and
+  Creature Binding never refused for having them (`quirkCurseMaskSkips`). MY CALL: a raised unit of
+  one figure has at least 1 hit. Not ported: Flying Fortress dispelled in a battle (its rules of
+  movement stay); a bolt of Call Lightning lands as a picture after the picks, so a unit can be
+  picked again after a bolt that will kill it, and the bolts land after Wrack; the computer's own
+  stricter picks (AITP_Combat_Spell: Chewbot picks by its own port); Animate Dead of the other
+  side's dead (the reconstruction has the caster's own only, the manual both: open, both kept);
+  Raise Dead of creatures (the reconstruction's list has no race rule, its notes doubt it: kept
+  normal units only).
 - Smaller rules (the LOWs, combat-rules.md "Smaller rules"). Kept, the original's: Wraith Form
   spares Flame Strike, Holy Word, Death Spell and Call Lightning (`quirkWraithFormSpares`); a
   countered spell costs only a tenth of the range in mana (`quirkCounteredCheap`); the human pays

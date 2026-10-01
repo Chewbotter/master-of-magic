@@ -461,6 +461,10 @@ func captureSpell(screen *combat.CombatScreen, model *combat.CombatModel, attack
             case "confusion": model.AddProjectile(screen.CreateConfusionProjectile(target, 100))
             case "bless": model.AddProjectile(screen.CreateBlessProjectile(target))
             case "cracks": model.AddProjectile(screen.CreateCracksCallProjectile(target))
+            // the original's Cracks Call at the square of the target, and the bolts of Call Lightning
+            // of the attackers (combat/classicspells.go)
+            case "crackssquare": model.DevCracksCallAt(screen, target.X, target.Y)
+            case "calllightning": model.DevCallLightning(combat.TeamAttacker)
             case "web": model.AddProjectile(screen.CreateWebProjectile(target))
             case "book":
                 // the spellbook, as the SPELL button opens it

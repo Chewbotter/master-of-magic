@@ -133,6 +133,8 @@ type CombatDoSingleAuto struct {
 type CombatEventCreateLightningBolt struct {
     Target *ArmyUnit
     Strength int
+    // a bolt of Call Lightning as the original has it: nature, see classicspells.go
+    Nature bool
 }
 
 type CombatUpdates struct {
@@ -1696,7 +1698,7 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
             // the lower of the mana pool (casting skill) or the wizard's mana divided by the range
             minimumMana := min(army.ManaPool, int(float64(army.Player.GetMana()) / army.Range.ToFloat()))
 
-            spellUI := spellbook.MakeSpellBookCastUI(ui, combat.Cache, player.GetKnownSpells().CombatSpells(defendingCity), make(map[spellbook.Spell]int), minimumMana, spellbook.Spell{}, 0, false, player, &spellPage, func (spell spellbook.Spell, picked bool){
+            spellUI := spellbook.MakeSpellBookCastUI(ui, combat.Cache, ClassicBattleSpells(player.GetKnownSpells().CombatSpells(defendingCity), combat.Landscape == CombatLandscapeWater), make(map[spellbook.Spell]int), minimumMana, spellbook.Spell{}, 0, false, player, &spellPage, func (spell spellbook.Spell, picked bool){
                 if picked {
                     // player mana and skill should go down accordingly
                     combat.Model.InvokeSpell(combat, combat.Model.GetArmyForPlayer(player), nil, spell, func(success bool){
@@ -1782,7 +1784,7 @@ func (combat *CombatScreen) MakeUI(player ArmyPlayer) *uilib.UI {
                             }
 
                             // what is casting skill based on for a unit?
-                            spellUI := spellbook.MakeSpellBookCastUI(ui, combat.Cache, unitSpells.CombatSpells(defendingCity), caster.SpellCharges, int(caster.CastingSkill), spellbook.Spell{}, 0, false, &UnitCaster{}, &spellPage, func (spell spellbook.Spell, picked bool){
+                            spellUI := spellbook.MakeSpellBookCastUI(ui, combat.Cache, ClassicBattleSpells(unitSpells.CombatSpells(defendingCity), combat.Landscape == CombatLandscapeWater), caster.SpellCharges, int(caster.CastingSkill), spellbook.Spell{}, 0, false, &UnitCaster{}, &spellPage, func (spell spellbook.Spell, picked bool){
                                 if picked {
                                     doCast(spell)
                                 }
@@ -2454,7 +2456,11 @@ func (combat *CombatScreen) ProcessEvents(yield coroutine.YieldFunc) CombatUpdat
                         combat.UI.AddElement(uilib.MakeErrorElement(combat.UI, combat.Cache, &combat.ImageCache, use.Message, func(){ yield() }))
                     case *CombatEventCreateLightningBolt:
                         bolt := event.(*CombatEventCreateLightningBolt)
-                        combat.Model.AddProjectile(combat.CreateLightningBoltProjectile(bolt.Target, bolt.Strength))
+                        projectile := combat.CreateLightningBoltProjectile(bolt.Target, bolt.Strength)
+                        if bolt.Nature {
+                            projectile.Effect = combat.Model.CreateCallLightningEffect(bolt.Strength, combat)
+                        }
+                        combat.Model.AddProjectile(projectile)
                         sounds.Insert(LightningBoltSound)
                     case *CombatEventSummonUnit:
                         summon := event.(*CombatEventSummonUnit)

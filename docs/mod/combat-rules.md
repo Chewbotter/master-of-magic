@@ -107,3 +107,52 @@ Code: `combat/classiclows.go` and hooks in `combat/model.go` (the same switch); 
 - Disenchant Area and True also reach the other side's vortexes and the city's walls of fire and
   darkness (for the battle).
 - The item power Death gives Death Touch.
+
+## The last of the spells (2026-10-01)
+
+User: "Let's update all spells to be classic". Code: `combat/classicspells.go` (the same switch)
+and hooks in `combat/model.go`, `combat/combat-screen.go`, `combat/classiclows.go`, the game's
+`doCombat` for the node. Read by helpers from ReMoM Combat.c Combat_Spell_Target_Screen (checked
+against the program by ReMoM's review), COMBINIT.c Battle_Unit_Special_Stats, Spells131.c
+Cast_Raise_Dead, Cast_Animate_Dead, Apply_Cracks_Call, Combat_Cast_Disenchant, Spells133.c
+Apply_Call_Lightning, Combat.c Begin_Combat_Turn. Tests `TestClassicTargetFilter`,
+`TestClassicCallLightning`, `TestClassicMetalFires`, `TestClassicRaiseDeadLionheart`. Dev:
+`-capture-spell crackssquare@N`, `calllightning@N`.
+
+- Targets of spells on a unit (`classicTargetFilter`, used by `DoTargetUnitSpell`): a buff goes on
+  any unit of the side that does not have it yet (from the world map, an item or the battle) nor the
+  ability it gives by nature (Cloak of Fear and Cause Fear, True Sight and Illusions Immunity,
+  Invisibility, Magic Immunity, Wraith Form and Non-Corporeal, Regeneration, Immolation). No realm
+  rule: undead may take Life buffs, life creatures Berserk. Iron Skin and Stone Skin each look at
+  their own only. Heroism, Holy Armor, Holy Weapon, Eldritch Weapon, Flame Blade: normal units only
+  (not creatures, undead, Black or Chaos Channels units), heroes too, Heroism at any level. Curses:
+  refused when the unit has the curse or the immunity of its realm (Death Immunity for Black Sleep,
+  Weakness, Possession; Illusions Immunity for Confusion, Vertigo, Mind Storm, Creature Binding);
+  Magic Immunity, Righteousness and charms only make them resist. Possession and Creature Binding
+  are never refused for having them (`quirkCurseMaskSkips`, the original's). Shatter and Possession
+  for normal units, Creature Binding for the others, Web not on non-corporeal or webbed units. Mind
+  Storm does nothing to a magic immune unit.
+- Metal Fires: not for creatures, undead and Black Channels units, Chaos Channels units get it; no
+  to-hit (shots and thrown attacks lost 10 to-hit under it before). Holy Weapon cast in the battle
+  gives its +10 to-hit like the one of the world map.
+- Raise Dead: the hits of a figure are taken with its enchantments and again without them: a unit
+  of one figure comes back with its new hits less half its old ones (at least 1, MY CALL), several
+  figures half of them whole by the new hits. Its web stays. Animate Dead clears the enchantments of
+  the world map too.
+- Cracks Call: any square, a unit of either side on it (invisible or merging too) unless it flies or
+  is non-corporeal is swallowed one time in 4, gone for good, with no resistance; a wall on the
+  square always falls. Not in the book in a battle at sea.
+- Call Lightning: at the start of every round after Mana Leak, the attacker's then the defender's,
+  never in the turn it was cast and whether the caster's side is alive or not. 3 to 5 bolts; a try
+  picks any unit of the battle, alive or dead, and strikes it if it is an enemy, alive, has no
+  Wraith Form cast in the battle (`quirkWraithFormSpares`) and wins 1 in 2; a bolt starts the tries
+  anew, 30 failed in a row end it. A bolt is strength 8, armor piercing, of NATURE (the data of Wall
+  of Stone): Magic Immunity stops it, Righteousness and Bless do not, Resist Elements and Elemental
+  Armor count.
+- Disenchant Area and True: no pass over the combat enchantments of the neutral player; the
+  caster's own warped node under the battle is unwarped by a roll against Warp Node (75, no
+  retorts), silently (`CombatModel.WarpedNode`, set by the game); an attacker also rolls the town's
+  Heavenly Light and Cloud of Shadow (their True Light and Darkness end); a vortex on the square of a
+  unit is rolled a second time.
+- FOUND AND FIXED on the way: Wrack killing a unit at the start of a round crashed the battle (the
+  list of units was walked while a death took a unit out of it).

@@ -655,19 +655,25 @@ func (unit *ArmyUnit) RaiseFromDead() {
     if ClassicRules {
         // Cast_Raise_Dead: half the figures whole, one figure half its hits; its enchantments of the
         // world map are gone too
+        // the hits of a figure are taken before its enchantments go and worked out again after
+        // (Battle_Unit_Regular_Stats): a unit of one figure comes back with its new hits less half
+        // its old ones, a unit of several with half its figures, whole by the new hits. the web
+        // stays (the original does not reset it)
         count := max(1, unit.Unit.GetCount())
-        perFigure := unit.GetMaxHealth() / count
-        if count > 1 {
-            unit.Heal((count / 2) * perFigure)
-        } else {
-            unit.Heal(perFigure - perFigure / 2)
-        }
+        oldPerFigure := unit.GetMaxHealth() / count
         for _, enchantment := range slices.Clone(unit.Unit.GetEnchantments()) {
             unit.Unit.RemoveEnchantment(enchantment)
         }
         unit.Enchantments = nil
         unit.Curses = nil
-        unit.WebHealth = 0
+        newPerFigure := unit.GetMaxHealth() / count
+        unit.Unit.AdjustHealth(-unit.Unit.GetMaxHealth())
+        if count > 1 {
+            unit.Heal((count / 2) * newPerFigure)
+        } else {
+            // MY CALL: at least 1 hit, where the original's could be 0 or less
+            unit.Heal(max(1, newPerFigure - oldPerFigure / 2))
+        }
         return
     }
     // then raise to 1/2
@@ -740,7 +746,12 @@ func (unit *ArmyUnit) CanNegateWeaponImmunity() bool {
         }
     }
 
-    if unit.Model.IsEnchantmentActive(data.CombatEnchantmentMetalFires, unit.Team) {
+    if ClassicRules {
+        // Battle_Unit_Special_Stats: Metal Fires counts as a magic weapon where it holds
+        if unit.metalFiresHolds() {
+            return true
+        }
+    } else if unit.Model.IsEnchantmentActive(data.CombatEnchantmentMetalFires, unit.Team) {
         return true
     }
 
@@ -931,7 +942,7 @@ func (unit *ArmyUnit) GetRealm() data.MagicType {
 }
 
 func (unit *ArmyUnit) GetWeaponBonus() data.WeaponBonus {
-    if unit.Unit.GetRace() != data.RaceFantastic && unit.Model.IsEnchantmentActive(data.CombatEnchantmentMetalFires, unit.Team) && !unit.HasEnchantment(data.UnitEnchantmentFlameBlade){
+    if unit.metalFiresHolds(){
         if unit.Unit.GetWeaponBonus() == data.WeaponNone {
             return data.WeaponMagic
         }
@@ -995,7 +1006,7 @@ func (unit *ArmyUnit) GetAbilityValue(ability data.AbilityType) float32 {
             }
 
             // count metal fires, but only if flame blade is not active
-            if unit.Unit.GetRace() != data.RaceFantastic && unit.Model.IsEnchantmentActive(data.CombatEnchantmentMetalFires, unit.Team) && !unit.HasEnchantment(data.UnitEnchantmentFlameBlade) {
+            if unit.metalFiresHolds() {
                 modifier += 1
             }
 
@@ -1107,6 +1118,12 @@ func (unit *ArmyUnit) GetToHitMelee(defender *ArmyUnit) int {
 
     if unit.HasCurse(data.UnitCurseVertigo) {
         modifier -= 20
+    }
+
+    if ClassicRules && unit.HasEnchantmentOnly(data.UnitEnchantmentHolyWeapon) && !unit.Unit.HasEnchantment(data.UnitEnchantmentHolyWeapon) {
+        // Battle_Unit_Special_Stats: Holy Weapon +1 to-hit wherever it comes from; the unit counts
+        // the one of the world map, this is the one cast in the battle
+        modifier += 10
     }
 
     if defender.HasAbility(data.AbilityLucky) && !ClassicRules {
@@ -1370,7 +1387,7 @@ func (unit *ArmyUnit) GetRangedAttackPower() int {
         }
     }
 
-    if unit.Unit.GetRace() != data.RaceFantastic && unit.Model.IsEnchantmentActive(data.CombatEnchantmentMetalFires, unit.Team) && !unit.HasEnchantment(data.UnitEnchantmentFlameBlade) {
+    if unit.metalFiresHolds() {
         if unit.GetRangedAttackDamageType() == units.DamageRangedPhysical {
             modifier += 1
         }
@@ -1427,7 +1444,7 @@ func (unit *ArmyUnit) GetMeleeAttackPower() int {
         modifier -= 1
     }
 
-    if unit.Unit.GetRace() != data.RaceFantastic && unit.Model.IsEnchantmentActive(data.CombatEnchantmentMetalFires, unit.Team) && !unit.HasEnchantment(data.UnitEnchantmentFlameBlade) {
+    if unit.metalFiresHolds() {
         if unit.Unit.GetMeleeAttackPower() > 0 {
             modifier += 1
         }
@@ -2536,6 +2553,9 @@ type CombatModel struct {
 
     // cache of all spells so projectile effects that need spell data (like Dispel Magic) can access it
     AllSpells spellbook.Spells
+
+    // a warped node the battle is fought on, see classicspells.go
+    WarpedNode *BattleNode
 }
 
 func MakeCombatModel(allSpells spellbook.Spells, defendingArmy *Army, attackingArmy *Army, landscape CombatLandscape, plane data.Plane, zone ZoneType, influence data.MagicType, overworldX int, overworldY int, events chan CombatEvent) *CombatModel {
@@ -2884,11 +2904,23 @@ func (model *CombatModel) NextTurn() {
         defenderLeakMana = true
     }
 
+    if ClassicRules {
+        // Begin_Combat_Turn: after Mana Leak the attacker's Call Lightning, then the defender's,
+        // before Wrack (classicspells.go). the global ones of a town count for no side
+        if model.AttackingArmy.HasEnchantment(data.CombatEnchantmentCallLightning) {
+            model.classicCallLightning(TeamAttacker)
+        }
+        if model.DefendingArmy.HasEnchantment(data.CombatEnchantmentCallLightning) {
+            model.classicCallLightning(TeamDefender)
+        }
+    }
+
     defenderTerror := model.IsEnchantmentActive(data.CombatEnchantmentTerror, TeamAttacker)
     defenderWrack := model.IsEnchantmentActive(data.CombatEnchantmentWrack, TeamAttacker)
 
     /* reset movement */
-    for _, unit := range model.DefendingArmy.units {
+    // a copy: Wrack may kill a unit, which takes it out of the list being walked
+    for _, unit := range slices.Clone(model.DefendingArmy.units) {
         unit.ResetTurnData()
 
         if defenderLeakMana {
@@ -2939,7 +2971,8 @@ func (model *CombatModel) NextTurn() {
     attackerTerror := model.IsEnchantmentActive(data.CombatEnchantmentTerror, TeamDefender)
     attackerWrack := model.IsEnchantmentActive(data.CombatEnchantmentWrack, TeamDefender)
 
-    for _, unit := range model.AttackingArmy.units {
+    // a copy: Wrack may kill a unit, which takes it out of the list being walked
+    for _, unit := range slices.Clone(model.AttackingArmy.units) {
         // increase collateral damage to the town for each unit that is within the town area
         if model.InsideTown(unit.X, unit.Y) {
             model.CollateralDamage += 1
@@ -2994,6 +3027,10 @@ func (model *CombatModel) IsTeamAlive(team Team) bool {
 
 // one side finished its turn
 func (model *CombatModel) FinishTurn(team Team) {
+    if ClassicRules {
+        // the bolts come at the start of the round (NextTurn)
+        return
+    }
     if model.IsTeamAlive(team) && model.IsEnchantmentActive(data.CombatEnchantmentCallLightning, team) {
         switch team {
             case TeamDefender: model.doCallLightning(model.AttackingArmy)
@@ -3207,9 +3244,12 @@ func (model *CombatModel) GetObserver() CombatObserver {
 func (model *CombatModel) DoDisenchantArea(allSpells spellbook.Spells, caster ArmyPlayer, disenchantStrength int) {
     targetArmy := model.GetOppositeArmyForPlayer(caster)
 
-    // enemy combat enchantments
+    // enemy combat enchantments; the original skips the pass against the neutral player
     var removedEnchantments []data.CombatEnchantment
     for _, enchantment := range targetArmy.Enchantments {
+        if ClassicRules && classicIsNeutral(targetArmy.Player) {
+            break
+        }
         spell := allSpells.FindByName(enchantment.SpellName())
         cost := spell.Cost(false)
         dispellChance := spellbook.ComputeDispelChance(disenchantStrength, cost, spell.Magic, targetArmy.Player.GetWizard())
@@ -3239,11 +3279,14 @@ func (model *CombatModel) DoDisenchantArea(allSpells spellbook.Spells, caster Ar
 
     if ClassicRules {
         // Combat_Cast_Disenchant: vortexes and the walls of the city too
-        model.classicDisenchantMore(caster, disenchantStrength, func(cost int, magic data.MagicType, owner ArmyPlayer) bool {
+        roll := func(cost int, magic data.MagicType, owner ArmyPlayer) bool {
             return spellbook.RollDispelChance(spellbook.ComputeDispelChance(disenchantStrength, cost, magic, owner.GetWizard()))
-        }, func(name string) int {
+        }
+        costOf := func(name string) int {
             return allSpells.FindByName(name).Cost(false)
-        })
+        }
+        model.classicDisenchantMore(caster, disenchantStrength, roll, costOf)
+        model.classicDisenchantNodeAndTown(caster, disenchantStrength, roll, costOf)
     }
 }
 
@@ -4950,6 +4993,12 @@ func (model *CombatModel) ApplyPossession(target *ArmyUnit){
 /* let the user select a target, then cast the spell on that target
  */
 func (model *CombatModel) DoTargetUnitSpell(army *Army, spell spellbook.Spell, targetKind Targeting, onTarget func(*ArmyUnit), canTarget func(*ArmyUnit) bool) {
+    if ClassicRules {
+        // Combat_Spell_Target_Screen: the original's targets, see classicspells.go
+        if filter, ok := classicTargetFilter(spell.Name); ok {
+            canTarget = filter
+        }
+    }
     teamAttacked := TeamAttacker
 
     selecter := TeamAttacker
@@ -5397,6 +5446,22 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
             }, targetNonDeath)
             castedCallback(true)
         case "Cracks Call":
+            if ClassicRules {
+                // Apply_Cracks_Call: any square, see classicspells.go
+                model.chewPendingUnitAsTile()
+                model.DoTargetTileSpell(army, spell, func (x int, y int) bool { return true }, func (x int, y int){
+                    // the unit on the square, if any, is the target of the pictures: its flash and corpse
+                    target := model.GetUnit(x, y)
+                    if target == nil {
+                        target = &ArmyUnit{X: x, Y: y}
+                    }
+                    projectile := spellSystem.CreateCracksCallProjectile(target)
+                    projectile.Effect = model.classicCracksCallEffect(x, y)
+                    model.AddProjectile(projectile)
+                    castedCallback(true)
+                })
+                break
+            }
             model.DoTargetUnitSpell(army, spell, TargetEnemy, func(target *ArmyUnit){
                 model.AddProjectile(spellSystem.CreateCracksCallProjectile(target))
                 castedCallback(true)
@@ -5949,6 +6014,12 @@ func (model *CombatModel) InvokeSpell(spellSystem SpellSystem, army *Army, unitC
                 killedUnit.Enchantments = nil
                 killedUnit.Curses = nil
                 killedUnit.WebHealth = 0
+                if ClassicRules {
+                    // Cast_Animate_Dead clears the enchantments of the world map too
+                    for _, enchantment := range slices.Clone(killedUnit.Unit.GetEnchantments()) {
+                        killedUnit.Unit.RemoveEnchantment(enchantment)
+                    }
+                }
                 model.setTileUnit(x, y, killedUnit)
             }
 
@@ -6828,6 +6899,10 @@ func (model *CombatModel) CreateBanishProjectileEffect(reduceResistance int, dam
 
 func (model *CombatModel) CreateMindStormProjectileEffect() func (*ArmyUnit) {
     return func (target *ArmyUnit){
+        if ClassicRules && target.HasAbility(data.AbilityMagicImmunity) {
+            // Combat_Cast_Apply_Spell_Effect: nothing happens to a magic immune unit
+            return
+        }
         target.AddCurse(data.UnitCurseMindStorm)
     }
 }
