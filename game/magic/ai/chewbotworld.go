@@ -10,6 +10,7 @@ package ai
 import (
     "cmp"
     "image"
+    "log"
     "slices"
 
     "github.com/kazzmir/master-of-magic/game/magic/combat"
@@ -302,6 +303,11 @@ func (world *chewWorld) makeEvaluationMap(hostility func(*playerlib.Player) int)
         }
         nonHostile := chewNonHostile(world.Self, player, hostility)
         for _, stack := range player.Stacks {
+            if !world.inside(stack.Y()) {
+                // a stack off the map (seen once in a long run, cause not found): no square to mark
+                log.Printf("chewbot: stack of %v off the map at %v,%v: %v", player.Wizard.Name, stack.X(), stack.Y(), stack.Units())
+                continue
+            }
             wp := chewPlaneIndex(stack.Plane())
             for _, unit := range stack.Units() {
                 world.addEval(stack.X(), stack.Y(), wp, chewUnitStrength(unit) / 10)
