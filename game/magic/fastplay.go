@@ -563,9 +563,11 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
 
         attackingArmy = &combat.Army{Player: attacker}
         defendingArmy = &combat.Army{Player: defender}
-        for range TestBattleUnits * armyScale {
-            attackingArmy.AddUnit(units.MakeOverworldUnitFromUnit(unit, 1, 1, data.PlaneArcanus, attacker.Wizard.Banner, attacker.MakeExperienceInfo(), attacker.MakeUnitEnchantmentProvider()))
-            defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(unit, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
+        // one kind of unit, or all of a race, see unitpicker.go
+        army := testArmyUnits(testBattleLast, armyScale)
+        for _, each := range army {
+            attackingArmy.AddUnit(units.MakeOverworldUnitFromUnit(each, 1, 1, data.PlaneArcanus, attacker.Wizard.Banner, attacker.MakeExperienceInfo(), attacker.MakeUnitEnchantmentProvider()))
+            defendingArmy.AddUnit(units.MakeOverworldUnitFromUnit(each, 1, 1, data.PlaneArcanus, defender.Wizard.Banner, defender.MakeExperienceInfo(), defender.MakeUnitEnchantmentProvider()))
         }
 
         // the ground that was picked with the unit, see unitpicker.go
@@ -574,7 +576,7 @@ func runRandomBattle(yield coroutine.YieldFunc, game *MagicGame, cityBattle bool
             landscape, zone.Ground = randomBattleGround(landscape, false)
         }
 
-        log.Printf("Test battle: %v %v against %v of their kind, landscape %v, ground %+v", TestBattleUnits * armyScale, unitFullName(&unit), TestBattleUnits * armyScale, landscape, zone.Ground)
+        log.Printf("Test battle: %v units of %v against as many, landscape %v, ground %+v", len(army), unitFullName(&unit), landscape, zone.Ground)
     } else if cityBattle {
         // a city of another race, held by its starting units
         cityRace := randomChoose(randomBattleRaces...)
