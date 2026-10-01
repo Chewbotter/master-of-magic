@@ -275,10 +275,12 @@ quirk constant where there is one: turning it is the change. New calls go here t
 - Ported 2026-10-01 ("The last of the spells" in magic.md): Nature's Wrath after a cast that went
   through, the Nightshade count kept from the turn, Wall of Stone on walls sold or destroyed this
   turn, the human's Spell Blast price, the counters of cities for Death Wish and Great Unsummoning.
-- Not ported: a computer wizard's Move Fortress moving the HUMAN's fortress (ReMoM's
-  Cast_Move_Fortress has the human's index written in; not checked against the program, no
-  community report of it, and AITP_Move_Fortress itself reads the caster's fortress: likely a
-  mistake of the reconstruction; for the user to decide); what Death Wish and Great Unsummoning do
+- THE USER'S RULE (2026-10-01: "I'm guessing the enemy wizards were not meant to be able to move
+  their fortress, the behavior is definitely not allowing an enemy wizard to move your fortress"):
+  computer wizards never move a fortress (`ai.ComputersMoveFortress` false: Chewbot's Move Fortress
+  finds no target, and the game refuses the cast for any computer wizard). ReMoM's
+  Cast_Move_Fortress moves the HUMAN's fortress for every caster (the human's index written in, not
+  checked against the program). Not ported: what Death Wish and Great Unsummoning do
   (stubs in the reconstruction: as written they do nothing; the fork's effects stay); Nature's
   Wrath on a building another one needs (the reconstruction's Apply_Damage_To_City is garbled);
   the Stasis of the new units is not saved (a load lets them roll at once).

@@ -45,6 +45,9 @@ const (
 )
 
 // ChooseSpellTarget: the target of a spell of the world map, when it is cast (game/aicast.go)
+// computer wizards may move their own fortress (the fork's way). off: the user's rule, they never do
+const ComputersMoveFortress = false
+
 func (ai *ChewbotAI) ChooseSpellTarget(self *playerlib.Player, spell spellbook.Spell) (playerlib.AISpellTarget, bool) {
     if !chewbotSpellsActive() || ai.services == nil {
         return playerlib.AISpellTarget{}, false
@@ -233,7 +236,12 @@ func (ai *ChewbotAI) spellTarget(self *playerlib.Player, services playerlib.AISe
                 return !city.HasOrRemovedThisTurn(buildinglib.BuildingCityWalls)
             }))
         case "Move Fortress":
-            if fortress == nil {
+            // COMPUTER WIZARDS DO NOT MOVE THEIR FORTRESS (user 2026-10-01: "I'm guessing the enemy
+            // wizards were not meant to be able to move their fortress, the behavior is definitely
+            // not allowing an enemy wizard to move your fortress"). The reconstruction's
+            // Cast_Move_Fortress moves the human's fortress for any caster; no target here, so
+            // the spell is never picked (citySpell needs one)
+            if !ComputersMoveFortress || fortress == nil {
                 return playerlib.AISpellTarget{}, false
             }
             var best *citylib.City

@@ -15,6 +15,7 @@ import (
     "github.com/kazzmir/master-of-magic/lib/font"
     "github.com/kazzmir/master-of-magic/lib/lbx"
     playerlib "github.com/kazzmir/master-of-magic/game/magic/player"
+    "github.com/kazzmir/master-of-magic/game/magic/ai"
     herolib "github.com/kazzmir/master-of-magic/game/magic/hero"
     fontslib "github.com/kazzmir/master-of-magic/game/magic/fonts"
     "github.com/kazzmir/master-of-magic/game/magic/music"
@@ -883,6 +884,11 @@ func (game *Game) doCastSpell(player *playerlib.Player, spell spellbook.Spell) {
             }
             game.doCastNewCityBuilding(spell, player, LocationTypeFriendlyCity, building.BuildingSummoningCircle, "Your summoning circle is already in this city", after)
         case "Move Fortress":
+            if player.IsAI() && !ai.ComputersMoveFortress {
+                // computer wizards never move a fortress, theirs or the human's (ai/chewbotspelltargets.go)
+                log.Printf("%v cast Move Fortress: computer wizards do not move their fortress", player.Wizard.Name)
+                break
+            }
             after := func(chosenCity *citylib.City) bool {
                 player.Wizard.Race = chosenCity.Race
 

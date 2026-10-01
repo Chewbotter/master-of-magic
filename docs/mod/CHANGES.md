@@ -165,6 +165,7 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - A city's Nightshade counters spells by the count of the start of the turn, and keeps its old count when it loses its shrine or guild.
 - Wall of Stone can not be cast on walls sold or destroyed this turn, and no longer changes what the city builds.
 - Your Spell Blast costs the progress of the spell it stops.
+- Computer wizards never move their fortress.
 - Death Wish and Great Unsummoning are stopped by a city's Consecration, ward or Nightshade for the units in it.
 
 ## For artists

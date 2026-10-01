@@ -99,3 +99,5 @@ Cast_Wall_Of_Stone, Spells137.c the Spell Blast of the human). Tests `TestClassi
   for a spell of both books its progress, which the screen shows.
 - Death Wish and Great Unsummoning: the units in a city meet its counters (Consecration, the ward,
   Nightshade), rolled once a city.
+- Computer wizards never move a fortress, theirs or the human's (the user's rule, improvements.md;
+  `ai.ComputersMoveFortress`). Test `TestChewbotNoMoveFortress`.
