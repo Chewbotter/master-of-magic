@@ -1457,16 +1457,25 @@ func (game *Game) showScroll(yield coroutine.YieldFunc, title string, text strin
     yield()
 
     // show scroll opening up
+    opened := false
     for !quit {
         game.Counter += 1
 
         if inputmanager.LeftClick() || inpututil.IsKeyJustPressed(ebiten.KeySpace) || inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-            quit = true
+            if opened || !ScrollOpensOnClick {
+                quit = true
+            } else {
+                // open at once, see scrollopen.go
+                finishScrollOpening(scrollAnimation, &scrollLength)
+                opened = true
+            }
         }
 
         if game.Counter % animationSpeed == 0 {
             if scrollAnimation.Next() {
                 scrollLength += 10
+            } else {
+                opened = true
             }
         }
 
@@ -9444,6 +9453,9 @@ func (game *Game) Draw(screen *ebiten.Image){
 
 func (game *Game) DrawGame(screen *ebiten.Image){
     game.updateCameraSize()
+    // every frame of the map is inside the map, also the first after a load and the
+    // frames of a zoom, which run before the update that keeps the camera on it (pan.go)
+    game.keepCameraOnMap()
 
     var cities []*citylib.City
     var citiesMiniMap []maplib.MiniMapCity

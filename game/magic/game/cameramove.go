@@ -59,16 +59,22 @@ func (game *Game) animateCameraTo(yield coroutine.YieldFunc, x int, y int) {
     width := float64(mapUse.Width())
 
     startX, startY := game.shownCameraOffset()
+    // from where the map can be shown: a camera centered beyond the edge (a game loaded, a city
+    // near the bottom row) does not glide in from there
+    startY = game.cameraTargetY(startX, startY)
     // the move takes over from any pan glide or coast
     view.active = false
     coasting = false
 
+    // a tile near the top or bottom row: the camera stops where the map still fills the view
+    targetY := game.cameraTargetY(float64(x), float64(y))
+
     deltaX := wrapDelta(float64(x) - startX, width)
-    deltaY := float64(y) - startY
+    deltaY := targetY - startY
 
     // already there: no waiting
     if math.Abs(deltaX) < CameraMoveThreshold && math.Abs(deltaY) < CameraMoveThreshold {
-        game.setCameraOffset(float64(x), float64(y))
+        game.setCameraOffset(float64(x), targetY)
         return
     }
 
@@ -89,8 +95,12 @@ func (game *Game) animateCameraTo(yield coroutine.YieldFunc, x int, y int) {
         }
     }
 
-    game.Camera.SetOffset(0, 0)
-    game.Camera.Center(mapUse.WrapX(x), y)
+    if targetY != float64(y) {
+        game.setCameraOffset(float64(x), targetY)
+    } else {
+        game.Camera.SetOffset(0, 0)
+        game.Camera.Center(mapUse.WrapX(x), y)
+    }
     if CameraMoveTrace != nil {
         CameraMoveTrace(game.Camera.GetOffsetX(), game.Camera.GetOffsetY())
     }

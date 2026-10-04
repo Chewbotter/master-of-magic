@@ -261,16 +261,25 @@ func (game *Game) showScrollEvents(yield coroutine.YieldFunc, events []*GameEven
                 move(-scrollMoveStep)
         }
 
+        // while it unrolls a click or a key opens it at once, see scrollopen.go
+        closeOrOpen := func() {
+            if opened || !ScrollOpensOnClick {
+                quit = true
+            } else {
+                finishScrollOpening(scrollAnimation, &scrollLength)
+                opened = true
+            }
+        }
         if inputmanager.LeftClick() {
             arrow := onArrow()
             if arrow != 0 {
                 move(arrow * scrollMoveStep)
             } else {
-                quit = true
+                closeOrOpen()
             }
         }
         if inpututil.IsKeyJustPressed(ebiten.KeySpace) || inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-            quit = true
+            closeOrOpen()
         }
 
         if game.Counter % animationSpeed == 0 {

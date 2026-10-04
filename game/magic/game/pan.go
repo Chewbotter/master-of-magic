@@ -14,6 +14,7 @@ import (
     "time"
 
     "github.com/kazzmir/master-of-magic/game/magic/camera"
+    "github.com/kazzmir/master-of-magic/game/magic/data"
     "github.com/kazzmir/master-of-magic/game/magic/display"
     "github.com/kazzmir/master-of-magic/game/magic/inputmanager"
     "github.com/kazzmir/master-of-magic/game/magic/scale"
@@ -114,6 +115,7 @@ func (game *Game) doInputPan() bool {
         panning = false
         coasting = false
         game.snapZoomToLevel()
+        game.keepCameraOnMap()
         game.snapCameraToPixel()
         return false
     }
@@ -133,6 +135,7 @@ func (game *Game) doInputPan() bool {
 
         if !game.coastTick() {
             game.snapZoomToLevel()
+            game.keepCameraOnMap()
             game.snapCameraToPixel()
         }
         return false
@@ -210,6 +213,34 @@ func setOffsetOn(useCamera *camera.Camera, offsetX float64, offsetY float64, wra
     useCamera.SetOffset(offsetX - wholeX, offsetY - wholeY)
 }
 
+// (user 2026-10-02: "a gray bar appears at the bottom of the map" of a loaded game): the
+// camera at rest keeps the vertical limits of a pan. Only a pan kept them; a camera centered on a
+// city or a stack near the top or bottom row (a game loaded, a jump to a unit, a zoom out) showed
+// the gray beyond the map until the next pan
+var CameraStaysOnMap = true
+
+func (game *Game) keepCameraOnMap() {
+    if !CameraStaysOnMap || cameraMoves || (view.active && view.game == game) {
+        return
+    }
+    offsetY := game.clampCameraY()
+    if math.Abs(offsetY - game.Camera.GetOffsetY()) > 1e-9 {
+        game.setCameraOffset(game.Camera.GetOffsetX(), offsetY)
+    }
+}
+
+// where the camera stands when it is centered on x, y and kept on the map (see keepCameraOnMap)
+func (game *Game) cameraTargetY(x float64, y float64) float64 {
+    if !CameraStaysOnMap {
+        return y
+    }
+    saved := game.Camera
+    game.setCameraOffset(x, y)
+    clamped := game.clampCameraY()
+    game.Camera = saved
+    return clamped
+}
+
 // the same vertical limits the camera keeps when it moves to a tile. returns the allowed offset
 func (game *Game) clampCameraY() float64 {
     offsetY := game.Camera.GetOffsetY()
@@ -221,7 +252,16 @@ func (game *Game) clampCameraY() float64 {
     minY := math.Floor(-1 / zoom)
     height := float64(game.Model.CurrentMap().Height())
 
-    if over := game.Camera.GetZoomedMaxY() - height; over > 0 {
+    // the lowest row the view shows: the map is drawn from the top of the screen down to its
+    // bottom (the top bar lies over it). GetZoomedMaxY of upstream counts SizeY + 1 rows, about
+    // a row short of that, which left gray under the map when zoomed out (its own FIXME)
+    bottom := game.Camera.GetZoomedMaxY()
+    if CameraStaysOnMap {
+        if tileHeight := game.Model.CurrentMap().TileHeight(); tileHeight > 0 {
+            bottom = game.Camera.GetZoomedY() + float64(data.ScreenHeight) / float64(tileHeight) / zoom
+        }
+    }
+    if over := bottom - height; over > 0 {
         offsetY -= over
     }
 

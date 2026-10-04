@@ -221,6 +221,11 @@ func (world *chewWorld) nearestFree(squares []image.Point, wp int, x int, y int,
     best := 1000
     var found image.Point
     for _, square := range squares {
+        // never a square of the top or bottom row, which no unit enters (Merlin sent armies to
+        // the polar row 1,369 times in one game of eight wizards)
+        if square.Y <= 0 || square.Y >= world.Height - 1 {
+            continue
+        }
         distance := world.Distance(square.X, square.Y, x, y)
         if jitter > 0 {
             distance += chewRandom(jitter)

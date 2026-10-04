@@ -127,6 +127,9 @@ type screen struct {
     talking bool
     talkFrame int
     counter uint64
+    // when the last picture of the fade in came, and when the fade in ended (portraitBefore)
+    fadeStepAt uint64
+    fadeEndedAt uint64
     song music.Song
 
     clicked bool
@@ -375,13 +378,19 @@ func (screen *screen) setElements() {
 func (screen *screen) update() {
     screen.ui.StandardUpdate()
     screen.counter += 1
-    if screen.counter % talkFrameTicks == 0 {
-        if screen.fading {
+    if screen.fading {
+        // a picture of the fade in every talkFrameTicks from its start, so the blend of one into
+        // the next (portraitBefore) runs evenly
+        if screen.counter - screen.fadeStepAt >= talkFrameTicks {
             screen.fadeFrame += 1
+            screen.fadeStepAt = screen.counter
             if screen.fadeFrame >= fadeInFrames {
                 screen.fading = false
+                screen.fadeEndedAt = screen.counter
             }
-        } else if screen.talking {
+        }
+    } else if screen.counter % talkFrameTicks == 0 {
+        if screen.talking {
             screen.talkFrame += 1
             images, _ := screen.imageCache.GetImagesTransform("diplomac.lbx", 24 + screen.wizard, "cutout", screen.cutout)
             // the original stops the talk at its frame 24
@@ -396,9 +405,18 @@ func (screen *screen) update() {
 func (screen *screen) fadeIn(yield coroutine.YieldFunc) {
     screen.fading = true
     screen.fadeFrame = 0
+    screen.fadeStepAt = screen.counter
+    screen.fadeEndedAt = 0
     screen.lines = nil
-    for screen.fading {
+    for {
         screen.update()
+        // (user 2026-10-03: "right at the end of the fade-up, for just a frame ... the portrait
+        // popping out for a moment, exposing the background image"): the update that ends the fade is
+        // not followed by a picture; the one after it already has the face of the message that comes
+        // next. Before, the picture between had no fade and no face (group -1), so the mirror was empty
+        if !screen.fading {
+            return
+        }
         yield()
     }
 }
@@ -722,7 +740,14 @@ func (screen *screen) draw(destination *ebiten.Image) {
     if portrait := screen.portrait(); portrait != nil {
         options.GeoM.Reset()
         options.GeoM.Translate(portraitX, portraitY)
-        scale.DrawScaled(destination, portrait, &options)
+        // the picture before under it while this one comes up (portraitBefore)
+        previous, part := screen.portraitBefore()
+        if previous != nil {
+            scale.DrawScaled(destination, previous, &options)
+        }
+        portraitOptions := options
+        portraitOptions.ColorScale.ScaleAlpha(part)
+        scale.DrawScaled(destination, portrait, &portraitOptions)
     }
     mirror, _ := screen.imageCache.GetImage("backgrnd.lbx", 18, 0)
     if mirror != nil {
@@ -754,6 +779,30 @@ func (screen *screen) draw(destination *ebiten.Image) {
         alpha := min(max(255 * screen.fadeOut, 0), 255)
         vector.FillRect(destination, 0, 0, float32(destination.Bounds().Dx()), float32(destination.Bounds().Dy()), color.RGBA{A: uint8(alpha)}, false)
     }
+}
+
+// (user 2026-10-02: the reflection lines "pop out as soon as the wizard start talking"): the
+// original's fade in is 5 pictures (diplomac 38 + wizard), the wizard behind glass streaks that
+// fade from picture to picture; its last still has faint streaks and the face that follows none,
+// and every picture came at once. Now each picture comes up over the one before in talkFrameTicks
+// (the first over the empty mirror) and the face over the last picture of the fade in. Returns the
+// picture under the one of now (nil: none) and how much of the one of now shows
+func (screen *screen) portraitBefore() (*ebiten.Image, float32) {
+    fadeImages, _ := screen.imageCache.GetImagesTransform("diplomac.lbx", 38 + screen.wizard, "cutout", screen.cutout)
+    if len(fadeImages) == 0 {
+        return nil, 1
+    }
+    if screen.fading {
+        part := min(1, float32(screen.counter - screen.fadeStepAt) / talkFrameTicks)
+        if screen.fadeFrame == 0 {
+            return nil, part
+        }
+        return fadeImages[min(screen.fadeFrame - 1, len(fadeImages) - 1)], part
+    }
+    if screen.fadeEndedAt > 0 && screen.counter - screen.fadeEndedAt < talkFrameTicks {
+        return fadeImages[len(fadeImages) - 1], float32(screen.counter - screen.fadeEndedAt) / talkFrameTicks
+    }
+    return nil, 1
 }
 
 // the wizard in the mirror as it is now

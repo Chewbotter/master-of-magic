@@ -98,6 +98,11 @@ A list of what is different from the game this fork is built on (kazzmir's Maste
 - A computer army that loses a battle to you and lives (it fled, or held out to the turn limit) no longer comes straight back with the same order: as in the original, every computer unit in a battle on the battlefield loses its order and plans anew.
 - With the Enemy AI Chewbot, a computer army keeps to the way it chose, as in the original: the rest of its path is kept after every move, so it no longer turns back when other units block a road for a turn (and walks into an enemy that stands on its way).
 - With the Enemy AI Chewbot, a computer wizard summons a creature only while it can pay the creature's mana upkeep (not the original's): before, a wizard short of mana summoned and disbanded creatures turn after turn.
+- A click or a key while a scroll of events unrolls opens it at once; only a click when it is open closes it (before, a short scroll could be gone before its line was read).
+- A game loaded near the top or bottom row, a zoom, or a jump of the camera there no longer shows the gray beyond the map: the camera stays on the map.
+- The minimap draws much faster (it was most of the cost of a frame zoomed out with Reveal All).
+- With the Enemy AI Chewbot, a computer army is never sent to gather on the top or bottom row of the map, which no unit can enter.
+- Talking to a wizard: the pictures of the fade in blend into each other and into the face (no pop of the glass streaks), and no empty frame shows between the fade in and the first message.
 
 ## Battles
 - The battlefield, the places of figures, deployment, timing, trees, rocks, houses and walls follow the original.

@@ -2111,20 +2111,39 @@ func (mapObject *Map) DrawMinimap(screen *ebiten.Image, cities []MiniMapCity, ce
         return use
     })
 
-    for x := range screen.Bounds().Dx() {
-        for y := range screen.Bounds().Dy() {
-            tileX := mapObject.WrapX(scale.Unscale(x + cameraX))
-            tileY := scale.Unscale(y + cameraY)
+    // (user 2026-10-02: the frame rate dipped while panning the map zoomed out with Reveal
+    // All): the color of a square is found once a square, not once a screen pixel (at draw scale 7
+    // the minimap is about 91000 pixels, each with two map lookups): along a row a color is looked
+    // up only where the square changes, and a row of pixels in the same row of squares as the one
+    // above is copied from it
+    width := screen.Bounds().Dx()
+    tileXs := make([]int, width)
+    for x := range width {
+        tileXs[x] = mapObject.WrapX(scale.Unscale(x + cameraX))
+    }
+    previousTileY := 0
+    for y := range screen.Bounds().Dy() {
+        tileY := scale.Unscale(y + cameraY)
+        if y > 0 && tileY == previousTileY {
+            copy(mapObject.miniMapPixels[y * rowSize * 4:(y + 1) * rowSize * 4], mapObject.miniMapPixels[(y - 1) * rowSize * 4:y * rowSize * 4])
+            continue
+        }
+        previousTileY = tileY
 
-            if tileX < 0 || tileX >= mapObject.Map.Columns() || tileY < 0 || tileY >= mapObject.Map.Rows() || fog[tileX][tileY] == data.FogTypeUnexplored {
-                set(x, y, black)
-                continue
-            }
-
-            use := getMapColor(terrain.GetTile(mapObject.Map.Terrain[tileX][tileY]).TerrainType(), fog[tileX][tileY])
-
-            if cityColor, ok := cityLocations[image.Pt(tileX, tileY)]; ok {
-                use = getCityColor(cityColor, fog[tileX][tileY])
+        var use color.RGBA
+        lastTileX := -1
+        for x := range width {
+            tileX := tileXs[x]
+            if x == 0 || tileX != lastTileX {
+                lastTileX = tileX
+                if tileX < 0 || tileX >= mapObject.Map.Columns() || tileY < 0 || tileY >= mapObject.Map.Rows() || fog[tileX][tileY] == data.FogTypeUnexplored {
+                    use = black
+                } else {
+                    use = getMapColor(terrain.GetTile(mapObject.Map.Terrain[tileX][tileY]).TerrainType(), fog[tileX][tileY])
+                    if cityColor, ok := cityLocations[image.Pt(tileX, tileY)]; ok {
+                        use = getCityColor(cityColor, fog[tileX][tileY])
+                    }
+                }
             }
 
             set(x, y, use)
